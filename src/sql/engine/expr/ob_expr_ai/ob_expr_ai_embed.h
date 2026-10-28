@@ -37,6 +37,10 @@ public:
                                 int64_t param_num,
                                 common::ObExprTypeCtx &type_ctx) const override;
   static int eval_ai_embed(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &res);
+  // Cross-row batch evaluation: ONE HTTP request carries every non-NULL input of
+  // a (model_id, dimension) group instead of one request per row.
+  static int eval_ai_embed_batch(const ObExpr &expr, ObEvalCtx &ctx,
+                                 const ObBitVector &skip, const int64_t batch_size);
   virtual int cg_expr(ObExprCGCtx &expr_cg_ctx, 
                       const ObRawExpr &raw_expr,
                       ObExpr &rt_expr) const override;
@@ -45,6 +49,11 @@ private:
   static constexpr int MODEL_IDX = 0;
   static constexpr int CONTENT_IDX = 1;
   static constexpr int DIM_IDX = 2;
+  // Upper bound on inputs carried by one embeddings request.  Small enough that
+  // a provider-side whole-request limit (OpenAI: 2048 inputs / ~300k tokens,
+  // Ollama far less) cannot be hit by a 256-row engine batch, and equal to
+  // SMALL_SCAN_CARDINALITY so a small table stays a single request.
+  static constexpr int64_t MAX_EMBED_INPUTS_PER_REQUEST = 16;
   DISALLOW_COPY_AND_ASSIGN(ObExprAIEmbed);
 };
 
