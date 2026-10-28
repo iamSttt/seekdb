@@ -24,6 +24,61 @@
 using namespace oceanbase::common;
 using namespace oceanbase::sql;
 
+namespace
+{
+// Read any JSON number node as double without relying on the concrete node type.
+int json_number_to_double(oceanbase::common::ObJsonNode *node, double &value)
+{
+  int ret = OB_SUCCESS;
+  if (OB_ISNULL(node)) {
+    ret = OB_ERR_UNEXPECTED;
+  } else if (oceanbase::common::ObJsonNodeType::J_INT == node->json_type()) {
+    value = static_cast<double>(node->get_int());
+  } else if (oceanbase::common::ObJsonNodeType::J_UINT == node->json_type()) {
+    value = static_cast<double>(node->get_uint());
+  } else if (oceanbase::common::ObJsonNodeType::J_DOUBLE == node->json_type()
+             || oceanbase::common::ObJsonNodeType::J_DECIMAL == node->json_type()) {
+    value = node->get_double();
+  } else {
+    ret = OB_ERR_UNEXPECTED;
+  }
+  return ret;
+}
+
+// Read any JSON number node as int64. Returns false when the node is absent or
+// not a number, so callers can fall back to the response order.
+bool json_int_value(oceanbase::common::ObJsonNode *node, int64_t &value)
+{
+  bool found = false;
+  if (OB_NOT_NULL(node)) {
+    if (oceanbase::common::ObJsonNodeType::J_INT == node->json_type()) {
+      value = node->get_int();
+      found = true;
+    } else if (oceanbase::common::ObJsonNodeType::J_UINT == node->json_type()) {
+      value = static_cast<int64_t>(node->get_uint());
+      found = true;
+    } else if (oceanbase::common::ObJsonNodeType::J_DOUBLE == node->json_type()
+               || oceanbase::common::ObJsonNodeType::J_DECIMAL == node->json_type()) {
+      value = static_cast<int64_t>(node->get_double());
+      found = true;
+    }
+  }
+  return found;
+}
+
+bool json_string_equal(oceanbase::common::ObJsonNode *lhs, oceanbase::common::ObJsonNode *rhs)
+{
+  bool equal = false;
+  if (OB_NOT_NULL(lhs) && OB_NOT_NULL(rhs)
+      && oceanbase::common::ObJsonNodeType::J_STRING == lhs->json_type()
+      && oceanbase::common::ObJsonNodeType::J_STRING == rhs->json_type()) {
+    equal = static_cast<oceanbase::common::ObJsonString *>(lhs)->get_str()
+            == static_cast<oceanbase::common::ObJsonString *>(rhs)->get_str();
+  }
+  return equal;
+}
+}  // namespace
+
 namespace oceanbase 
 {
 namespace sql 
@@ -221,7 +276,7 @@ int ObExprAIRerank::eval_ai_rerank_with_doc_key(const ObExpr &expr, ObEvalCtx &c
   } else {
     ObAIFuncModel model(allocator, info, endpoint_info);
     if (OB_FAIL(model.call_rerank(query, doc_array, result_array))) {
-    } else if (OB_FAIL(sort_document_array_by_model_result(allocator, document_array, result_array, sorted_document_array))) {
+    } else if (OB_FAIL(sort_document_array_by_model_result(allocator, document_array, result_array, doc_key, sorted_document_array))) {
     } 
   }
   if (OB_SUCC(ret)) {
@@ -277,31 +332,56 @@ int ObExprAIRerank::get_doc_array_from_documents_array_with_key(ObIAllocator &al
   return ret;
 }
 
-int ObExprAIRerank::sort_document_array_by_model_result(ObIAllocator &allocator, ObJsonArray *document_array, ObJsonArray *model_result_array, ObJsonArray *&sorted_document_array)
+int ObExprAIRerank::sort_document_array_by_model_result(ObIAllocator &allocator, ObJsonArray *document_array, ObJsonArray *model_result_array, const ObString &doc_key, ObJsonArray *&sorted_document_array)
 {
   INIT_SUCC(ret);
   ObJsonArray *sorted_document_array_obj = nullptr;
-  if (OB_FAIL(ObAIFuncJsonUtils::get_json_array(allocator, sorted_document_array_obj))) {
+  if (OB_ISNULL(document_array) || OB_ISNULL(model_result_array)) {
+    ret = OB_ERR_UNEXPECTED;
+  } else if (OB_FAIL(ObAIFuncJsonUtils::get_json_array(allocator, sorted_document_array_obj))) {
   } else {
-    int64_t count = model_result_array->element_count();
+    const int64_t doc_count = document_array->element_count();
+    const int64_t count = model_result_array->element_count();
     for (int64_t i = 0; OB_SUCC(ret) && i < count; i++) {
-      ObJsonObject *model_result_obj = static_cast<ObJsonObject *>(model_result_array->get_value(i));
-      if (OB_ISNULL(model_result_obj)) {
+      ObJsonNode *result_node = model_result_array->get_value(i);
+      int64_t index = -1;
+      ObJsonNode *score_node = nullptr;
+      if (OB_ISNULL(result_node) || ObJsonNodeType::J_OBJECT != result_node->json_type()) {
         ret = OB_ERR_UNEXPECTED;
       } else {
-        ObJsonInt *index_value = static_cast<ObJsonInt *>(model_result_obj->get_value(INDEX_KEY));
-        ObJsonDouble *score_value = static_cast<ObJsonDouble *>(model_result_obj->get_value(SCORE_KEY));
-        if (OB_ISNULL(index_value) || OB_ISNULL(score_value)) {
+        ObJsonObject *result_obj = static_cast<ObJsonObject *>(result_node);
+        score_node = result_obj->get_value(SCORE_KEY);
+        if (!json_int_value(result_obj->get_value(INDEX_KEY), index)) {
+          // A provider may echo the ranked documents instead of index/score
+          // pairs; map such an element back through the text value that was
+          // sent for this document key.
+          index = -1;
+          if (!doc_key.empty()) {
+            ObJsonNode *text_node = result_obj->get_value(doc_key);
+            for (int64_t k = 0; -1 == index && k < doc_count; k++) {
+              ObJsonNode *origin_node = document_array->get_value(k);
+              if (OB_NOT_NULL(origin_node) && ObJsonNodeType::J_OBJECT == origin_node->json_type()
+                  && json_string_equal(static_cast<ObJsonObject *>(origin_node)->get_value(doc_key), text_node)) {
+                index = k;
+              }
+            }
+          }
+          if (-1 == index && i < doc_count) {
+            // Last resort: keep the response order.
+            index = i;
+          }
+        }
+        if (OB_FAIL(ret)) {
+        } else if (index < 0 || index >= doc_count) {
           ret = OB_ERR_UNEXPECTED;
         } else {
-          int64_t index = index_value->value();
           ObJsonObject *origin_obj = static_cast<ObJsonObject *>(document_array->get_value(index));
           ObJsonObject *new_obj = nullptr;
           if (OB_ISNULL(origin_obj)) {
             ret = OB_ERR_UNEXPECTED;
           } else if (OB_ISNULL(new_obj = static_cast<ObJsonObject *>(origin_obj->clone(&allocator, true)))) {
             ret = OB_ERR_UNEXPECTED;
-          } else if (OB_FAIL(new_obj->add(MODEL_SCORE_KEY, score_value))) {
+          } else if (OB_NOT_NULL(score_node) && OB_FAIL(new_obj->add(MODEL_SCORE_KEY, score_node))) {
           } else if (OB_FAIL(sorted_document_array_obj->append(new_obj))) {
           }
         }
@@ -365,16 +445,21 @@ int ObExprAIRerank::batch_result_add_base(ObIAllocator &allocator, ObJsonArray *
   int64_t count = array->element_count();
   ObString index_key(INDEX_KEY);
   for (int64_t i = 0; OB_SUCC(ret) && i < count; i++) {
-    ObJsonObject *obj = static_cast<ObJsonObject *>(array->get_value(i));
-    if (OB_ISNULL(obj)) {
+    ObJsonNode *node = array->get_value(i);
+    if (OB_ISNULL(node)) {
       ret = OB_ERR_UNEXPECTED;
+    } else if (ObJsonNodeType::J_OBJECT != node->json_type()) {
+      // The provider echoed the ranked documents as plain values; there is no
+      // index field to shift and the array order already is the ranked order.
     } else {
-      ObJsonInt *int_obj = static_cast<ObJsonInt *>(obj->get_value(index_key));
-      if (OB_ISNULL(int_obj)) {
+      ObJsonNode *index_node = static_cast<ObJsonObject *>(node)->get_value(index_key);
+      int64_t index = 0;
+      if (OB_ISNULL(index_node)) {
+        // No index in the response: keep the provider order.
+      } else if (!json_int_value(index_node, index)) {
         ret = OB_ERR_UNEXPECTED;
-      } else {
-        int64_t id = int_obj->value() + start_idx;
-        int_obj->set_value(id);
+      } else if (ObJsonNodeType::J_INT == index_node->json_type()) {
+        static_cast<ObJsonInt *>(index_node)->set_value(index + start_idx);
       }
     }
   }
@@ -398,12 +483,12 @@ int ObExprAIRerank::compact_json_array_by_key(ObIAllocator &allocator, ObJsonArr
       if (OB_ISNULL(obj1) || OB_ISNULL(obj2)) {
         ret = OB_ERR_UNEXPECTED;
       } else {
-        ObJsonDouble *double1 = static_cast<ObJsonDouble *>(obj1->get_value(score_key));
-        ObJsonDouble *double2 = static_cast<ObJsonDouble *>(obj2->get_value(score_key));
-        if (OB_ISNULL(double1) || OB_ISNULL(double2)) {
-          ret = OB_ERR_UNEXPECTED;
+        double score1 = 0.0;
+        double score2 = 0.0;
+        if (OB_FAIL(json_number_to_double(obj1->get_value(score_key), score1))
+            || OB_FAIL(json_number_to_double(obj2->get_value(score_key), score2))) {
         } else {
-          if (double1->value() > double2->value()) {
+          if (score1 > score2) {
             if (OB_FAIL(result_array->append(obj1))) {
             }
             i++;
