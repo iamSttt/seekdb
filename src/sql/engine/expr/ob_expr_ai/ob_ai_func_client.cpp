@@ -182,6 +182,14 @@ int ObAIFuncClient::send_post(ObJsonObject *data, ObJsonObject *&response)
               allocator_, response_buf.string(), ObJsonInType::JSON_TREE,
               ObJsonInType::JSON_TREE, j_tree))) {
           ret = OB_ERR_INVALID_JSON_TEXT;
+        } else if (OB_ISNULL(j_tree)
+                   || ObJsonNodeType::J_OBJECT != j_tree->json_type()) {
+          // A service may answer with a top level array or string; casting such
+          // a root to ObJsonObject and then reading fields from it is undefined
+          // behaviour and used to crash the server, so reject the response
+          // before any object field is touched.
+          ret = OB_INVALID_DATA;
+          LOG_WARN("ai func http response root is not a json object", K(ret));
         } else {
           response = static_cast<ObJsonObject *>(j_tree);
         }
@@ -378,6 +386,10 @@ int ObAIFuncClient::get_batch_result(ObArray<ObJsonObject *> &responses)
               allocator_, response_str, ObJsonInType::JSON_TREE,
               ObJsonInType::JSON_TREE, j_tree))) {
         ret = OB_ERR_INVALID_JSON_TEXT;
+      } else if (OB_ISNULL(j_tree)
+                 || ObJsonNodeType::J_OBJECT != j_tree->json_type()) {
+        ret = OB_INVALID_DATA;
+        LOG_WARN("ai func batch http response root is not a json object", K(ret));
       } else if (OB_FAIL(responses.push_back(static_cast<ObJsonObject *>(j_tree)))) {
       }
     }

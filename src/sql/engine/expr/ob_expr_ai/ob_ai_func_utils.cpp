@@ -188,7 +188,14 @@ int ObOpenAIUtils::ObOpenAIComplete::parse_output(common::ObIAllocator &allocato
     ObJsonSeekResult hit;
     if (OB_FAIL(j_path.parse_path())) {
     } else if (OB_FAIL(j_tree->seek(j_path, j_path.path_node_cnt(), false, false, hit))) {
-    } else if (hit.size() == 0) {
+    } else if (hit.size() == 0 || OB_ISNULL(hit[0])) {
+      ret = OB_INVALID_DATA;
+    } else if (ObJsonNodeType::J_STRING != hit[0]->json_type()) {
+      // The answer has to be a JSON string; a JSON null means the service
+      // answered without any content.
+      ret = OB_INVALID_DATA;
+    } else if (0 == hit[0]->get_data_length()) {
+      // Empty response validation: an empty answer is not a usable completion.
       ret = OB_INVALID_DATA;
     } else {
       result = hit[0];
@@ -401,6 +408,11 @@ int ObOllamaUtils::ObOllamaComplete::parse_output(common::ObIAllocator &allocato
     } else if (OB_FAIL(j_tree->seek(j_path, j_path.path_node_cnt(), false, false, hit))) {
     } else if (hit.size() == 0) {
       ret = OB_ERR_UNEXPECTED;
+    } else if (OB_ISNULL(hit[0]) || ObJsonNodeType::J_STRING != hit[0]->json_type()) {
+      ret = OB_INVALID_DATA;
+    } else if (0 == hit[0]->get_data_length()) {
+      // Empty response validation: an empty answer is not a usable completion.
+      ret = OB_INVALID_DATA;
     } else {
       result = hit[0];
     }
@@ -596,6 +608,9 @@ int ObDashscopeUtils::ObDashscopeComplete::parse_output(ObIAllocator &allocator,
       ret = OB_INVALID_DATA;
     } else if (OB_ISNULL(content_str = static_cast<ObJsonString *>(message_obj->get_value("content")))) {
       ret = OB_INVALID_DATA;
+    } else if (0 == content_str->get_str().length()) {
+      // Empty response validation: an empty answer is not a usable completion.
+      ret = OB_INVALID_DATA;
     } else {
       result = content_str;
     }
@@ -753,16 +768,18 @@ int ObDashscopeUtils::ObDashscopeRerank::parse_output(common::ObIAllocator &allo
                                                       common::ObIJsonBase *&result) 
 {
   int ret = OB_SUCCESS;
-  ObJsonObject *output_obj = nullptr;
-  ObJsonArray *results_array = nullptr;
+  ObJsonNode *output_node = nullptr;
+  ObJsonNode *results_node = nullptr;
   if (OB_ISNULL(http_response)) {
     ret = OB_INVALID_ARGUMENT;
-  } else if (OB_ISNULL(output_obj = static_cast<ObJsonObject *>(http_response->get_value("output")))) {
+  } else if (OB_ISNULL(output_node = http_response->get_value("output"))
+             || ObJsonNodeType::J_OBJECT != output_node->json_type()) {
     ret = OB_INVALID_DATA;
-  } else if (OB_ISNULL(results_array = static_cast<ObJsonArray *>(output_obj->get_value("results")))) {
+  } else if (OB_ISNULL(results_node = static_cast<ObJsonObject *>(output_node)->get_value("results"))
+             || ObJsonNodeType::J_ARRAY != results_node->json_type()) {
     ret = OB_INVALID_DATA;
   } else {
-    result = results_array;
+    result = results_node;
   }
   return ret;
 }
@@ -1042,7 +1059,11 @@ int ObAIFuncJsonUtils::print_json_to_str(ObIAllocator &allocator, ObIJsonBase *b
 {
   int ret = OB_SUCCESS;
   ObJsonBuffer j_buf(&allocator);
-  if (OB_FAIL(base_node->print(j_buf, 0))) {
+  if (OB_ISNULL(base_node)) {
+    // Callers print the raw response to report what the service answered, but
+    // the response is unknown when the request or its root type was rejected.
+    ret = OB_INVALID_ARGUMENT;
+  } else if (OB_FAIL(base_node->print(j_buf, 0))) {
   } else {
     str = j_buf.string();
   }
@@ -1724,24 +1745,36 @@ int ObAIFuncPromptObjectUtils::replace_all_str_args_in_template(ObIAllocator &al
     int64_t max_arg_len = 0;
     int64_t placeholder_bound = 0;
     char *result_buf = NULL;
+    ObArray<ObString> arg_values;
+    // Expand every argument once. A nested AI_PROMPT(...) argument has to be
+    // rendered recursively instead of being emitted as its raw JSON text, while
+    // other non-string arguments still expand as their JSON so a prompt can
+    // carry structured values.
     for (uint64_t i = 0; OB_SUCC(ret) && i < args_count; i++) {
       ObJsonNode *arg_node = args_array->get_value(i);
-      if (OB_NOT_NULL(arg_node) && arg_node->json_type() == ObJsonNodeType::J_STRING) {
-        ObJsonString *arg_str = static_cast<ObJsonString *>(arg_node);
-        const int64_t arg_len = arg_str->get_str().length();
-        if (arg_len > max_arg_len) {
-          max_arg_len = arg_len;
-        }
-      } else if (OB_NOT_NULL(arg_node)) {
-        // Non-string arguments (JSON object/array/scalar) expand as their JSON
-        // text so a prompt can carry structured values.
-        ObJsonBuffer node_buf(&allocator);
-        if (OB_FAIL(arg_node->print(node_buf, false))) {
-        } else if (node_buf.length() > max_arg_len) {
-          max_arg_len = node_buf.length();
+      ObString arg_value;
+      if (OB_ISNULL(arg_node)) {
+        ret = OB_INVALID_ARGUMENT;
+      } else if (arg_node->json_type() == ObJsonNodeType::J_STRING) {
+        arg_value = static_cast<ObJsonString *>(arg_node)->get_str();
+      } else if (arg_node->json_type() == ObJsonNodeType::J_OBJECT
+                 && is_valid_prompt_object(static_cast<ObJsonObject *>(arg_node))) {
+        if (OB_FAIL(replace_all_str_args_in_template(
+                allocator, static_cast<ObJsonObject *>(arg_node), arg_value))) {
         }
       } else {
-        ret = OB_INVALID_ARGUMENT;
+        ObJsonBuffer node_buf(&allocator);
+        if (OB_FAIL(arg_node->print(node_buf, false))) {
+        } else {
+          arg_value.assign_ptr(node_buf.ptr(), static_cast<int32_t>(node_buf.length()));
+        }
+      }
+      if (OB_SUCC(ret)) {
+        if (arg_value.length() > max_arg_len) {
+          max_arg_len = arg_value.length();
+        }
+        if (OB_FAIL(arg_values.push_back(arg_value))) {
+        }
       }
     }
     // A placeholder may appear more than once, so the same argument can be
@@ -1794,22 +1827,11 @@ int ObAIFuncPromptObjectUtils::replace_all_str_args_in_template(ObIAllocator &al
               }
             }
             
-            if (valid_index && index >= 0 && static_cast<uint64_t>(index) < args_count) {
-              ObJsonNode *arg_node = args_array->get_value(static_cast<uint64_t>(index));
-              ObString arg_value;
-              if (OB_ISNULL(arg_node)) {
-                ret = OB_INVALID_ARGUMENT;
-              } else if (arg_node->json_type() == ObJsonNodeType::J_STRING) {
-                arg_value = static_cast<ObJsonString *>(arg_node)->get_str();
-              } else {
-                // Structured values expand as textual JSON so the model sees
-                // {"text":"..."} instead of the binary JSON encoding.
-                ObJsonBuffer node_buf(&allocator);
-                if (OB_FAIL(arg_node->print(node_buf, false))) {
-                } else {
-                  arg_value.assign_ptr(node_buf.ptr(), static_cast<int32_t>(node_buf.length()));
-                }
-              }
+            if (valid_index && index >= 0 && static_cast<uint64_t>(index) < args_count
+                && static_cast<int64_t>(index) < arg_values.count()) {
+              // The argument text was expanded once above, so a nested prompt is
+              // already rendered and every placeholder reuses the same text.
+              ObString arg_value = arg_values.at(static_cast<int64_t>(index));
               if (OB_FAIL(ret)) {
               } else if (result_pos + arg_value.length() <= max_result_len) {
                 if (arg_value.length() > 0) {

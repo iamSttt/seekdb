@@ -117,6 +117,12 @@ int ObExprAIComplete::eval_ai_complete(const ObExpr &expr,
       ObJsonObject *prompt_object = nullptr;
       bool is_null = false;
       if (OB_FAIL(ObJsonExprHelper::get_json_doc(expr, ctx, temp_allocator, PROMPT_IDX, j_base, is_null))) {
+      } else if (is_null || OB_ISNULL(j_base)) {
+        // get_json_doc reports a null document through is_null and leaves j_base
+        // unset; dereferencing it below would crash instead of reporting an
+        // invalid argument.
+        ret = OB_INVALID_ARGUMENT;
+        res.set_null();
       } else if (j_base->json_type() != ObJsonNodeType::J_OBJECT) {
         ret = OB_INVALID_ARGUMENT;
       } else if (OB_FALSE_IT(prompt_object = static_cast<ObJsonObject *>(j_base))) {
