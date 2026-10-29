@@ -72,6 +72,37 @@ int TokenizeContext::init()
   return ret;
 }
 
+int TokenizeContext::reinit(const char *fulltext, int64_t fulltext_len, bool is_smart)
+{
+  int ret = OB_SUCCESS;
+  fulltext_ = fulltext;
+  fulltext_len_ = fulltext_len;
+  cursor_ = 0;
+  next_char_len_ = 0;
+  next_char_type_ = ObFTCharUtil::CharType::USELESS;
+  handle_size_ = 0;
+  is_smart_ = is_smart;
+  result_idx_ = 0;
+  results_.reuse();
+  token_list_.reset();
+  if (OB_ISNULL(fulltext_) || fulltext_len_ <= 0) {
+    ret = OB_INVALID_ARGUMENT;
+  } else if (OB_FAIL(prepare_next_char())) {
+  }
+  return ret;
+}
+
+void TokenizeContext::reset_scratch()
+{
+  results_.reset();
+  token_list_.reset();
+  result_idx_ = 0;
+  handle_size_ = 0;
+  cursor_ = 0;
+  next_char_len_ = 0;
+  next_char_type_ = ObFTCharUtil::CharType::USELESS;
+}
+
 int TokenizeContext::reset_resource()
 {
   handle_size_ = 0;

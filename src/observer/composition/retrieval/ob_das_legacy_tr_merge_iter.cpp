@@ -367,6 +367,15 @@ int ObDASLegacyTRMergeIter::init_dim_iter_param(ObTextRetrievalScanIterParam &it
     iter_param.inv_scan_doc_length_col_ = ir_ctdef_->inv_scan_doc_length_col_;
     iter_param.inv_scan_domain_id_col_ = ir_ctdef_->inv_scan_domain_id_col_;
     iter_param.inv_idx_agg_cache_mode_ = function_lookup_mode_ && !taat_mode_;
+    // The DAAT iterator emits exactly the documents matched by a plain
+    // natural-language MATCH; dropping the redundant per-row predicate also
+    // makes the relevance score unnecessary unless the query selects it.
+    // For natural-language MATCH the inverted iterator is already exact; the
+    // previous implementation dropped the row filter unconditionally for that
+    // mode.  Boolean/phrase mode still keeps it.
+    const bool drop_match_filter = ir_ctdef_->skip_relevance_
+        || NATURAL_LANGUAGE_MODE == ir_ctdef_->mode_flag_;
+    iter_param.need_relevance_ = !drop_match_filter || ir_ctdef_->need_calc_relevance();
   }
   return ret;
 }
@@ -379,8 +388,16 @@ int ObDASLegacyTRMergeIter::create_sparse_retrieval_iter()
   sr_iter_param_.eval_ctx_ = ir_rtdef_->eval_ctx_;
   sr_iter_param_.id_proj_expr_ = ir_ctdef_->inv_scan_domain_id_col_;
   sr_iter_param_.relevance_expr_ = ir_ctdef_->relevance_expr_;
-  sr_iter_param_.relevance_proj_expr_ = ir_ctdef_->relevance_proj_col_;
-  sr_iter_param_.filter_expr_ = nullptr; // EXPERIMENT: MATCH 已由倒排精确产出，跳过逐行谓词重算
+  sr_iter_param_.relevance_proj_expr_ =
+      ir_ctdef_->skip_relevance_ ? nullptr : ir_ctdef_->relevance_proj_col_;
+  // A plain natural-language MATCH is already evaluated exactly by the
+  // inverted-index iterator.  Only drop the row filter in that case: boolean
+  // mode / phrase queries and conjunctions with other predicates still need it.
+  const bool drop_match_filter = ir_ctdef_->skip_relevance_
+      || NATURAL_LANGUAGE_MODE == ir_ctdef_->mode_flag_;
+  sr_iter_param_.filter_expr_ = drop_match_filter ? nullptr : ir_ctdef_->match_filter_;
+  sr_iter_param_.need_relevance_ = !drop_match_filter || ir_ctdef_->need_calc_relevance();
+  sr_iter_param_.count_only_ = ir_rtdef_->count_only_;
   sr_iter_param_.topk_limit_ = topk_limit_;
   if (OB_NOT_NULL(ir_ctdef_->field_boost_expr_)) {
     ObDatum *boost_datum = nullptr;

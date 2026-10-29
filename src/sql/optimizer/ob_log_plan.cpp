@@ -11988,6 +11988,174 @@ int ObLogPlan::construct_startup_filter_for_limit(ObRawExpr *limit_expr, ObLogic
   return ret;
 }
 
+namespace {
+
+bool fts_raw_expr_contains(const ObRawExpr *expr, const ObRawExpr *target)
+{
+  bool found = false;
+  if (OB_NOT_NULL(expr) && OB_NOT_NULL(target)) {
+    if (expr == target) {
+      found = true;
+    } else {
+      for (int64_t i = 0; !found && i < expr->get_param_count(); ++i) {
+        found = fts_raw_expr_contains(expr->get_param_expr(i), target);
+      }
+    }
+  }
+  return found;
+}
+
+bool fts_is_const_zero(const ObRawExpr *expr)
+{
+  bool zero = false;
+  if (OB_NOT_NULL(expr) && ObRawExpr::EXPR_CONST == expr->get_expr_class()) {
+    zero = static_cast<const ObConstRawExpr *>(expr)->get_value().is_zero();
+  }
+  return zero;
+}
+
+// The optimizer normalizes a boolean MATCH into MATCH(...) > 0 (or an explicit
+// T_OP_BOOL).  Such a filter is exactly the inverted-index match set; the DAAT
+// iterator does not need the score and the row filter is redundant.
+bool fts_match_filter_is_exact(const ObRawExpr *filter, const ObRawExpr *match)
+{
+  bool exact = false;
+  if (OB_NOT_NULL(filter) && OB_NOT_NULL(match)) {
+    if (filter == match) {
+      exact = true;
+    } else if (1 == filter->get_param_count()
+               && T_OP_BOOL == filter->get_expr_type()
+               && filter->get_param_expr(0) == match) {
+      exact = true;
+    } else if (2 == filter->get_param_count()
+               && (T_OP_GT == filter->get_expr_type() || T_OP_LT == filter->get_expr_type())) {
+      const ObRawExpr *left = filter->get_param_expr(0);
+      const ObRawExpr *right = filter->get_param_expr(1);
+      exact = (left == match && fts_is_const_zero(right))
+              || (right == match && fts_is_const_zero(left));
+    }
+  }
+  return exact;
+}
+
+// A MATCH expression only acts as a boolean predicate when it is itself the
+// predicate or an operand of AND/OR/NOT.  Everywhere else its score is used.
+bool fts_match_used_as_value(const ObRawExpr *expr, const ObRawExpr *match)
+{
+  bool used = false;
+  if (OB_NOT_NULL(expr) && OB_NOT_NULL(match)) {
+    if (expr == match) {
+      used = false;
+    } else if (T_OP_OR == expr->get_expr_type()) {
+      // An OR can mix MATCH with ordinary predicates; keep the score.
+      used = fts_raw_expr_contains(expr, match);
+    } else if (T_OP_AND == expr->get_expr_type()
+               || T_OP_NOT == expr->get_expr_type()) {
+      for (int64_t i = 0; !used && i < expr->get_param_count(); ++i) {
+        used = fts_match_used_as_value(expr->get_param_expr(i), match);
+      }
+    } else if (fts_match_filter_is_exact(expr, match)) {
+      used = false;
+    } else {
+      used = fts_raw_expr_contains(expr, match);
+    }
+  }
+  return used;
+}
+
+// Conservative: when the MATCH expression does not appear in the current
+// statement we keep computing the score.
+bool fts_match_used_for_score(const ObDMLStmt *stmt, const ObRawExpr *match)
+{
+  bool found = false;
+  bool used = false;
+  if (OB_NOT_NULL(stmt) && OB_NOT_NULL(match)) {
+    if (stmt->is_select_stmt()) {
+      const ObSelectStmt *select_stmt = static_cast<const ObSelectStmt *>(stmt);
+      // Only elide the score for a plain aggregate with no LIMIT.  With a LIMIT
+      // the optimizer may sort by relevance (including an implicit ORDER BY
+      // MATCH), and the sort consumes the score even when the select list does
+      // not name it.
+      if (OB_NOT_NULL(select_stmt->get_limit_expr())
+          || OB_NOT_NULL(select_stmt->get_offset_expr())) {
+        return true;
+      }
+      ObSEArray<ObRawExpr *, 8> select_exprs;
+      if (OB_SUCCESS != select_stmt->get_select_exprs(select_exprs)) {
+        used = true;
+      } else if (1 != select_exprs.count() || OB_ISNULL(select_exprs.at(0))
+                 || T_FUN_COUNT != select_exprs.at(0)->get_expr_type()) {
+        return true;
+      }
+      for (int64_t i = 0; !used && i < select_exprs.count(); ++i) {
+        if (OB_NOT_NULL(select_exprs.at(i))
+            && (select_exprs.at(i)->has_flag(CNT_MATCH_EXPR)
+                || fts_raw_expr_contains(select_exprs.at(i), match))) {
+          found = true;
+          used = true;
+        }
+      }
+      const ObIArray<ObRawExpr *> &having_exprs = select_stmt->get_having_exprs();
+      for (int64_t i = 0; !used && i < having_exprs.count(); ++i) {
+        if (OB_NOT_NULL(having_exprs.at(i))
+            && (having_exprs.at(i)->has_flag(CNT_MATCH_EXPR)
+                || fts_raw_expr_contains(having_exprs.at(i), match))) {
+          found = true;
+          used = true;
+        }
+      }
+      const ObIArray<ObRawExpr *> &group_exprs = select_stmt->get_group_exprs();
+      for (int64_t i = 0; !used && i < group_exprs.count(); ++i) {
+        if (OB_NOT_NULL(group_exprs.at(i))
+            && (group_exprs.at(i)->has_flag(CNT_MATCH_EXPR)
+                || fts_raw_expr_contains(group_exprs.at(i), match))) {
+          found = true;
+          used = true;
+        }
+      }
+      const ObIArray<ObRawExpr *> &qualify_filters = select_stmt->get_qualify_filters();
+      for (int64_t i = 0; !used && i < qualify_filters.count(); ++i) {
+        if (OB_NOT_NULL(qualify_filters.at(i))
+            && (qualify_filters.at(i)->has_flag(CNT_MATCH_EXPR)
+                || fts_raw_expr_contains(qualify_filters.at(i), match))) {
+          found = true;
+          used = true;
+        }
+      }
+      const ObIArray<ObWinFunRawExpr *> &win_funcs = select_stmt->get_window_func_exprs();
+      for (int64_t i = 0; !used && i < win_funcs.count(); ++i) {
+        if (OB_NOT_NULL(win_funcs.at(i))
+            && (win_funcs.at(i)->has_flag(CNT_MATCH_EXPR)
+                || fts_raw_expr_contains(win_funcs.at(i), match))) {
+          found = true;
+          used = true;
+        }
+      }
+    }
+    const ObIArray<OrderItem> &order_items = stmt->get_order_items();
+    for (int64_t i = 0; !used && i < order_items.count(); ++i) {
+      if (OB_NOT_NULL(order_items.at(i).expr_)
+          && (order_items.at(i).expr_->has_flag(CNT_MATCH_EXPR)
+              || fts_raw_expr_contains(order_items.at(i).expr_, match))) {
+        found = true;
+        used = true;
+      }
+    }
+    const ObIArray<ObRawExpr *> &conditions = stmt->get_condition_exprs();
+    for (int64_t i = 0; i < conditions.count(); ++i) {
+      if (fts_raw_expr_contains(conditions.at(i), match)) {
+        found = true;
+        if (fts_match_used_as_value(conditions.at(i), match)) {
+          used = true;
+        }
+      }
+    }
+  }
+  return !found || used;
+}
+
+} // namespace
+
 int ObLogPlan::prepare_text_retrieval_scan(const ObIArray<ObRawExpr *> &scan_match_exprs,
                                            const ObIArray<ObRawExpr *> &scan_match_filters,
                                            const ObIArray<ObRawExpr *> &all_match_filters,
@@ -12040,6 +12208,21 @@ int ObLogPlan::prepare_text_retrieval_scan(const ObIArray<ObRawExpr *> &scan_mat
     ObTextRetrievalInfo &tr_info = table_scan->get_text_retrieval_info();
     tr_info.match_expr_ = match_against;
     tr_info.pushdown_match_filter_ = match_pred;
+    if (!tr_info.need_calc_relevance_
+        && !fts_match_filter_is_exact(match_pred, match_against)) {
+      // A filter with a real score threshold (or a conjunction with another
+      // predicate) still consumes the score.
+      tr_info.need_calc_relevance_ = true;
+    }
+    if (NATURAL_LANGUAGE_MODE != tr_info.match_expr_->get_mode_flag()) {
+      // Boolean/phrase matching is enforced by the per-row filter, which needs
+      // the token scores; never skip relevance there.
+      tr_info.need_calc_relevance_ = true;
+      tr_info.skip_relevance_ = false;
+    } else {
+      tr_info.skip_relevance_ = !tr_info.need_calc_relevance_
+          && fts_match_filter_is_exact(match_pred, match_against);
+    }
     // The mapping table is absent when the data-table rowkey is used as the document ID.
     table_scan->set_doc_id_index_table_id(tr_info.doc_id_idx_tid_);
     if (table_scan->is_vec_adaptive_scan() || table_scan->is_vec_idx_scan_post_filter()) {
@@ -12056,6 +12239,13 @@ int ObLogPlan::prepare_text_retrieval_scan(const ObIArray<ObRawExpr *> &scan_mat
       if (OB_FAIL(scan_filters.push_back(curr_filter))) {
       }
     }
+  }
+  if (OB_SUCC(ret) && !scan_filters.empty()) {
+    // Additional row filters may need columns from the scan; keep the score and
+    // the full projection in that case.
+    ObTextRetrievalInfo &tr_info = table_scan->get_text_retrieval_info();
+    tr_info.need_calc_relevance_ = true;
+    tr_info.skip_relevance_ = false;
   }
   return ret;
 }
@@ -12168,6 +12358,7 @@ int ObLogPlan::prepare_text_retrieval_merge(const ObIArray<ObRawExpr *> &merge_m
   return ret;
 }
 
+
 int ObLogPlan::prepare_text_retrieval_info(const uint64_t ref_table_id,
                                            const uint64_t index_table_id,
                                            ObMatchFunRawExpr *match_against,
@@ -12184,7 +12375,9 @@ int ObLogPlan::prepare_text_retrieval_info(const uint64_t ref_table_id,
   uint64_t fwd_idx_tid = OB_INVALID_ID;
   uint64_t inv_idx_tid = OB_INVALID_ID;
   ObSEArray<ObAuxTableMetaInfo, 4> index_infos;
-  bool need_calc_relevance = true;
+  // The score is only needed when the MATCH value (or an expression built from
+  // it) is consumed by the statement.  A bare WHERE MATCH(...) is a predicate.
+  bool need_calc_relevance = fts_match_used_for_score(get_stmt(), match_against);
   ObSEArray<ObExprConstraint, 2> constraints;
   uint64_t docid_col_id = OB_INVALID_ID;
   if (OB_ISNULL(match_against) || OB_ISNULL(get_stmt()) || OB_ISNULL(get_optimizer_context().get_query_ctx())) {

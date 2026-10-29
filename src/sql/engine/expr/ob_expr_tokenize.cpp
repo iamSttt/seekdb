@@ -25,6 +25,7 @@
 #include "lib/oblog/ob_log_module.h"
 #include "lib/string/ob_string.h"
 #include "lib/utility/ob_macro_utils.h"
+#include "lib/utility/utility.h"
 #include "object/ob_object.h"
 #include "sql/resolver/ddl/ob_fts_index_builder_util.h"
 #include "share/ob_json_access_utils.h"
@@ -39,6 +40,226 @@ namespace oceanbase
 {
 namespace sql
 {
+namespace {
+
+// A bounded per-thread cache of tokenization results.  Generated columns and
+// repeated TOKENIZE() calls often feed identical text to the same parser; the
+// cache reuses the token set (not a SQL result) and keeps the parser-cache
+// benefits for every distinct document.
+struct TokenizeCacheEntry
+{
+  TokenizeCacheEntry() : alloc_(lib::ObMemAttr("TokCache")) {}
+
+  void reuse()
+  {
+    hash_ = 0;
+    coll_ = CS_TYPE_INVALID;
+    parser_name_.reset();
+    properties_.reset();
+    text_.reset();
+    doc_len_ = 0;
+    token_count_ = 0;
+    token_off_ = nullptr;
+    token_len_ = nullptr;
+    token_cnt_ = nullptr;
+    buf_ = nullptr;
+    alloc_.reuse();
+  }
+
+  uint64_t hash_ = 0;
+  ObCollationType coll_ = CS_TYPE_INVALID;
+  ObString parser_name_;
+  ObString properties_;
+  ObString text_;
+  int64_t doc_len_ = 0;
+  int64_t token_count_ = 0;
+  const uint32_t *token_off_ = nullptr;
+  const uint32_t *token_len_ = nullptr;
+  const int64_t *token_cnt_ = nullptr;
+  const char *buf_ = nullptr;
+  common::ObArenaAllocator alloc_;
+};
+
+class TokenizeResultCache
+{
+public:
+  static const int64_t MAX_ENTRIES = 8;
+  static const int64_t MAX_TEXT_LEN = 512;
+  static const int64_t MAX_TOKENS = 256;
+
+  TokenizeCacheEntry *find(const uint64_t hash,
+                           const ObCollationType coll,
+                           const ObString &parser_name,
+                           const ObString &properties,
+                           const ObString &text)
+  {
+    TokenizeCacheEntry *found = nullptr;
+    for (int64_t i = 0; !found && i < MAX_ENTRIES; ++i) {
+      TokenizeCacheEntry &entry = entries_[i];
+      if (entry.hash_ == hash && entry.coll_ == coll
+          && entry.parser_name_ == parser_name
+          && entry.properties_ == properties
+          && entry.text_ == text) {
+        found = &entry;
+      }
+    }
+    return found;
+  }
+
+  // Two-hit admission: unique documents (e.g. an index build) only pay for a
+  // hash comparison and never copy their token set into the cache.
+  bool seen_before(const uint64_t hash)
+  {
+    bool seen = false;
+    for (int64_t i = 0; !seen && i < SEEN_CAP; ++i) {
+      seen = (seen_[i] == hash);
+    }
+    if (!seen) {
+      seen_[seen_slot_] = hash;
+      seen_slot_ = (seen_slot_ + 1) % SEEN_CAP;
+    }
+    return seen;
+  }
+
+  int put(const uint64_t hash,
+          const ObCollationType coll,
+          const ObString &parser_name,
+          const ObString &properties,
+          const ObString &text,
+          const int64_t doc_len,
+          const storage::ObFTWordMap &words)
+  {
+    int ret = OB_SUCCESS;
+    const int64_t token_count = words.size();
+    if (token_count > MAX_TOKENS || text.length() > MAX_TEXT_LEN) {
+      // too large to cache; the call itself already succeeded
+    } else {
+      TokenizeCacheEntry &entry = entries_[next_slot_];
+      next_slot_ = (next_slot_ + 1) % MAX_ENTRIES;
+      entry.reuse();
+      int64_t token_bytes = 0;
+      for (storage::ObFTWordMap::const_iterator it = words.begin(); it != words.end(); ++it) {
+        token_bytes += it->first.get_word().get_string().length();
+      }
+      const int64_t head_bytes = parser_name.length() + properties.length() + text.length();
+      char *buf = static_cast<char *>(entry.alloc_.alloc(head_bytes + token_bytes));
+      uint32_t *offs = static_cast<uint32_t *>(
+          entry.alloc_.alloc(sizeof(uint32_t) * (token_count + 1)));
+      uint32_t *lens = static_cast<uint32_t *>(
+          entry.alloc_.alloc(sizeof(uint32_t) * (token_count + 1)));
+      int64_t *cnts = static_cast<int64_t *>(
+          entry.alloc_.alloc(sizeof(int64_t) * (token_count + 1)));
+      if (OB_ISNULL(buf) || OB_ISNULL(offs) || OB_ISNULL(lens) || OB_ISNULL(cnts)) {
+        ret = OB_ALLOCATE_MEMORY_FAILED;
+        entry.reuse();
+      } else {
+        int64_t pos = 0;
+        MEMCPY(buf + pos, parser_name.ptr(), parser_name.length());
+        entry.parser_name_.assign_ptr(buf + pos, parser_name.length());
+        pos += parser_name.length();
+        if (properties.length() > 0) {
+          MEMCPY(buf + pos, properties.ptr(), properties.length());
+        }
+        entry.properties_.assign_ptr(buf + pos, properties.length());
+        pos += properties.length();
+        MEMCPY(buf + pos, text.ptr(), text.length());
+        entry.text_.assign_ptr(buf + pos, text.length());
+        pos += text.length();
+        int64_t idx = 0;
+        for (storage::ObFTWordMap::const_iterator it = words.begin();
+             it != words.end() && idx < token_count; ++it, ++idx) {
+          const ObString word = it->first.get_word().get_string();
+          MEMCPY(buf + pos, word.ptr(), word.length());
+          offs[idx] = static_cast<uint32_t>(pos);
+          lens[idx] = static_cast<uint32_t>(word.length());
+          cnts[idx] = it->second;
+          pos += word.length();
+        }
+        entry.hash_ = hash;
+        entry.coll_ = coll;
+        entry.doc_len_ = doc_len;
+        entry.token_count_ = token_count;
+        entry.token_off_ = offs;
+        entry.token_len_ = lens;
+        entry.token_cnt_ = cnts;
+        entry.buf_ = buf;
+      }
+    }
+    return ret;
+  }
+
+private:
+  static const int64_t SEEN_CAP = 32;
+  TokenizeCacheEntry entries_[MAX_ENTRIES];
+  int64_t next_slot_ = 0;
+  uint64_t seen_[SEEN_CAP] = {};
+  int64_t seen_slot_ = 0;
+};
+
+uint64_t tokenize_cache_hash(const ObString &parser_name,
+                             const ObString &properties,
+                             const ObCollationType coll,
+                             const ObString &text)
+{
+  uint64_t hash = text.hash();
+  hash = common::murmurhash(parser_name.ptr(), parser_name.length(), hash);
+  hash = common::murmurhash(properties.ptr(), properties.length(), hash);
+  hash = common::murmurhash(&coll, sizeof(coll), hash);
+  return hash;
+}
+
+int build_cached_token_json(const TokenizeCacheEntry &entry,
+                            const bool want_detail,
+                            common::ObIAllocator &allocator,
+                            common::ObIJsonBase *&result)
+{
+  int ret = OB_SUCCESS;
+  ObJsonArray *token_array = nullptr;
+  if (OB_ISNULL(token_array = OB_NEWx(ObJsonArray, &allocator, &allocator))) {
+    ret = OB_ALLOCATE_MEMORY_FAILED;
+  } else {
+    for (int64_t i = 0; OB_SUCC(ret) && i < entry.token_count_; ++i) {
+      const ObString word(entry.token_len_[i], entry.buf_ + entry.token_off_[i]);
+      if (!want_detail) {
+        ObJsonString *token = nullptr;
+        if (OB_ISNULL(token = OB_NEWx(ObJsonString, &allocator, word))) {
+          ret = OB_ALLOCATE_MEMORY_FAILED;
+        } else if (OB_FAIL(token_array->append(token))) {
+        }
+      } else {
+        ObJsonObject *node = nullptr;
+        ObJsonInt *token_cnt = nullptr;
+        if (OB_ISNULL(node = OB_NEWx(ObJsonObject, &allocator, &allocator))) {
+          ret = OB_ALLOCATE_MEMORY_FAILED;
+        } else if (OB_ISNULL(token_cnt = OB_NEWx(ObJsonInt, &allocator, entry.token_cnt_[i]))) {
+          ret = OB_ALLOCATE_MEMORY_FAILED;
+        } else if (OB_FAIL(node->add(word, token_cnt))) {
+        } else if (OB_FAIL(token_array->append(node))) {
+        }
+      }
+    }
+    if (OB_FAIL(ret)) {
+    } else if (!want_detail) {
+      result = token_array;
+    } else {
+      ObJsonObject *root = nullptr;
+      ObJsonInt *doc_len = nullptr;
+      if (OB_ISNULL(root = OB_NEWx(ObJsonObject, &allocator, &allocator))) {
+        ret = OB_ALLOCATE_MEMORY_FAILED;
+      } else if (OB_ISNULL(doc_len = OB_NEWx(ObJsonInt, &allocator, entry.doc_len_))) {
+        ret = OB_ALLOCATE_MEMORY_FAILED;
+      } else if (OB_FAIL(root->add("tokens", token_array))) {
+      } else if (OB_FAIL(root->add("doc_len", doc_len))) {
+      } else {
+        result = root;
+      }
+    }
+  }
+  return ret;
+}
+
+} // namespace
+
 ObExprTokenize::ObExprTokenize(common::ObIAllocator &alloc)
     : ObStringExprOperator(alloc,
                            T_FUN_TOKENIZE,
@@ -86,10 +307,27 @@ int ObExprTokenize::tokenize_fulltext(const TokenizeParam &param,
   int64_t doc_len = 0;
   storage::ObFTWordMap token_map;
 
+  static thread_local TokenizeResultCache tokenize_cache;
+  const ObCollationType coll_type = param.meta_.get_collation_type();
+  const bool cacheable = (TokenizeParam::OUTPUT_MODE::DEFAULT == mode
+                          || TokenizeParam::OUTPUT_MODE::ALL == mode)
+      && param.fulltext_.length() > 0
+      && param.fulltext_.length() <= TokenizeResultCache::MAX_TEXT_LEN;
+  uint64_t cache_hash = 0;
+  TokenizeCacheEntry *cached = nullptr;
+  if (cacheable) {
+    cache_hash = tokenize_cache_hash(param.parser_name_, param.properties_, coll_type, param.fulltext_);
+    cached = tokenize_cache.find(cache_hash, coll_type,
+                                param.parser_name_, param.properties_, param.fulltext_);
+  }
+
   ObArenaAllocator tmp_parse_alloc(ObMemAttr("Tmp buffer"));
 
   if (TokenizeParam::OUTPUT_MODE::DEFAULT != mode && TokenizeParam::OUTPUT_MODE::ALL != mode) {
     ret = OB_INVALID_ARGUMENT;
+  } else if (OB_NOT_NULL(cached)) {
+    ret = build_cached_token_json(*cached, TokenizeParam::OUTPUT_MODE::ALL == param.output_mode_,
+                                  allocator, result);
   } else if (OB_FAIL(tokenize_helper.init(&allocator, param.parser_name_, param.properties_))) {
   } else if (OB_FAIL(token_map.create(ft_word_bkt_cnt, common::ObMemAttr("FTWordMap")))) {
   } else if (
@@ -118,6 +356,14 @@ int ObExprTokenize::tokenize_fulltext(const TokenizeParam &param,
     }
     default:
       ret = OB_INVALID_ARGUMENT;
+    }
+    if (OB_SUCC(ret) && cacheable && tokenize_cache.seen_before(cache_hash)) {
+      int tmp_ret = tokenize_cache.put(cache_hash, coll_type,
+                                       param.parser_name_, param.properties_, param.fulltext_,
+                                       doc_len, token_map);
+      if (OB_SUCCESS != tmp_ret) {
+        // The cache is an optimization only; never fail the expression for it.
+      }
     }
   }
   return ret;

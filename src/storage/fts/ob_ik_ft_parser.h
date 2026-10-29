@@ -36,6 +36,7 @@ class ObIKFTParser final : public ObITokenIterator
 public:
   ObIKFTParser(ObIAllocator &allocator, ObFTDictHub *hub)
       : allocator_(allocator),
+        scratch_alloc_(lib::ObMemAttr("IKTokenScratch")),
         is_inited_(false),
         coll_type_(ObCollationType::CS_TYPE_INVALID),
         ctx_(nullptr),
@@ -53,6 +54,9 @@ public:
   virtual ~ObIKFTParser() { reset(); }
 
   int init(const ObFTParserParam &param);
+  // Reuse the dictionaries and segmenters created by init() for another document.
+  // Returns OB_STATE_NOT_MATCH when the parser configuration (collation) changed.
+  int reinit(const ObFTParserParam &param);
 
   int get_next_token(const char *&word,
                      int64_t &word_len,
@@ -80,6 +84,9 @@ private:
 
   int init_ctx(const ObFTParserParam &param);
 
+  // Reclaim per-document token storage while keeping dictionaries/segmenters.
+  void reset_scratch();
+
   void reset();
 
   bool should_read_newest_table() const;
@@ -91,6 +98,9 @@ private:
 private:
   static constexpr int SEGMENT_LIMIT = 1000;
   ObIAllocator &allocator_;
+  // Per-document token lists/hit lists live here so they can be reclaimed for
+  // every reinit(); dictionaries and segmenters stay in allocator_.
+  common::ObArenaAllocator scratch_alloc_;
   bool is_inited_;
 
   ObCollationType coll_type_;

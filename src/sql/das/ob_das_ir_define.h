@@ -191,7 +191,11 @@ public:
       uint8_t reserved_ir_scan_flag_:1;
       uint8_t has_block_max_scan_:1;
       uint8_t has_avg_doc_len_est_:1;
-      uint8_t reserved_:3;
+      // The MATCH predicate is exactly the pushdown filter and the query does
+      // not consume the score: the DAAT iterator can drop the row filter and
+      // skip BM25 evaluation entirely.
+      uint8_t skip_relevance_:1;
+      uint8_t reserved_:2;
     };
   };
   ObExpr *field_boost_expr_;
@@ -204,7 +208,8 @@ public:
   ObDASIRScanRtDef()
     : ObDASAttachRtDef(DAS_OP_IR_SCAN),
       fts_idx_(OB_INVALID_INDEX),
-      minimum_should_match_(0) {}
+      minimum_should_match_(0),
+      count_only_(false) {}
 
   virtual ~ObDASIRScanRtDef() {}
 
@@ -255,6 +260,9 @@ public:
   // fts_idx_ is dynamically generated during execution based on the rtdef tree and does not need to be serialized.
   int64_t fts_idx_;
   int64_t minimum_should_match_;
+  // The table scan outputs no columns (e.g. COUNT(*)); the retrieval iterator
+  // does not need to materialize doc-id datums.
+  bool count_only_;
 };
 
 struct ObDASIRAuxLookupCtDef : ObDASAttachCtDef

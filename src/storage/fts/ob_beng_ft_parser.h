@@ -17,6 +17,7 @@
 #ifndef OB_BENG_FT_PARSER_H_
 #define OB_BENG_FT_PARSER_H_
 
+#include "lib/allocator/page_arena.h"
 #include "lib/utility/ob_macro_utils.h"
 #include "lib/utility/ob_print_utils.h"
 #include "share/text_analysis/ob_text_analyzer.h"
@@ -35,6 +36,7 @@ public:
 public:
   explicit ObBEngFTParser(common::ObIAllocator &allocator)
     : allocator_(allocator),
+      scratch_alloc_(lib::ObMemAttr("BEngTokens")),
       analysis_ctx_(),
       english_analyzer_(),
       doc_(),
@@ -44,6 +46,9 @@ public:
   ~ObBEngFTParser() { reset(); }
 
   int init(ObFTParserParam *param);
+  // Reuse the analyzer pipeline for another document.  Returns OB_STATE_NOT_MATCH
+  // when the charset changed and the pipeline has to be rebuilt.
+  int reinit(ObFTParserParam *param);
   void reset();
   virtual int get_next_token(
       const char *&word,
@@ -58,6 +63,10 @@ private:
       share::ObITokenStream *&token_stream);
 private:
   common::ObIAllocator &allocator_;
+  // Token bytes referenced by ObFTWordMap keys must stay alive until the caller
+  // finishes building the word map.  A per-document scratch arena gives them that
+  // lifetime and is reused for the next document instead of malloc'ing per token.
+  common::ObArenaAllocator scratch_alloc_;
   share::ObTextAnalysisCtx analysis_ctx_;
   share::ObEnglishTextAnalyzer english_analyzer_;
   common::ObDatum doc_;

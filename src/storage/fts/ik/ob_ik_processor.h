@@ -40,6 +40,10 @@ public:
   ~TokenizeContext();
 
   int init();
+  // Point the already-initialized context at a new document and reset per-document state.
+  int reinit(const char *fulltext, int64_t fulltext_len, bool is_smart);
+  // Release all per-document token storage back to the (scratch) allocator.
+  void reset_scratch();
   int reset_resource();
 
   int get_next_token(const char *&word, int64_t &word_len, int64_t &offset, int64_t &char_cnt);
@@ -121,6 +125,10 @@ public:
   ObIIKProcessor() {}
 
   virtual ~ObIIKProcessor() {}
+
+  // Reset the processor's per-document state so the parser can be reused
+  // without rebuilding the dictionaries and the processor objects.
+  virtual void reuse() {}
 
   int process(TokenizeContext &ctx);
 
