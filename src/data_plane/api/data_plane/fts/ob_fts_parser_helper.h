@@ -204,6 +204,12 @@ public:
 
   void reset();
 
+  // Opt in to the process-wide cache of per-document token sets.  Repeated
+  // TOKENIZE() calls on the same text benefit; index builds deliberately keep
+  // it off because their texts are unique and the shared cache only adds lock
+  // and memory pressure on the build path.
+  void set_segment_cache_enabled(const bool enabled) { segment_cache_enabled_ = enabled; }
+
   TO_STRING_KV(KP_(allocator), K_(parser_name), KP_(parser_desc), K_(is_inited));
 
 private:
@@ -224,6 +230,7 @@ private:
   ObAddWordFlag add_word_flag_;
   ObFTParserProperty parser_property_;
   bool is_inited_;
+  bool segment_cache_enabled_;
 
 private:
   static constexpr const char *ENTRY_NAME_DOC_LEN = "doc_len";

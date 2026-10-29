@@ -2119,7 +2119,10 @@ int ObTscCgService::append_fts_relavence_project_col(
   int ret = OB_SUCCESS;
 
   if (OB_NOT_NULL(ir_scan_ctdef)) {
-    if (ir_scan_ctdef->relevance_proj_col_ != nullptr) {
+    // When the score is skipped the DAAT iterator never evaluates the
+    // relevance column; projecting it through the lookup would deep-copy an
+    // uninitialized datum.
+    if (ir_scan_ctdef->relevance_proj_col_ != nullptr && !ir_scan_ctdef->skip_relevance_) {
       ObArray<ObExpr*> result_outputs;
       if (OB_FAIL(result_outputs.push_back(ir_scan_ctdef->relevance_proj_col_))) {
       } else if (OB_FAIL(append(result_outputs, aux_lookup_ctdef->result_output_))) {
@@ -3896,7 +3899,7 @@ int ObTscCgService::generate_table_lookup_ctdef(const ObLogTableScan &op,
     } else if (op.need_skip_rowkey_doc() && DAS_OP_IR_SCAN == scan_ctdef->op_type_) {
       //add relevance score pseudo column to final scan result output
       ObDASIRScanCtDef *ir_ctdef = static_cast<ObDASIRScanCtDef*>(scan_ctdef);
-      if (ir_ctdef->relevance_proj_col_ != nullptr) {
+      if (ir_ctdef->relevance_proj_col_ != nullptr && !ir_ctdef->skip_relevance_) {
         if (OB_FAIL(result_outputs.push_back(ir_ctdef->relevance_proj_col_))) {
         }
       }

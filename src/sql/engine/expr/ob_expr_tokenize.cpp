@@ -391,6 +391,153 @@ uint64_t tokenize_cache_hash(const ObString &parser_name,
   return hash;
 }
 
+// Fast path for TOKENIZE() with constant arguments: the raw argument strings
+// already identify the result, so the serialized JSON can be reused without
+// re-parsing the parser-property specification on every execution.
+struct RawArgCacheEntry
+{
+  RawArgCacheEntry() : alloc_(lib::ObMemAttr("TokArgCache")) {}
+  void reuse()
+  {
+    hash_ = 0;
+    coll_ = CS_TYPE_INVALID;
+    mode_ = -1;
+    name_.reset();
+    text_.reset();
+    raw_.reset();
+    alloc_.reuse();
+  }
+  uint64_t hash_ = 0;
+  ObCollationType coll_ = CS_TYPE_INVALID;
+  int64_t mode_ = -1;
+  ObString name_;
+  ObString text_;
+  ObString raw_;
+  common::ObArenaAllocator alloc_;
+};
+
+class RawArgCache
+{
+public:
+  static const int64_t MAX_ENTRIES = 4;
+  static const int64_t MAX_TEXT_LEN = 512;
+  static const int64_t MAX_RAW_LEN = 65536;
+
+  RawArgCacheEntry *find(const uint64_t hash,
+                         const ObCollationType coll,
+                         const int64_t mode,
+                         const ObString &name,
+                         const ObString &text)
+  {
+    RawArgCacheEntry *found = nullptr;
+    for (int64_t i = 0; !found && i < MAX_ENTRIES; ++i) {
+      RawArgCacheEntry &entry = entries_[i];
+      if (entry.hash_ == hash && entry.coll_ == coll && entry.mode_ == mode
+          && entry.name_ == name && entry.text_ == text) {
+        found = &entry;
+      }
+    }
+    return found;
+  }
+
+  int put(const uint64_t hash,
+          const ObCollationType coll,
+          const int64_t mode,
+          const ObString &name,
+          const ObString &text,
+          const ObString &raw)
+  {
+    int ret = OB_SUCCESS;
+    if (text.length() > MAX_TEXT_LEN || raw.length() > MAX_RAW_LEN) {
+    } else {
+      RawArgCacheEntry &entry = entries_[next_slot_];
+      next_slot_ = (next_slot_ + 1) % MAX_ENTRIES;
+      entry.reuse();
+      const int64_t head = name.length() + text.length();
+      char *buf = static_cast<char *>(entry.alloc_.alloc(head + raw.length()));
+      if (OB_ISNULL(buf)) {
+        ret = OB_ALLOCATE_MEMORY_FAILED;
+        entry.reuse();
+      } else {
+        int64_t pos = 0;
+        MEMCPY(buf + pos, name.ptr(), name.length());
+        entry.name_.assign_ptr(buf + pos, name.length());
+        pos += name.length();
+        MEMCPY(buf + pos, text.ptr(), text.length());
+        entry.text_.assign_ptr(buf + pos, text.length());
+        pos += text.length();
+        MEMCPY(buf + pos, raw.ptr(), raw.length());
+        entry.raw_.assign_ptr(buf + pos, raw.length());
+        entry.hash_ = hash;
+        entry.coll_ = coll;
+        entry.mode_ = mode;
+      }
+    }
+    return ret;
+  }
+
+private:
+  RawArgCacheEntry entries_[MAX_ENTRIES];
+  int64_t next_slot_ = 0;
+};
+
+// Look up the serialized TOKENIZE() result from the raw argument strings.
+// Returns a hit only for the common constant-argument form; any other shape
+// falls through to the regular path.
+int try_raw_arg_cache_hit(const ObExpr &expr,
+                          ObEvalCtx &ctx,
+                          ObDatum &expr_datum,
+                          RawArgCache &cache,
+                          bool &ready,
+                          bool &hit,
+                          ObString &text,
+                          ObString &name,
+                          ObCollationType &coll,
+                          uint64_t &hash,
+                          const int64_t mode)
+{
+  int ret = OB_SUCCESS;
+  ready = false;
+  hit = false;
+  if (expr.arg_cnt_ < 1 || expr.arg_cnt_ > 2) {
+    // The three-argument form needs the JSON property specification.
+  } else {
+    ObDatum *text_datum = nullptr;
+    ObDatum *name_datum = nullptr;
+    bool ok = true;
+    if (OB_FAIL(expr.args_[0]->eval(ctx, text_datum))) {
+      ok = false;
+    } else if (OB_ISNULL(text_datum) || text_datum->is_null()) {
+      ok = false;
+    } else {
+      text = text_datum->get_string();
+      coll = expr.args_[0]->obj_meta_.get_collation_type();
+      name = ObString::make_string(OB_DEFAULT_FULLTEXT_PARSER_NAME);
+      if (expr.arg_cnt_ >= 2) {
+        if (OB_FAIL(expr.args_[1]->eval(ctx, name_datum))) {
+          ok = false;
+        } else if (OB_NOT_NULL(name_datum) && !name_datum->is_null()) {
+          name = name_datum->get_string().trim();
+        }
+      }
+      if (OB_SUCC(ret) && ok && text.length() > 0
+          && text.length() <= RawArgCache::MAX_TEXT_LEN) {
+        hash = text.hash();
+        hash = common::murmurhash(name.ptr(), name.length(), hash);
+        hash = common::murmurhash(&coll, sizeof(coll), hash);
+        hash = common::murmurhash(&mode, sizeof(mode), hash);
+        ready = true;
+        RawArgCacheEntry *cached = cache.find(hash, coll, mode, name, text);
+        if (OB_NOT_NULL(cached)) {
+          ret = ObJsonExprHelper::pack_json_str_res(expr, ctx, expr_datum, cached->raw_);
+          hit = true;
+        }
+      }
+    }
+  }
+  return ret;
+}
+
 int build_cached_token_json(const TokenizeCacheEntry &entry,
                             const bool want_detail,
                             common::ObIAllocator &allocator,
@@ -464,9 +611,23 @@ int ObExprTokenize::eval_tokenize(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &e
   ObIJsonBase *json_result = nullptr;
   TokenizeParam param;
 
+  static thread_local RawArgCache raw_arg_cache;
+  bool arg_ready = false;
+  bool arg_hit = false;
+  ObString arg_text;
+  ObString arg_name;
+  ObCollationType arg_coll = CS_TYPE_INVALID;
+  uint64_t arg_hash = 0;
+  const int64_t arg_mode = static_cast<int64_t>(TokenizeParam::OUTPUT_MODE::DEFAULT);
+
   // check param num, which is checked in ObExprOperator::calc_result_typeN.
   if (OB_UNLIKELY(expr.arg_cnt_ < 1 || expr.arg_cnt_ > 3)) {
     ret = OB_INVALID_ARGUMENT;
+  } else if (OB_FAIL(try_raw_arg_cache_hit(expr, ctx, expr_datum, raw_arg_cache,
+                                           arg_ready, arg_hit, arg_text, arg_name,
+                                           arg_coll, arg_hash, arg_mode))) {
+  } else if (arg_hit) {
+    // The serialized result was already packed from the raw-argument cache.
   } else if (OB_FAIL(parse_param(expr, ctx, temp_allocator, param))) {
   } else {
     static thread_local RawJsonCache raw_cache;
@@ -492,6 +653,13 @@ int ObExprTokenize::eval_tokenize(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &e
       } else if (cacheable) {
         int tmp_ret = raw_cache.put(raw_hash, coll, mode, param.parser_name_,
                                     param.properties_, param.fulltext_, raw);
+        if (OB_SUCCESS != tmp_ret) {
+          // Cache insertion is best-effort.
+        }
+      }
+      if (OB_SUCC(ret) && arg_ready) {
+        int tmp_ret = raw_arg_cache.put(arg_hash, arg_coll, arg_mode,
+                                        arg_name, arg_text, raw);
         if (OB_SUCCESS != tmp_ret) {
           // Cache insertion is best-effort.
         }
@@ -535,6 +703,7 @@ int ObExprTokenize::tokenize_fulltext(const TokenizeParam &param,
     ret = build_cached_token_json(*cached, TokenizeParam::OUTPUT_MODE::ALL == param.output_mode_,
                                   allocator, result);
   } else if (OB_FAIL(tokenize_helper.init(&allocator, param.parser_name_, param.properties_))) {
+  } else if (FALSE_IT(tokenize_helper.set_segment_cache_enabled(true))) {
   } else if (OB_FAIL(token_map.create(ft_word_bkt_cnt, common::ObMemAttr("FTWordMap")))) {
   } else if (
       (0 != param.fulltext_.length())
