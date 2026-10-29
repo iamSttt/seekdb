@@ -1067,6 +1067,23 @@ int ObTableScanOp::init_table_scan_rtdef()
       }
     }
   }
+  // A COUNT over a plain natural-language MATCH does not consume any column:
+  // the retrieval iterator can skip materializing ids/relevance entirely.
+  if (OB_SUCC(ret) && OB_NOT_NULL(MY_CTDEF.attach_spec_.attach_ctdef_)
+      && DAS_OP_IR_SCAN == MY_CTDEF.attach_spec_.attach_ctdef_->op_type_
+      && nullptr == MY_CTDEF.lookup_ctdef_) {
+    const ObDASIRScanCtDef *ir_ctdef =
+        static_cast<const ObDASIRScanCtDef *>(MY_CTDEF.attach_spec_.attach_ctdef_);
+    ObDASIRScanRtDef *ir_rtdef =
+        static_cast<ObDASIRScanRtDef *>(tsc_rtdef_.attach_rtinfo_->attach_rtdef_);
+    if (OB_NOT_NULL(ir_rtdef)) {
+      ir_rtdef->count_only_ = MY_SPEC.output_.empty()
+          && MY_SPEC.filters_.empty()
+          && MY_SPEC.startup_filters_.empty()
+          && ir_ctdef->skip_relevance_
+          && !ir_ctdef->has_pushdown_topk();
+    }
+  }
   return ret;
 }
 

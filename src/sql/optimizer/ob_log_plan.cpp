@@ -12069,23 +12069,21 @@ bool fts_match_used_for_score(const ObDMLStmt *stmt, const ObRawExpr *match)
 {
   bool found = false;
   bool used = false;
+  bool is_count_aggregate = false;
   if (OB_NOT_NULL(stmt) && OB_NOT_NULL(match)) {
     if (stmt->is_select_stmt()) {
       const ObSelectStmt *select_stmt = static_cast<const ObSelectStmt *>(stmt);
-      // Only elide the score for a plain aggregate with no LIMIT.  With a LIMIT
-      // the optimizer may sort by relevance (including an implicit ORDER BY
-      // MATCH), and the sort consumes the score even when the select list does
-      // not name it.
       if (OB_NOT_NULL(select_stmt->get_limit_expr())
           || OB_NOT_NULL(select_stmt->get_offset_expr())) {
+        // LIMIT may be backed by an implicit relevance order / topk; keep the score.
         return true;
       }
       ObSEArray<ObRawExpr *, 8> select_exprs;
       if (OB_SUCCESS != select_stmt->get_select_exprs(select_exprs)) {
         used = true;
-      } else if (1 != select_exprs.count() || OB_ISNULL(select_exprs.at(0))
-                 || T_FUN_COUNT != select_exprs.at(0)->get_expr_type()) {
-        return true;
+      } else if (1 == select_exprs.count() && OB_NOT_NULL(select_exprs.at(0))
+                 && T_FUN_COUNT == select_exprs.at(0)->get_expr_type()) {
+        is_count_aggregate = true;
       }
       for (int64_t i = 0; !used && i < select_exprs.count(); ++i) {
         if (OB_NOT_NULL(select_exprs.at(i))
@@ -12150,6 +12148,10 @@ bool fts_match_used_for_score(const ObDMLStmt *stmt, const ObRawExpr *match)
         }
       }
     }
+  }
+  if (!found && is_count_aggregate) {
+    // The MATCH belongs to a subquery; COUNT does not consume its score.
+    return false;
   }
   return !found || used;
 }

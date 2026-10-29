@@ -42,6 +42,89 @@ namespace sql
 {
 namespace {
 
+// The normalized parser-properties JSON is derived from the constant parser
+// arguments; cache it so TOKENIZE() does not re-parse and re-serialize the same
+// properties on every row/call.
+struct PropCacheEntry
+{
+  PropCacheEntry() : alloc_(lib::ObMemAttr("TokPropCache")) {}
+  void reuse()
+  {
+    hash_ = 0;
+    parser_name_.reset();
+    input_.reset();
+    normalized_.reset();
+    alloc_.reuse();
+  }
+  uint64_t hash_ = 0;
+  ObString parser_name_;
+  ObString input_;
+  ObString normalized_;
+  common::ObArenaAllocator alloc_;
+};
+
+class PropCache
+{
+public:
+  static const int64_t MAX_ENTRIES = 8;
+
+  PropCacheEntry *find(const uint64_t hash,
+                       const ObString &parser_name,
+                       const ObString &input)
+  {
+    PropCacheEntry *found = nullptr;
+    for (int64_t i = 0; !found && i < MAX_ENTRIES; ++i) {
+      PropCacheEntry &entry = entries_[i];
+      if (entry.hash_ == hash
+          && entry.parser_name_ == parser_name
+          && entry.input_ == input) {
+        found = &entry;
+      }
+    }
+    return found;
+  }
+
+  int put(const uint64_t hash,
+          const ObString &parser_name,
+          const ObString &input,
+          const ObString &normalized)
+  {
+    int ret = OB_SUCCESS;
+    PropCacheEntry &entry = entries_[next_slot_];
+    next_slot_ = (next_slot_ + 1) % MAX_ENTRIES;
+    entry.reuse();
+    const int64_t total = parser_name.length() + input.length() + normalized.length();
+    char *buf = static_cast<char *>(entry.alloc_.alloc(total));
+    if (OB_ISNULL(buf)) {
+      ret = OB_ALLOCATE_MEMORY_FAILED;
+      entry.reuse();
+    } else {
+      int64_t pos = 0;
+      MEMCPY(buf + pos, parser_name.ptr(), parser_name.length());
+      entry.parser_name_.assign_ptr(buf + pos, parser_name.length());
+      pos += parser_name.length();
+      MEMCPY(buf + pos, input.ptr(), input.length());
+      entry.input_.assign_ptr(buf + pos, input.length());
+      pos += input.length();
+      MEMCPY(buf + pos, normalized.ptr(), normalized.length());
+      entry.normalized_.assign_ptr(buf + pos, normalized.length());
+      entry.hash_ = hash;
+    }
+    return ret;
+  }
+
+private:
+  PropCacheEntry entries_[MAX_ENTRIES];
+  int64_t next_slot_ = 0;
+};
+
+uint64_t prop_cache_hash(const ObString &parser_name, const ObString &input)
+{
+  uint64_t hash = parser_name.hash();
+  hash = common::murmurhash(input.ptr(), input.length(), hash);
+  return hash;
+}
+
 // A bounded per-thread cache of tokenization results.  Generated columns and
 // repeated TOKENIZE() calls often feed identical text to the same parser; the
 // cache reuses the token set (not a SQL result) and keeps the parser-cache
@@ -196,6 +279,106 @@ private:
   int64_t seen_slot_ = 0;
 };
 
+// The serialized JSON produced by TOKENIZE() is also cached, so repeated calls
+// can skip rebuilding the JSON tree and re-serializing it.
+struct RawJsonCacheEntry
+{
+  RawJsonCacheEntry() : alloc_(lib::ObMemAttr("TokRawCache")) {}
+  void reuse()
+  {
+    hash_ = 0;
+    coll_ = CS_TYPE_INVALID;
+    mode_ = -1;
+    parser_name_.reset();
+    properties_.reset();
+    text_.reset();
+    raw_.reset();
+    alloc_.reuse();
+  }
+  uint64_t hash_ = 0;
+  ObCollationType coll_ = CS_TYPE_INVALID;
+  int64_t mode_ = -1;
+  ObString parser_name_;
+  ObString properties_;
+  ObString text_;
+  ObString raw_;
+  common::ObArenaAllocator alloc_;
+};
+
+class RawJsonCache
+{
+public:
+  static const int64_t MAX_ENTRIES = 4;
+  static const int64_t MAX_TEXT_LEN = 512;
+  static const int64_t MAX_RAW_LEN = 65536;
+
+  RawJsonCacheEntry *find(const uint64_t hash,
+                          const ObCollationType coll,
+                          const int64_t mode,
+                          const ObString &parser_name,
+                          const ObString &properties,
+                          const ObString &text)
+  {
+    RawJsonCacheEntry *found = nullptr;
+    for (int64_t i = 0; !found && i < MAX_ENTRIES; ++i) {
+      RawJsonCacheEntry &entry = entries_[i];
+      if (entry.hash_ == hash && entry.coll_ == coll && entry.mode_ == mode
+          && entry.parser_name_ == parser_name
+          && entry.properties_ == properties
+          && entry.text_ == text) {
+        found = &entry;
+      }
+    }
+    return found;
+  }
+
+  int put(const uint64_t hash,
+          const ObCollationType coll,
+          const int64_t mode,
+          const ObString &parser_name,
+          const ObString &properties,
+          const ObString &text,
+          const ObString &raw)
+  {
+    int ret = OB_SUCCESS;
+    if (text.length() > MAX_TEXT_LEN || raw.length() > MAX_RAW_LEN) {
+    } else {
+      RawJsonCacheEntry &entry = entries_[next_slot_];
+      next_slot_ = (next_slot_ + 1) % MAX_ENTRIES;
+      entry.reuse();
+      const int64_t head = parser_name.length() + properties.length() + text.length();
+      char *buf = static_cast<char *>(entry.alloc_.alloc(head + raw.length()));
+      if (OB_ISNULL(buf)) {
+        ret = OB_ALLOCATE_MEMORY_FAILED;
+        entry.reuse();
+      } else {
+        int64_t pos = 0;
+        MEMCPY(buf + pos, parser_name.ptr(), parser_name.length());
+        entry.parser_name_.assign_ptr(buf + pos, parser_name.length());
+        pos += parser_name.length();
+        if (properties.length() > 0) {
+          MEMCPY(buf + pos, properties.ptr(), properties.length());
+        }
+        entry.properties_.assign_ptr(buf + pos, properties.length());
+        pos += properties.length();
+        MEMCPY(buf + pos, text.ptr(), text.length());
+        entry.text_.assign_ptr(buf + pos, text.length());
+        pos += text.length();
+        MEMCPY(buf + pos, raw.ptr(), raw.length());
+        entry.raw_.assign_ptr(buf + pos, raw.length());
+        entry.hash_ = hash;
+        entry.coll_ = coll;
+        entry.mode_ = mode;
+      }
+    }
+    return ret;
+  }
+
+private:
+  RawJsonCacheEntry entries_[MAX_ENTRIES];
+  int64_t next_slot_ = 0;
+};
+
 uint64_t tokenize_cache_hash(const ObString &parser_name,
                              const ObString &properties,
                              const ObCollationType coll,
@@ -285,12 +468,35 @@ int ObExprTokenize::eval_tokenize(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &e
   if (OB_UNLIKELY(expr.arg_cnt_ < 1 || expr.arg_cnt_ > 3)) {
     ret = OB_INVALID_ARGUMENT;
   } else if (OB_FAIL(parse_param(expr, ctx, temp_allocator, param))) {
-  } else if (OB_FAIL(tokenize_fulltext(param, param.output_mode_, temp_allocator, json_result))) {
-  } else if (OB_FAIL(ObJsonExprHelper::pack_json_res(expr,
-                                                     ctx,
-                                                     temp_allocator,
-                                                     json_result,
-                                                     expr_datum))) {
+  } else {
+    static thread_local RawJsonCache raw_cache;
+    const ObCollationType coll = param.meta_.get_collation_type();
+    const int64_t mode = static_cast<int64_t>(param.output_mode_);
+    const bool cacheable = param.fulltext_.length() > 0
+        && param.fulltext_.length() <= RawJsonCache::MAX_TEXT_LEN;
+    uint64_t raw_hash = 0;
+    RawJsonCacheEntry *cached = nullptr;
+    if (cacheable) {
+      raw_hash = tokenize_cache_hash(param.parser_name_, param.properties_, coll, param.fulltext_);
+      raw_hash = common::murmurhash(&mode, sizeof(mode), raw_hash);
+      cached = raw_cache.find(raw_hash, coll, mode,
+                              param.parser_name_, param.properties_, param.fulltext_);
+    }
+    if (OB_NOT_NULL(cached)) {
+      ret = ObJsonExprHelper::pack_json_str_res(expr, ctx, expr_datum, cached->raw_);
+    } else if (OB_FAIL(tokenize_fulltext(param, param.output_mode_, temp_allocator, json_result))) {
+    } else {
+      ObString raw;
+      if (OB_FAIL(share::ObJsonWrapper::get_raw_binary(json_result, raw, &temp_allocator))) {
+      } else if (OB_FAIL(ObJsonExprHelper::pack_json_str_res(expr, ctx, expr_datum, raw))) {
+      } else if (cacheable) {
+        int tmp_ret = raw_cache.put(raw_hash, coll, mode, param.parser_name_,
+                                    param.properties_, param.fulltext_, raw);
+        if (OB_SUCCESS != tmp_ret) {
+          // Cache insertion is best-effort.
+        }
+      }
+    }
   }
 
   return ret;
@@ -622,14 +828,24 @@ int ObExprTokenize::TokenizeParam::reform_parser_properties(const ObString &prop
 {
   int ret = OB_SUCCESS;
   storage::ObFTParserJsonProps parser_properties;
+  static thread_local PropCache prop_cache;
+  const uint64_t cache_hash = prop_cache_hash(parser_name_, properties);
+  PropCacheEntry *cached = prop_cache.find(cache_hash, parser_name_, properties);
 
-  if (OB_FAIL(parser_properties.init())) {
+  if (OB_NOT_NULL(cached)) {
+    properties_ = cached->normalized_;
+  } else if (OB_FAIL(parser_properties.init())) {
   } else if (OB_FAIL(parser_properties.parse_from_valid_str(properties))) {
     LOG_USER_ERROR(OB_INVALID_ARGUMENT, "parser properties invalid.");
   } else if (OB_FAIL(parser_properties.rebuild_props_for_ddl(parser_name_,
                                                              ObCollationType::CS_TYPE_UTF8MB4_BIN,
                                                              true))) {
   } else if (OB_FAIL(parser_properties.to_format_json(allocator_, properties_))) {
+  } else {
+    int tmp_ret = prop_cache.put(cache_hash, parser_name_, properties, properties_);
+    if (OB_SUCCESS != tmp_ret) {
+      // best-effort cache
+    }
   }
 
   return ret;
@@ -638,9 +854,12 @@ int ObExprTokenize::TokenizeParam::reform_parser_properties(const ObString &prop
 int ObExprTokenize::TokenizeParam::try_load_dictionary_for_ik()
 {
   int ret = OB_SUCCESS;
+  static thread_local bool dictionary_ready = false;
   bool need_to_load_dic = false;
   storage::ObDicLoaderHandle dic_loader_handle;
-  if (OB_FAIL(share::ObFtsIndexBuilderUtil::check_need_to_load_dic(
+  if (dictionary_ready) {
+    // The built-in dictionaries were loaded by the first call on this thread.
+  } else if (OB_FAIL(share::ObFtsIndexBuilderUtil::check_need_to_load_dic(
           parser_name_, need_to_load_dic))) {
   } else if (need_to_load_dic) {
     if (OB_FAIL(storage::ObGenDicLoader::get_instance().get_dic_loader(
@@ -651,6 +870,9 @@ int ObExprTokenize::TokenizeParam::try_load_dictionary_for_ik()
       ret = OB_ERR_UNEXPECTED;
     } else if (OB_FAIL(dic_loader_handle.get_loader()->try_load_dictionary_in_trans())) {
     }
+  }
+  if (OB_SUCC(ret)) {
+    dictionary_ready = true;
   }
   return ret;
 }
