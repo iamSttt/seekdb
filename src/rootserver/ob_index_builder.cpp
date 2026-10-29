@@ -1740,6 +1740,13 @@ int ObIndexBuilder::set_index_table_options(const obcall::ObCreateIndexArg &arg,
     // set dop for index table
     schema.set_dop(arg.index_schema_.get_dop());
     if (OB_FAIL(schema.set_compress_func_name(data_schema.get_compress_func_name()))) {
+    } else if ((is_fts_index_aux(schema.get_index_type())
+                || is_fts_doc_word_aux(schema.get_index_type()))
+               && OB_FAIL(schema.set_compress_func_name("none"))) {
+      // The inverted-index and doc-word aux tables consist of a huge number of
+      // tiny rows.  Their build is CPU bound and the payload does not compress
+      // well enough to pay for ZSTD on write and decompression on every token
+      // lookup, so keep these two aux tables uncompressed.
     } else if (OB_FAIL(schema.set_comment(arg.index_option_.comment_))) {
     } else if (schema.is_fts_doc_word_aux() || schema.is_fts_index_aux()) {
       if (OB_FAIL(schema.set_parser_name_and_properties(arg.index_option_.parser_name_,
