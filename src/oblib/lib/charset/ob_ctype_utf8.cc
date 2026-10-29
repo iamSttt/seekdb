@@ -307,6 +307,12 @@ static int ob_strnncoll_utf8mb4(const ObCharsetInfo *cs,
                      const unsigned char *dst, size_t dstlen,
                      bool t_is_prefix)
 {
+  // Identical byte sequences compare equal regardless of the prefix flag.
+  // The full-text index build sorts many rows that share the same token, so
+  // this avoids decoding both strings code point by code point.
+  if (srclen == dstlen && (0 == srclen || 0 == memcmp(src, dst, srclen))) {
+    return 0;
+  }
   ob_wc_t src_wc = 0, dst_wc = 0;
   const unsigned char *se = src + srclen;
   const unsigned char *te = dst + dstlen;
@@ -377,6 +383,13 @@ static int ob_strnncollsp_utf8mb4(const ObCharsetInfo *cs,
                        const unsigned char *dst, size_t dstlen,
                        bool diff_if_only_endspace_difference)
 {
+  // Identical byte sequences are equal under any collation.  Full-text index
+  // builds compare the same token over and over while sorting the inverted
+  // rows, so this shortcut avoids decoding both strings code point by code
+  // point for the common equal case.
+  if (srclen == dstlen && (0 == srclen || 0 == memcmp(src, dst, srclen))) {
+    return 0;
+  }
   int res;
   ob_wc_t src_wc = 0, dst_wc = 0;
   const unsigned char *se= src + srclen, *te= dst + dstlen;
