@@ -17,6 +17,7 @@
 #include "sql/engine/expr/ob_expr_tokenize.h"
 
 #include "lib/alloc/alloc_struct.h"
+#include "lib/lock/ob_mutex.h"
 #include "lib/allocator/page_arena.h"
 #include "lib/charset/ob_charset.h"
 #include "common/json_type/ob_json_base.h"
@@ -419,6 +420,10 @@ struct RawArgCacheEntry
 class RawArgCache
 {
 public:
+  // The cache is process-wide: consecutive TOKENIZE() calls are not
+  // guaranteed to run on the same worker thread, so a per-thread cache would
+  // miss whenever the runtime hands the statement to another worker.
+  lib::ObMutex lock_;
   static const int64_t MAX_ENTRIES = 4;
   static const int64_t MAX_TEXT_LEN = 512;
   static const int64_t MAX_RAW_LEN = 65536;
@@ -527,6 +532,7 @@ int try_raw_arg_cache_hit(const ObExpr &expr,
         hash = common::murmurhash(&coll, sizeof(coll), hash);
         hash = common::murmurhash(&mode, sizeof(mode), hash);
         ready = true;
+        lib::ObMutexGuard guard(cache.lock_);
         RawArgCacheEntry *cached = cache.find(hash, coll, mode, name, text);
         if (OB_NOT_NULL(cached)) {
           ret = ObJsonExprHelper::pack_json_str_res(expr, ctx, expr_datum, cached->raw_);
@@ -611,7 +617,7 @@ int ObExprTokenize::eval_tokenize(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &e
   ObIJsonBase *json_result = nullptr;
   TokenizeParam param;
 
-  static thread_local RawArgCache raw_arg_cache;
+  static RawArgCache raw_arg_cache;
   bool arg_ready = false;
   bool arg_hit = false;
   ObString arg_text;
@@ -658,6 +664,7 @@ int ObExprTokenize::eval_tokenize(const ObExpr &expr, ObEvalCtx &ctx, ObDatum &e
         }
       }
       if (OB_SUCC(ret) && arg_ready) {
+        lib::ObMutexGuard guard(raw_arg_cache.lock_);
         int tmp_ret = raw_arg_cache.put(arg_hash, arg_coll, arg_mode,
                                         arg_name, arg_text, raw);
         if (OB_SUCCESS != tmp_ret) {
