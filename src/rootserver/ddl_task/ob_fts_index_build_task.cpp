@@ -578,10 +578,11 @@ int ObFtsIndexBuildTask::prepare_aux_index_tables()
     } else if (OB_UNLIKELY(!dic_loader_handle.is_valid())) {
       ret = OB_ERR_UNEXPECTED;
     } else if (OB_FAIL(owner_id.convert_from_value(ObLockOwnerType::DEFAULT_OWNER_TYPE, task_id_))) {
-    } else if (OB_FAIL(ObDicLock::lock_dic_tables_out_trans(*dic_loader_handle.get_loader(),
-                                                            transaction::tablelock::SHARE,
-                                                            owner_id,
-                                                            trans))) {
+    } else if (!dic_loader_handle.get_loader()->is_dictionary_loaded()
+               && OB_FAIL(ObDicLock::lock_dic_tables_out_trans(*dic_loader_handle.get_loader(),
+                                                               transaction::tablelock::SHARE,
+                                                               owner_id,
+                                                               trans))) {
     } else if (OB_FAIL(update_task_message(trans))) {
     }
     if (trans.is_started()) {

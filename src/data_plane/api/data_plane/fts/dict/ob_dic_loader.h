@@ -64,6 +64,7 @@ public:
   {
     return dic_tables_info_;
   }
+  OB_INLINE bool is_dictionary_loaded() const { return is_load_; }
   OB_INLINE int64_t inc_ref()
   {
     const int64_t cnt = ATOMIC_AAF(&ref_cnt_, 1);

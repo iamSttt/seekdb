@@ -695,7 +695,10 @@ public:
       K_(sys_task_id), K_(err_code_occurence_cnt), K_(stat_info),
       K_(next_schedule_ts), K_(delay_schedule_time), K(execution_id_), K_(data_format_version),
       K_(dst_schema_version), K_(is_pre_split), K_(is_unique_index), K_(is_global_index), K_(published_schema_version));  static const int64_t MAX_ERR_TOLERANCE_CNT = 3L; // Max torlerance count for error code.
-  static const int64_t DEFAULT_TASK_IDLE_TIME_US = 10L * 1000L; // 10ms
+  // Each DDL statement goes through a dozen status transitions, and every one
+  // of them waits at least this long before the task is scheduled again.  A
+  // small delay keeps the build latency low without spinning the scheduler.
+  static const int64_t DEFAULT_TASK_IDLE_TIME_US = 2L * 1000L; // 2ms
   static const int64_t MAX_IDLE_TIME_US = 30L * 1000L * 1000L; // 30s
 protected:
   int copy_longops_stat(share::ObLongopsValue &value);

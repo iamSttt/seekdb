@@ -1875,6 +1875,10 @@ int ObFtsIndexBuilderUtil::try_load_and_lock_dictionary_tables(
         } else if (OB_UNLIKELY(!dic_loader_handle.is_valid())) {
           ret = OB_ERR_UNEXPECTED;
         } else if (OB_FAIL(dic_loader_handle.get_loader()->try_load_dictionary_in_trans())) {
+        } else if (dic_loader_handle.get_loader()->is_dictionary_loaded()) {
+          // The dictionary is already loaded and pinned in memory; taking the
+          // shared table locks again for every aux table only adds latency to
+          // each index build.
         } else if (OB_FAIL(data_plane::ObDictionaryLockService::lock_tables_shared_in_transaction(
                        *dic_loader_handle.get_loader(), trans))) {
         }
