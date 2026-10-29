@@ -60,6 +60,32 @@ bool find_skip_delta_buffer_in_ctdef(const ObDASBaseCtDef *ctdef)
   }
   return found;
 }
+
+// A LIMIT pushed into a text retrieval scan also bounds its inverted-index
+// scans: the DAAT/BMW iterator only needs that many merged documents.  When
+// the IR scan already carries a relevance topk the limit is enforced at the
+// topk level, so those scans are left untouched.
+void set_inv_scan_limit_param(ObDASBaseRtDef *rtdef, const ObLimitParam &limit_param)
+{
+  if (OB_ISNULL(rtdef)) {
+  } else {
+    if (DAS_OP_IR_SCAN == rtdef->op_type_ && OB_NOT_NULL(rtdef->ctdef_)) {
+      const ObDASIRScanCtDef *ir_ctdef = static_cast<const ObDASIRScanCtDef *>(rtdef->ctdef_);
+      if (!ir_ctdef->has_pushdown_topk()) {
+        ObDASIRScanRtDef *ir_rtdef = static_cast<ObDASIRScanRtDef *>(rtdef);
+        ObDASScanRtDef *inv_rtdef = ir_rtdef->get_inv_idx_scan_rtdef();
+        if (OB_NOT_NULL(inv_rtdef)) {
+          inv_rtdef->limit_param_ = limit_param;
+        }
+      }
+    }
+    if (OB_NOT_NULL(rtdef->children_)) {
+      for (int64_t i = 0; i < static_cast<int64_t>(rtdef->children_cnt_); ++i) {
+        set_inv_scan_limit_param(rtdef->children_[i], limit_param);
+      }
+    }
+  }
+}
 }  // anonymous namespace
 
 int SnapshotScanItem::set_snapshot_query_info(ObEvalCtx &eval_ctx, ObDASScanRtDef &scan_rtdef) const
@@ -1065,6 +1091,12 @@ int ObTableScanOp::init_table_scan_rtdef()
       if (OB_FAIL(tsc_rtdef_.attach_rtinfo_->pushdown_tasks_.push_back(
           tsc_rtdef_.attach_rtinfo_->attach_rtdef_))) {
       }
+    }
+    // The optimizer pushed a LIMIT into this scan: let the inverted-index
+    // scans stop as soon as enough merged documents are produced.
+    if (OB_SUCC(ret) && NULL != MY_SPEC.limit_
+        && OB_NOT_NULL(tsc_rtdef_.attach_rtinfo_->attach_rtdef_)) {
+      set_inv_scan_limit_param(tsc_rtdef_.attach_rtinfo_->attach_rtdef_, limit_param_);
     }
   }
   // A COUNT over a plain natural-language MATCH does not consume any column:

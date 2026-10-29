@@ -9029,6 +9029,83 @@ int ObJoinOrder::generate_normal_subquery_paths()
   return ret;
 }
 
+static bool expr_contains_column(const ObRawExpr *expr, const ObRawExpr *col_expr)
+{
+  bool found = false;
+  if (OB_ISNULL(expr) || OB_ISNULL(col_expr)) {
+  } else if (expr == col_expr) {
+    found = true;
+  } else {
+    for (int64_t i = 0; !found && i < expr->get_param_count(); ++i) {
+      found = expr_contains_column(expr->get_param_expr(i), col_expr);
+    }
+  }
+  return found;
+}
+
+// A subplan subquery whose columns are never read by the parent only needs to
+// produce rows.  Replace its single-column select list with a constant before
+// the child plan is generated, so the scan does not materialize a dead column
+// (and its index-back lookup) just to satisfy the subquery schema.  The stale
+// column item of the removed select expression is dropped as well: the
+// optimizer would otherwise keep producing the column just because it is
+// listed on the statement.
+int ObJoinOrder::prune_unreferenced_subquery_columns(const ObDMLStmt &parent_stmt,
+                                                     const uint64_t table_id,
+                                                     ObDMLStmt *child_stmt)
+{
+  int ret = OB_SUCCESS;
+  if (OB_ISNULL(child_stmt) || !child_stmt->is_select_stmt()
+      || parent_stmt.is_insert_stmt()) {
+  } else {
+    ObSelectStmt *sel_stmt = static_cast<ObSelectStmt *>(child_stmt);
+    bool refered = false;
+    for (int64_t i = 0; !refered && i < sel_stmt->get_select_item_size(); ++i) {
+      refered = OB_NOT_NULL(parent_stmt.get_column_item_by_id(
+          table_id, i + OB_APP_MIN_COLUMN_ID));
+    }
+    if (refered || 1 != sel_stmt->get_select_item_size()
+        || sel_stmt->has_distinct() || sel_stmt->has_group_by()
+        || sel_stmt->has_window_function() || sel_stmt->is_set_stmt()
+        || sel_stmt->is_contains_assignment()
+        || 0 != sel_stmt->get_aggr_item_size()) {
+    } else {
+      ObRawExpr *old_select = sel_stmt->get_select_item(0).expr_;
+      ObOptimizerContext &opt_ctx = get_plan()->get_optimizer_context();
+      ObConstRawExpr *const_expr = NULL;
+      if (OB_FAIL(ObRawExprUtils::build_const_int_expr(opt_ctx.get_expr_factory(),
+                                                       ObIntType, 1, const_expr))) {
+      } else if (OB_ISNULL(const_expr)) {
+        ret = OB_ERR_UNEXPECTED;
+      } else if (OB_FAIL(const_expr->formalize(opt_ctx.get_session_info()))) {
+      } else {
+        SelectItem dummy_item;
+        dummy_item.alias_name_ = "1";
+        dummy_item.expr_name_ = "1";
+        dummy_item.expr_ = const_expr;
+        sel_stmt->get_select_items().reset();
+        if (OB_FAIL(sel_stmt->get_select_items().push_back(dummy_item))) {
+        } else if (OB_NOT_NULL(old_select) && old_select->is_column_ref_expr()
+                   && 0 == sel_stmt->get_order_item_size()) {
+          bool used_elsewhere = false;
+          const ObIArray<ObRawExpr *> &conditions = sel_stmt->get_condition_exprs();
+          for (int64_t i = 0; !used_elsewhere && i < conditions.count(); ++i) {
+            used_elsewhere = expr_contains_column(conditions.at(i), old_select);
+          }
+          if (!used_elsewhere) {
+            const ObColumnRefRawExpr *col_ref =
+                static_cast<const ObColumnRefRawExpr *>(old_select);
+            if (OB_FAIL(sel_stmt->remove_column_item(col_ref->get_table_id(),
+                                                     col_ref->get_column_id()))) {
+            }
+          }
+        }
+      }
+    }
+  }
+  return ret;
+}
+
 int ObJoinOrder::generate_subquery_paths(PathHelper &helper)
 {
   int ret = OB_SUCCESS;
@@ -9041,6 +9118,9 @@ int ObJoinOrder::generate_subquery_paths(PathHelper &helper)
   if (OB_ISNULL(get_plan()) || OB_ISNULL(parent_stmt = get_plan()->get_stmt()) ||
       OB_ISNULL(child_stmt = static_cast<const ObDMLStmt*>(helper.child_stmt_))) {
     ret = OB_ERR_UNEXPECTED;
+  } else if (OB_FAIL(prune_unreferenced_subquery_columns(*parent_stmt,
+                                                         table_id_,
+                                                         const_cast<ObDMLStmt*>(child_stmt)))) {
   } else if (OB_ISNULL(log_plan = get_plan()->get_optimizer_context().get_log_plan_factory().create(
              get_plan()->get_optimizer_context(), *child_stmt))) {
     ret = OB_ALLOCATE_MEMORY_FAILED;

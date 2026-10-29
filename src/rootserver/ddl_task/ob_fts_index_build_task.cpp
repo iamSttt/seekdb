@@ -365,7 +365,20 @@ int ObFtsIndexBuildTask::get_next_status(share::ObDDLTaskStatus &next_status)
         break;
       }
       case ObDDLTaskStatus::GENERATE_ROWKEY_DOC_SCHEMA: {
-        next_status = ObDDLTaskStatus::WAIT_ROWKEY_DOC_TABLE_COMPLEMENT;
+        // The rowkey-doc table's data complement does not gate the schemas of
+        // the remaining aux tables: create them right away and wait for all
+        // children together, instead of paying one extra child-task round
+        // before every FULLTEXT index build.
+        bool need_to_load_dic = false;
+        const ObString &parser_name = create_index_arg_.index_option_.parser_name_;
+        if (!is_fts_task()) {
+          next_status = ObDDLTaskStatus::GENERATE_DOC_AUX_SCHEMA;
+        } else if (OB_FAIL(ObFtsIndexBuilderUtil::check_need_to_load_dic(parser_name, need_to_load_dic))) {
+        } else if (need_to_load_dic) {
+          next_status = ObDDLTaskStatus::LOAD_DICTIONARY;
+        } else {
+          next_status = ObDDLTaskStatus::GENERATE_DOC_AUX_SCHEMA;
+        }
         break;
       }
       case ObDDLTaskStatus::WAIT_ROWKEY_DOC_TABLE_COMPLEMENT: {

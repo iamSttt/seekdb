@@ -46,6 +46,9 @@ private:
                       ObSelectStmt &child_stmt,
                       ObDMLStmt &upper_stmt,
                       bool &trans_happened);
+  int prune_self_from_parent(common::ObIArray<ObParentDMLStmt> &parent_stmts,
+                             ObDMLStmt *stmt,
+                             bool &trans_happened);
 
   virtual int check_hint_status(const ObDMLStmt &stmt, bool &need_trans) override;                                                                                                                                                                                 
   virtual int construct_transform_hint(ObDMLStmt &stmt, void *trans_params) override;

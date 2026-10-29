@@ -2023,6 +2023,14 @@ struct NullAwareAntiJoinInfo {
 
     int generate_subquery_paths(PathHelper &helper);
 
+    // A subplan subquery whose columns are never read by the parent (e.g.
+    // COUNT(*) over a limited subquery) only needs to produce rows.  Replace
+    // its select list with a constant before its plan is generated so the
+    // scan does not materialize a dead column and its index-back lookup.
+    int prune_unreferenced_subquery_columns(const ObDMLStmt &parent_stmt,
+                                            const uint64_t table_id,
+                                            ObDMLStmt *child_stmt);
+
     // generate physical property for each subquery path, including ordering, sharding
     int compute_subquery_path_property(const uint64_t table_id,
                                        ObLogicalOperator *root,

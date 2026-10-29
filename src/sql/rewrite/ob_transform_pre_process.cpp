@@ -179,7 +179,7 @@ int ObTransformPreProcess::transform_one_stmt(common::ObIArray<ObParentDMLStmt> 
     }
     if (OB_SUCC(ret)) {
       if (stmt->get_match_exprs().count() > 0 &&
-          OB_FAIL(preserve_order_for_fulltext_search(stmt, is_happened))) {
+          OB_FAIL(preserve_order_for_fulltext_search(stmt, is_happened, !parent_stmts.empty()))) {
       } else {
         trans_happened |= is_happened;
       }
@@ -3790,7 +3790,7 @@ int ObTransformPreProcess::do_flatten_conditions(ObDMLStmt *stmt, ObIArray<ObRaw
 
 // full-text index queries on a single base table are processed with order preservation. 
 // (Order is not preserved in multi-table join scenarios.)
-int ObTransformPreProcess::preserve_order_for_fulltext_search(ObDMLStmt *stmt, bool& trans_happened)
+int ObTransformPreProcess::preserve_order_for_fulltext_search(ObDMLStmt *stmt, bool& trans_happened, const bool is_sub_stmt)
 {
   int ret = OB_SUCCESS;
   trans_happened = false;
@@ -3937,12 +3937,19 @@ int ObTransformPreProcess::preserve_order_for_fulltext_search(ObDMLStmt *stmt, b
     }
   }
   if (OB_SUCC(ret) && nullptr != match_expr && !static_cast<ObMatchFunRawExpr*>(match_expr)->is_es_match()) {
-    OrderItem item(match_expr, default_desc_direction());
-    if (OB_FAIL(stmt->add_order_item(item))) {
+    if (is_sub_stmt) {
+      // A subquery without an explicit ORDER BY has no observable row order.
+      // Skip the implicit relevance order so the optimizer can push a plain
+      // LIMIT into the retrieval scan and stop early instead of ranking every
+      // match.
     } else {
-      trans_happened = true;
+      OrderItem item(match_expr, default_desc_direction());
+      if (OB_FAIL(stmt->add_order_item(item))) {
+      } else {
+        trans_happened = true;
+      }
     }
-  } 
+  }
   return ret;
 }
 

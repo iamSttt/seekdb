@@ -29,11 +29,54 @@ int ObTransformProjectPruning::transform_one_stmt(common::ObIArray<ObParentDMLSt
                                                   bool &trans_happened)
 {
   int ret = OB_SUCCESS;
-  UNUSED(parent_stmts);
   trans_happened = false;
   if (OB_ISNULL(stmt)) {
     ret = OB_INVALID_ARGUMENT;
   } else if (OB_FAIL(transform_table_items(stmt, false, trans_happened))) {
+  } else if (OB_FAIL(prune_self_from_parent(parent_stmts, stmt, trans_happened))) {
+  }
+  return ret;
+}
+
+// When the parent statement keeps this subquery as a generated table, the
+// parent-side visit prunes the unused select items.  Some query shapes are
+// visited on the subquery block itself (e.g. a materialized subquery under an
+// aggregate), so do the same pruning from the child side: find the parent's
+// generated-table item that refers to this statement and drop the select
+// items the parent never reads.
+int ObTransformProjectPruning::prune_self_from_parent(common::ObIArray<ObParentDMLStmt> &parent_stmts,
+                                                      ObDMLStmt *stmt,
+                                                      bool &trans_happened)
+{
+  int ret = OB_SUCCESS;
+  if (OB_ISNULL(stmt) || parent_stmts.empty() || !stmt->is_select_stmt()) {
+  } else {
+    ObDMLStmt *parent_stmt = parent_stmts.at(parent_stmts.count() - 1).stmt_;
+    ObSelectStmt *child_stmt = static_cast<ObSelectStmt *>(stmt);
+    if (OB_ISNULL(parent_stmt) || parent_stmt->is_insert_stmt()
+        || child_stmt->get_select_item_size() <= 0) {
+    } else {
+      const ObIArray<TableItem *> &parent_tables = parent_stmt->get_table_items();
+      for (int64_t i = 0; OB_SUCC(ret) && i < parent_tables.count(); ++i) {
+        TableItem *table_item = parent_tables.at(i);
+        if (OB_ISNULL(table_item)) {
+          ret = OB_ERR_UNEXPECTED;
+        } else if (!table_item->is_generated_table()
+                   && !table_item->is_lateral_table()) {
+        } else if (table_item->ref_query_ != child_stmt) {
+        } else {
+          bool is_happened = false;
+          if (OB_FAIL(project_pruning(table_item->table_id_,
+                                      *child_stmt,
+                                      *parent_stmt,
+                                      is_happened))) {
+          } else {
+            trans_happened |= is_happened;
+          }
+          break;
+        }
+      }
+    }
   }
   return ret;
 }
@@ -43,11 +86,11 @@ int ObTransformProjectPruning::transform_one_stmt_with_outline(ObIArray<ObParent
                                                               bool &trans_happened)
 {
   int ret = OB_SUCCESS;
-  UNUSED(parent_stmts);
   trans_happened = false;
   if (OB_ISNULL(stmt)) {
     ret = OB_INVALID_ARGUMENT;
   } else if (OB_FAIL(transform_table_items(stmt, true, trans_happened))) {
+  } else if (OB_FAIL(prune_self_from_parent(parent_stmts, stmt, trans_happened))) {
   } else if (!trans_happened) {
     //do nothing
   } else {
