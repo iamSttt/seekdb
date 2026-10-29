@@ -1729,7 +1729,15 @@ int ObIndexBuilder::set_index_table_options(const obcall::ObCreateIndexArg &arg,
     // some items in arg may be invalid, don't check arg
     ret = OB_INVALID_ARGUMENT;
   } else {
-    schema.set_block_size(arg.index_option_.block_size_);
+    // The inverted-index and doc-word aux tables are read posting by posting;
+    // bigger micro blocks amortize the per-block decode/index lookup over more
+    // rows and cut the block count of a token range scan.
+    if (is_fts_index_aux(schema.get_index_type())
+        || is_fts_doc_word_aux(schema.get_index_type())) {
+      schema.set_block_size(64 * 1024);
+    } else {
+      schema.set_block_size(arg.index_option_.block_size_);
+    }
     schema.set_tablet_size(data_schema.get_tablet_size());
     schema.set_pctfree(data_schema.get_pctfree());
     schema.set_index_attributes_set(arg.index_option_.index_attributes_set_);
