@@ -370,22 +370,31 @@ int ObFtsIndexBuildTask::get_next_status(share::ObDDLTaskStatus &next_status)
         // children together, instead of paying one extra child-task round
         // before every FULLTEXT index build.
         bool need_to_load_dic = false;
+        bool dic_loaded = false;
         const ObString &parser_name = create_index_arg_.index_option_.parser_name_;
         if (!is_fts_task()) {
           next_status = ObDDLTaskStatus::GENERATE_DOC_AUX_SCHEMA;
         } else if (OB_FAIL(ObFtsIndexBuilderUtil::check_need_to_load_dic(parser_name, need_to_load_dic))) {
-        } else if (need_to_load_dic) {
+        } else if (need_to_load_dic
+                   && OB_FAIL(is_parser_dictionary_loaded(parser_name, dic_loaded))) {
+        } else if (need_to_load_dic && !dic_loaded) {
           next_status = ObDDLTaskStatus::LOAD_DICTIONARY;
         } else {
+          // Loading is a no-op once the parser's dictionary is warm, and the
+          // LOAD_DICTIONARY status pays a transaction to persist itself, so
+          // skip the state entirely when there is nothing to load.
           next_status = ObDDLTaskStatus::GENERATE_DOC_AUX_SCHEMA;
         }
         break;
       }
       case ObDDLTaskStatus::WAIT_ROWKEY_DOC_TABLE_COMPLEMENT: {
         bool need_to_load_dic = false;
+        bool dic_loaded = false;
         const ObString &parser_name = create_index_arg_.index_option_.parser_name_;
         if (is_fts_task() && OB_FAIL(ObFtsIndexBuilderUtil::check_need_to_load_dic(parser_name, need_to_load_dic))) {
-        } else if (need_to_load_dic) {
+        } else if (need_to_load_dic
+                   && OB_FAIL(is_parser_dictionary_loaded(parser_name, dic_loaded))) {
+        } else if (need_to_load_dic && !dic_loaded) {
           next_status = ObDDLTaskStatus::LOAD_DICTIONARY;
         } else {
           next_status = ObDDLTaskStatus::GENERATE_DOC_AUX_SCHEMA;
@@ -742,6 +751,26 @@ int ObFtsIndexBuildTask::get_index_table_id(
     index_table_id = domain_index_aux_table_id_;
   } else if (share::schema::is_fts_doc_word_aux(index_type)) {
     index_table_id = fts_doc_word_aux_table_id_;
+  }
+  return ret;
+}
+
+int ObFtsIndexBuildTask::is_parser_dictionary_loaded(const ObString &parser_name, bool &is_loaded)
+{
+  int ret = OB_SUCCESS;
+  is_loaded = false;
+  ObDicLoaderHandle dic_loader_handle;
+  ObCharsetType charset_type = ObCharsetType::CHARSET_ANY;
+  if (OB_UNLIKELY(parser_name.empty())) {
+    ret = OB_INVALID_ARGUMENT;
+  } else if (OB_FAIL(get_charset_type(charset_type))) {
+  } else if (OB_FAIL(ObGenDicLoader::get_instance().get_dic_loader(parser_name,
+                                                                   charset_type,
+                                                                   dic_loader_handle))) {
+  } else if (OB_UNLIKELY(!dic_loader_handle.is_valid())) {
+    ret = OB_ERR_UNEXPECTED;
+  } else {
+    is_loaded = dic_loader_handle.get_loader()->is_dictionary_loaded();
   }
   return ret;
 }

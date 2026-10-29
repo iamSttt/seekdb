@@ -144,6 +144,7 @@ private:
   int prepare();
   int load_dictionary();
   int get_charset_type(ObCharsetType &charset_type);
+  int is_parser_dictionary_loaded(const ObString &parser_name, bool &is_loaded);
   int wait_aux_table_complement();
   int clean_on_failed();
   int submit_drop_fts_index_task();
