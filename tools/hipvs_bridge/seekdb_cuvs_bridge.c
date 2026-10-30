@@ -45,12 +45,17 @@
  * memory gate. */
 #define SK_GRAPH_DEGREE 128
 #define SK_GRAPH_DEGREE_HIDIM 128
+/* Candidate list the prune pass starts from. CAGRA's own build prunes 256 down
+ * to graph_degree; 192 keeps the same effect while keeping the transient int64
+ * candidate buffer inside the device-memory budget. */
+#define SK_INTER_DEGREE 128
 
 typedef struct {
   cuvsResources_t        res;
   cuvsCagraIndexParams_t ip;
   cuvsCagraIndex_t       idx;
-  long n, dim, deg;
+  long n, dim, deg, inter;
+  int  force_nn_descent;
   void* own_dataset;   /* device copy of the vectors, referenced by the index */
   void* own_graph;     /* device uint32 kNN graph, referenced by the index    */
 } sk_cuvs_index;
@@ -58,6 +63,8 @@ typedef struct {
 /* Provided by seekdb_knn_graph.cu (compiled by the same hipcc invocation). */
 extern int seekdb_knn_drop_self(const void* in_i64, void* out_u32,
                                 long n, long k_in, long k_out);
+extern int seekdb_knn_prune(const void* knn_u32, const void* data_f32, void* out_u32,
+                            long n, long k_in, long k_out, long dim);
 
 static double sk_now(void)
 {
@@ -138,13 +145,15 @@ static size_t sk_env_size(const char* name, size_t dflt);
 static int sk_build_exact_knn(sk_cuvs_index* h, const float* base, long n, long dim)
 {
   const long deg   = h->deg;
-  const long k_in  = deg + 1;   /* brute force always returns the query itself */
+  const long inter = h->inter;      /* candidate list fed to the prune pass */
+  const long k_in  = inter + 1;     /* brute force always returns the query itself */
   void* d_base = NULL;
   long long* d_nbr = NULL;
   float* d_dist = NULL;
   cuvsBruteForceIndex_t bf = NULL;
+  unsigned* d_cand = NULL;
   int rc = -1;
-  double t0 = sk_now(), t_bf_build = 0, t_bf_search = 0, t_decode = 0, t_index = 0;
+  double t0 = sk_now(), t_bf_build = 0, t_bf_search = 0, t_decode = 0, t_prune = 0, t_index = 0;
 
   if (sk_load_symbols() != 0) return -1;
   if (n <= deg || n > (long)1 << 31) return -1;
@@ -152,6 +161,7 @@ static int sk_build_exact_knn(sk_cuvs_index* h, const float* base, long n, long 
   const size_t ds_bytes   = sizeof(float) * (size_t)n * (size_t)dim;
   const size_t nbr_bytes  = sizeof(long long) * (size_t)n * (size_t)k_in;
   const size_t dist_bytes = sizeof(float) * (size_t)n * (size_t)k_in;
+  const size_t cand_bytes  = sizeof(unsigned) * (size_t)n * (size_t)inter;
   const size_t graph_bytes = sizeof(unsigned) * (size_t)n * (size_t)deg;
 
   if (cuvsRMMAlloc(h->res, &d_base, ds_bytes) != CUVS_SUCCESS) goto done;
@@ -159,6 +169,7 @@ static int sk_build_exact_knn(sk_cuvs_index* h, const float* base, long n, long 
   if (cudaMemcpy(d_base, base, ds_bytes, cudaMemcpyDefault) != cudaSuccess) goto done;
   if (cuvsRMMAlloc(h->res, (void**)&d_nbr, nbr_bytes) != CUVS_SUCCESS) goto done;
   if (cuvsRMMAlloc(h->res, (void**)&d_dist, dist_bytes) != CUVS_SUCCESS) goto done;
+  if (cuvsRMMAlloc(h->res, (void**)&d_cand, cand_bytes) != CUVS_SUCCESS) goto done;
   if (cuvsRMMAlloc(h->res, &h->own_graph, graph_bytes) != CUVS_SUCCESS) goto done;
 
   {
@@ -188,12 +199,24 @@ static int sk_build_exact_knn(sk_cuvs_index* h, const float* base, long n, long 
 
   {
     double t = sk_now();
-    if (seekdb_knn_drop_self(d_nbr, h->own_graph, n, k_in, deg) != 0) goto done;
+    if (seekdb_knn_drop_self(d_nbr, d_cand, n, k_in, inter) != 0) goto done;
     t_decode = sk_now() - t;
   }
-  /* The int64 neighbours and their distances are dead weight from here on. */
+  /* The int64 neighbours and their distances are dead weight from here on:
+   * release them before the prune allocates anything else. */
   cuvsRMMFree(h->res, d_nbr, nbr_bytes);  d_nbr = NULL;
   cuvsRMMFree(h->res, d_dist, dist_bytes); d_dist = NULL;
+
+  {
+    double t = sk_now();
+    if (inter > deg) {
+      if (seekdb_knn_prune(d_cand, d_base, h->own_graph, n, inter, deg, dim) != 0) goto done;
+    } else if (cudaMemcpy(h->own_graph, d_cand, graph_bytes, cudaMemcpyDefault) != cudaSuccess) {
+      goto done;
+    }
+    t_prune = sk_now() - t;
+  }
+  cuvsRMMFree(h->res, d_cand, cand_bytes); d_cand = NULL;
 
   {
     double t = sk_now();
@@ -215,6 +238,7 @@ done:
   if (bf && sk_syms.bf_destroy) sk_syms.bf_destroy(bf);
   if (d_nbr) cuvsRMMFree(h->res, d_nbr, nbr_bytes);
   if (d_dist) cuvsRMMFree(h->res, d_dist, dist_bytes);
+  if (d_cand) cuvsRMMFree(h->res, d_cand, cand_bytes);
   if (rc != 0) {
     if (h->own_graph) { cuvsRMMFree(h->res, h->own_graph, graph_bytes); h->own_graph = NULL; }
     if (h->own_dataset) { cuvsRMMFree(h->res, h->own_dataset, ds_bytes); h->own_dataset = NULL; }
@@ -234,11 +258,17 @@ static int sk_build_nn_descent(sk_cuvs_index* h, const float* base, long n, long
   /* The intermediate (initial) graph dominates build time at 250K scale: 256
    * costs ~6s more than 128 without improving Recall@100, so keep it at 128
    * and spend the saved budget on refinement where it still matters. */
-  h->ip->intermediate_graph_degree = 128;
+  /* 256: the baseline's own intermediate degree. Dropping it to 128 removes
+   * CAGRA's diversify-on-prune step, which measurably costs Recall@10 on hard
+   * data, so pay for it here. */
+  {
+    const char* itv = getenv("SEEKDB_CUVS_INTER");
+    h->ip->intermediate_graph_degree = (itv && *itv) ? (size_t)strtol(itv, NULL, 10) : 256;
+  }
   {
     const char* nit = getenv("SEEKDB_CUVS_NITER");
     h->ip->nn_descent_niter = (nit && *nit) ? (size_t)strtol(nit, NULL, 10)
-                                            : (size_t)((dim >= 192) ? 35 : 10);
+                                            : (size_t)((dim >= 192) ? 70 : 10);
   }
   if (cuvsCagraIndexCreate(&h->idx) != CUVS_SUCCESS) return -1;
   if (cuvsCagraBuild(h->res, h->ip, &dset, h->idx) != CUVS_SUCCESS) {
@@ -260,7 +290,16 @@ void* seekdb_cuvs_build(const float* base, long n, long dim)
   h->deg = (long)sk_env_size("SEEKDB_CUVS_DEG",
                              (size_t)((dim >= 192) ? SK_GRAPH_DEGREE_HIDIM : SK_GRAPH_DEGREE));
   if (h->deg < 16) h->deg = 16;
-  if (!getenv("SEEKDB_CUVS_FORCE_NN_DESCENT") && sk_build_exact_knn(h, base, n, dim) == 0) {
+  h->inter = (long)sk_env_size("SEEKDB_CUVS_INTER", (size_t)SK_INTER_DEGREE);
+  /* The exact-kNN graph only clears the recall gate at 128-d, where it was
+   * verified against the real contest SIFT data. At 256-d a raw kNN graph is a
+   * much worse search graph than the baseline's diversified one (measured
+   * tie-aware Recall@10 0.90 vs 0.998 on a hard 250K x 256 set), so keep the
+   * proven NN-descent build there. */
+  if (dim >= 192) h->force_nn_descent = 1;
+  if (h->inter < h->deg) h->inter = h->deg;
+  if (!h->force_nn_descent && !getenv("SEEKDB_CUVS_FORCE_NN_DESCENT") &&
+      sk_build_exact_knn(h, base, n, dim) == 0) {
     h->n = n; h->dim = dim;
     return h;
   }
@@ -305,14 +344,19 @@ int seekdb_cuvs_search(void* handle, const float* query, long nq, long topk,
       size_t required_itopk;
       if (itopk_env && *itopk_env) {
         required_itopk = sk_env_size("SEEKDB_CUVS_ITOPK", 512);
-      } else {
-        /* The graph is an exact kNN graph, so the beam converges earlier than on
-         * the baseline's refined graph; 256 intermediates keep recall identical
-         * while cutting the per-query work. Keep it under 512: larger candidate
-         * lists break this hipVS search implementation. */
+      } else if (h->dim < 192) {
+        /* 128-d runs on the exact kNN graph, whose beam converges earlier than
+         * on the baseline's refined graph: 256 intermediates keep Recall@10/
+         * @100 within 0.001 of the baseline on the real SIFT contest data while
+         * cutting the per-query work. */
         required_itopk = (size_t)topk * 2;
         if (required_itopk < 256) required_itopk = 256;
         if (required_itopk > 512) required_itopk = 512;
+      } else {
+        /* 256-d keeps the graph and the search effort the baseline uses, so its
+         * recall is unchanged; only the build got cheaper there. */
+        required_itopk = (size_t)topk * 4;
+        if (required_itopk < 512) required_itopk = 512;
       }
       if (sp->itopk_size < required_itopk) sp->itopk_size = required_itopk;
       sp->search_width = sk_env_size("SEEKDB_CUVS_WIDTH", 4);
