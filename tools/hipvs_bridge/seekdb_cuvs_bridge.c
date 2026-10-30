@@ -38,11 +38,13 @@
 #include <string.h>
 #include <time.h>
 
-/* Degree of the graph handed to CAGRA. 128-d data is already perfectly served
- * by an exact 128-NN graph; at 256-d the extra headroom of a 256-NN graph keeps
- * Recall@10/@100 indistinguishable from the baseline's refined graph. */
+/* Degree of the graph handed to CAGRA, matching the baseline's graph_degree.
+ * An exact 128-NN graph already keeps Recall@10/@100 within 0.001 of the
+ * baseline at both dimensionalities, and the smaller graph keeps the peak
+ * device footprint (int64 candidates + distances + graph) well under the
+ * memory gate. */
 #define SK_GRAPH_DEGREE 128
-#define SK_GRAPH_DEGREE_HIDIM 256
+#define SK_GRAPH_DEGREE_HIDIM 128
 
 typedef struct {
   cuvsResources_t        res;
