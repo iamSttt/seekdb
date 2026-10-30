@@ -49,6 +49,10 @@
  * to graph_degree; 192 keeps the same effect while keeping the transient int64
  * candidate buffer inside the device-memory budget. */
 #define SK_INTER_DEGREE 128
+/* Query block for the brute-force self search: caps hipVS' distance-tile scratch
+ * at block*n*4 bytes (128 -> 122 MiB at n=250K) instead of letting it size the
+ * tile for the whole dataset. */
+#define SK_QUERY_BLOCK 128
 
 typedef struct {
   cuvsResources_t        res;
@@ -62,9 +66,7 @@ typedef struct {
 
 /* Provided by seekdb_knn_graph.cu (compiled by the same hipcc invocation). */
 extern int seekdb_knn_drop_self(const void* in_i64, void* out_u32,
-                                long n, long k_in, long k_out);
-extern int seekdb_knn_prune(const void* knn_u32, const void* data_f32, void* out_u32,
-                            long n, long k_in, long k_out, long dim);
+                                long n, long k_in, long k_out, long row_offset);
 
 static double sk_now(void)
 {
@@ -144,33 +146,37 @@ static size_t sk_env_size(const char* name, size_t dflt);
 /* Build the index from an exact GPU kNN graph. Returns 0 on success. */
 static int sk_build_exact_knn(sk_cuvs_index* h, const float* base, long n, long dim)
 {
-  const long deg   = h->deg;
-  const long inter = h->inter;      /* candidate list fed to the prune pass */
-  const long k_in  = inter + 1;     /* brute force always returns the query itself */
+  const long deg  = h->deg;
+  const long k_in = deg + 1;   /* brute force always returns the query itself */
+  /* Query block size. hipVS' brute force tiles the distance matrix, and on a
+   * card with plenty of free memory it sizes that tile as rows*num_queries*4
+   * bytes with rows up to 512 -- a 250K x 250K self-search would therefore hold
+   * a 512 MiB scratch buffer next to the full n*(deg+1) int64 candidate matrix.
+   * Searching 128 rows at a time caps the scratch at 128*n*4 = 122 MiB and lets
+   * us fold each block into the graph immediately, so the int64 candidates
+   * never exist for the whole dataset. Peak stays close to the baseline's. */
+  const long qb   = (long)sk_env_size("SEEKDB_CUVS_BLOCK", SK_QUERY_BLOCK);
   void* d_base = NULL;
-  long long* d_nbr = NULL;
-  float* d_dist = NULL;
+  long long* d_nbr_b = NULL;
+  float* d_dist_b = NULL;
   cuvsBruteForceIndex_t bf = NULL;
-  unsigned* d_cand = NULL;
   int rc = -1;
-  double t0 = sk_now(), t_bf_build = 0, t_bf_search = 0, t_decode = 0, t_prune = 0, t_index = 0;
+  double t0 = sk_now(), t_bf_build = 0, t_bf_search = 0, t_index = 0;
 
   if (sk_load_symbols() != 0) return -1;
   if (n <= deg || n > (long)1 << 31) return -1;
 
-  const size_t ds_bytes   = sizeof(float) * (size_t)n * (size_t)dim;
-  const size_t nbr_bytes  = sizeof(long long) * (size_t)n * (size_t)k_in;
-  const size_t dist_bytes = sizeof(float) * (size_t)n * (size_t)k_in;
-  const size_t cand_bytes  = sizeof(unsigned) * (size_t)n * (size_t)inter;
-  const size_t graph_bytes = sizeof(unsigned) * (size_t)n * (size_t)deg;
+  const size_t ds_bytes     = sizeof(float) * (size_t)n * (size_t)dim;
+  const size_t nbr_b_bytes  = sizeof(long long) * (size_t)qb * (size_t)k_in;
+  const size_t dist_b_bytes = sizeof(float) * (size_t)qb * (size_t)k_in;
+  const size_t graph_bytes  = sizeof(unsigned) * (size_t)n * (size_t)deg;
 
   if (cuvsRMMAlloc(h->res, &d_base, ds_bytes) != CUVS_SUCCESS) goto done;
   h->own_dataset = d_base;
   if (cudaMemcpy(d_base, base, ds_bytes, cudaMemcpyDefault) != cudaSuccess) goto done;
-  if (cuvsRMMAlloc(h->res, (void**)&d_nbr, nbr_bytes) != CUVS_SUCCESS) goto done;
-  if (cuvsRMMAlloc(h->res, (void**)&d_dist, dist_bytes) != CUVS_SUCCESS) goto done;
-  if (cuvsRMMAlloc(h->res, (void**)&d_cand, cand_bytes) != CUVS_SUCCESS) goto done;
   if (cuvsRMMAlloc(h->res, &h->own_graph, graph_bytes) != CUVS_SUCCESS) goto done;
+  if (cuvsRMMAlloc(h->res, (void**)&d_nbr_b, nbr_b_bytes) != CUVS_SUCCESS) goto done;
+  if (cuvsRMMAlloc(h->res, (void**)&d_dist_b, dist_b_bytes) != CUVS_SUCCESS) goto done;
 
   {
     DLManagedTensor dset;
@@ -182,41 +188,26 @@ static int sk_build_exact_knn(sk_cuvs_index* h, const float* base, long n, long 
     t_bf_build = sk_now() - t0;
 
     {
-      DLManagedTensor q, nb, db;
-      long q_shape[2], nb_shape[2], db_shape[2];
-      cuvsFilter filter;
-      filter.type = NO_FILTER;
-      filter.addr = (uintptr_t)0;
-      sk_tensor_2d(&q, d_base, 1, n, dim, kDLFloat, 32, q_shape);
-      sk_tensor_2d(&nb, d_nbr, 1, n, k_in, kDLInt, 64, nb_shape);
-      sk_tensor_2d(&db, d_dist, 1, n, k_in, kDLFloat, 32, db_shape);
       double t = sk_now();
-      if (sk_syms.bf_search(h->res, bf, &q, &nb, &db, filter) != CUVS_SUCCESS) goto done;
+      for (long q0 = 0; q0 < n; q0 += qb) {
+        const long cur = (n - q0 < qb) ? (n - q0) : qb;
+        DLManagedTensor q, nb, db;
+        long q_shape[2], nb_shape[2], db_shape[2];
+        cuvsFilter filter;
+        filter.type = NO_FILTER;
+        filter.addr = (uintptr_t)0;
+        sk_tensor_2d(&q, (char*)d_base + (size_t)q0 * (size_t)dim * sizeof(float), 1,
+                     cur, dim, kDLFloat, 32, q_shape);
+        sk_tensor_2d(&nb, d_nbr_b, 1, cur, k_in, kDLInt, 64, nb_shape);
+        sk_tensor_2d(&db, d_dist_b, 1, cur, k_in, kDLFloat, 32, db_shape);
+        if (sk_syms.bf_search(h->res, bf, &q, &nb, &db, filter) != CUVS_SUCCESS) goto done;
+        if (seekdb_knn_drop_self(d_nbr_b, (unsigned*)h->own_graph + (size_t)q0 * (size_t)deg,
+                                 cur, k_in, deg, q0) != 0) goto done;
+      }
       t_bf_search = sk_now() - t;
     }
   }
   sk_syms.bf_destroy(bf); bf = NULL;
-
-  {
-    double t = sk_now();
-    if (seekdb_knn_drop_self(d_nbr, d_cand, n, k_in, inter) != 0) goto done;
-    t_decode = sk_now() - t;
-  }
-  /* The int64 neighbours and their distances are dead weight from here on:
-   * release them before the prune allocates anything else. */
-  cuvsRMMFree(h->res, d_nbr, nbr_bytes);  d_nbr = NULL;
-  cuvsRMMFree(h->res, d_dist, dist_bytes); d_dist = NULL;
-
-  {
-    double t = sk_now();
-    if (inter > deg) {
-      if (seekdb_knn_prune(d_cand, d_base, h->own_graph, n, inter, deg, dim) != 0) goto done;
-    } else if (cudaMemcpy(h->own_graph, d_cand, graph_bytes, cudaMemcpyDefault) != cudaSuccess) {
-      goto done;
-    }
-    t_prune = sk_now() - t;
-  }
-  cuvsRMMFree(h->res, d_cand, cand_bytes); d_cand = NULL;
 
   {
     double t = sk_now();
@@ -229,16 +220,15 @@ static int sk_build_exact_knn(sk_cuvs_index* h, const float* base, long n, long 
     t_index = sk_now() - t;
   }
 
-  fprintf(stderr, "[seekdb_cuvs] exact-knn graph n=%ld dim=%ld deg=%ld "
-                  "bf_build=%.3fs bf_search=%.3fs decode=%.3fs index=%.3fs total=%.3fs\n",
-          n, dim, deg, t_bf_build, t_bf_search, t_decode, t_index, sk_now() - t0);
+  fprintf(stderr, "[seekdb_cuvs] exact-knn graph n=%ld dim=%ld deg=%ld block=%ld "
+                  "bf_build=%.3fs bf_search=%.3fs index=%.3fs total=%.3fs\n",
+          n, dim, deg, qb, t_bf_build, t_bf_search, t_index, sk_now() - t0);
   rc = 0;
 
 done:
   if (bf && sk_syms.bf_destroy) sk_syms.bf_destroy(bf);
-  if (d_nbr) cuvsRMMFree(h->res, d_nbr, nbr_bytes);
-  if (d_dist) cuvsRMMFree(h->res, d_dist, dist_bytes);
-  if (d_cand) cuvsRMMFree(h->res, d_cand, cand_bytes);
+  if (d_nbr_b) cuvsRMMFree(h->res, d_nbr_b, nbr_b_bytes);
+  if (d_dist_b) cuvsRMMFree(h->res, d_dist_b, dist_b_bytes);
   if (rc != 0) {
     if (h->own_graph) { cuvsRMMFree(h->res, h->own_graph, graph_bytes); h->own_graph = NULL; }
     if (h->own_dataset) { cuvsRMMFree(h->res, h->own_dataset, ds_bytes); h->own_dataset = NULL; }

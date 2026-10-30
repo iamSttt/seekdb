@@ -21,22 +21,22 @@
 
 __global__ void sk_drop_self_kernel(const long long* __restrict__ in,
                                     unsigned* __restrict__ out,
-                                    long n, long k_in, long k_out)
+                                    long n, long k_in, long k_out, long row_offset)
 {
   long row = (long)blockIdx.x * blockDim.x + threadIdx.x;
   if (row >= n) return;
 
   const long long* src = in + row * k_in;
+  const long gid        = row_offset + row;
   unsigned* dst        = out + row * k_out;
   long w               = 0;
   for (long i = 0; i < k_in && w < k_out; ++i) {
     long long id = src[i];
-    if (id == row) continue;
-    if (id < 0 || id >= n) continue;
+    if (id == gid) continue;
     dst[w++] = (unsigned)id;
   }
   for (long i = 0; w < k_out; ++i) {
-    dst[w++] = (unsigned)((row + 1 + i) % n);
+    dst[w++] = (unsigned)((gid + 1 + i) % n);
   }
 }
 
@@ -94,13 +94,13 @@ __global__ void sk_prune_kernel(const unsigned* __restrict__ knn,
 }
 
 extern "C" int seekdb_knn_drop_self(const void* in_i64, void* out_u32,
-                                    long n, long k_in, long k_out)
+                                    long n, long k_in, long k_out, long row_offset)
 {
   if (!in_i64 || !out_u32 || n <= 0 || k_in <= 0 || k_out <= 0 || k_out > k_in) return 1;
   long threads = 256;
   long blocks  = (n + threads - 1) / threads;
   sk_drop_self_kernel<<<(unsigned)blocks, (unsigned)threads>>>(
-    (const long long*)in_i64, (unsigned*)out_u32, n, k_in, k_out);
+    (const long long*)in_i64, (unsigned*)out_u32, n, k_in, k_out, row_offset);
   return hipDeviceSynchronize() == hipSuccess ? 0 : 1;
 }
 
