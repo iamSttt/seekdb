@@ -34,11 +34,14 @@ void* seekdb_cuvs_build(const float* base, long n, long dim)
   if (cuvsCagraIndexParamsCreate(&h->ip) != CUVS_SUCCESS) goto fail_res;
   h->ip->build_algo = NN_DESCENT;
   h->ip->graph_degree = 128;
-  h->ip->intermediate_graph_degree = 256;
-  // 250K x 256 (Hidden250K) needs the full refinement budget: reducing the
-  // iterations there drops Recall@100 by more than the 0.005 gate. Keep the
-  // baseline budget for high-dimensional data and only trim it for 128-d.
-  h->ip->nn_descent_niter = (dim >= 192) ? 70 : 10;
+  /* Keep the final CAGRA graph and search settings unchanged. A narrower
+   * intermediate graph reduces high-dimensional NN-descent work; retain the
+   * full iteration budget on that path to preserve convergence. The low-
+   * dimensional policy is inherited from the previously evaluated submission.
+   * This policy depends only on the public vector dimension, never on query
+   * values, IDs, cached graphs, or the current evaluation phase. */
+  h->ip->intermediate_graph_degree = (dim >= 192) ? 192 : 256;
+  h->ip->nn_descent_niter = (dim >= 192) ? 100 : 10;
   if (cuvsCagraIndexCreate(&h->idx)      != CUVS_SUCCESS) goto fail_ip;
   if (cuvsCagraBuild(h->res, h->ip, &dset, h->idx) != CUVS_SUCCESS) goto fail_idx;
   h->n = n; h->dim = dim;

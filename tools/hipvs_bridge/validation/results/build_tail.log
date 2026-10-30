@@ -1,0 +1,65 @@
+[ 85%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_overlaps1.cpp.o[0m
+[ 86%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tx_0_c___cxx.cxx.o[0m
+[ 86%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_overlaps2.cpp.o[0m
+[ 88%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_overlaps3.cpp.o[0m
+[ 88%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_cmd_0_c___cxx.cxx.o[0m
+[ 88%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_symdifference1.cpp.o[0m
+[ 88%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tx_1_c___cxx.cxx.o[0m
+[ 88%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_1_c___cxx.cxx.o[0m
+[ 88%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_symdifference2.cpp.o[0m
+[ 88%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_aggregate_core_0_c___cxx.cxx.o[0m
+[ 88%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tx_2_c___cxx.cxx.o[0m
+[ 88%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_11_c___cxx.cxx.o[0m
+[ 88%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_vector_type_0_c___cxx.cxx.o[0m
+[ 89%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_printer_0_c___cxx.cxx.o[0m
+[ 89%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_symdifference3.cpp.o[0m
+[ 89%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_optimizer_2_c___cxx.cxx.o[0m
+[ 89%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_touches1.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_touches2.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_touches3.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_union1.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_union2.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_within1.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_6_c___cxx.cxx.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_within2.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_hybrid_search_0_c___cxx.cxx.o[0m
+[ 92%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_ddl_args.cpp.o[0m
+[ 92%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_session_0_c___cxx.cxx.o[0m
+[ 92%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_local_device.cpp.o[0m
+[ 92%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_lonely_table_clean_rpc_struct.cpp.o[0m
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_cmd_1_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_das_1_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_0_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_14_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_rpc_struct.cpp.o[0m
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_5_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_sql_client_decorator.cpp.o[0m
+[ 94%] Built target ob_storage
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_12_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_timezone_mgr.cpp.o[0m
+[ 95%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_resolver_dml_0_c___cxx.cxx.o[0m
+[ 97%] [32m[1mLinking CXX static library libob_storage_static.a[0m
+[ 97%] Built target ob_storage_static
+[ 97%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_resolver_expr_0_c___cxx.cxx.o[0m
+[ 98%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/parameter/ob_parameter_attr.cpp.o[0m
+[ 98%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_resolver_prepare_0_c___cxx.cxx.o[0m
+[ 98%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_rewrite_0_c___cxx.cxx.o[0m
+[ 98%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_tablelock_0_c___cxx.cxx.o[0m
+[100%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/aggregate/ob_aggregate_processor.cpp.o[0m
+[100%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/expr/ob_expr_add.cpp.o[0m
+[100%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/expr/ob_expr_array_sort.cpp.o[0m
+[100%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/expr/ob_expr_in.cpp.o[0m
+[100%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/expr/ob_expr_mul.cpp.o[0m
+[100%] Built target ob_share
+[100%] [32m[1mLinking CXX static library libob_share_static.a[0m
+[100%] Built target ob_share_static
+[100%] Built target ob_sql
+[100%] [32m[1mLinking CXX static library libob_sql_static.a[0m
+[100%] Built target ob_sql_static
+[100%] [32mBuilding CXX object src/observer/CMakeFiles/oceanbase_static.dir/ob_version.cpp.o[0m
+[100%] [32m[1mLinking CXX static library liboceanbase_static.a[0m
+[100%] Built target oceanbase_static
+[100%] [32m[1mLinking CXX executable seekdb[0m
+[100%] Built target seekdb
+EXIT 0 SECONDS 318.7554434069898
+FULL_BUILD_PASS

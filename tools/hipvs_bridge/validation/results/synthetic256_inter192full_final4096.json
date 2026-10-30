@@ -1,0 +1,23 @@
+{
+  "label": "inter192full",
+  "dataset": "synthetic256",
+  "tag": "synthetic256_inter192full_final4096",
+  "n": 250000,
+  "dim": 256,
+  "nq": 4096,
+  "scope": "bridge only, not official SQL",
+  "build_s": 13.217139726039022,
+  "build_first_s": 13.241772803012282,
+  "serialize_s": 0.45325517002493143,
+  "snapshot_bytes": 384001713,
+  "reload_s": 0.23336437507532537,
+  "snapshot_same": true,
+  "recall10": 0.9501220703125,
+  "qps10": 255.85597152306613,
+  "p95_ms10": 3.944891010178253,
+  "recall100": 0.90106201171875,
+  "qps100": 253.16820090238505,
+  "p95_ms100": 3.9567184867337346,
+  "integrity": "pass",
+  "source_sha256": "498b640f8408c6222fe0260947a07dc704db5fe2e69261220d95cdd96a0cc93e"
+}

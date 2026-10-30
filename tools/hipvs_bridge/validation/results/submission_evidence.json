@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-30",
+  "parent_commit": "5d8297ed09d2309e0f3685dd83f0612617e36e2c",
+  "frozen_baseline": "634888d9b037153fa143d2c913ba4b25503e1d62",
+  "fixed_library_sha256": {
+    "/opt/hipvs/lib/libcuvs_c.so": "b63211897276e0a6911bb534fe77c8b0b59f31c50af1df2f108845f06ad46ebf",
+    "/opt/hipvs/lib/libcuvs.so": "5ccf012af5923c687cd2d22149740a410ca69e0aa51223a6386ba6fc129c967a"
+  },
+  "source_sha256": "0c0885a4ee503d12deab6fa7766264be4651e5f26d6a7d86fbe4dce732dde856",
+  "bridge_sha256": "1092946a7457c885baac7b9cc0352941abb80b31a118569466242ee08ef3d3d3",
+  "full_build": "PASS",
+  "sql_pair": "PASS on synthetic256; official evaluation not run",
+  "official_score": null,
+  "official_gates": null,
+  "cpu_slots": 24,
+  "dep_manifest_md5": "ac032efc6b707fc0273e6b553db53011",
+  "cargo_offline": true,
+  "sql_profile_limitation": "both candidate and baseline bridge controls abort at ObTimer initialization; ordinary SQL runs passed"
+}

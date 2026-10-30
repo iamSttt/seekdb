@@ -1,0 +1,82 @@
+{
+  "scope": "candidate bridge, synthetic250K x 256, build plus 16 queries per k; not SQL profiler gate",
+  "dispatches": 688,
+  "kernels": [
+    {
+      "name": "_ZN4cuvs9neighbors10nn_descent6detailL17local_join_kernelILi512EiNS2_12InternalID_tIiEEN4raft11identity_opEEEvPKT0_SA_PK15HIP_vector_typeIiLj2EESA_SA_SE_iPK6__halfiPT1_PfiPiSK_16cuvsDistanceTypeT2_mm.kd",
+      "calls": 100,
+      "total_ms": 7479.99776
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detail5graph12_GLOBAL__N_110kern_pruneILi1024EjEEvPKT0_jjjjjPhPjPm.kd",
+      "calls": 1,
+      "total_ms": 1406.286315
+    },
+    {
+      "name": "_ZN4cuvs9neighbors10nn_descent6detailL20add_rev_edges_kernelIiEEvPKT_PS4_iP15HIP_vector_typeIiLj2EE.kd",
+      "calls": 200,
+      "total_ms": 237.874851
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detail17single_cta_searchL13search_kernelILj512ELj64ELj0ENS2_25dataset_descriptor_base_tIfjfEENS0_9filtering18none_sample_filterEEEvmPNT2_10DISTANCE_TEjPKS9_PKNS9_6DATA_TEPKNS9_7INDEX_TEjjmSJ_jPSH_jjjjPjjjjT3_.kd",
+      "calls": 35,
+      "total_ms": 122.451731
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detail5graph12_GLOBAL__N_19kern_sortIfjLi8EEEvPKT_T0_jPS9_jj16cuvsDistanceType.kd",
+      "calls": 1,
+      "total_ms": 46.467151
+    },
+    {
+      "name": "_ZN4raft6linalg6detailL10map_kernelILi4ELb0EfmNS_8const_opIfEEJEEEvPT1_T2_T3_DpPKT4_.kd",
+      "calls": 101,
+      "total_ms": 2.91896
+    },
+    {
+      "name": "_ZN4raft6linalg6detailL10map_kernelILi8ELb0E6__halfmNS_8const_opIS3_EEJEEEvPT1_T2_T3_DpPKT4_.kd",
+      "calls": 1,
+      "total_ms": 1.806521
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detail5graph12_GLOBAL__N_119kern_make_rev_graphIjEEvPKT_PS6_Pjjj.kd",
+      "calls": 128,
+      "total_ms": 1.751642
+    },
+    {
+      "name": "_ZN4cuvs9neighbors10nn_descent6detailL22preprocess_data_kernelIfEEvPKT_P6__halfiPfm16cuvsDistanceType.kd",
+      "calls": 3,
+      "total_ms": 0.88172
+    },
+    {
+      "name": "__amd_rocclr_fillBufferAligned.kd",
+      "calls": 7,
+      "total_ms": 0.61164
+    },
+    {
+      "name": "__amd_rocclr_copyBuffer.kd",
+      "calls": 106,
+      "total_ms": 0.32768
+    },
+    {
+      "name": "_ZN4raft6linalg6detailL10map_kernelILi4ELb0EilNS_8const_opIiEEJEEEvPT1_T2_T3_DpPKT4_.kd",
+      "calls": 1,
+      "total_ms": 0.15524
+    },
+    {
+      "name": "_ZN4raft6linalg6detailL10map_kernelILi4ELb0EimNS_8const_opIiEEJEEEvPT1_T2_T3_DpPKT4_.kd",
+      "calls": 1,
+      "total_ms": 0.02092
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detailL39standard_dataset_descriptor_init_kernelIL16cuvsDistanceType0ELj16ELj256EfjfEEvPNS2_25dataset_descriptor_base_tIT2_T3_T4_EEPKS6_S7_jj.kd",
+      "calls": 2,
+      "total_ms": 0.00632
+    },
+    {
+      "name": "__amd_rocclr_initHeap.kd",
+      "calls": 1,
+      "total_ms": 0.0042
+    }
+  ],
+  "sql_preload_profiling": "both candidate and baseline bridge controls abort at ObTimer initialization; ordinary SQL runs passed"
+}

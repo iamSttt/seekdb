@@ -1,0 +1,7 @@
+SERVER submission 15949
+LOADED_BRIDGE submission ['7255e1fb2000-7255e1fb3000 r--p 00000000 07:04 5515083                    /workspace/work/cagra_tuning/submission/libseekdb_cuvs_bridge.so']
+SQL_DONE sql_submission_synthetic256_cuvs 0 sampled_vram 861515776
+SERVER baseline 24583
+LOADED_BRIDGE baseline ['7558f7608000-7558f7609000 r--p 00000000 07:04 5505033                    /workspace/work/cagra_tuning/baseline/libseekdb_cuvs_bridge.so']
+SQL_DONE sql_baseline_synthetic256_cuvs 0 sampled_vram 861089792
+SQL_SUITE_PASS

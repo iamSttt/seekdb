@@ -1,0 +1,148 @@
+AMD CAGRA candidate — 2026-10-30
+
+Implementation
+==============
+Parent: 5d8297ed09d2309e0f3685dd83f0612617e36e2c.
+Frozen ancestor: 634888d9b037153fa143d2c913ba4b25503e1d62.
+GitHub's commit comparison verifies that the parent is three commits ahead of
+the frozen ancestor with no divergence; its only changed file is the bridge.
+
+For dimensions >=192, use intermediate_graph_degree=192 and 100 NN-descent
+iterations. For lower dimensions, retain the parent's degree=256 and 10
+iterations. The output graph degree remains 128. Query code and its parameters,
+FP32 inputs, SQL interface, persistence format, and CPU VSAG path are unchanged.
+The high-dimensional change reduces intermediate neighbor work while restoring
+the full iteration budget. It does not reuse graphs or change behavior between
+evaluation phases. The fixed hipVS/cuVS library is unmodified.
+
+Official status
+===============
+This candidate has NOT been submitted to the official evaluation platform.
+No new official score or gates=pass is claimed.
+The user reported 8.834/20, build=1.443x, query=1.033x, gates=pass for the PARENT
+commit. That result does not transfer automatically to this new candidate.
+
+Environment and build
+=====================
+AMD gfx1100 GPU, 49,136 MiB reported VRAM, ROCm 7.2.4.
+Host GCC 13.3.0, CMake 3.31.10, Rust/Cargo 1.97.1.
+24 CPU affinity slots were used. Full seekdb was compiled from the parent source
+archive with only the candidate bridge replacement and validation files added.
+Dependency manifest MD5 ac032efc6b707fc0273e6b553db53011 matches the installed
+frozen dependency cache. Cargo was run with CARGO_NET_OFFLINE=true.
+
+The task's bridge and CMake commands succeeded, including OB_BUILD_CUVS=ON,
+OB_BUILD_CUVS_TRACE=OFF, OB_ENABLE_UNITY=ON, OB_USE_LLD=ON, RelWithDebInfo.
+The cmake --build stage completed successfully in 318.76 seconds. No extra
+compiler flags, third-party dependencies, or changes to the fixed GPU library
+were introduced. Python benchmark packages are development tools only.
+
+Bridge measurements
+===================
+Data: 250,000 independent standard-normal FP32 vectors, dimension 256;
+4,096 independent queries; exact top-100 FP32 L2 truth; seed 20261030.
+This is SYNTHETIC data, not SIFT or Hidden250K.
+
+                            Frozen baseline        Candidate
+Build (bridge only)             17.0881 s          13.2171 s
+Recall@10                        0.949463          0.950122
+Recall@100                       0.898303          0.901062
+Top-10 QPS                       256.830           255.856
+Top-100 QPS                      250.311           253.168
+
+Build speedup: approximately 1.293x. Query throughput is essentially unchanged.
+IDs were complete, unique and in range; distances finite; search results matched
+before and after serialization/reload. This is one paired run, not a statistical
+confidence claim. The kernel and SQL overhead are excluded from these numbers.
+
+The unchanged low-dimensional parent policy showed worse recall than the frozen
+baseline on independent Gaussian 128-dimensional data in earlier screening.
+The parent's official SIFT pass is the only available SIFT evidence. This is a
+known generalization limitation, not evidence that the hidden platform gates
+have passed. Official SIFT and Hidden data were unavailable during development.
+
+CPU/GPU SQL development comparison
+=================================
+On the template's 10,000 x 128 demo vectors and 100 queries, the newly compiled
+candidate seekdb completed the offline DDL path for both backends:
+
+                              CPU lib=vsag         GPU lib=cuvs
+DDL plus first query              2.6506 s             1.2468 s
+Recall@10                         0.6400               1.0000
+Recall@100                        0.6524               1.0000
+Top-10 QPS                        4116.42              148.56
+Top-100 QPS                       1744.83              145.21
+
+Both returned complete, unique, valid IDs. These fixed-parameter backends do not
+have equal recall, so this is a functional/performance comparison, not a claim
+of equal-quality CPU/GPU speedup. CPU throughput is higher on this small demo.
+The official scoring comparator is the frozen GPU baseline, not the CPU path.
+
+Evaluation requirements still applying
+=====================================
+Only the official platform can establish the score and all gates. It checks
+both formal datasets, Recall absolute thresholds and <=0.005 baseline decline,
+per-dataset geometric-mean query ratio >=0.90, unique and valid IDs, actual GPU
+construction/search, CPU-path functionality, stability, and resource limits.
+Physical VRAM must be <=45 GB and <=1.25x the same-round baseline. Development
+VRAM sampling is not an exact peak or a substitute for that gate.
+
+250K x 256 end-to-end SQL paired run
+==================================
+Independent normal FP32 data and 4,096 individual SQL queries per top-k:
+
+                            Frozen bridge          Candidate bridge
+DDL plus first query            23.6031 s              19.1229 s
+Recall@10                        0.949487               0.950317
+Recall@100                       0.898179               0.901128
+Top-10 QPS                       128.271                129.324
+Top-100 QPS                      124.071                124.174
+Sampled device VRAM peak       861,089,792 B          861,515,776 B
+
+The same newly source-built seekdb kernel was used for both runs. Relative to
+the frozen baseline, the parent modifies only the bridge; the kernel source is
+unchanged. Each run started a separate, empty instance; LD_LIBRARY_PATH selected
+the corresponding bridge and /proc/<pid>/maps verified the loaded library.
+Candidate ran first, then baseline; no server or graph was shared between runs.
+Both used a 24-CPU affinity mask, a 16 GB seekdb memory budget, and the exact
+index/search SQL parameters in the task. Import and startup were outside timing.
+
+Measured end-to-end build speedup is approximately 1.234x and geometric-mean
+query speedup approximately 1.005x on this synthetic dataset. Both completed all
+queries with complete, unique, valid IDs. Neither recall metric regressed.
+Device VRAM was sampled every 50 ms, including import/build/query; the ratio is
+approximately 1.0005x, but sampling cannot establish an exact peak-memory gate.
+These are local measurements from one pair, not an official competition score.
+
+The initial large import hit the default query timeout. The development harness
+now sets session query/transaction timeouts before import; the paired runs above
+completed after that correction. No candidate implementation change was needed.
+
+Rejected approaches
+===================
+Persistent query-buffer caching showed no meaningful gain in 4,096-query runs.
+Team/block-size overrides slowed searches. Default IVF-PQ construction lost
+substantial recall; an enhanced IVF-PQ build was stopped after more than nine
+minutes without completion. None of those implementations is included here.
+
+GPU profiling evidence and limitation
+====================================
+rocprofv3 successfully recorded 688 GPU dispatches from the exact compiled
+candidate bridge on synthetic250K x 256, including 100 NN-descent local-join
+dispatches, CAGRA graph pruning, and 35 CAGRA search dispatches. Kernel summaries
+are included in results/candidate_profile_summary.json. These profiled timings
+are not used for the performance ratios above.
+
+Launching the full seekdb process under rocprofv3 preload aborted during the
+unchanged ObTimer initialization, before SQL service startup. Repeating that
+control with the frozen bridge produced the same initialization abort. Ordinary
+SQL startup/build/query succeeded for both libraries. Consequently, local
+end-to-end SQL profiling is UNVERIFIED; the bridge trace does not establish the
+organizer's full gpu_path gate. No product code was changed to bypass profiling.
+
+Reproduction
+============
+See README.txt and the accompanying scripts. Import precedes the DDL timer.
+Every build starts from a newly created database/index or a new bridge handle.
+No previously built graph is reused between build measurements. SQL queries are
+individual SELECT statements, not the demo batch_knn interface.

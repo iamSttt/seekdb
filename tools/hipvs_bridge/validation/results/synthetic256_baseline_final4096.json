@@ -1,0 +1,23 @@
+{
+  "label": "baseline",
+  "dataset": "synthetic256",
+  "tag": "synthetic256_baseline_final4096",
+  "n": 250000,
+  "dim": 256,
+  "nq": 4096,
+  "scope": "bridge only, not official SQL",
+  "build_s": 17.088117726962082,
+  "build_first_s": 17.112789924023673,
+  "serialize_s": 0.4793673639651388,
+  "snapshot_bytes": 384001713,
+  "reload_s": 0.2356899760197848,
+  "snapshot_same": true,
+  "recall10": 0.949462890625,
+  "qps10": 256.83006065002786,
+  "p95_ms10": 3.960078756790608,
+  "recall100": 0.89830322265625,
+  "qps100": 250.31073300724864,
+  "p95_ms100": 3.9744459791108966,
+  "integrity": "pass",
+  "source_sha256": "296fafff4bd8d86ff2222840d44a23f56ba687acd1393879c8a0e922e7620b3e"
+}

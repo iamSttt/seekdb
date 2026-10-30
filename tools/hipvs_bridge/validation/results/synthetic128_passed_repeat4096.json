@@ -1,0 +1,23 @@
+{
+  "label": "passed",
+  "dataset": "synthetic128",
+  "tag": "synthetic128_passed_repeat4096",
+  "n": 250000,
+  "dim": 128,
+  "nq": 4096,
+  "scope": "bridge only, not official SQL",
+  "build_s": 6.718545280979015,
+  "build_first_s": 6.770148447016254,
+  "serialize_s": 0.31905568903312087,
+  "snapshot_bytes": 256001713,
+  "reload_s": 0.1649318819399923,
+  "snapshot_same": true,
+  "recall10": 0.950146484375,
+  "qps10": 301.401060985751,
+  "p95_ms10": 3.4824487811420113,
+  "recall100": 0.90556640625,
+  "qps100": 288.629779533273,
+  "p95_ms100": 3.4945984662044793,
+  "integrity": "pass",
+  "source_sha256": "532014749c2cd594511c819266d872800094620f8d8d5cffb7829b51df1b3345"
+}

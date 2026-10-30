@@ -1,0 +1,23 @@
+{
+  "label": "baseline",
+  "dataset": "synthetic128",
+  "tag": "synthetic128_baseline_screen",
+  "n": 250000,
+  "dim": 128,
+  "nq": 512,
+  "scope": "bridge only, not official SQL",
+  "build_s": 17.60674765193835,
+  "build_first_s": 17.660790246911347,
+  "serialize_s": 0.32436381198931485,
+  "snapshot_bytes": 256001713,
+  "reload_s": 0.15826816495973617,
+  "snapshot_same": true,
+  "recall10": 0.9900390625,
+  "qps10": 338.85902890189635,
+  "p95_ms10": 2.9548294842243195,
+  "recall100": 0.9659375,
+  "qps100": 333.2201575263876,
+  "p95_ms100": 3.111770568648353,
+  "integrity": "pass",
+  "source_sha256": "296fafff4bd8d86ff2222840d44a23f56ba687acd1393879c8a0e922e7620b3e"
+}
