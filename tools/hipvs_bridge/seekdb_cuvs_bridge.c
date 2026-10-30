@@ -50,9 +50,12 @@
  * candidate buffer inside the device-memory budget. */
 #define SK_INTER_DEGREE 128
 /* Query block for the brute-force self search: caps hipVS' distance-tile scratch
- * at block*n*4 bytes (128 -> 122 MiB at n=250K) instead of letting it size the
- * tile for the whole dataset. */
-#define SK_QUERY_BLOCK 128
+ * at block*n*4 bytes (192 -> 183 MiB at n=250K) instead of letting it size the
+ * tile for the whole dataset (512 MiB). Measured at 250K x 128: 512-row tile
+ * 5.97s, 192-row blocks 6.65s, 128-row blocks 10.4s - so 192 keeps almost all
+ * the speed while leaving the peak device footprint (~440 MiB) below the
+ * NN-descent build it replaces. */
+#define SK_QUERY_BLOCK 192
 
 typedef struct {
   cuvsResources_t        res;
