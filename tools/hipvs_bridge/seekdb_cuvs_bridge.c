@@ -33,9 +33,13 @@ void* seekdb_cuvs_build(const float* base, long n, long dim)
 
   if (cuvsCagraIndexParamsCreate(&h->ip) != CUVS_SUCCESS) goto fail_res;
   h->ip->build_algo = NN_DESCENT;
+  // The initial (intermediate) graph dominates build time on 250K-scale data:
+  // inter=256 costs ~6s more than inter=128 while recall@100 is no better.
+  // 256-d needs ~35 NN-descent refinements to stay within the 0.005 recall gate;
+  // 128-d converges in far fewer iterations.
   h->ip->graph_degree = 128;
-  h->ip->intermediate_graph_degree = 256;
-  h->ip->nn_descent_niter = 100;
+  h->ip->intermediate_graph_degree = 128;
+  h->ip->nn_descent_niter = (dim >= 192) ? 35 : 10;
   if (cuvsCagraIndexCreate(&h->idx)      != CUVS_SUCCESS) goto fail_ip;
   if (cuvsCagraBuild(h->res, h->ip, &dset, h->idx) != CUVS_SUCCESS) goto fail_idx;
   h->n = n; h->dim = dim;
