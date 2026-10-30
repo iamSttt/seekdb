@@ -28,10 +28,12 @@ mkdir -p "$(dirname "$OUTPUT")"
   -I"$HIPVS_ROOT/include" \
   -I"$ROCM_ROOT/include" \
   "$SCRIPT_DIR/seekdb_cuvs_bridge.c" \
+  "$SCRIPT_DIR/seekdb_knn_graph.cu" \
   -L"$HIPVS_ROOT/lib" \
   -Wl,-soname,libseekdb_cuvs_bridge.so \
   -Wl,-rpath,"$HIPVS_ROOT/lib:$ROCM_ROOT/lib" \
   -lcuvs_c \
+  -ldl \
   -o "$OUTPUT"
 
 echo "built $OUTPUT"
