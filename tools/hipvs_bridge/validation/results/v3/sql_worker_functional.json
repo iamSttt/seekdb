@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "concurrent_clients": 8,
+  "concurrent_queries": 256,
+  "recall100": 1.0,
+  "restart_load": "pass",
+  "index_create_drop_cycles": [
+    {
+      "backend": "cuvs",
+      "recall10": 1.0,
+      "filtered_integrity": "pass"
+    },
+    {
+      "backend": "cuvs",
+      "recall10": 1.0,
+      "filtered_integrity": "pass"
+    },
+    {
+      "backend": "vsag",
+      "recall10": 1.0,
+      "filtered_integrity": "pass"
+    },
+    {
+      "backend": "cuvs",
+      "recall10": 1.0,
+      "filtered_integrity": "pass"
+    }
+  ]
+}

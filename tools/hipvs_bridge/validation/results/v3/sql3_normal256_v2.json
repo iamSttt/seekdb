@@ -1,0 +1,18 @@
+{
+  "scope": "development SQL benchmark; not official scoring",
+  "dataset": "normal256",
+  "backend": "cuvs",
+  "n": 250000,
+  "dim": 256,
+  "nq": 4096,
+  "database": "cagra_validation_b97ea0eafafa",
+  "ddl_s": 7.998986164107919,
+  "build_first_s": 8.023759342730045,
+  "qps10": 223.49481822946333,
+  "recall10": 0.9960205078125,
+  "p95_ms10": 4.870392847806215,
+  "qps100": 213.5358967592253,
+  "recall100": 0.99041748046875,
+  "p95_ms100": 5.088101141154766,
+  "integrity": "pass"
+}

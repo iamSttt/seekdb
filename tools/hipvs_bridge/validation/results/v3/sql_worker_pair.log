@@ -1,0 +1,9 @@
+START sql3_normal256_worker
+DONE sql3_normal256_worker 0
+START sql3_normal256_v2
+DONE sql3_normal256_v2 0
+START sql3_sift250k_v2
+DONE sql3_sift250k_v2 0
+START sql3_sift250k_worker
+DONE sql3_sift250k_worker 0
+SQL PAIRS COMPLETE

@@ -1,157 +1,128 @@
-AMD CAGRA candidate v2 — 2026-10-31
+AMD CAGRA candidate v3 — 2026-10-31
 
-Status and provenance
-=====================
-This is a tested submission candidate, NOT a confirmed official 20/20 result.
-Official Hidden250K is unavailable. Public SIFT prefix selection is not proven
-identical to the organizer's selection. Official score and gates remain pending.
+Status
+======
+Repository iamSttt/seekdb; branch amd-cagra-opt-v3.
+Parent: 4a0a39572687705c7645c56001554b1bc41213ca (amd-cagra-opt-v2).
+This candidate improves measured SQL query throughput over v2 without changing
+the CAGRA graph or search parameters. It has NO confirmed official score.
+Formal submission is performed by the user, not by this development workflow.
+REPORT_v2.txt and results/v2 preserve the previous candidate's evidence.
 
-Repository: iamSttt/seekdb. Branch: amd-cagra-opt-v2.
-Parent: 55d78dca906c8c740c368de292afaddd883f0762.
-Frozen ancestor/comparator: 634888d9b037153fa143d2c913ba4b25503e1d62.
-The prior candidate report is preserved as REPORT_v1.txt; results outside
-results/v2 are historical and must not be attributed to this implementation.
+Implementation and reason
+=========================
+The existing single-query adaptor created and joined a 32MB-stack pthread on
+every GPU search. That large stack is necessary for the fixed cuVS library, but
+repeated OS-thread and GPU thread-local initialization is not.
 
-Why the reference scored 8.834
-==============================
-The user supplied an actual official result for the DS submission:
-5d8297ed09d2309e0f3685dd83f0612617e36e2c, amd-cagra-submit:
-8.834/20, build=1.443x, query=1.033x, gates=pass.
-It is NOT a confirmed score for our parent 55d78dc candidate.
-Compared with the frozen implementation, that DS version changes only the
-NN-descent iteration budget (100 -> 70 for high dimension, otherwise 10).
-It retains intermediate/final degree 256/128 and the default SINGLE_CTA search
-with candidate budget 512 and search width 4.
+CuvsSearchWorker retains one 32MB-stack pthread for synchronous single-query
+jobs. The original registry mutex still protects index lifetime/freshness.
+Submission holds its buffers alive until the worker signals completion; a
+separate submission mutex prevents pending-job replacement. The worker stops
+and joins on destruction. If initial thread creation fails, the original
+per-query large-stack thread path is used. CPU VSAG, filtering/fallback, result
+allocation, index persistence and the explicit batch path are unchanged.
 
-Under the published formula, if all gates pass:
-  score = 4 + 14*clamp(ln(build)/ln(3),0,1)
-            + 2*clamp(ln(query)/ln(1.5),0,1).
-Dataset ratios use a weighted geometric mean: SIFT 0.4, Hidden256 0.6.
-The rounded supplied ratios yield 4 + 4.67330 + 0.16015 = 8.83344.
-Rounding explains the reported 8.834. With build fixed at 1.443x, even maximum
-query credit would only reach 10.6733. Both construction and search need work.
-Full speed credit requires weighted build >=3x and query >=1.5x, plus all gates.
+The bridge is byte-identical to v2: NN_DESCENT, intermediate/final degree96,
+niter5, AUTO search, itopk>=max(4096,4*topk), width1. Fixed hipVS is unmodified.
+No query-result cache, graph reuse across builds, phase detection, or hidden-data
+selection has been introduced. GPU work still runs through the fixed CAGRA API.
 
-Implementation
-==============
-Uniform, dimension-independent policy:
-  NN_DESCENT; intermediate_graph_degree=96; graph_degree=96; niter=5.
-  itopk_size >= max(4096,4*topk); search_width=1; search algo=AUTO.
-The fixed C API defaults to SINGLE_CTA, not AUTO. Explicit AUTO dispatches the
-tested individual queries to multi-CTA search. Its higher throughput permits a
-larger candidate pool, recovering recall lost by making graph construction
-cheaper. These are ordinary fixed-library parameters; the library is unmodified.
-No custom search, data-dependent selection, phase detection, graph caching,
-cross-build reuse, new runtime dependency, or altered FP32 interface is used.
-SQL behavior, persistence, CPU VSAG path, and build entry point are unchanged.
+Build and identity
+==================
+The adaptor was rebuilt in the same contest-configured source tree using
+cmake --build build_release --target seekdb. Build passed with RelWithDebInfo,
+OB_BUILD_CUVS=ON, OB_BUILD_CUVS_TRACE=OFF, OB_ENABLE_UNITY=ON, OB_USE_LLD=ON.
+Frozen offline dependencies and GPU libraries are unchanged. No new build or
+runtime dependencies were introduced. Original v2 binary was copied before
+rebuilding, and both versions were used for the paired experiment.
 
-Build and exact binary identity
-===============================
-AMD gfx1100, ROCm 7.2.4, 24 CPU affinity slots. Fixed installed libcuvs_c.so SHA256:
-b63211897276e0a6911bb534fe77c8b0b59f31c50af1df2f108845f06ad46ebf.
-Frozen dependency manifest/cache: ac032efc6b707fc0273e6b553db53011.
-Cargo was offline. Full seekdb build with the contest flags succeeded; initial
-full build stage 362.89 seconds. After final bridge source replacement, the same
-official build.sh and CMake configure/build commands succeeded (incremental
-kernel link 3.26 seconds). Final bridge binary is BYTE-IDENTICAL to the one used
-in all candidate96 paired performance tests (comments were the final change).
-Bridge binary SHA256:
-770c0c8c7726662b61a3e62f5a1463bd82571164039603aea0c75c6898982f58.
-Final bridge source SHA256:
-7abcf3ba0cfd3665394b9b22fe3879562bb6b824cd142d31653ebd0f020686bc.
-See results/v2/manifest_v2.json and build logs. Benchmark Python packages are
-development tools only and are not product dependencies.
+Adaptor source SHA256:
+1e495fb6e8b05b0378032fb82d9923fa48603a96d3d31a8f593a4ea98306f615
+v2 binary SHA256:
+3f8307593d0674854b9458687de9a292bb118f8a9d2826f215e66735d3a33f10
+v3 binary SHA256:
+e986bbc46e83da071ccc052c1a4cd185ca8c8cb0a846a14300c72efb01e93278
+Shared bridge SHA256:
+770c0c8c7726662b61a3e62f5a1463bd82571164039603aea0c75c6898982f58
+See results/v3/manifest.json for fixed-library hash and actual CMake flags.
 
 Complete SQL paired measurements
 ================================
-Every row uses 250,000 vectors, 4,096 individual SQL queries per k=10 and k=100,
-fresh isolated server/database/index, the same newly built kernel, and either
-the frozen or candidate bridge. Loaded-library paths are recorded from /proc.
-Build includes offline CREATE VECTOR INDEX and the first query. Import and
-server startup are outside the timer. No profiler or other GPU benchmark ran
-concurrently with these measurements. Each reported pair is one run.
+AMD gfx1100, ROCm7.2.4; CPU affinity24; per-server memory budget16G.
+250K vectors, 4096 individual SQL queries per k10/k100. Exact FP32 L2 truth.
+Fresh, separate instance/database/index for each run; no shared/reused graph.
+Same bridge and library, only the kernel adaptor differs. Normal256 order:
+worker then v2. Public SIFT order: v2 then worker. GPU tests ran sequentially.
+Build timer includes offline CREATE VECTOR INDEX and first query, excluding
+input import and process startup. One pair per dataset, not confidence bounds.
 
-Dataset    Variant    Build+first(s)   QPS@10    QPS@100    Recall@10  Recall@100
-SIFT128    frozen       21.528263       140.838   133.562    1.000000   0.999976
-SIFT128    candidate     4.791551       230.606   210.654    0.999951   0.999968
-Normal256  frozen       23.569328       124.437   120.167    0.949951   0.899114
-Normal256  candidate     7.493551       220.126   202.427    0.996094   0.990396
-Normal128  frozen       21.214318       133.708   127.132    0.990527   0.965903
-Normal128  candidate     4.881553       231.096   217.533    0.999561   0.998171
+Data       Kernel   Build+first(s)  QPS@10    QPS@100   Recall@10   Recall@100
+Normal256  v2         8.023759       223.495   213.536   0.996021    0.990417
+Normal256  v3         7.411757      1116.351   754.787   0.996094    0.990488
+SIFT128    v2         4.787990       228.953   213.148   0.999927    0.999971
+SIFT128    v3         5.098284      1318.205   828.695   0.999951    0.999961
 
-Dataset       Build ratio   Query geometric ratio
-SIFT128         4.492963x        1.607012x
-Normal256       3.145282x        1.726241x
-Normal128       4.345813x        1.719693x
+Query geometric speedup relative to V2 (not the frozen scoring comparator):
+Normal256: 4.201878x. SIFT128: 4.731235x.
+Build ratio relative to v2: Normal256 1.082572x; SIFT128 0.939138x.
+There is no demonstrated systematic build improvement; construction parameters
+are unchanged. SIFT build was 6.5% longer in this single pair. Query gain is the
+intended optimization, and it is much larger than the observed timing variation.
+Recall differences are tiny and within 0.005; all IDs complete/unique/in range.
 
-SIFT128 + Normal256 weighted development ratios: build=3.627512x, query=1.677523x.
-Both exceed the formula's speed saturation thresholds ON THESE DEVELOPMENT
-DATASETS. Substitution of Normal256 for Hidden250K prevents an official score
-claim or a guarantee that the same ratios/recall will hold on hidden data.
+The previous v2 report compares with the frozen comparator. Do not silently
+multiply different rounds or label v2-relative ratios as official speedups.
+Hidden256 remains unavailable; public SIFT selection is not certified identical
+to the platform's. No formal 20/20 prediction or gates=pass claim is made.
 
-SIFT source is public ANN-benchmarks sift-128-euclidean.hdf5: first 250K train
-rows and first 4096 test rows. Exact top-100 truth was recomputed against the
-selected 250K; the original 1M ground truth was not reused. The HTTP byte ranges,
-ETag, transport hashes, and source URL are in sift_provenance.json. Normal data
-uses independent standard-normal FP32 vectors and exact FP32 L2 truth; it is not
-hidden data. Seeds and generation code are retained in validation/v2.
+Resources
+=========
+50ms sampled device VRAM peaks:
+Normal256: v2=1,582,333,952 bytes; v3=1,582,084,096 bytes.
+SIFT128: v2=1,453,658,112 bytes; v3=1,453,662,208 bytes.
+Sampled server RSS peaks were <=3.02GB. The persistent worker has a 32MB virtual
+stack; sampled memory did not materially increase. This is sampling, not proof
+of an exact peak or a substitute for the formal <=45GB and <=1.25x-frozen gate.
 
-Correctness, resources, and profiling
-====================================
-All measured SQL results had complete, unique, in-range IDs. Observed SIFT
-recall exceeds 0.95 at both k and decline is much less than 0.005; Normal256
-also exceeds hidden-style absolute thresholds and improves over its baseline.
-These observations do not certify official dataset gates.
+Functional and concurrency validation
+=====================================
+test_worker.py extracts the actual class from the adaptor and compiles it with
+ASan and UBSan. It passed 16000 calls from concurrent submitters over ten worker
+lifetimes; verifies callback results, same worker identity, different caller
+identity, actual >=32MB stack, clean shutdown/join, and failed startup behavior.
 
-Sampled device VRAM peak (50ms interval; includes the device's existing usage):
-SIFT:      frozen 1,490,681,856 B; candidate 1,453,658,112 B.
-Normal256: frozen 1,618,857,984 B; candidate 1,582,272,512 B.
-Normal128: frozen 1,490,694,144 B; candidate 1,453,666,304 B.
-All sampled ratios are below 1.0 and well below 45GB. Sampling is not an exact
-peak guarantee; official limits are <=45GB and <=1.25x same-round baseline.
-Observed server RSS remained below 3.3GB. Development processes used CPU affinity
-24. Official CPU/RAM/time-limit enforcement remains the grader's responsibility.
+The new kernel was restarted on its SIFT SQL instance, verifying persisted index
+load. Eight clients issued 256 total independent top100 queries concurrently;
+recall100=1.0 with valid unique IDs. The same live process then created, queried,
+filtered and dropped newly named 512x16 test tables through cuvs,cuvs,vsag,cuvs
+backends. Every cycle had recall10=1.0 and filtered-ID integrity passed. Existing
+benchmark databases were preserved. This checks repeated index lifetime changes
+with the shared worker and the unaffected CPU fallback path.
 
-Bridge checks passed for batches 1,3,8,128,1024,4096; k=10/100; optional null
-distance output; 16 calls on four threads; finite distances matching FP32 squared
-L2 against returned IDs. Snapshot graph+vector bytes are identical after reload.
-AUTO parallel approximate search can differ slightly across repeated searches
-even before serialization. We record result-identity separately rather than
-misdiagnosing that as snapshot corruption. Recall and integrity remain checked.
+No claim of race-freedom from sanitizers: ASan/UBSan are not ThreadSanitizer.
+The mutex/condition handoff is reviewed and stressed, while formal stability
+and hidden-data gates still require platform evaluation.
 
-The exact final binary passed SQL lib=vsag and lib=cuvs on the template's 10K x
-128 demo, 100 queries. CPU recall@10/100 =0.64/0.6524; GPU=1.0/1.0; both integrity
-pass. CPU and GPU are not equal-recall comparisons and CPU is not the scoring
-baseline. Raw results are retained.
+Official historical results (read-only verified)
+===============================================
+5d8297ed09d2309e0f3685dd83f0612617e36e2c: 8.834/20,
+build=1.443x, query=1.033x, gates=pass.
+55d78dca906c8c740c368de292afaddd883f0762: 8.188/20,
+build=1.389x, query=0.995x, gates=pass.
+The published clamped-log formula is consistent with both rounded records.
+v2 had been submitted by the user and was last observed waiting to execute.
+v3 has not been submitted by the assistant. No platform action was taken during
+this optimization round.
 
-rocprofv3 standalone bridge trace captured 442 dispatches, including 5 NN-descent
-local-join calls, graph pruning, and 51 multi-CTA search calls. The trace summary
-and original DB hash are recorded. Full SQL-process attach was attempted but
-the cloud container rejected ptrace with Operation not permitted; this remains
-an instrumentation limitation, not a successful full-SQL profiler gate. No
-security restrictions were disabled. SQL tests verify the loaded bridge and
-its results, while the standalone trace verifies actual GPU library execution.
-
-Development incident: an experiment named queue.py initially shadowed Python's
-stdlib queue when the concurrency test imported ThreadPoolExecutor. That script
-was renamed, the accidental development benchmark stopped, and the functional
-test rerun successfully. This occurred after all SQL pairs, so those timings
-were unaffected. Original diagnostic logs are preserved.
-
-Remaining official gates / failure thresholds
-=============================================
-SIFT recall >=0.95 at k10/k100; Hidden256 >=0.90/0.85; each recall decrease vs
-frozen <=0.005; each dataset query geometric ratio >=0.90; complete valid unique
-IDs; actual GPU build/search; functional CPU VSAG; stability; physical VRAM
-<=45GB and <=1.25x baseline; CPU24/RAM96GB and 15-minute GPU run limit.
-A gate failure makes the official score zero. No official gates=pass is claimed.
-The repository was public when checked, and the current GitHub login has push
-but no admin permission. The contest's private-repository requirement requires
-the owner to change visibility. Never commit tokens; use the platform's specified
-read-only repository credential for submission.
+Official failure thresholds remain unchanged: SIFT recall>=0.95 at k10/k100;
+Hidden256>=0.90/0.85; <=0.005 decline vs frozen; each dataset query ratio>=0.90;
+valid unique complete IDs; actual GPU construction/search; CPU VSAG functionality;
+stability; VRAM<=45GB and <=1.25x baseline; CPU24/RAM96GB/GPU-run15min limits.
+Any gate failure yields zero. Maximum official score is20, never30 or40.
 
 References
 ==========
 Task: https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/seebnbaoxot1b0tb
-Official record page: https://open.oceanbase.com/train/TestRecord?questionId=600072
-Public data: https://ann-benchmarks.com/sift-128-euclidean.hdf5
+Official records: https://open.oceanbase.com/train/TestRecord?questionId=600072
+Public SIFT: https://ann-benchmarks.com/sift-128-euclidean.hdf5

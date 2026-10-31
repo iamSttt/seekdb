@@ -1,4 +1,20 @@
-Validation artifacts for AMD CAGRA candidate v2 (2026-10-31)
+Validation artifacts for AMD CAGRA candidate v3 (2026-10-31)
+
+Current candidate: synchronous reuse of one large-stack GPU query worker.
+Product change: src/oblib/lib/vector/ob_vsag_adaptor.cpp. CAGRA parameters and
+the bridge remain identical to v2. See REPORT.txt and results/v3 for matched
+full-SQL v2/v3 pairs, resource samples, build identity and concurrency checks.
+Query speedup is 4.20x / 4.73x relative to v2 on Normal256 / public SIFT; these
+are not speedups against the official frozen baseline or a formal score.
+
+Exercise the actual worker class, from the repository root:
+  python3 tools/hipvs_bridge/validation/v3/test_worker.py src/oblib/lib/vector/ob_vsag_adaptor.cpp
+This development test needs g++ with ASan/UBSan and pthreads. It adds no product
+dependencies. v3/sql_worker_pair.py and sql_worker_functional.py preserve the
+cloud experiment orchestration and expect the recorded disposable workspace
+layout; they are not production maintenance scripts.
+
+The sections below describe the retained v2 benchmark setup and evidence.
 
 Official task: https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/seebnbaoxot1b0tb
 Frozen baseline: 634888d9b037153fa143d2c913ba4b25503e1d62
@@ -9,8 +25,8 @@ bench_bridge.py reports bridge-only time; bench_sql.py measures offline CREATE
 VECTOR INDEX plus first query and individual SQL throughput.
 Synthetic normal vectors are not SIFT or the organizer's hidden dataset.
 Do not infer an official score, GPU-path gate, or memory gate from these results.
-REPORT.txt and results/v2 describe the current candidate. REPORT_v1.txt and the
-other results are historical. The v2 development SQL pairs exceed the scoring
+REPORT_v2.txt and results/v2 describe the previous candidate. REPORT_v1.txt and
+the other older results are historical. The v2 development SQL pairs exceed the scoring
 formula's speed thresholds, but hidden data and official scoring remain pending.
 
 From the repository root, with the organizer's frozen deps/3rd and Rust cache:
@@ -60,7 +76,7 @@ platform. The task requires a private answer repository and a read-only token
 in the registered repository URL. Configure those through GitHub/platform UI;
 never put credentials into this repository, test logs, or the report.
 
-Inspect the current paired SQL results without running GPU work:
+Inspect the retained v2 paired SQL results without running GPU work:
   python3 summarize.py results/v2
 This uses only Python's standard library. Its weighted ratios deliberately say
 that Normal256 substitutes for Hidden250K; they are not an official score.

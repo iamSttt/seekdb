@@ -1,0 +1,16 @@
+{
+  "parent_commit": "4a0a39572687705c7645c56001554b1bc41213ca",
+  "adaptor_sha256": "1e495fb6e8b05b0378032fb82d9923fa48603a96d3d31a8f593a4ea98306f615",
+  "bridge_sha256": "770c0c8c7726662b61a3e62f5a1463bd82571164039603aea0c75c6898982f58",
+  "fixed_library_sha256": "b63211897276e0a6911bb534fe77c8b0b59f31c50af1df2f108845f06ad46ebf",
+  "v2_binary_sha256": "3f8307593d0674854b9458687de9a292bb118f8a9d2826f215e66735d3a33f10",
+  "worker_binary_sha256": "e986bbc46e83da071ccc052c1a4cd185ca8c8cb0a846a14300c72efb01e93278",
+  "cmake_cache": [
+    "CMAKE_BUILD_TYPE:STRING=RelWithDebInfo",
+    "CUVS_BRIDGE_LIB:UNINITIALIZED=/workspace/work/opt-v2/build/libseekdb_cuvs_bridge.so",
+    "OB_BUILD_CUVS:UNINITIALIZED=ON",
+    "OB_BUILD_CUVS_TRACE:UNINITIALIZED=OFF",
+    "OB_ENABLE_UNITY:UNINITIALIZED=ON",
+    "OB_USE_LLD:UNINITIALIZED=ON"
+  ]
+}

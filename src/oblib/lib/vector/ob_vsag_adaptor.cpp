@@ -221,6 +221,82 @@ static void *ob_cuvs_job(void *arg) {
   return nullptr;
 }
 
+// Keep the large stack required by cuVS, without creating a new OS thread and
+// GPU thread-local state for every SQL query. Submission remains synchronous:
+// the caller keeps g_ob_cuvs_mu and all job buffers alive until completion.
+class CuvsSearchWorker {
+public:
+  CuvsSearchWorker()
+  {
+    pthread_attr_t attr;
+    if (pthread_attr_init(&attr) == 0) {
+      if (pthread_attr_setstacksize(&attr, 32UL * 1024 * 1024) == 0) {
+        started_ = pthread_create(&thread_, &attr, entry, this) == 0;
+      }
+      pthread_attr_destroy(&attr);
+    }
+  }
+  ~CuvsSearchWorker()
+  {
+    if (started_) {
+      pthread_mutex_lock(&mutex_);
+      stopping_ = true;
+      pthread_cond_signal(&ready_);
+      pthread_mutex_unlock(&mutex_);
+      pthread_join(thread_, nullptr);
+    }
+    pthread_cond_destroy(&done_);
+    pthread_cond_destroy(&ready_);
+    pthread_mutex_destroy(&mutex_);
+  }
+  bool run(ObCuvsJob &job)
+  {
+    if (!started_) { return false; }
+    // Also serialize submissions locally, so no caller can replace a pending
+    // job if another adaptor path starts using this worker in the future.
+    std::lock_guard<std::mutex> submit_guard(submit_mutex_);
+    pthread_mutex_lock(&mutex_);
+    job_ = &job;
+    pending_ = true;
+    pthread_cond_signal(&ready_);
+    while (pending_) { pthread_cond_wait(&done_, &mutex_); }
+    job_ = nullptr;
+    pthread_mutex_unlock(&mutex_);
+    return true;
+  }
+  CuvsSearchWorker(const CuvsSearchWorker &) = delete;
+  CuvsSearchWorker &operator=(const CuvsSearchWorker &) = delete;
+private:
+  static void *entry(void *arg)
+  {
+    CuvsSearchWorker *worker = static_cast<CuvsSearchWorker *>(arg);
+    pthread_mutex_lock(&worker->mutex_);
+    for (;;) {
+      while (!worker->pending_ && !worker->stopping_) {
+        pthread_cond_wait(&worker->ready_, &worker->mutex_);
+      }
+      if (worker->stopping_) { break; }
+      ObCuvsJob *job = worker->job_;
+      pthread_mutex_unlock(&worker->mutex_);
+      ob_cuvs_job(job);
+      pthread_mutex_lock(&worker->mutex_);
+      worker->pending_ = false;
+      pthread_cond_signal(&worker->done_);
+    }
+    pthread_mutex_unlock(&worker->mutex_);
+    return nullptr;
+  }
+  pthread_t thread_ = {};
+  pthread_mutex_t mutex_ = PTHREAD_MUTEX_INITIALIZER;
+  pthread_cond_t ready_ = PTHREAD_COND_INITIALIZER;
+  pthread_cond_t done_ = PTHREAD_COND_INITIALIZER;
+  std::mutex submit_mutex_;
+  ObCuvsJob *job_ = nullptr;
+  bool started_ = false;
+  bool pending_ = false;
+  bool stopping_ = false;
+};
+
 // [BATCH] Feed nq probe vectors to ONE cuVS call (nq>1). Same large-stack
 // pthread pattern as the single-query path (cuVS overflows the OB worker stack).
 struct ObCuvsBatchJob {
@@ -283,10 +359,18 @@ static bool ob_cuvs_try_search(void *key, vsag::Allocator *alloc,
   std::vector<unsigned> off(topk);
   std::vector<float> dst(topk);
   ObCuvsJob job{ent, query, topk, static_cast<int>(ent->dim_), n, need_build, &off, &dst, -1, false};
-  pthread_t tid; pthread_attr_t attr; pthread_attr_init(&attr);
-  pthread_attr_setstacksize(&attr, 32UL * 1024 * 1024);
-  if (pthread_create(&tid, &attr, ob_cuvs_job, &job) == 0) { pthread_join(tid, nullptr); }
-  pthread_attr_destroy(&attr);
+  static CuvsSearchWorker worker;
+  if (!worker.run(job)) {
+    // Preserve the original path if the persistent thread cannot be started.
+    pthread_t tid; pthread_attr_t attr;
+    if (pthread_attr_init(&attr) == 0) {
+      if (pthread_attr_setstacksize(&attr, 32UL * 1024 * 1024) == 0 &&
+          pthread_create(&tid, &attr, ob_cuvs_job, &job) == 0) {
+        pthread_join(tid, nullptr);
+      }
+      pthread_attr_destroy(&attr);
+    }
+  }
   if (job.built_) { ob_vsag_trace("cuvs_build", key, static_cast<long>(ent->dim_), static_cast<long>(n)); }
   if (ent->bridge_ == nullptr || job.rc_ != 0) { return false; }
   // Post-filter: cuVS returned UNFILTERED top-k. Apply the query's row filter
