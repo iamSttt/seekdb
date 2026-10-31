@@ -1,0 +1,18 @@
+{
+  "scope": "development SQL benchmark; not official scoring",
+  "dataset": "sift250k",
+  "backend": "cuvs",
+  "n": 250000,
+  "dim": 128,
+  "nq": 4096,
+  "database": "cagra_validation_d85773e43414",
+  "ddl_s": 21.494805555790663,
+  "build_first_s": 21.528262589126825,
+  "qps10": 140.8381443269893,
+  "recall10": 1.0,
+  "p95_ms10": 7.559187710285187,
+  "qps100": 133.56174512995193,
+  "recall100": 0.9999755859375,
+  "p95_ms100": 7.9223960638046265,
+  "integrity": "pass"
+}

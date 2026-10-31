@@ -43,11 +43,15 @@ try:
     snap=a.output.with_suffix('.snapshot');t=time.perf_counter()
     if lib.seekdb_cuvs_serialize(h,str(snap).encode()):raise RuntimeError('serialize failed')
     sync();r['serialize_s']=time.perf_counter()-t;r['snapshot_bytes']=snap.stat().st_size
-    before=search(h,0,100);lib.seekdb_cuvs_free(h);h=None;t=time.perf_counter()
+    before=search(h,0,100);r['repeat_same_before_reload']=all(np.array_equal(before,search(h,0,100)) for _ in range(8));lib.seekdb_cuvs_free(h);h=None;t=time.perf_counter()
     h=lib.seekdb_cuvs_deserialize(str(snap).encode(),len(b),b.shape[1]);sync()
     if not h:raise RuntimeError('reload failed')
     r['reload_s']=time.perf_counter()-t;after=search(h,0,100);r['snapshot_same']=bool(np.array_equal(before,after))
-    if not r['snapshot_same']: raise RuntimeError('snapshot round trip changed search results')
+    snap2=a.output.with_suffix('.reload.snapshot')
+    if lib.seekdb_cuvs_serialize(h,str(snap2).encode()): raise RuntimeError('reload serialize failed')
+    sync();r['snapshot_bytes_same']=hashlib.sha256(snap.read_bytes()).digest()==hashlib.sha256(snap2.read_bytes()).digest()
+    if not r['snapshot_bytes_same']: raise RuntimeError('snapshot data or graph changed on reload')
+    r['repeat_same_after_reload']=all(np.array_equal(after,search(h,0,100)) for _ in range(8))
     for k in (10,100):
         matched=0;times=[]
         for i in range(len(q)):

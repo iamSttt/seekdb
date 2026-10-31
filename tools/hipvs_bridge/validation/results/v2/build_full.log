@@ -1,0 +1,269 @@
+TAIL ONLY; complete log retained on GPU instance
+38%] [32mBuilding CXX object src/share/CMakeFiles/ob_share_extra.dir/datum/ob_datum_funcs_compilation/ob_datum_funcs_compilation_7.cpp.o[0m
+[ 38%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_cmp_func_compile/ob_expr_cmp_func_part5.cpp.o[0m
+[ 38%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_cmp_func_compile/ob_expr_cmp_func_part6.cpp.o[0m
+[ 38%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_cmp_func_compile/ob_expr_cmp_func_part7.cpp.o[0m
+[ 39%] [32mBuilding CXX object src/share/CMakeFiles/ob_share_extra.dir/datum/ob_str_datum_funcs_compilation/ob_str_datum_funcs_all.cpp.o[0m
+[ 39%] [32mBuilding CXX object src/pl/CMakeFiles/ob_pl.dir/parser/ob_pl_parser.cpp.o[0m
+[ 41%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_all.cpp.o[0m
+[ 41%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_0.cpp.o[0m
+[ 41%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_omt_0_c___cxx.cxx.o[0m
+[ 41%] [32mBuilding CXX object src/share/CMakeFiles/ob_share_extra.dir/datum/ob_str_datum_funcs_compilation/ob_str_datum_funcs_compilation_0.cpp.o[0m
+[ 41%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_ai_service_0_c___cxx.cxx.o[0m
+[ 41%] [32mBuilding CXX object src/oblib/common/CMakeFiles/oblib_common.dir/Unity/unity_oblib_common_oblib_common_reloc_json_type_0_c___cxx.cxx.o[0m
+[ 41%] [32mBuilding CXX object src/oblib/common/CMakeFiles/oblib_common.dir/Unity/unity_oblib_common_oblib_common_common_0_c___cxx.cxx.o[0m
+[ 41%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_1.cpp.o[0m
+[ 41%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_compaction_1_c___cxx.cxx.o[0m
+[ 41%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_2.cpp.o[0m
+[ 41%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_3.cpp.o[0m
+[ 41%] [32mBuilding CXX object src/share/CMakeFiles/ob_share_extra.dir/datum/ob_str_datum_funcs_compilation/ob_str_datum_funcs_compilation_1.cpp.o[0m
+[ 41%] [32mBuilding CXX object src/rootserver/CMakeFiles/ob_rootserver.dir/ob_debug_sync_broadcaster_adapter.cpp.o[0m
+[ 41%] [32mBuilding C object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/non_reserved_keywords_mysql_mode.c.o[0m
+[ 41%] [32mBuilding CXX object src/rootserver/CMakeFiles/ob_rootserver.dir/ob_lonely_table_cleaner.cpp.o[0m
+[ 41%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_blocksstable_0_c___cxx.cxx.o[0m
+[ 41%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_executor_0_c___cxx.cxx.o[0m
+[ 42%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_truncate_info_0_c___cxx.cxx.o[0m
+[ 42%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_4.cpp.o[0m
+[ 44%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_5.cpp.o[0m
+[ 44%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_6.cpp.o[0m
+[ 44%] [32mBuilding C object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/ob_non_reserved_keywords.c.o[0m
+[ 45%] [32mBuilding CXX object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/ob_sql_parser.cpp.o[0m
+[ 45%] [32mBuilding CXX object src/share/CMakeFiles/ob_share_extra.dir/datum/ob_str_datum_funcs_compilation/ob_str_datum_funcs_compilation_2.cpp.o[0m
+[ 45%] [32mBuilding CXX object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/parse_malloc.cpp.o[0m
+[ 45%] [32mBuilding C object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/parse_node.c.o[0m
+[ 45%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql_extra.dir/engine/expr/ob_expr_str_cmp_func_compile/ob_expr_str_cmp_func_part_7.cpp.o[0m
+[ 45%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_vector_fixed_0_c___cxx.cxx.o[0m
+[ 45%] [32mBuilding CXX object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/parse_node_hash.cpp.o[0m
+[ 45%] [32mBuilding CXX object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/ob_fast_parser.cpp.o[0m
+[ 47%] [32mBuilding CXX object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/ob_parser_charset_utils.cpp.o[0m
+[ 47%] [32mBuilding C object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/sql_parser_base.c.o[0m
+[ 47%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_resolver_ddl_2_c___cxx.cxx.o[0m
+[ 47%] [32mBuilding CXX object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/parser_utility.cpp.o[0m
+[ 48%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_vector_uniform_0_c___cxx.cxx.o[0m
+[ 48%] [32mBuilding C object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/type_name.c.o[0m
+[ 48%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tx_table_0_c___cxx.cxx.o[0m
+[ 48%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_vector_index_0_c___cxx.cxx.o[0m
+[ 48%] [32mBuilding CXX object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/ob_parse_simd.cpp.o[0m
+[ 48%] [32mBuilding CXX object src/sql/parser/CMakeFiles/ob_sql_server_parser_objects.dir/ob_parser.cpp.o[0m
+[ 48%] Built target ob_sql_extra
+[ 48%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_ddl_1_c___cxx.cxx.o[0m
+[ 48%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_vector_discrete_0_c___cxx.cxx.o[0m
+[ 48%] Built target ob_share_extra
+[ 48%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_vector_continuous_0_c___cxx.cxx.o[0m
+[ 48%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_virtual_table_2_c___cxx.cxx.o[0m
+[ 50%] [32mBuilding C object src/pl/CMakeFiles/ob_pl.dir/parser/pl_non_reserved_keywords_mysql_mode.c.o[0m
+[ 50%] [32mBuilding C object src/pl/CMakeFiles/ob_pl.dir/parser/pl_parser_base.c.o[0m
+[ 50%] [32mBuilding CXX object src/oblib/common/CMakeFiles/oblib_common.dir/Unity/unity_oblib_common_oblib_common_storage_0_c___cxx.cxx.o[0m
+[ 50%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_table_0_c___cxx.cxx.o[0m
+[ 50%] [32m[1mLinking CXX static library libob_malloc.a[0m
+[ 50%] Built target ob_malloc
+[ 50%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_ddl_0_c___cxx.cxx.o[0m
+[ 50%] Built target ob_sql_server_parser_objects
+[ 50%] [34m[1mGenerating zstd_1_3_8_objs.o[0m
+[ 50%] Built target zstd_1_3_8
+[ 50%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_net_0_c___cxx.cxx.o[0m
+[ 51%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_mysql_1_c___cxx.cxx.o[0m
+[ 51%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_dbms_job_0_c___cxx.cxx.o[0m
+[ 51%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_virtual_table_1_c___cxx.cxx.o[0m
+[ 51%] [32mBuilding C object src/pl/CMakeFiles/ob_pl.dir/parser/pl_parser_mysql_mode_lex.c.o[0m
+[ 51%] [32mBuilding C object src/pl/CMakeFiles/ob_pl.dir/parser/pl_parser_mysql_mode_tab.c.o[0m
+[ 51%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_10_c___cxx.cxx.o[0m
+[ 51%] Built target ob_pl
+[ 51%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_vector_cmp_0_c___cxx.cxx.o[0m
+[ 51%] [32mBuilding CXX object src/oblib/common/CMakeFiles/oblib_common.dir/timezone/ob_timezone_util.cpp.o[0m
+[ 51%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_virtual_table_3_c___cxx.cxx.o[0m
+[ 51%] Built target oblib_common
+[ 51%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_common_mixed_0_c___cxx.cxx.o[0m
+[ 51%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_common_0_c___cxx.cxx.o[0m
+[ 52%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_schema_0_c___cxx.cxx.o[0m
+[ 52%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_virtual_table_4_c___cxx.cxx.o[0m
+[ 54%] [32m[1mLinking CXX static library libob_sql_server_parser_static.a[0m
+[ 54%] Built target ob_sql_server_parser_static
+[ 55%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_set_0_c___cxx.cxx.o[0m
+[ 55%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_change_stream_0_c___cxx.cxx.o[0m
+[ 55%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_scheduler_0_c___cxx.cxx.o[0m
+[ 55%] [32mBuilding CXX object src/pl/CMakeFiles/syspack_source.dir/syspack_codegen/syspack_source.cpp.o[0m
+[ 55%] Built target syspack_source
+[ 55%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_px_1_c___cxx.cxx.o[0m
+[ 55%] [32mBuilding CXX object src/oblib/lib/compress/CMakeFiles/compress.dir/none/ob_none_compressor.cpp.o[0m
+[ 55%] [32mBuilding CXX object src/oblib/lib/compress/CMakeFiles/compress.dir/ob_compressor.cpp.o[0m
+[ 55%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_common_1_c___cxx.cxx.o[0m
+[ 55%] [32mBuilding CXX object src/oblib/lib/compress/CMakeFiles/compress.dir/ob_compressor_pool.cpp.o[0m
+[ 55%] [32mBuilding CXX object src/oblib/lib/compress/CMakeFiles/compress.dir/zlib/ob_zlib_compressor.cpp.o[0m
+[ 55%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_common_2_c___cxx.cxx.o[0m
+[ 55%] [32mBuilding CXX object src/oblib/lib/compress/CMakeFiles/compress.dir/zstd_1_3_8/ob_zstd_compressor_1_3_8.cpp.o[0m
+[ 55%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_px_0_c___cxx.cxx.o[0m
+[ 57%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_compaction_filter_0_c___cxx.cxx.o[0m
+[ 57%] Built target compress
+[ 57%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_common_0_c___cxx.cxx.o[0m
+[ 57%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tmp_file_0_c___cxx.cxx.o[0m
+[ 57%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_charset_0_c___cxx.cxx.o[0m
+[ 57%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_downsink_qt_0_c___cxx.cxx.o[0m
+[ 57%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/Unity/unity_ob_server_ob_server_virtual_table_5_c___cxx.cxx.o[0m
+[ 58%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_utility_0_c___cxx.cxx.o[0m
+[ 58%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_code_generator_0_c___cxx.cxx.o[0m
+[ 58%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_scheduler_0_c___cxx.cxx.o[0m
+[ 60%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/ob_server.cpp.o[0m
+[ 60%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_codec_0_c___cxx.cxx.o[0m
+[ 60%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_common_0_c___cxx.cxx.o[0m
+[ 60%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_cache_0_c___cxx.cxx.o[0m
+[ 60%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tx_storage_0_c___cxx.cxx.o[0m
+[ 60%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_downsink_0_c___cxx.cxx.o[0m
+[ 60%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_ik_0_c___cxx.cxx.o[0m
+[ 61%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_DUMP_SCHEMA_0_c___cxx.cxx.o[0m
+[ 61%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/ob_service.cpp.o[0m
+[ 61%] [32mBuilding CXX object src/observer/CMakeFiles/ob_server.dir/composition/retrieval/ob_das_legacy_tr_merge_iter.cpp.o[0m
+[ 61%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_thread_0_c___cxx.cxx.o[0m
+[ 61%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_pdml_0_c___cxx.cxx.o[0m
+[ 61%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_common_mixed_0_c___cxx.cxx.o[0m
+[ 61%] Built target ob_rootserver
+[ 63%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_lock_0_c___cxx.cxx.o[0m
+[ 63%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_ob_vector_util_0_c___cxx.cxx.o[0m
+[ 63%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_SCHEMA_CPPS_0_c___cxx.cxx.o[0m
+[ 63%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_common_mixed_1_c___cxx.cxx.o[0m
+[ 63%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_oblog_0_c___cxx.cxx.o[0m
+[ 64%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_access_0_c___cxx.cxx.o[0m
+[ 64%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_common_mixed_0_c___cxx.cxx.o[0m
+[ 64%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_LOAD_SCHEMA_0_c___cxx.cxx.o[0m
+[ 64%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_transaction_id_0_c___cxx.cxx.o[0m
+[ 64%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_common_0_c___cxx.cxx.o[0m
+[ 64%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_meta_store_0_c___cxx.cxx.o[0m
+[ 64%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tablet_0_c___cxx.cxx.o[0m
+[ 66%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_resource_limit_calculator_0_c___cxx.cxx.o[0m
+[ 66%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_io_0_c___cxx.cxx.o[0m
+[ 66%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_allocator_0_c___cxx.cxx.o[0m
+[ 66%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_signal_0_c___cxx.cxx.o[0m
+[ 66%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_redolog_0_c___cxx.cxx.o[0m
+[ 66%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_resource_0_c___cxx.cxx.o[0m
+[ 66%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tablelock_0_c___cxx.cxx.o[0m
+[ 67%] [32mBuilding C object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_common_mixed_0_c_c.c.o[0m
+[ 67%] [32mBuilding C object src/oblib/lib/CMakeFiles/oblib_lib.dir/Unity/unity_oblib_lib_oblib_lib_signal_0_c_c.c.o[0m
+[ 69%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_blocksstable_2_c___cxx.cxx.o[0m
+[ 69%] [32mBuilding CXX object src/oblib/lib/CMakeFiles/oblib_lib.dir/oblog/ob_log_compressor.cpp.o[0m
+[ 69%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_schema_0_c___cxx.cxx.o[0m
+[ 69%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_schema_1_c___cxx.cxx.o[0m
+[ 70%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_semistruct_0_c___cxx.cxx.o[0m
+[ 70%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_schema_2_c___cxx.cxx.o[0m
+[ 70%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_vector_0_c___cxx.cxx.o[0m
+[ 70%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_tablet_0_c___cxx.cxx.o[0m
+[ 70%] Built target oblib_lib
+[ 70%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_rebase_0_c___cxx.cxx.o[0m
+[ 72%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_text_analysis_0_c___cxx.cxx.o[0m
+[ 72%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_join_0_c___cxx.cxx.o[0m
+[ 72%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_common_mixed_0_c___cxx.cxx.o[0m
+[ 73%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_optimizer_stat_0_c___cxx.cxx.o[0m
+[ 73%] Built target ob_server
+[ 73%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_log_protocol_0_c___cxx.cxx.o[0m
+[ 73%] [32mBuilding C object src/share/CMakeFiles/ob_share.dir/Unity/unity_ob_share_ob_share_geo_1_c_c.c.o[0m
+[ 73%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_compaction_0_c___cxx.cxx.o[0m
+[ 73%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_covered_by1.cpp.o[0m
+[ 73%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_covered_by2.cpp.o[0m
+[ 73%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_blocksstable_1_c___cxx.cxx.o[0m
+[ 73%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_memtable_0_c___cxx.cxx.o[0m
+[ 73%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_crosses1.cpp.o[0m
+[ 75%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_crosses2.cpp.o[0m
+[ 75%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_blocksstable_encoding1_0_c___cxx.cxx.o[0m
+[ 75%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_difference1.cpp.o[0m
+[ 76%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_blocksstable_index_block_0_c___cxx.cxx.o[0m
+[ 76%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_difference2.cpp.o[0m
+[ 76%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_difference3.cpp.o[0m
+[ 76%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_das_0_c___cxx.cxx.o[0m
+[ 76%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_optimizer_1_c___cxx.cxx.o[0m
+[ 76%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_common_1_c___cxx.cxx.o[0m
+[ 76%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_rebase_0_c___cxx.cxx.o[0m
+[ 76%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_slog_0_c___cxx.cxx.o[0m
+[ 76%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tablet_1_c___cxx.cxx.o[0m
+[ 76%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_throttle_0_c___cxx.cxx.o[0m
+[ 77%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tx_0_c___cxx.cxx.o[0m
+[ 77%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_13_c___cxx.cxx.o[0m
+[ 77%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tx_1_c___cxx.cxx.o[0m
+[ 77%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_vector_base_0_c___cxx.cxx.o[0m
+[ 77%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_distance.cpp.o[0m
+[ 77%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_tx_2_c___cxx.cxx.o[0m
+[ 77%] [32mBuilding CXX object src/storage/CMakeFiles/ob_storage.dir/Unity/unity_ob_storage_ob_storage_vector_type_0_c___cxx.cxx.o[0m
+[ 79%] [32m[1mLinking CXX static library liboblib.a[0m
+[ 79%] Built target oblib
+[ 80%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_basic_1_c___cxx.cxx.o[0m
+[ 80%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_resolver_ddl_0_c___cxx.cxx.o[0m
+[ 80%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_monitor_0_c___cxx.cxx.o[0m
+[ 80%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_0_c___cxx.cxx.o[0m
+[ 80%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_rewrite_1_c___cxx.cxx.o[0m
+[ 80%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_basic_0_c___cxx.cxx.o[0m
+[ 82%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_resolver_cmd_0_c___cxx.cxx.o[0m
+[ 82%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_4_c___cxx.cxx.o[0m
+[ 83%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_equals1.cpp.o[0m
+[ 83%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_equals2.cpp.o[0m
+[ 83%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_equals3.cpp.o[0m
+[ 83%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_intersects.cpp.o[0m
+[ 83%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_overlaps1.cpp.o[0m
+[ 83%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_7_c___cxx.cxx.o[0m
+[ 83%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_aggregate_groupby_0_c___cxx.cxx.o[0m
+[ 83%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_overlaps2.cpp.o[0m
+[ 85%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_overlaps3.cpp.o[0m
+[ 85%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_symdifference1.cpp.o[0m
+[ 85%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_symdifference2.cpp.o[0m
+[ 85%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_symdifference3.cpp.o[0m
+[ 85%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_executor_1_c___cxx.cxx.o[0m
+[ 86%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_1_c___cxx.cxx.o[0m
+[ 86%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_2_c___cxx.cxx.o[0m
+[ 86%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_touches1.cpp.o[0m
+[ 86%] Built target ob_storage
+[ 86%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_dtl_0_c___cxx.cxx.o[0m
+[ 88%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_touches2.cpp.o[0m
+[ 88%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_common_0_c___cxx.cxx.o[0m
+[ 88%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_dml_0_c___cxx.cxx.o[0m
+[ 88%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_15_c___cxx.cxx.o[0m
+[ 89%] [32m[1mLinking CXX static library libob_storage_static.a[0m
+[ 91%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_9_c___cxx.cxx.o[0m
+[ 91%] Built target ob_storage_static
+[ 91%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_common_mixed_0_c___cxx.cxx.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_touches3.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_union1.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_union2.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_cmd_0_c___cxx.cxx.o[0m
+[ 91%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_1_c___cxx.cxx.o[0m
+[ 91%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_aggregate_core_0_c___cxx.cxx.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_within1.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/geo/ob_geo_func_within2.cpp.o[0m
+[ 91%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_11_c___cxx.cxx.o[0m
+[ 92%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_printer_0_c___cxx.cxx.o[0m
+[ 92%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_optimizer_2_c___cxx.cxx.o[0m
+[ 92%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_6_c___cxx.cxx.o[0m
+[ 92%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_hybrid_search_0_c___cxx.cxx.o[0m
+[ 92%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_session_0_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_cmd_1_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_das_1_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_0_c___cxx.cxx.o[0m
+[ 94%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_14_c___cxx.cxx.o[0m
+[ 95%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_ddl_args.cpp.o[0m
+[ 95%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_local_device.cpp.o[0m
+[ 95%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_5_c___cxx.cxx.o[0m
+[ 95%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_engine_expr_12_c___cxx.cxx.o[0m
+[ 97%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_resolver_dml_0_c___cxx.cxx.o[0m
+[ 97%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_resolver_expr_0_c___cxx.cxx.o[0m
+[ 97%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_resolver_prepare_0_c___cxx.cxx.o[0m
+[ 97%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_lonely_table_clean_rpc_struct.cpp.o[0m
+[ 97%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_rewrite_0_c___cxx.cxx.o[0m
+[ 97%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/Unity/unity_ob_sql_ob_sql_tablelock_0_c___cxx.cxx.o[0m
+[ 98%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/aggregate/ob_aggregate_processor.cpp.o[0m
+[ 98%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/expr/ob_expr_add.cpp.o[0m
+[ 98%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_rpc_struct.cpp.o[0m
+[ 98%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/expr/ob_expr_array_sort.cpp.o[0m
+[ 98%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/expr/ob_expr_in.cpp.o[0m
+[ 98%] [32mBuilding CXX object src/sql/CMakeFiles/ob_sql.dir/engine/expr/ob_expr_mul.cpp.o[0m
+[ 98%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_sql_client_decorator.cpp.o[0m
+[ 98%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/ob_timezone_mgr.cpp.o[0m
+[100%] [32mBuilding CXX object src/share/CMakeFiles/ob_share.dir/parameter/ob_parameter_attr.cpp.o[0m
+[100%] Built target ob_share
+[100%] [32m[1mLinking CXX static library libob_share_static.a[0m
+[100%] Built target ob_share_static
+[100%] Built target ob_sql
+[100%] [32m[1mLinking CXX static library libob_sql_static.a[0m
+[100%] Built target ob_sql_static
+[100%] [32mBuilding CXX object src/observer/CMakeFiles/oceanbase_static.dir/ob_version.cpp.o[0m
+[100%] [32m[1mLinking CXX static library liboceanbase_static.a[0m
+[100%] Built target oceanbase_static
+[100%] [32m[1mLinking CXX executable seekdb[0m
+[100%] Built target seekdb
+EXIT 0 SECONDS 362.8917364515364
+FULL BUILD PASS

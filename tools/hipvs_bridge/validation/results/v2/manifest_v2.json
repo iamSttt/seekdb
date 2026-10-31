@@ -1,0 +1,10 @@
+{
+  "final_source_sha256": "7abcf3ba0cfd3665394b9b22fe3879562bb6b824cd142d31653ebd0f020686bc",
+  "fixed_cuvs_sha256": "b63211897276e0a6911bb534fe77c8b0b59f31c50af1df2f108845f06ad46ebf",
+  "bridges": {
+    "frozen": "b0a02d133f263a61d8cc9241297c5072276e8ae14fd3c6b2d8e66ffc83d85f88",
+    "candidate96": "770c0c8c7726662b61a3e62f5a1463bd82571164039603aea0c75c6898982f58",
+    "final96": "770c0c8c7726662b61a3e62f5a1463bd82571164039603aea0c75c6898982f58"
+  },
+  "scope": "development evidence; no official hidden dataset or official score"
+}

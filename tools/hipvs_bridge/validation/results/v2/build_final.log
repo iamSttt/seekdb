@@ -1,0 +1,104 @@
+COMMAND ['bash', 'tools/hipvs_bridge/build.sh', '/workspace/work/opt-v2/build/libseekdb_cuvs_bridge.so']
+built /workspace/work/opt-v2/build/libseekdb_cuvs_bridge.so
+EXIT 0 SECONDS 0.12644044309854507
+COMMAND ['cmake', '-S', '.', '-B', 'build_release', '-G', 'Unix Makefiles', '-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DOB_ENABLE_UNITY=ON', '-DOB_USE_LLD=ON', '-DOB_BUILD_CUVS=ON', '-DOB_BUILD_CUVS_TRACE=OFF', '-DCUVS_BRIDGE_LIB=/workspace/work/opt-v2/build/libseekdb_cuvs_bridge.so']
+-- ARCHITECTURE: x86_64
+-- Using C++20 standard
+-- build without pie
+-- Using OB_CC compiler: /workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/deps/3rd/usr/local/oceanbase/devtools/bin/clang-17
+-- Using OB_CXX compiler: /workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/deps/3rd/usr/local/oceanbase/devtools/bin/clang++-17
+-- ob-compile not found, compile locally.
+-- Ubuntu 24.04 detected, using libaio1t64
+/workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/tools/cmake/emit_bazel_source_inventory.py:36: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead
+  _AST_STR = getattr(ast, "Str", None)
+/workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/tools/cmake/emit_bazel_source_inventory.py:37: DeprecationWarning: ast.Num is deprecated and will be removed in Python 3.14; use ast.Constant instead
+  _AST_NUM = getattr(ast, "Num", None)
+/workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/tools/cmake/emit_bazel_source_inventory.py:38: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+  _AST_NAME_CONSTANT = getattr(ast, "NameConstant", None)
+/workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/tools/cmake/emit_bazel_source_inventory.py:48: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead
+  if _AST_STR is not None and isinstance(node, _AST_STR):
+/workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/tools/cmake/emit_bazel_source_inventory.py:52: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+  and isinstance(node, _AST_NAME_CONSTANT)
+/workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/tools/cmake/emit_bazel_source_inventory.py:64: DeprecationWarning: ast.Num is deprecated and will be removed in Python 3.14; use ast.Constant instead
+  and isinstance(node, _AST_NUM)
+-- STDC_SHARED_LIB: /opt/seekdb-deps-cache/ac032efc6b707fc0273e6b553db53011/3rd/usr/local/oceanbase/devtools/lib64/libstdc++.so.6.0.30
+-- [rust] cargo: /usr/local/bin/cargo
+-- [rust] sql_nio target ready -> /workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/build_release/rust-target/release/libsql_nio.a
+-- Ubuntu 24.04 detected, using libaio1t64 package and linking to /usr/lib/x86_64-linux-gnu/libaio.so.1t64
+-- oblib_add_library compress
+-- oblib_add_library zstd_1_3_8
+-- oblib_add_library restore
+-- ob_lib_add_target oblib_lib
+-- ob_lib_add_target oblib_lib_simd
+-- ob_lib_add_target oblib_lib_bitmap
+-- ob_add_new_object_target ob_malloc_object
+-- ob_lib_add_target oblib_common
+-- ob_lib_add_target oblib_rpc
+-- oblib_add_library oblib_grpc
+-- oblib_extra_objects /workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/build_release/src/oblib/lib/compress/zstd_1_3_8/zstd_1_3_8_objs.o
+-- ob_add_new_object_target ob_share
+-- ob_add_new_object_target ob_share_extra
+-- observer_add_target ob_data_plane
+-- observer_add_target ob_query
+-- ob_add_new_object_target ob_sql
+-- ob_add_new_object_target ob_sql_extra
+-- observer_add_target ob_sql_simd
+-- observer_add_target ob_pl
+-- observer_add_target syspack_source
+-- observer_add_target ob_standby_runtime
+-- observer_add_target ob_standby
+-- observer_add_target ob_rootserver
+-- observer_add_target ob_logservice
+-- observer_add_target ob_storage_tablet_autoincrement_state
+-- ob_add_new_object_target ob_storage
+-- observer_add_target ob_storage_simd
+-- observer_add_target ob_server
+-- Configuring done (0.3s)
+-- Generating done (0.5s)
+-- Build files have been written to: /workspace/work/opt-v2/source/iamSttt-seekdb-55d78dc/build_release
+EXIT 0 SECONDS 0.9641617685556412
+COMMAND ['cmake', '--build', 'build_release', '--target', 'seekdb']
+[  0%] Built target sql_nio_build
+[  0%] Built target generate_syspack_source
+[  7%] Built target zstd_1_3_8_objs
+[  8%] Built target restore
+[  8%] Built target oblib_lib_simd
+[ 10%] Built target malloc_hook
+[ 10%] Built target oblib_lib_bitmap
+[ 10%] Built target ob_malloc_object
+[ 10%] Built target ob_sql_simd
+[ 11%] Built target oblib_rpc
+[ 11%] Built target ob_query
+[ 11%] Built target ob_standby
+[ 13%] Built target oblib_grpc
+[ 13%] Built target ob_data_plane
+[ 13%] Built target zstd_1_3_8
+[ 13%] Built target syspack_source
+[ 13%] Built target ob_storage_tablet_autoincrement_state
+[ 13%] Built target ob_malloc
+[ 13%] Built target ob_main
+[ 14%] Built target ob_logservice
+[ 14%] Built target ob_standby_runtime
+[ 14%] Built target ob_storage_simd
+[ 19%] Built target ob_sql_server_parser_objects
+[ 22%] Built target ob_share_extra
+[ 22%] Built target compress
+[ 25%] Built target oblib_common
+[ 26%] Built target ob_sql_server_parser_static
+[ 29%] Built target ob_pl
+[ 35%] Built target ob_sql_extra
+[ 39%] Built target oblib_lib
+[ 41%] Built target oblib
+[ 45%] Built target ob_rootserver
+[ 51%] Built target ob_server
+[ 63%] Built target ob_storage
+[ 64%] Built target ob_storage_static
+[ 80%] Built target ob_share
+[ 80%] Built target ob_share_static
+[100%] Built target ob_sql
+[100%] Built target ob_sql_static
+[100%] Built target oceanbase_static
+[100%] [32m[1mLinking CXX executable seekdb[0m
+[100%] Built target seekdb
+EXIT 0 SECONDS 3.2626973390579224
+FULL BUILD PASS

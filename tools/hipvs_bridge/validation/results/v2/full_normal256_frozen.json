@@ -1,0 +1,23 @@
+{
+  "label": "frozen",
+  "dataset": "normal256",
+  "tag": "full_normal256_frozen",
+  "n": 250000,
+  "dim": 256,
+  "nq": 4096,
+  "scope": "bridge only, not official SQL",
+  "build_s": 18.349189091473818,
+  "build_first_s": 18.390393752604723,
+  "serialize_s": 0.5031799860298634,
+  "snapshot_bytes": 384001713,
+  "reload_s": 0.2851821817457676,
+  "snapshot_same": true,
+  "recall10": 0.950390625,
+  "qps10": 257.202903483396,
+  "p95_ms10": 3.961945418268442,
+  "recall100": 0.899365234375,
+  "qps100": 253.66974130075445,
+  "p95_ms100": 3.974748309701681,
+  "integrity": "pass",
+  "library_sha256": "b0a02d133f263a61d8cc9241297c5072276e8ae14fd3c6b2d8e66ffc83d85f88"
+}

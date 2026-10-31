@@ -1,0 +1,52 @@
+{
+  "scope": "Development SQL pairs only. Hidden250K is unavailable; official score and gates remain unverified.",
+  "datasets": {
+    "normal128": {
+      "build_ratio": 4.34581308726483,
+      "query_ratio": 1.7196928381482763,
+      "sampled_vram_ratio": 0.9751606725302867,
+      "recall_delta": {
+        "10": 0.009033203125,
+        "100": 0.03226806640625002
+      },
+      "recall": {
+        "10": 0.999560546875,
+        "100": 0.99817138671875
+      },
+      "observed_checks_pass": true
+    },
+    "normal256": {
+      "build_ratio": 3.1452817199146055,
+      "query_ratio": 1.7262413242361758,
+      "sampled_vram_ratio": 0.9774004437933451,
+      "recall_delta": {
+        "10": 0.046142578125,
+        "100": 0.09128173828124997
+      },
+      "recall": {
+        "10": 0.99609375,
+        "100": 0.9903955078125
+      },
+      "observed_checks_pass": true
+    },
+    "sift250k": {
+      "build_ratio": 4.492963091972696,
+      "query_ratio": 1.6070122156547146,
+      "sampled_vram_ratio": 0.9751632155104194,
+      "recall_delta": {
+        "10": -0.00004882812499995559,
+        "100": -0.00000732421875004885
+      },
+      "recall": {
+        "10": 0.999951171875,
+        "100": 0.99996826171875
+      },
+      "observed_checks_pass": true
+    }
+  },
+  "development_weighted_ratios": {
+    "build": 3.627512109894545,
+    "query": 1.6775233600266555,
+    "warning": "Uses normal256 instead of Hidden250K. This is NOT an official result or a validated score prediction."
+  }
+}

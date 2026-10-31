@@ -1,0 +1,23 @@
+W20261031 06:27:50.566943 136879236272640 simple_timer.cpp:55] [rocprofv3] tool initialization ::     0.001255 sec
+W20261031 06:27:50.567036 136879236272640 simple_timer.cpp:55] [rocprofv3] '/opt/venv/bin/python /workspace/work/opt-v2/bench_roundtrip.py --library /workspace/work/opt-v2/candidate96/libseekdb_cuvs_bridge.so --data /workspace/work/opt-v2/full --dataset sift250k --output /workspace/work/opt-v2/profiled_sift --queries 16' ::     0.000000 sec
+W20261031 06:27:50.980779 136879236272640 tool.cpp:2422] HSA version 8.20.4 initialized (instance=0)
+BUILT {'label': 'candidate96', 'dataset': 'sift250k', 'tag': 'profiled_sift', 'n': 250000, 'dim': 128, 'nq': 16, 'scope': 'bridge only, not official SQL', 'build_s': 2.684690412133932}
+RESULT {"label": "candidate96", "dataset": "sift250k", "tag": "profiled_sift", "n": 250000, "dim": 128, "nq": 16, "scope": "bridge only, not official SQL", "build_s": 2.684690412133932, "build_first_s": 2.70110354013741, "serialize_s": 0.3030938692390919, "snapshot_bytes": 224001713, "repeat_same_before_reload": true, "reload_s": 0.15272966399788857, "snapshot_same": true, "snapshot_bytes_same": true, "repeat_same_after_reload": true, "recall10": 1.0, "qps10": 1511.830931310785, "p95_ms10": 0.7168017327785492, "recall100": 1.0, "qps100": 1474.2540916011328, "p95_ms100": 0.7595736533403397, "integrity": "pass", "library_sha256": "770c0c8c7726662b61a3e62f5a1463bd82571164039603aea0c75c6898982f58"}
+W20261031 06:27:54.846674 136879236272640 simple_timer.cpp:55] [rocprofv3] '/opt/venv/bin/python /workspace/work/opt-v2/bench_roundtrip.py --library /workspace/work/opt-v2/candidate96/libseekdb_cuvs_bridge.so --data /workspace/work/opt-v2/full --dataset sift250k --output /workspace/work/opt-v2/profiled_sift --queries 16' ::     4.279638 sec
+W20261031 06:27:54.884795 136879236272640 generateRocpd.cpp:582] writing SQL database for process 65691 on node 4083487446
+E20261031 06:27:54.885648 136879236272640 generateRocpd.cpp:605] Opened result file: /workspace/work/opt-v2/profile_v2/j-5fu44ajm3enqmbaolmgimzh4d6/65691_results.db (UUID=00027e45-e390-7390-a3c6-0aac763a9e41)
+W20261031 06:27:55.396355 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_string             ::     0.430637 sec
+W20261031 06:27:55.397181 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_info_node          ::     0.000785 sec
+W20261031 06:27:55.398433 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_info_process       ::     0.001240 sec
+W20261031 06:27:55.400946 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_info_agent         ::     0.001483 sec
+W20261031 06:27:55.400961 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_info_pmc           ::     0.000005 sec
+W20261031 06:27:55.882611 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd kernel info        ::     0.481639 sec
+W20261031 06:27:55.882655 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_region             ::     0.000003 sec
+W20261031 06:27:55.898841 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_kernel_dispatch    ::     0.016178 sec
+W20261031 06:27:55.898862 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_pmc_event          ::     0.000000 sec
+W20261031 06:27:55.898867 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_memory_copy        ::     0.000000 sec
+W20261031 06:27:55.898872 136879236272640 simple_timer.cpp:55] SQLite3 generation :: rocpd_memory_allocate    ::     0.000001 sec
+W20261031 06:27:55.899034 136879236272640 simple_timer.cpp:55] SQLite3 generation :: SQL indexing             ::     0.000158 sec
+W20261031 06:27:55.902566 136879236272640 simple_timer.cpp:55] SQLite3 generation :: total                    ::     1.017771 sec
+W20261031 06:27:55.905144 136879236272640 simple_timer.cpp:55] [rocprofv3] output generation ::     1.040344 sec
+W20261031 06:27:55.906096 136879236272640 simple_timer.cpp:55] [rocprofv3] tool finalization ::     1.041340 sec

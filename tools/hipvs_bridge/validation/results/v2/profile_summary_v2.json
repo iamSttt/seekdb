@@ -1,0 +1,97 @@
+{
+  "scope": "candidate96 standalone bridge profile, not SQL server trace",
+  "database_sha256": "5fe544ebf4a07f3904359063b28d2cec891e646ab48e1738114532d86f93b6f1",
+  "dispatch_count": 442,
+  "kernels": [
+    {
+      "name": "_ZN4cuvs9neighbors10nn_descent6detailL17local_join_kernelILi512EiNS2_12InternalID_tIiEEN4raft11identity_opEEEvPKT0_SA_PK15HIP_vector_typeIiLj2EESA_SA_SE_iPK6__halfiPT1_PfiPiSK_16cuvsDistanceTypeT2_mm.kd",
+      "calls": 5,
+      "total_ns": 369890909
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detail5graph12_GLOBAL__N_110kern_pruneILi1024EjEEvPKT0_jjjjjPhPjPm.kd",
+      "calls": 1,
+      "total_ns": 176630279
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detail16multi_cta_searchL13search_kernelILj128ENS2_25dataset_descriptor_base_tIfjfEENS0_9filtering18none_sample_filterEEEvPNT0_7INDEX_TEPNS9_10DISTANCE_TEPKS9_PKNS9_6DATA_TEPKSA_jjmSK_jjSB_jjjjPjT1_.kd",
+      "calls": 51,
+      "total_ns": 22000079
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detail5graph12_GLOBAL__N_19kern_sortIfjLi4EEEvPKT_T0_jPS9_jj16cuvsDistanceType.kd",
+      "calls": 1,
+      "total_ns": 12864422
+    },
+    {
+      "name": "_ZN4cuvs9neighbors10nn_descent6detailL20add_rev_edges_kernelIiEEvPKT_PS4_iP15HIP_vector_typeIiLj2EE.kd",
+      "calls": 10,
+      "total_ns": 11161217
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detail5graph12_GLOBAL__N_119kern_make_rev_graphIjEEvPKT_PS6_Pjjj.kd",
+      "calls": 96,
+      "total_ns": 1501766
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detailL16kern_topk_cta_11ILi8ELi2ELi128ELi32EjEEvjjjPKjjPKT3_jPjjPS6_jPhS9_b.kd",
+      "calls": 34,
+      "total_ns": 611406
+    },
+    {
+      "name": "__amd_rocclr_copyBuffer.kd",
+      "calls": 154,
+      "total_ns": 536361
+    },
+    {
+      "name": "__amd_rocclr_fillBufferAligned.kd",
+      "calls": 7,
+      "total_ns": 475842
+    },
+    {
+      "name": "_ZN4cuvs9neighbors10nn_descent6detailL22preprocess_data_kernelIfEEvPKT_P6__halfiPfm16cuvsDistanceType.kd",
+      "calls": 3,
+      "total_ns": 325082
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detailL16kern_topk_cta_11ILi8ELi2ELi32ELi32EjEEvjjjPKjjPKT3_jPjjPS6_jPhS9_b.kd",
+      "calls": 17,
+      "total_ns": 243521
+    },
+    {
+      "name": "_ZN4raft6linalg6detailL10map_kernelILi4ELb0EfmNS_8const_opIfEEJEEEvPT1_T2_T3_DpPKT4_.kd",
+      "calls": 6,
+      "total_ns": 194600
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detail16multi_cta_searchL22set_value_batch_kernelIjEEvPT_mS5_mm.kd",
+      "calls": 51,
+      "total_ns": 129200
+    },
+    {
+      "name": "_ZN4raft6linalg6detailL10map_kernelILi8ELb0E6__halfmNS_8const_opIS3_EEJEEEvPT1_T2_T3_DpPKT4_.kd",
+      "calls": 1,
+      "total_ns": 73240
+    },
+    {
+      "name": "_ZN4raft6linalg6detailL10map_kernelILi4ELb0EilNS_8const_opIiEEJEEEvPT1_T2_T3_DpPKT4_.kd",
+      "calls": 1,
+      "total_ns": 39041
+    },
+    {
+      "name": "_ZN4raft6linalg6detailL10map_kernelILi4ELb0EimNS_8const_opIiEEJEEEvPT1_T2_T3_DpPKT4_.kd",
+      "calls": 1,
+      "total_ns": 6040
+    },
+    {
+      "name": "_ZN4cuvs9neighbors5cagra6detailL39standard_dataset_descriptor_init_kernelIL16cuvsDistanceType0ELj8ELj128EfjfEEvPNS2_25dataset_descriptor_base_tIT2_T3_T4_EEPKS6_S7_jj.kd",
+      "calls": 2,
+      "total_ns": 5160
+    },
+    {
+      "name": "__amd_rocclr_initHeap.kd",
+      "calls": 1,
+      "total_ns": 3560
+    }
+  ]
+}

@@ -33,15 +33,12 @@ void* seekdb_cuvs_build(const float* base, long n, long dim)
 
   if (cuvsCagraIndexParamsCreate(&h->ip) != CUVS_SUCCESS) goto fail_res;
   h->ip->build_algo = NN_DESCENT;
-  h->ip->graph_degree = 128;
-  /* Keep the final CAGRA graph and search settings unchanged. A narrower
-   * intermediate graph reduces high-dimensional NN-descent work; retain the
-   * full iteration budget on that path to preserve convergence. The low-
-   * dimensional policy is inherited from the previously evaluated submission.
-   * This policy depends only on the public vector dimension, never on query
-   * values, IDs, cached graphs, or the current evaluation phase. */
-  h->ip->intermediate_graph_degree = (dim >= 192) ? 192 : 256;
-  h->ip->nn_descent_niter = (dim >= 192) ? 100 : 10;
+  /* A compact graph reduces construction and persistence work. Search below
+   * uses a larger candidate pool to retain recall; the policy is uniform
+   * across dimensions and every build constructs a fresh graph. */
+  h->ip->graph_degree = 96;
+  h->ip->intermediate_graph_degree = 96;
+  h->ip->nn_descent_niter = 5;
   if (cuvsCagraIndexCreate(&h->idx)      != CUVS_SUCCESS) goto fail_ip;
   if (cuvsCagraBuild(h->res, h->ip, &dset, h->idx) != CUVS_SUCCESS) goto fail_idx;
   h->n = n; h->dim = dim;
@@ -75,9 +72,12 @@ int seekdb_cuvs_search(void* handle, const float* query, long nq, long topk,
     if (cuvsCagraSearchParamsCreate(&sp) != CUVS_SUCCESS) { rc=14; goto done; }
     {
       size_t required_itopk = (size_t)topk * 4;
-      if (required_itopk < 512) required_itopk = 512;
+      if (required_itopk < 4096) required_itopk = 4096;
       if (sp->itopk_size < required_itopk) sp->itopk_size = required_itopk;
-      sp->search_width = 4;
+      /* The C API defaults to SINGLE_CTA. Let the fixed library select its
+       * search implementation for this batch and the larger candidate pool. */
+      sp->search_width = 1;
+      sp->algo = AUTO;
     }
     cuvsFilter f; f.type=NO_FILTER; f.addr=(uintptr_t)0;
     if (cuvsCagraSearch(h->res, sp, h->idx, &qt, &nt, &dt, f) != CUVS_SUCCESS) { rc=15; goto done; }

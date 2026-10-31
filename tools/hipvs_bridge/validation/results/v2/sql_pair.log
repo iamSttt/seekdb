@@ -1,0 +1,9 @@
+START sql_normal256_candidate96
+DONE sql_normal256_candidate96 0
+START sql_normal256_frozen
+DONE sql_normal256_frozen 0
+START sql_normal128_frozen
+DONE sql_normal128_frozen 0
+START sql_normal128_candidate96
+DONE sql_normal128_candidate96 0
+SQL PAIRS COMPLETE

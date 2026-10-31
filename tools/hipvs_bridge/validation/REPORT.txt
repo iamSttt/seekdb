@@ -1,148 +1,157 @@
-AMD CAGRA candidate — 2026-10-30
+AMD CAGRA candidate v2 — 2026-10-31
+
+Status and provenance
+=====================
+This is a tested submission candidate, NOT a confirmed official 20/20 result.
+Official Hidden250K is unavailable. Public SIFT prefix selection is not proven
+identical to the organizer's selection. Official score and gates remain pending.
+
+Repository: iamSttt/seekdb. Branch: amd-cagra-opt-v2.
+Parent: 55d78dca906c8c740c368de292afaddd883f0762.
+Frozen ancestor/comparator: 634888d9b037153fa143d2c913ba4b25503e1d62.
+The prior candidate report is preserved as REPORT_v1.txt; results outside
+results/v2 are historical and must not be attributed to this implementation.
+
+Why the reference scored 8.834
+==============================
+The user supplied an actual official result for the DS submission:
+5d8297ed09d2309e0f3685dd83f0612617e36e2c, amd-cagra-submit:
+8.834/20, build=1.443x, query=1.033x, gates=pass.
+It is NOT a confirmed score for our parent 55d78dc candidate.
+Compared with the frozen implementation, that DS version changes only the
+NN-descent iteration budget (100 -> 70 for high dimension, otherwise 10).
+It retains intermediate/final degree 256/128 and the default SINGLE_CTA search
+with candidate budget 512 and search width 4.
+
+Under the published formula, if all gates pass:
+  score = 4 + 14*clamp(ln(build)/ln(3),0,1)
+            + 2*clamp(ln(query)/ln(1.5),0,1).
+Dataset ratios use a weighted geometric mean: SIFT 0.4, Hidden256 0.6.
+The rounded supplied ratios yield 4 + 4.67330 + 0.16015 = 8.83344.
+Rounding explains the reported 8.834. With build fixed at 1.443x, even maximum
+query credit would only reach 10.6733. Both construction and search need work.
+Full speed credit requires weighted build >=3x and query >=1.5x, plus all gates.
 
 Implementation
 ==============
-Parent: 5d8297ed09d2309e0f3685dd83f0612617e36e2c.
-Frozen ancestor: 634888d9b037153fa143d2c913ba4b25503e1d62.
-GitHub's commit comparison verifies that the parent is three commits ahead of
-the frozen ancestor with no divergence; its only changed file is the bridge.
+Uniform, dimension-independent policy:
+  NN_DESCENT; intermediate_graph_degree=96; graph_degree=96; niter=5.
+  itopk_size >= max(4096,4*topk); search_width=1; search algo=AUTO.
+The fixed C API defaults to SINGLE_CTA, not AUTO. Explicit AUTO dispatches the
+tested individual queries to multi-CTA search. Its higher throughput permits a
+larger candidate pool, recovering recall lost by making graph construction
+cheaper. These are ordinary fixed-library parameters; the library is unmodified.
+No custom search, data-dependent selection, phase detection, graph caching,
+cross-build reuse, new runtime dependency, or altered FP32 interface is used.
+SQL behavior, persistence, CPU VSAG path, and build entry point are unchanged.
 
-For dimensions >=192, use intermediate_graph_degree=192 and 100 NN-descent
-iterations. For lower dimensions, retain the parent's degree=256 and 10
-iterations. The output graph degree remains 128. Query code and its parameters,
-FP32 inputs, SQL interface, persistence format, and CPU VSAG path are unchanged.
-The high-dimensional change reduces intermediate neighbor work while restoring
-the full iteration budget. It does not reuse graphs or change behavior between
-evaluation phases. The fixed hipVS/cuVS library is unmodified.
+Build and exact binary identity
+===============================
+AMD gfx1100, ROCm 7.2.4, 24 CPU affinity slots. Fixed installed libcuvs_c.so SHA256:
+b63211897276e0a6911bb534fe77c8b0b59f31c50af1df2f108845f06ad46ebf.
+Frozen dependency manifest/cache: ac032efc6b707fc0273e6b553db53011.
+Cargo was offline. Full seekdb build with the contest flags succeeded; initial
+full build stage 362.89 seconds. After final bridge source replacement, the same
+official build.sh and CMake configure/build commands succeeded (incremental
+kernel link 3.26 seconds). Final bridge binary is BYTE-IDENTICAL to the one used
+in all candidate96 paired performance tests (comments were the final change).
+Bridge binary SHA256:
+770c0c8c7726662b61a3e62f5a1463bd82571164039603aea0c75c6898982f58.
+Final bridge source SHA256:
+7abcf3ba0cfd3665394b9b22fe3879562bb6b824cd142d31653ebd0f020686bc.
+See results/v2/manifest_v2.json and build logs. Benchmark Python packages are
+development tools only and are not product dependencies.
 
-Official status
-===============
-This candidate has NOT been submitted to the official evaluation platform.
-No new official score or gates=pass is claimed.
-The user reported 8.834/20, build=1.443x, query=1.033x, gates=pass for the PARENT
-commit. That result does not transfer automatically to this new candidate.
+Complete SQL paired measurements
+================================
+Every row uses 250,000 vectors, 4,096 individual SQL queries per k=10 and k=100,
+fresh isolated server/database/index, the same newly built kernel, and either
+the frozen or candidate bridge. Loaded-library paths are recorded from /proc.
+Build includes offline CREATE VECTOR INDEX and the first query. Import and
+server startup are outside the timer. No profiler or other GPU benchmark ran
+concurrently with these measurements. Each reported pair is one run.
 
-Environment and build
-=====================
-AMD gfx1100 GPU, 49,136 MiB reported VRAM, ROCm 7.2.4.
-Host GCC 13.3.0, CMake 3.31.10, Rust/Cargo 1.97.1.
-24 CPU affinity slots were used. Full seekdb was compiled from the parent source
-archive with only the candidate bridge replacement and validation files added.
-Dependency manifest MD5 ac032efc6b707fc0273e6b553db53011 matches the installed
-frozen dependency cache. Cargo was run with CARGO_NET_OFFLINE=true.
+Dataset    Variant    Build+first(s)   QPS@10    QPS@100    Recall@10  Recall@100
+SIFT128    frozen       21.528263       140.838   133.562    1.000000   0.999976
+SIFT128    candidate     4.791551       230.606   210.654    0.999951   0.999968
+Normal256  frozen       23.569328       124.437   120.167    0.949951   0.899114
+Normal256  candidate     7.493551       220.126   202.427    0.996094   0.990396
+Normal128  frozen       21.214318       133.708   127.132    0.990527   0.965903
+Normal128  candidate     4.881553       231.096   217.533    0.999561   0.998171
 
-The task's bridge and CMake commands succeeded, including OB_BUILD_CUVS=ON,
-OB_BUILD_CUVS_TRACE=OFF, OB_ENABLE_UNITY=ON, OB_USE_LLD=ON, RelWithDebInfo.
-The cmake --build stage completed successfully in 318.76 seconds. No extra
-compiler flags, third-party dependencies, or changes to the fixed GPU library
-were introduced. Python benchmark packages are development tools only.
+Dataset       Build ratio   Query geometric ratio
+SIFT128         4.492963x        1.607012x
+Normal256       3.145282x        1.726241x
+Normal128       4.345813x        1.719693x
 
-Bridge measurements
-===================
-Data: 250,000 independent standard-normal FP32 vectors, dimension 256;
-4,096 independent queries; exact top-100 FP32 L2 truth; seed 20261030.
-This is SYNTHETIC data, not SIFT or Hidden250K.
+SIFT128 + Normal256 weighted development ratios: build=3.627512x, query=1.677523x.
+Both exceed the formula's speed saturation thresholds ON THESE DEVELOPMENT
+DATASETS. Substitution of Normal256 for Hidden250K prevents an official score
+claim or a guarantee that the same ratios/recall will hold on hidden data.
 
-                            Frozen baseline        Candidate
-Build (bridge only)             17.0881 s          13.2171 s
-Recall@10                        0.949463          0.950122
-Recall@100                       0.898303          0.901062
-Top-10 QPS                       256.830           255.856
-Top-100 QPS                      250.311           253.168
+SIFT source is public ANN-benchmarks sift-128-euclidean.hdf5: first 250K train
+rows and first 4096 test rows. Exact top-100 truth was recomputed against the
+selected 250K; the original 1M ground truth was not reused. The HTTP byte ranges,
+ETag, transport hashes, and source URL are in sift_provenance.json. Normal data
+uses independent standard-normal FP32 vectors and exact FP32 L2 truth; it is not
+hidden data. Seeds and generation code are retained in validation/v2.
 
-Build speedup: approximately 1.293x. Query throughput is essentially unchanged.
-IDs were complete, unique and in range; distances finite; search results matched
-before and after serialization/reload. This is one paired run, not a statistical
-confidence claim. The kernel and SQL overhead are excluded from these numbers.
-
-The unchanged low-dimensional parent policy showed worse recall than the frozen
-baseline on independent Gaussian 128-dimensional data in earlier screening.
-The parent's official SIFT pass is the only available SIFT evidence. This is a
-known generalization limitation, not evidence that the hidden platform gates
-have passed. Official SIFT and Hidden data were unavailable during development.
-
-CPU/GPU SQL development comparison
-=================================
-On the template's 10,000 x 128 demo vectors and 100 queries, the newly compiled
-candidate seekdb completed the offline DDL path for both backends:
-
-                              CPU lib=vsag         GPU lib=cuvs
-DDL plus first query              2.6506 s             1.2468 s
-Recall@10                         0.6400               1.0000
-Recall@100                        0.6524               1.0000
-Top-10 QPS                        4116.42              148.56
-Top-100 QPS                       1744.83              145.21
-
-Both returned complete, unique, valid IDs. These fixed-parameter backends do not
-have equal recall, so this is a functional/performance comparison, not a claim
-of equal-quality CPU/GPU speedup. CPU throughput is higher on this small demo.
-The official scoring comparator is the frozen GPU baseline, not the CPU path.
-
-Evaluation requirements still applying
-=====================================
-Only the official platform can establish the score and all gates. It checks
-both formal datasets, Recall absolute thresholds and <=0.005 baseline decline,
-per-dataset geometric-mean query ratio >=0.90, unique and valid IDs, actual GPU
-construction/search, CPU-path functionality, stability, and resource limits.
-Physical VRAM must be <=45 GB and <=1.25x the same-round baseline. Development
-VRAM sampling is not an exact peak or a substitute for that gate.
-
-250K x 256 end-to-end SQL paired run
-==================================
-Independent normal FP32 data and 4,096 individual SQL queries per top-k:
-
-                            Frozen bridge          Candidate bridge
-DDL plus first query            23.6031 s              19.1229 s
-Recall@10                        0.949487               0.950317
-Recall@100                       0.898179               0.901128
-Top-10 QPS                       128.271                129.324
-Top-100 QPS                      124.071                124.174
-Sampled device VRAM peak       861,089,792 B          861,515,776 B
-
-The same newly source-built seekdb kernel was used for both runs. Relative to
-the frozen baseline, the parent modifies only the bridge; the kernel source is
-unchanged. Each run started a separate, empty instance; LD_LIBRARY_PATH selected
-the corresponding bridge and /proc/<pid>/maps verified the loaded library.
-Candidate ran first, then baseline; no server or graph was shared between runs.
-Both used a 24-CPU affinity mask, a 16 GB seekdb memory budget, and the exact
-index/search SQL parameters in the task. Import and startup were outside timing.
-
-Measured end-to-end build speedup is approximately 1.234x and geometric-mean
-query speedup approximately 1.005x on this synthetic dataset. Both completed all
-queries with complete, unique, valid IDs. Neither recall metric regressed.
-Device VRAM was sampled every 50 ms, including import/build/query; the ratio is
-approximately 1.0005x, but sampling cannot establish an exact peak-memory gate.
-These are local measurements from one pair, not an official competition score.
-
-The initial large import hit the default query timeout. The development harness
-now sets session query/transaction timeouts before import; the paired runs above
-completed after that correction. No candidate implementation change was needed.
-
-Rejected approaches
-===================
-Persistent query-buffer caching showed no meaningful gain in 4,096-query runs.
-Team/block-size overrides slowed searches. Default IVF-PQ construction lost
-substantial recall; an enhanced IVF-PQ build was stopped after more than nine
-minutes without completion. None of those implementations is included here.
-
-GPU profiling evidence and limitation
+Correctness, resources, and profiling
 ====================================
-rocprofv3 successfully recorded 688 GPU dispatches from the exact compiled
-candidate bridge on synthetic250K x 256, including 100 NN-descent local-join
-dispatches, CAGRA graph pruning, and 35 CAGRA search dispatches. Kernel summaries
-are included in results/candidate_profile_summary.json. These profiled timings
-are not used for the performance ratios above.
+All measured SQL results had complete, unique, in-range IDs. Observed SIFT
+recall exceeds 0.95 at both k and decline is much less than 0.005; Normal256
+also exceeds hidden-style absolute thresholds and improves over its baseline.
+These observations do not certify official dataset gates.
 
-Launching the full seekdb process under rocprofv3 preload aborted during the
-unchanged ObTimer initialization, before SQL service startup. Repeating that
-control with the frozen bridge produced the same initialization abort. Ordinary
-SQL startup/build/query succeeded for both libraries. Consequently, local
-end-to-end SQL profiling is UNVERIFIED; the bridge trace does not establish the
-organizer's full gpu_path gate. No product code was changed to bypass profiling.
+Sampled device VRAM peak (50ms interval; includes the device's existing usage):
+SIFT:      frozen 1,490,681,856 B; candidate 1,453,658,112 B.
+Normal256: frozen 1,618,857,984 B; candidate 1,582,272,512 B.
+Normal128: frozen 1,490,694,144 B; candidate 1,453,666,304 B.
+All sampled ratios are below 1.0 and well below 45GB. Sampling is not an exact
+peak guarantee; official limits are <=45GB and <=1.25x same-round baseline.
+Observed server RSS remained below 3.3GB. Development processes used CPU affinity
+24. Official CPU/RAM/time-limit enforcement remains the grader's responsibility.
 
-Reproduction
-============
-See README.txt and the accompanying scripts. Import precedes the DDL timer.
-Every build starts from a newly created database/index or a new bridge handle.
-No previously built graph is reused between build measurements. SQL queries are
-individual SELECT statements, not the demo batch_knn interface.
+Bridge checks passed for batches 1,3,8,128,1024,4096; k=10/100; optional null
+distance output; 16 calls on four threads; finite distances matching FP32 squared
+L2 against returned IDs. Snapshot graph+vector bytes are identical after reload.
+AUTO parallel approximate search can differ slightly across repeated searches
+even before serialization. We record result-identity separately rather than
+misdiagnosing that as snapshot corruption. Recall and integrity remain checked.
+
+The exact final binary passed SQL lib=vsag and lib=cuvs on the template's 10K x
+128 demo, 100 queries. CPU recall@10/100 =0.64/0.6524; GPU=1.0/1.0; both integrity
+pass. CPU and GPU are not equal-recall comparisons and CPU is not the scoring
+baseline. Raw results are retained.
+
+rocprofv3 standalone bridge trace captured 442 dispatches, including 5 NN-descent
+local-join calls, graph pruning, and 51 multi-CTA search calls. The trace summary
+and original DB hash are recorded. Full SQL-process attach was attempted but
+the cloud container rejected ptrace with Operation not permitted; this remains
+an instrumentation limitation, not a successful full-SQL profiler gate. No
+security restrictions were disabled. SQL tests verify the loaded bridge and
+its results, while the standalone trace verifies actual GPU library execution.
+
+Development incident: an experiment named queue.py initially shadowed Python's
+stdlib queue when the concurrency test imported ThreadPoolExecutor. That script
+was renamed, the accidental development benchmark stopped, and the functional
+test rerun successfully. This occurred after all SQL pairs, so those timings
+were unaffected. Original diagnostic logs are preserved.
+
+Remaining official gates / failure thresholds
+=============================================
+SIFT recall >=0.95 at k10/k100; Hidden256 >=0.90/0.85; each recall decrease vs
+frozen <=0.005; each dataset query geometric ratio >=0.90; complete valid unique
+IDs; actual GPU build/search; functional CPU VSAG; stability; physical VRAM
+<=45GB and <=1.25x baseline; CPU24/RAM96GB and 15-minute GPU run limit.
+A gate failure makes the official score zero. No official gates=pass is claimed.
+The repository was public when checked, and the current GitHub login has push
+but no admin permission. The contest's private-repository requirement requires
+the owner to change visibility. Never commit tokens; use the platform's specified
+read-only repository credential for submission.
+
+References
+==========
+Task: https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/seebnbaoxot1b0tb
+Official record page: https://open.oceanbase.com/train/TestRecord?questionId=600072
+Public data: https://ann-benchmarks.com/sift-128-euclidean.hdf5
