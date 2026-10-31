@@ -1,0 +1,9 @@
+/workspace/work/opt-v4/compact/seekdb_cuvs_bridge.c:169:10: error: call to undeclared function 'cudaMemcpy2D'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+  169 |     rc = cudaMemcpy2D(out, width, (const char*)t->data + t->byte_offset,
+      |          ^
+/workspace/work/opt-v4/compact/seekdb_cuvs_bridge.c:169:10: note: did you mean 'hipMemcpy2D'?
+/opt/rocm/include/hip/hip_runtime_api.h:5467:12: note: 'hipMemcpy2D' declared here
+ 5467 | hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width,
+      |            ^
+1 error generated.
+failed to execute:/opt/rocm-7.2.4/lib/llvm/bin/clang++  --driver-mode=g++ --hip-link  -shared -fPIC -O2 -D__HIP_PLATFORM_AMD__ -I/opt/hipvs/include -I/opt/rocm/include -x c /workspace/work/opt-v4/compact/seekdb_cuvs_bridge.c -L/opt/hipvs/lib -Wl,-soname,libseekdb_cuvs_bridge.so -Wl,-rpath,/opt/hipvs/lib\:/opt/rocm/lib -lcuvs_c -o "/workspace/work/opt-v4/compact/libseekdb_cuvs_bridge.so"

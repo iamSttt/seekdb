@@ -1,0 +1,21 @@
+START sql4_normal256_v3
+RESULT {'scope': 'development SQL benchmark; not official scoring', 'dataset': 'normal256', 'backend': 'cuvs', 'n': 250000, 'dim': 256, 'nq': 4096, 'database': 'cagra_validation_ca81345de797', 'ddl_s': 7.383658599108458, 'build_first_s': 7.404018334113061, 'qps10': 1101.9886196653842, 'recall10': 0.99599609375, 'p95_ms10': 0.933605246245861, 'qps100': 757.6234387976482, 'recall100': 0.9903759765625, 'p95_ms100': 1.405038870871067, 'integrity': 'pass'}
+REBUILD sql4_normal256_v3 {'repeat': 0, 'ddl_s': 6.883867898024619, 'build_first_s': 6.890427248552442, 'recall100': 0.99140625}
+REBUILD sql4_normal256_v3 {'repeat': 1, 'ddl_s': 6.979477342218161, 'build_first_s': 6.984450905583799, 'recall100': 0.991796875}
+REBUILD sql4_normal256_v3 {'repeat': 2, 'ddl_s': 7.494658228941262, 'build_first_s': 7.50038796570152, 'recall100': 0.991015625}
+START sql4_normal256_compact
+RESULT {'scope': 'development SQL benchmark; not official scoring', 'dataset': 'normal256', 'backend': 'cuvs', 'n': 250000, 'dim': 256, 'nq': 4096, 'database': 'cagra_validation_7eefc876da07', 'ddl_s': 6.589488095603883, 'build_first_s': 6.608753629028797, 'qps10': 1117.6581109555498, 'recall10': 0.9960693359375, 'p95_ms10': 0.9130481630563736, 'qps100': 758.9361858297398, 'recall100': 0.99046142578125, 'p95_ms100': 1.381504349410534, 'integrity': 'pass'}
+REBUILD sql4_normal256_compact {'repeat': 0, 'ddl_s': 6.349310033023357, 'build_first_s': 6.355494146235287, 'recall100': 0.991328125}
+REBUILD sql4_normal256_compact {'repeat': 1, 'ddl_s': 6.391131064854562, 'build_first_s': 6.3985578790307045, 'recall100': 0.990625}
+REBUILD sql4_normal256_compact {'repeat': 2, 'ddl_s': 6.213157658465207, 'build_first_s': 6.218234281055629, 'recall100': 0.99125}
+START sql4_sift250k_compact
+RESULT {'scope': 'development SQL benchmark; not official scoring', 'dataset': 'sift250k', 'backend': 'cuvs', 'n': 250000, 'dim': 128, 'nq': 4096, 'database': 'cagra_validation_a28e12f8cfec', 'ddl_s': 4.398015224374831, 'build_first_s': 4.417024780996144, 'qps10': 1343.3623134869129, 'recall10': 0.9999755859375, 'p95_ms10': 0.7765188347548246, 'qps100': 839.6518082227082, 'recall100': 0.9999755859375, 'p95_ms100': 1.2786109000444412, 'integrity': 'pass'}
+REBUILD sql4_sift250k_compact {'repeat': 0, 'ddl_s': 4.278281480073929, 'build_first_s': 4.283081064000726, 'recall100': 1.0}
+REBUILD sql4_sift250k_compact {'repeat': 1, 'ddl_s': 4.060803948901594, 'build_first_s': 4.06623362749815, 'recall100': 0.999921875}
+REBUILD sql4_sift250k_compact {'repeat': 2, 'ddl_s': 4.4396547777578235, 'build_first_s': 4.445468814112246, 'recall100': 0.999921875}
+START sql4_sift250k_v3
+RESULT {'scope': 'development SQL benchmark; not official scoring', 'dataset': 'sift250k', 'backend': 'cuvs', 'n': 250000, 'dim': 128, 'nq': 4096, 'database': 'cagra_validation_87dd56005777', 'ddl_s': 4.678235177882016, 'build_first_s': 4.697896309196949, 'qps10': 1346.0744473264845, 'recall10': 0.9999755859375, 'p95_ms10': 0.7765970658510923, 'qps100': 830.4951633313505, 'recall100': 0.99997314453125, 'p95_ms100': 1.2975356075912714, 'integrity': 'pass'}
+REBUILD sql4_sift250k_v3 {'repeat': 0, 'ddl_s': 4.465542875230312, 'build_first_s': 4.471406840719283, 'recall100': 1.0}
+REBUILD sql4_sift250k_v3 {'repeat': 1, 'ddl_s': 4.481700575910509, 'build_first_s': 4.487632270902395, 'recall100': 0.999921875}
+REBUILD sql4_sift250k_v3 {'repeat': 2, 'ddl_s': 4.858186067081988, 'build_first_s': 4.871811133809388, 'recall100': 1.0}
+SQL PAIRS COMPLETE

@@ -1,0 +1,5 @@
+Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+Collecting pymysql
+  Downloading pymysql-1.2.3-py3-none-any.whl (46 kB)
+Installing collected packages: pymysql
+Successfully installed pymysql-1.2.3

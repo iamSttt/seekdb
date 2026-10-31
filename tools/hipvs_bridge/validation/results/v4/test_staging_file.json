@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "modes": [
+    "memfd",
+    "denied-memfd fallback"
+  ],
+  "cycles_per_mode": 100,
+  "checks": [
+    "shared file content",
+    "size",
+    "fd lifetime",
+    "ASan/UBSan"
+  ]
+}

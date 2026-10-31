@@ -1,0 +1,26 @@
+{
+  "normal256": {
+    "first_build_ratio": 1.1203350510134138,
+    "first_time_reduction": 0.10740987787944611,
+    "rebuild_medians": {
+      "v3": 6.984450905583799,
+      "compact": 6.355494146235287
+    },
+    "median_build_ratio": 1.0989626840772213,
+    "query_ratio": 1.0079566662161001
+  },
+  "sift250k": {
+    "first_build_ratio": 1.0635883976493024,
+    "first_time_reduction": 0.0597866597546971,
+    "rebuild_medians": {
+      "v3": 4.487632270902395,
+      "compact": 4.283081064000726
+    },
+    "median_build_ratio": 1.0477579583120482,
+    "query_ratio": 1.004484177609276
+  },
+  "weighted_first_ratio": 1.0972818372523807,
+  "weighted_median_ratio": 1.0781871582588465,
+  "conditional_official_B_from_medians": 3.0588169679803476,
+  "scope": "Development relative to v3; Normal256 is NOT organizer Hidden256. Conditional extrapolation assumes official v2/v3 construction equivalent and development gain transfers. Not an official score."
+}

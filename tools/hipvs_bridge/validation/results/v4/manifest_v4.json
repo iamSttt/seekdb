@@ -1,0 +1,56 @@
+{
+  "files": {
+    "/workspace/work/opt-v4/seekdb_v3": {
+      "bytes": 1378596232,
+      "sha256": "b7c99141c01348ac1bb6273e807e20424044eab1739b6e78ae0ecb4f017b6212"
+    },
+    "/workspace/work/opt-v4/seekdb_compact": {
+      "bytes": 1378616144,
+      "sha256": "7aeec04c7ef7410e30f0911a8aead9584641f1840ac69d32aa7bba1cbeb3882b"
+    },
+    "/workspace/work/opt-v4/v3_adaptor.cpp": {
+      "bytes": 89901,
+      "sha256": "1e495fb6e8b05b0378032fb82d9923fa48603a96d3d31a8f593a4ea98306f615"
+    },
+    "/workspace/work/opt-v4/compact_adaptor.cpp": {
+      "bytes": 91544,
+      "sha256": "98127c70b97de35c4fba9ef474d20f53baf72cd7bf51c655ceb9a1333b90e53b"
+    },
+    "/workspace/work/opt-v4/build/libseekdb_cuvs_bridge.so": {
+      "bytes": 11576,
+      "sha256": "770c0c8c7726662b61a3e62f5a1463bd82571164039603aea0c75c6898982f58"
+    },
+    "/workspace/work/opt-v4/compact/libseekdb_cuvs_bridge.so": {
+      "bytes": 12640,
+      "sha256": "3caa56670f09e9561f6de5238eb95e3f2511e2c8a33db4b5e6953fc3caeb9961"
+    },
+    "/workspace/work/opt-v4/source/iamSttt-seekdb-55d78dc/src/oblib/lib/vector/ob_vsag_adaptor.cpp": {
+      "bytes": 91544,
+      "sha256": "98127c70b97de35c4fba9ef474d20f53baf72cd7bf51c655ceb9a1333b90e53b"
+    },
+    "/workspace/work/opt-v4/source/iamSttt-seekdb-55d78dc/tools/hipvs_bridge/seekdb_cuvs_bridge.c": {
+      "bytes": 7930,
+      "sha256": "ef859e988a851b301b0a9d016f4fd772c00ae53f7c9b9e0527fd1a7dd07455eb"
+    },
+    "/workspace/work/opt-v4/source/iamSttt-seekdb-55d78dc/tools/hipvs_bridge/seekdb_cuvs_bridge.h": {
+      "bytes": 1802,
+      "sha256": "436795c408d7ce9625fd8b873372be42772460da718078953801d34e4358771b"
+    },
+    "/opt/hipvs/lib/libcuvs_c.so": {
+      "bytes": 1143408,
+      "sha256": "b63211897276e0a6911bb534fe77c8b0b59f31c50af1df2f108845f06ad46ebf"
+    }
+  },
+  "baseline_commit": "375ab79c996427ad2cb2731e1f00243e2e4289f5",
+  "parameters": "degree96/inter96/niter5/AUTO/itopk4096,width1; unchanged",
+  "cpu_affinity": 24,
+  "archive_sha256": "135148fc01c2f5c4a05098047cb9de9d01630a6d4240d28e99962259d0182aef",
+  "cmake_flags": [
+    "CMAKE_BUILD_TYPE:STRING=RelWithDebInfo",
+    "CUVS_BRIDGE_LIB:UNINITIALIZED=/workspace/work/opt-v4/compact/libseekdb_cuvs_bridge.so",
+    "OB_BUILD_CUVS:UNINITIALIZED=ON",
+    "OB_BUILD_CUVS_TRACE:UNINITIALIZED=OFF",
+    "OB_ENABLE_UNITY:UNINITIALIZED=ON",
+    "OB_USE_LLD:UNINITIALIZED=ON"
+  ]
+}

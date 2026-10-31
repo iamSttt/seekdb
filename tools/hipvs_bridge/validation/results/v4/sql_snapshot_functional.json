@@ -1,0 +1,49 @@
+{
+  "status": "PASS",
+  "results": [
+    {
+      "snapshot_source": "v3",
+      "dataset": "normal256",
+      "restart_load": "PASS",
+      "concurrent_clients": 8,
+      "queries": 256,
+      "recall100": 0.990859375,
+      "filtered_query_integrity": "PASS"
+    },
+    {
+      "snapshot_source": "compact",
+      "dataset": "normal256",
+      "restart_load": "PASS",
+      "concurrent_clients": 8,
+      "queries": 256,
+      "recall100": 0.991640625,
+      "filtered_query_integrity": "PASS"
+    },
+    {
+      "snapshot_source": "compact",
+      "dataset": "sift250k",
+      "restart_load": "PASS",
+      "concurrent_clients": 8,
+      "queries": 256,
+      "recall100": 0.9999609375,
+      "filtered_query_integrity": "PASS",
+      "lifecycle": [
+        {
+          "backend": "cuvs",
+          "recall10": 1.0,
+          "insert_delete": "PASS"
+        },
+        {
+          "backend": "vsag",
+          "recall10": 1.0,
+          "insert_delete": "PASS"
+        },
+        {
+          "backend": "cuvs",
+          "recall10": 1.0,
+          "insert_delete": "PASS"
+        }
+      ]
+    }
+  ]
+}

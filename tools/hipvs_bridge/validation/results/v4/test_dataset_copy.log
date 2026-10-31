@@ -1,0 +1,6 @@
+{'n': 1024, 'dim': 16, 'exact_fp32_roundtrip': True, 'invalid_inputs': 'pass', 'canary': 'pass', 'memfd_snapshot': 'pass'}
+{'n': 1024, 'dim': 127, 'exact_fp32_roundtrip': True, 'invalid_inputs': 'pass', 'canary': 'pass', 'memfd_snapshot': 'pass'}
+{'n': 1024, 'dim': 128, 'exact_fp32_roundtrip': True, 'invalid_inputs': 'pass', 'canary': 'pass', 'memfd_snapshot': 'pass'}
+{'n': 1024, 'dim': 256, 'exact_fp32_roundtrip': True, 'invalid_inputs': 'pass', 'canary': 'pass', 'memfd_snapshot': 'pass'}
+{'n': 250000, 'dim': 256, 'exact_fp32_roundtrip': True, 'invalid_inputs': 'pass', 'canary': 'pass', 'memfd_snapshot': 'pass'}
+DATASET COPY PASS

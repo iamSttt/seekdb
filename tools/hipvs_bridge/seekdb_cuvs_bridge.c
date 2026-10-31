@@ -5,11 +5,14 @@
 #include <dlpack/dlpack.h>
 #ifdef __HIP_PLATFORM_AMD__
 #include <cuvs/cuda_runtime.h>
+#define SK_MEMCPY_2D hipMemcpy2D
 #else
 #include <cuda_runtime.h>
+#define SK_MEMCPY_2D cudaMemcpy2D
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef struct {
   cuvsResources_t        res;
@@ -147,6 +150,30 @@ fail:
   fprintf(stderr, "[seekdb_cuvs] deserialize failed: %s\n", cuvsGetLastErrorText());
   free(index);
   return NULL;
+}
+
+int seekdb_cuvs_copy_dataset(void* handle, float* out, long n, long dim)
+{
+  sk_cuvs_index* h = (sk_cuvs_index*)handle;
+  if (!h || !out || n <= 0 || dim <= 0 || h->n != n || h->dim != dim ||
+      (uint64_t)dim > SIZE_MAX / sizeof(float) / (uint64_t)n) return 1;
+  DLManagedTensor view = {0};
+  if (cuvsCagraIndexGetDataset(h->idx, &view) != CUVS_SUCCESS) return 1;
+  DLTensor* t = &view.dl_tensor;
+  int rc = 1;
+  if (t->data && t->ndim == 2 && t->shape && t->shape[0] == n && t->shape[1] == dim &&
+      t->dtype.code == kDLFloat && t->dtype.bits == 32 && t->dtype.lanes == 1 &&
+      t->device.device_type == kDLCUDA &&
+      (!t->strides || (t->strides[1] == 1 && t->strides[0] >= dim &&
+                       (uint64_t)t->strides[0] <= SIZE_MAX / sizeof(float) / (uint64_t)n))) {
+    size_t width = (size_t)dim * sizeof(float);
+    size_t pitch = t->strides ? (size_t)t->strides[0] * sizeof(float) : width;
+    rc = SK_MEMCPY_2D(out, width, (const char*)t->data + t->byte_offset,
+                      pitch, width, (size_t)n, cudaMemcpyDeviceToHost) == cudaSuccess ? 0 : 1;
+  }
+  if (view.deleter) view.deleter(&view);
+  if (rc) fprintf(stderr, "[seekdb_cuvs] could not recover FP32 dataset\n");
+  return rc;
 }
 
 int seekdb_cuvs_cagra_knn(const float* base, long n, long dim,

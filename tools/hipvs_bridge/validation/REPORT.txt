@@ -1,128 +1,131 @@
-AMD CAGRA candidate v3 — 2026-10-31
+AMD CAGRA candidate v4 — 2026-10-31
 
 Status
 ======
-Repository iamSttt/seekdb; branch amd-cagra-opt-v3.
-Parent: 4a0a39572687705c7645c56001554b1bc41213ca (amd-cagra-opt-v2).
-This candidate improves measured SQL query throughput over v2 without changing
-the CAGRA graph or search parameters. It has NO confirmed official score.
-Formal submission is performed by the user, not by this development workflow.
-REPORT_v2.txt and results/v2 preserve the previous candidate's evidence.
+Repository iamSttt/seekdb; branch amd-cagra-opt-v4.
+Parent375ab79c996427ad2cb2731e1f00243e2e4289f5 (v3).
+Development validation passed. NO official v4 score; submission belongs to user.
+The official v2 result was19.286/20: build2.837x, query1.613x, gates=pass.
+All missing credit was construction; about5.43% less construction time is needed
+to reach3x if the formal baseline remains unchanged. REPORT_v3.txt and older
+reports preserve earlier evidence. v3 alone had no established build benefit.
 
-Implementation and reason
-=========================
-The existing single-query adaptor created and joined a 32MB-stack pthread on
-every GPU search. That large stack is necessary for the fixed cuVS library, but
-repeated OS-thread and GPU thread-local initialization is not.
+Implementation
+==============
+The old snapshot stored host FP32 vectors AND a complete cuVS snapshot containing
+the same dataset. Header flag1 now omits the duplicate host vectors. On load,
+the fixed-library cuvsCagraIndexGetDataset view restores the exact FP32 buffer
+needed by CPU fallback and updates. Dimensions, dtype, strides and output size
+are validated; row padding is supported. Copy failure aborts loading and frees
+the handle. Historical flag0 snapshots remain readable. Old binaries reject
+flag1; downgrading requires an old snapshot or index rebuild.
 
-CuvsSearchWorker retains one 32MB-stack pthread for synchronous single-query
-jobs. The original registry mutex still protects index lifetime/freshness.
-Submission holds its buffers alive until the worker signals completion; a
-separate submission mutex prevents pending-job replacement. The worker stops
-and joins on destruction. If initial thread creation fails, the original
-per-query large-stack thread path is used. CPU VSAG, filtering/fallback, result
-allocation, index persistence and the explicit batch path are unchanged.
+Temporary staging uses Linux memfd with close-on-exec instead of an intermediate
+disk file. The final snapshot still uses seekdb's normal durable stream. If
+memfd is unavailable/denied, tmpfile is used. Staging descriptors are closed on
+all exits. Nothing is retained as a graph cache across independent builds.
+Stage timings are logged at snapshot construction, outside the query hot path.
 
-The bridge is byte-identical to v2: NN_DESCENT, intermediate/final degree96,
-niter5, AUTO search, itopk>=max(4096,4*topk), width1. Fixed hipVS is unmodified.
-No query-result cache, graph reuse across builds, phase detection, or hidden-data
-selection has been introduced. GPU work still runs through the fixed CAGRA API.
+250K-vector payload sizes (header + external IDs + complete cuVS snapshot):
+  256D: 610001745 -> 354001745 bytes (256000000 fewer bytes).
+  128D: 354001745 -> 226001745 bytes (128000000 fewer bytes).
+
+Construction/search settings are unchanged from official gate-passing v2:
+NN_DESCENT, graph96/intermediate96/niter5; AUTO, itopk>=max(4096,4*topk), width1.
+v3's persistent query worker remains. Fixed hipVS is unmodified. No new runtime
+dependencies, phase detection, hidden-data routing or query-result cache.
 
 Build and identity
 ==================
-The adaptor was rebuilt in the same contest-configured source tree using
-cmake --build build_release --target seekdb. Build passed with RelWithDebInfo,
+Fresh contest-template GPU instance; frozen offline dependencies; RelWithDebInfo,
 OB_BUILD_CUVS=ON, OB_BUILD_CUVS_TRACE=OFF, OB_ENABLE_UNITY=ON, OB_USE_LLD=ON.
-Frozen offline dependencies and GPU libraries are unchanged. No new build or
-runtime dependencies were introduced. Original v2 binary was copied before
-rebuilding, and both versions were used for the paired experiment.
+Full parent build passed (325.31s); candidate bridge and kernel rebuild/link
+passed. Each benchmark verified loaded bridge mappings. See manifest_v4.json.
+Candidate adaptor SHA256 (LF):
+98127c70b97de35c4fba9ef474d20f53baf72cd7bf51c655ceb9a1333b90e53b
+Candidate bridge C SHA256 (LF):
+ef859e988a851b301b0a9d016f4fd772c00ae53f7c9b9e0527fd1a7dd07455eb
+Candidate bridge binary SHA256:
+3caa56670f09e9561f6de5238eb95e3f2511e2c8a33db4b5e6953fc3caeb9961
+Candidate seekdb binary SHA256:
+7aeec04c7ef7410e30f0911a8aead9584641f1840ac69d32aa7bba1cbeb3882b
+Fixed libcuvs_c.so SHA256 (matches previous validation):
+b63211897276e0a6911bb534fe77c8b0b59f31c50af1df2f108845f06ad46ebf
 
-Adaptor source SHA256:
-1e495fb6e8b05b0378032fb82d9923fa48603a96d3d31a8f593a4ea98306f615
-v2 binary SHA256:
-3f8307593d0674854b9458687de9a292bb118f8a9d2826f215e66735d3a33f10
-v3 binary SHA256:
-e986bbc46e83da071ccc052c1a4cd185ca8c8cb0a846a14300c72efb01e93278
-Shared bridge SHA256:
-770c0c8c7726662b61a3e62f5a1463bd82571164039603aea0c75c6898982f58
-See results/v3/manifest.json for fixed-library hash and actual CMake flags.
+SQL measurements
+================
+AMD gfx1100, ROCm7.2.4, CPU affinity24,16G per-server memory budget.
+250K vectors and4096 individual SQL queries per k10/k100; exact FP32 L2 truth.
+Normal256 is synthetic, NOT organizer Hidden256. Public SIFT uses first250K
+training rows and first4096 query rows; truth was recomputed against250K rows.
+Both versions used identical inputs. Each dataset/version had its own fresh
+instance and index. Normal256 order: v3 then v4; SIFT order: v4 then v3.
+No overlapping GPU tests. Build interval includes offline CREATE VECTOR INDEX
+plus first query; input import and server startup are outside this interval.
 
-Complete SQL paired measurements
-================================
-AMD gfx1100, ROCm7.2.4; CPU affinity24; per-server memory budget16G.
-250K vectors, 4096 individual SQL queries per k10/k100. Exact FP32 L2 truth.
-Fresh, separate instance/database/index for each run; no shared/reused graph.
-Same bridge and library, only the kernel adaptor differs. Normal256 order:
-worker then v2. Public SIFT order: v2 then worker. GPU tests ran sequentially.
-Build timer includes offline CREATE VECTOR INDEX and first query, excluding
-input import and process startup. One pair per dataset, not confidence bounds.
+Dataset    Version Build+first(s) QPS@10   QPS@100  Recall@10  Recall@100
+Normal256  v3      7.404018       1101.989 757.623  0.995996   0.990376
+Normal256  v4      6.608754       1117.658 758.936  0.996069   0.990461
+SIFT128    v3      4.697896       1346.074 830.495  0.999976   0.999973
+SIFT128    v4      4.417025       1343.362 839.652  0.999976   0.999976
 
-Data       Kernel   Build+first(s)  QPS@10    QPS@100   Recall@10   Recall@100
-Normal256  v2         8.023759       223.495   213.536   0.996021    0.990417
-Normal256  v3         7.411757      1116.351   754.787   0.996094    0.990488
-SIFT128    v2         4.787990       228.953   213.148   0.999927    0.999971
-SIFT128    v3         5.098284      1318.205   828.695   0.999951    0.999961
+First-build time reductions: Normal256 10.74%; SIFT 5.98%.
+All results had the requested count of unique, valid IDs.
 
-Query geometric speedup relative to V2 (not the frozen scoring comparator):
-Normal256: 4.201878x. SIFT128: 4.731235x.
-Build ratio relative to v2: Normal256 1.082572x; SIFT128 0.939138x.
-There is no demonstrated systematic build improvement; construction parameters
-are unchanged. SIFT build was 6.5% longer in this single pair. Query gain is the
-intended optimization, and it is much larger than the observed timing variation.
-Recall differences are tiny and within 0.005; all IDs complete/unique/in range.
+Three additional DROP INDEX / CREATE VECTOR INDEX cycles built fresh graphs
+from the same input table. Timings include first query; each was followed by128
+top100 recall checks. No graph reuse. These are not confidence bounds or
+independent-machine samples.
 
-The previous v2 report compares with the frozen comparator. Do not silently
-multiply different rounds or label v2-relative ratios as official speedups.
-Hidden256 remains unavailable; public SIFT selection is not certified identical
-to the platform's. No formal 20/20 prediction or gates=pass claim is made.
+Dataset    Version Rebuild+first seconds                    Median(s)
+Normal256  v3      6.890427, 6.984451, 7.500388               6.984451
+Normal256  v4      6.355494, 6.398558, 6.218234               6.355494
+SIFT128    v3      4.471407, 4.487632, 4.871811               4.487632
+SIFT128    v4      4.283081, 4.066234, 4.445469               4.283081
 
-Resources
-=========
-50ms sampled device VRAM peaks:
-Normal256: v2=1,582,333,952 bytes; v3=1,582,084,096 bytes.
-SIFT128: v2=1,453,658,112 bytes; v3=1,453,662,208 bytes.
-Sampled server RSS peaks were <=3.02GB. The persistent worker has a 32MB virtual
-stack; sampled memory did not materially increase. This is sampling, not proof
-of an exact peak or a substitute for the formal <=45GB and <=1.25x-frozen gate.
+Median time reductions: Normal256 9.01%; SIFT 4.56%.
+Using .6/.4 dataset weights, relative build speedup is1.078187x from medians
+(1.097282x from first builds). Query throughput stays within about1% of v3;
+no measured recall regression in the4096-query runs.
 
-Functional and concurrency validation
-=====================================
-test_worker.py extracts the actual class from the adaptor and compiles it with
-ASan and UBSan. It passed 16000 calls from concurrent submitters over ten worker
-lifetimes; verifies callback results, same worker identity, different caller
-identity, actual >=32MB stack, clean shutdown/join, and failed startup behavior.
+Physical GPU memory sampled every50ms during complete SQL tests:
+  Normal256 v3 2381942784 bytes; v4 2425536512 bytes (1.0183x).
+  SIFT128   v3 2344472576 bytes; v4 2310221824 bytes (0.9854x).
+Server RSS peaks: Normal256 v3 4861120512, v4 4099203072 bytes;
+SIFT v3 3948642304, v4 3510345728 bytes. RSS is not total system memory;
+memfd staging also consumes RAM. Sampled peaks are not exact allocation peaks.
+This compares v3, not a fresh official frozen-baseline resource gate run.
 
-The new kernel was restarted on its SIFT SQL instance, verifying persisted index
-load. Eight clients issued 256 total independent top100 queries concurrently;
-recall100=1.0 with valid unique IDs. The same live process then created, queried,
-filtered and dropped newly named 512x16 test tables through cuvs,cuvs,vsag,cuvs
-backends. Every cycle had recall10=1.0 and filtered-ID integrity passed. Existing
-benchmark databases were preserved. This checks repeated index lifetime changes
-with the shared worker and the unaffected CPU fallback path.
+Correctness and persistence
+==========================
+- Fixed-library FP32 export and memfd snapshot roundtrip were bit-exact for
+  1024x16,1024x127,1024x128,1024x256,250000x256. Guard buffers were intact;
+  null handles/output and mismatched dimensions were rejected.
+- Actual staging-file class extracted and tested with ASan/UBSan:100 cycles
+  each for memfd and simulated ENOSYS fallback. Shared file content, size and
+  descriptor cleanup passed. This sanitizes the helper, not the full kernel.
+- Candidate kernel restarted historical v3 Normal256 and new v4 Normal256/SIFT
+  snapshots. Eight concurrent clients ran256 top100 queries per case; recalls
+  were0.990859,0.991641,0.999961. All ID checks and filtered-query checks passed.
+- New cuvs/vsag/cuvs lifecycle indexes each had recall10=1.0. An inserted exact
+  match was searchable and disappeared after deletion. Existing benchmark
+  tables were preserved. All test seekdb processes were terminated afterward.
 
-No claim of race-freedom from sanitizers: ASan/UBSan are not ThreadSanitizer.
-The mutex/condition handoff is reviewed and stressed, while formal stability
-and hidden-data gates still require platform evaluation.
+Score interpretation
+====================
+If the measured median improvement transfers to official data, and v2/v3
+construction is equivalent, B would be2.837*1.078187=3.058817. With capped query
+credit and passing gates, the published formula then gives20. This is a
+CONDITIONAL EXTRAPOLATION, not a score, guarantee or probability estimate.
+Hidden256, platform I/O, baseline timing and variance remain unverified here.
+We anchor to the actual19.286 result rather than claiming a score from synthetic
+data alone, given the earlier local/official mismatch.
 
-Official historical results (read-only verified)
-===============================================
-5d8297ed09d2309e0f3685dd83f0612617e36e2c: 8.834/20,
-build=1.443x, query=1.033x, gates=pass.
-55d78dca906c8c740c368de292afaddd883f0762: 8.188/20,
-build=1.389x, query=0.995x, gates=pass.
-The published clamped-log formula is consistent with both rounded records.
-v2 had been submitted by the user and was last observed waiting to execute.
-v3 has not been submitted by the assistant. No platform action was taken during
-this optimization round.
-
-Official failure thresholds remain unchanged: SIFT recall>=0.95 at k10/k100;
-Hidden256>=0.90/0.85; <=0.005 decline vs frozen; each dataset query ratio>=0.90;
-valid unique complete IDs; actual GPU construction/search; CPU VSAG functionality;
-stability; VRAM<=45GB and <=1.25x baseline; CPU24/RAM96GB/GPU-run15min limits.
-Any gate failure yields zero. Maximum official score is20, never30 or40.
-
-References
-==========
-Task: https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/seebnbaoxot1b0tb
-Official records: https://open.oceanbase.com/train/TestRecord?questionId=600072
-Public SIFT: https://ann-benchmarks.com/sift-128-euclidean.hdf5
+Evidence
+========
+Raw JSON, logs, stage timings, manifests and test outcomes: results/v4.
+Test scripts: validation/v4. No large data files or binaries are committed.
+Original evidence zip SHA256:
+18926d1f19ac67cb0bb4e4a888d78266381c5a67bfa9f656b232e90ba26ce34d
+Committed bridge/kernel sources match tested sources after LF normalization.
+Build/deploy the new bridge and new kernel together.
