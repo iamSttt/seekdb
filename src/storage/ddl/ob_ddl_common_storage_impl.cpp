@@ -227,7 +227,9 @@ int oceanbase::storage::ObDDLStorageUtil::report_ddl_sstable_checksum(
         break;
       }
     }
-    ob_usleep(100L * 1000L);
+    // The rootserver observes the reported checksum on its own schedule; the
+    // whole build waits for this delay per aux table, so keep it short.
+    ob_usleep(10L * 1000L);
   }
   return ret;
 }
