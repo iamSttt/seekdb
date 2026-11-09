@@ -203,14 +203,23 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
         }
       }
       int64_t n = 0;
+      // A multi-row INSERT is atomic in MySQL; wrapping it in one implicit
+      // transaction also collapses N fsyncs into one, which matters a lot for
+      // the write benchmark (100-row batches).
+      const bool implicit_txn = (st.rows.size() > 1) && !db.in_txn();
+      if (implicit_txn) db.begin(err, code);
       for (auto& row : st.rows) {
         if (row.size() != pos.size()) {
           *err = "Column count doesn't match value count at row " + std::to_string(n + 1);
           *code = 1136;
+          if (implicit_txn) db.rollback(err, code);
           return false;
         }
         if (pos.size() == sch.cols.size() && st.columns.empty()) {
-          if (!db.insert(st.table, row, err, code)) return false;
+          if (!db.insert(st.table, row, err, code)) {
+            if (implicit_txn) { std::string e2; int c2 = 0; db.rollback(&e2, &c2); }
+            return false;
+          }
         } else {
           std::vector<Value> full(sch.cols.size());
           std::vector<uint8_t> filled(sch.cols.size(), 0);
@@ -222,12 +231,21 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
             if (!filled[k]) {
               *err = "Field '" + sch.cols[k].name + "' doesn't have a default value";
               *code = 1364;
+              if (implicit_txn) db.rollback(err, code);
               return false;
             }
           }
-          if (!db.insert(st.table, full, err, code)) return false;
+          if (!db.insert(st.table, full, err, code)) {
+            if (implicit_txn) { std::string e2; int c2 = 0; db.rollback(&e2, &c2); }
+            return false;
+          }
         }
         ++n;
+      }
+      if (implicit_txn) {
+        std::string cerr_msg;
+        int ccode = 0;
+        if (!db.commit(&cerr_msg, &ccode)) { *err = cerr_msg; *code = ccode; return false; }
       }
       emit_dml(n, out);
       return true;

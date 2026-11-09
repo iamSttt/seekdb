@@ -98,6 +98,16 @@ bool rd_bytes(FILE* f, void* p, size_t n) {
 constexpr uint32_t kMagic = 0x564D4449u;  // 'IDMV'
 constexpr uint32_t kVersion = 1u;
 
+// Automatic cell count: ~sqrt(n) cells keeps ~sqrt(n) points per list, which is
+// the sweet spot in the measurements (64 for 10k, 316 for 100k).
+size_t auto_nlist(size_t n) {
+  size_t nl = static_cast<size_t>(std::sqrt(static_cast<double>(n)));
+  if (nl < 16) nl = 16;
+  if (nl > 4096) nl = 4096;
+  if (nl > n) nl = n ? n : 1;
+  return nl ? nl : 1;
+}
+
 }  // namespace
 
 // -------------------------------------------------------------- exact top-k --
@@ -262,17 +272,25 @@ size_t IvfIndex::nearest_lists_(const float* v, size_t r, uint32_t* ids, float* 
   return cnt;
 }
 
-// Assigns every live slot to its r nearest centroids, then reorders the master
-// vector array so that each list's members are *contiguous and ascending*: a
-// probe then walks memory forward instead of chasing scattered slots (measured
-// ~2.5x cheaper per candidate on 128-d). Radius per list is the furthest member.
+// Assigns every live slot to its r nearest centroids (extra lists only when the
+// point sits near a cell boundary -- see replication_ratio_), then reorders the
+// master vector array so that each list's members are *contiguous and ascending*:
+// a probe then walks memory forward instead of chasing scattered slots (measured
+// ~2.5x cheaper per candidate on 128-d). Radius per list = furthest member.
 void IvfIndex::build_lists_() {
   const size_t n = slot_pk_.size();
   const size_t r = std::max<size_t>(1, std::min(replication_, nlist_));
   std::vector<uint32_t> assign(n * r);
   std::vector<float> adist(n * r);
-  for (size_t s = 0; s < n; ++s)
-    nearest_lists_(data_.data() + s * dim_, r, assign.data() + s * r, adist.data() + s * r);
+  std::vector<uint8_t> keep(n, 1);
+  for (size_t s = 0; s < n; ++s) {
+    const size_t got = nearest_lists_(data_.data() + s * dim_, r, assign.data() + s * r,
+                                     adist.data() + s * r);
+    const float lim = adist[s * r] * replication_ratio_;
+    size_t k = 1;
+    while (k < got && adist[s * r + k] <= lim) ++k;
+    keep[s] = static_cast<uint8_t>(k);
+  }
 
   // Stable counting sort of slots by primary list id.
   std::vector<uint32_t> cnt(nlist_ + 1, 0);
@@ -302,7 +320,7 @@ void IvfIndex::build_lists_() {
     const size_t s = old_of_new[p];
     const uint32_t* a = assign.data() + s * r;
     const float* ad = adist.data() + s * r;
-    for (size_t j = 0; j < r; ++j) {
+    for (size_t j = 0; j < keep[s]; ++j) {
       lists_[a[j]].push_back(static_cast<uint32_t>(p));
       const float rd = std::sqrt(ad[j]);  // Euclidean radius, used by the bound
       if (rd > radius_[a[j]]) radius_[a[j]] = rd;
@@ -356,7 +374,6 @@ void IvfIndex::build_core_(std::vector<int64_t>* pks, std::vector<float>* vecs, 
 void IvfIndex::build(const std::vector<Row>& rows, const std::vector<uint8_t>& dead,
                      int vec_col, int pk_col, size_t dim, size_t nlist) {
   clear();
-  target_nlist_ = nlist == 0 ? 64 : nlist;
   if (dim == 0) {  // infer from the first live VECTOR value
     const size_t nd = dead.size();
     for (size_t i = 0; i < rows.size(); ++i) {
@@ -386,7 +403,9 @@ void IvfIndex::build(const std::vector<Row>& rows, const std::vector<uint8_t>& d
     vecs.insert(vecs.end(), v.v.begin(), v.v.end());
   }
   if (pks.empty()) return;  // keep dim_ so inserts can bootstrap the index
-  build_core_(&pks, &vecs, nlist == 0 ? 64 : nlist);
+  const size_t want = nlist == 0 ? auto_nlist(pks.size()) : nlist;
+  target_nlist_ = want;  // insert() grows the index towards this cell count
+  build_core_(&pks, &vecs, want);
 }
 
 void IvfIndex::rebuild_from_storage_(size_t nl) {
@@ -446,7 +465,10 @@ void IvfIndex::insert(int64_t pk, const float* v) {
   uint32_t ids[kMaxReplication];
   float ds[kMaxReplication];
   const size_t got = nearest_lists_(v, r, ids, ds);
-  for (size_t j = 0; j < got; ++j) {
+  const float lim = ds[0] * replication_ratio_;  // boundary points only
+  size_t keep = 1;
+  while (keep < got && ds[keep] <= lim) ++keep;
+  for (size_t j = 0; j < keep; ++j) {
     lists_[ids[j]].push_back(slot);
     const float rd = std::sqrt(ds[j]);
     if (rd > radius_[ids[j]]) radius_[ids[j]] = rd;
@@ -568,6 +590,18 @@ void IvfIndex::search_impl_(const float* q, size_t k, const Pred* pred,
     }
   }
   std::sort(heap.begin(), heap.end(), hit_less);
+}
+
+// --------------------------------------------------------------- diagnostics --
+std::vector<size_t> IvfIndex::list_sizes() const {
+  std::vector<size_t> out(nlist_, 0);
+  for (size_t c = 0; c < nlist_; ++c) {
+    size_t live = 0;
+    for (uint32_t slot : lists_[c])
+      if (!slot_dead_[slot]) ++live;
+    out[c] = live;
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------ persist --

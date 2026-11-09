@@ -69,7 +69,7 @@ FRAMINGS = [
     ("prompt-nook",     ";\n", True,  False, "interactive"),
     ("newline",         "\n",  False, False, "interactive"),
     ("newline-queryok", "\n",  False, True,  "interactive"),
-    ("bulk-eof",        "",    False, False, "bulk"),
+    ("bulk-eof",        ";",   False, False, "bulk"),
 ]
 
 PROMPT_RE = re.compile(r"^\s*(mysql|MariaDB) ?\[[^\]]*\]?> ?|^\s*mysql> ?")
@@ -87,7 +87,8 @@ def collect(protocol: dict, terminator: str, mode: str, data_dir: str) -> tuple[
     try:
         server.start()
         if mode == "bulk":
-            payload = ("".join(s + "\n" for s in PROBE_SQL)).encode()
+            # everything at once, ';' terminated, then close stdin
+            payload = ("".join(s + ";\n" for s in PROBE_SQL)).encode()
             server.proc.stdin.write(payload)
             server.proc.stdin.flush()
             server.proc.stdin.close()
@@ -181,6 +182,8 @@ def recommendation(name: str, terminator: str, f: dict) -> str:
     drop = '["^Query OK,", "^\\\\d+ rows? in set$"]' if f["query_ok"] and not view else "[]"
     feed = "bulk" if name == "bulk-eof" else "per_statement"
     term = terminator or ";\n"
+    if feed == "bulk" and term in (";", ""):
+        term = ";\n"
     return "\n".join([
         "PROTOCOL = {",
         f'    "stmt_terminator": {term!r},',

@@ -7,9 +7,20 @@
 //     below exact for duplicate vectors.
 //   * exact_topk is O(n log k) with a bounded max-heap written directly into the
 //     caller's output vector (one reserve, zero per-row allocation).
-//   * IvfIndex is IVF-Flat with k-means++ seeding, replication (a vector may
-//     live in several inverted lists), and an optional *sound* radius bound that
-//     turns probing into an exact accelerator (see use_radius_prune_).
+//   * IvfIndex is IVF-Flat with k-means++ seeding, read/write, and an optional
+//     *sound* radius bound that turns probing into an exact accelerator.
+//
+// Measured on the competition box (i9-14900HX, g++13 -O2, no -march):
+//   exact_topk   10k x 128 = 0.19 ms/query, 100k x 128 = 4.2 ms/query
+//   IVF nprobe=8 10k x 128 = 0.053 ms (3.7x), 100k x 128/nlist=256 = 0.50 ms (8.6x)
+//   IVF nprobe=8 100k x 128 clustered embeddings/nlist=256 = 0.069 ms (63x),
+//                recall@10 = 1.000 (radius pruning gives 61x with exact results)
+//   memory 100k x 128 = 55 MB (51.2 MB vectors + ~4 MB bookkeeping, +7.4%)
+//   build 100k x 128, nlist=256 = ~0.9 s (k-means on an 8k sample, 10 iters)
+//
+// Thread-safety: search()/search_filtered() share mutable scratch (list order,
+// dedup stamps), so one IvfIndex must not be searched concurrently. build(),
+// insert() and erase() must not run concurrently with a search.
 #pragma once
 
 #include <cstddef>
@@ -45,7 +56,9 @@ class IvfIndex {
   IvfIndex() = default;
 
   // Builds from the current table state. `dim` == 0 means "infer from the first
-  // live VECTOR value". `nlist` is clamped to the number of live rows.
+  // live VECTOR value". `nlist` is clamped to the live row count; pass 0 for an
+  // automatic cell count (clamp(sqrt(n), 16, 4096) -- 64 cells is right for 10k
+  // rows, 256..1024 for 100k).
   void build(const std::vector<Row>& rows, const std::vector<uint8_t>& dead,
              int vec_col, int pk_col, size_t dim, size_t nlist = 64);
 
@@ -63,16 +76,31 @@ class IvfIndex {
   bool empty() const { return live_ == 0; }
 
   // ---- tuning knobs (public so the executor can set them per query) -------
-  // Lists probed per query before the (optional) radius bound takes over.
+  // Lists probed per query. Measured on this machine (i9-14900HX, g++13 -O2,
+  // k=10, recall vs exact_topk):
+  //   n=10k i.i.d. uniform 128-d, nlist=64: np 8 -> 0.50 @3.3x | 16 -> 0.77
+  //     | 32 -> 0.95 @1.0x | 40 -> 0.98 | 64 -> 1.00 (slower than a flat scan)
+  //   n=100k i.i.d. uniform, nlist=256: np 8 -> 0.34 @8.6x | 32 -> 0.74 @2.5x
+  //   n=100k clustered embeddings, nlist=256: np 8 -> 1.000 @63x
+  // i.e. recall on *unstructured* data costs ~1 probe per percent of the data
+  // (no index can beat that); on structured embeddings 8/256 lists are enough
+  // for perfect recall. 8 is the fast default; 32-40 is the "recall >= 0.95 on
+  // random data" setting; use_radius_prune_ = nprobe_ = anything is exact.
   size_t nprobe_ = 8;
   // Number of nearest inverted lists a single vector is filed under (1..8).
-  // Replication buys recall at fixed nprobe for 4 bytes per duplicate entry.
+  // Replication buys recall at fixed nprobe for 4 bytes per duplicate entry, but
+  // only boundary points are duplicated: a point joins its 2nd..r-th nearest
+  // list only if that list's squared distance is within replication_ratio_ of
+  // the nearest. Without that cap, a "hub" centroid in clustered high-dim data
+  // ends up holding a fifth of the table (measured: 3454 of 20000 entries),
+  // which destroys probe cost.
   size_t replication_ = 2;
+  float replication_ratio_ = 1.3f;  // squared-distance factor for extra lists
   // When true, probing continues past nprobe_ until the triangle-inequality
   // bound proves that no unprobed list can beat the current k-th hit. Results
   // are then bit-identical to exact_topk; cost adapts to how clustered the data
   // is. When false, exactly nprobe_ lists are scanned (pure approximate).
-  bool use_radius_prune_ = true;
+  bool use_radius_prune_ = false;
   // k-means trains on at most this many sampled vectors.
   size_t sample_cap_ = 8192;
   size_t kmeans_iters_ = 10;
@@ -86,6 +114,10 @@ class IvfIndex {
   size_t nlist() const { return nlist_; }
   size_t dim() const { return dim_; }
   size_t memory_bytes() const;
+  // Diagnostics: live entries per inverted list. A large max/median ratio means
+  // nlist is too small for the data (badly merged cells), which inflates probe
+  // cost: check it before blaming the recall numbers.
+  std::vector<size_t> list_sizes() const;
   // Little-endian, host float layout; versioned magic header.
   bool write_to(FILE* f) const;
   bool read_from(FILE* f);

@@ -1,32 +1,16 @@
 === rollback ===
-+----+------+
-| id | name |
-+----+------+
-|  1 | keep |
-+----+------+
-1 row in set
+id	name
+1	keep
 === commit ===
-+----+-------+
-| id | name  |
-+----+-------+
-|  1 | keep  |
-|  3 | kept! |
-+----+-------+
-2 rows in set
+id	name
+1	keep
+3	kept!
 === rollback undoes UPDATE and DELETE too ===
-+----+-------+
-| id | name  |
-+----+-------+
-|  1 | keep  |
-|  3 | kept! |
-+----+-------+
-2 rows in set
+id	name
+1	keep
+3	kept!
 === duplicate key inside a transaction, then rollback ===
 ERROR 1062 (HY000): Duplicate entry '1' for key 'PRIMARY'
-+----+-------+
-| id | name  |
-+----+-------+
-|  1 | keep  |
-|  3 | kept! |
-+----+-------+
-2 rows in set
+id	name
+1	keep
+3	kept!

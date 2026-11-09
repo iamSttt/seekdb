@@ -1,5 +1,10 @@
 # 09_directives.sql -- exercises the harness directives themselves:
 #                     --source, --delimiter, --sorted_result, --replace_column
+#
+# NOTE: with the current src/main.cpp the server buffers stdin in 64 KiB blocks,
+# so the harness runs in "bulk" feed mode and cannot attribute output to single
+# statements; --sorted_result / --replace_column are then parsed but not applied
+# (the harness warns). This case still proves --source and --delimiter work.
 --echo === sourced setup ===
 --source inc/setup_items.sql
 SELECT * FROM items;

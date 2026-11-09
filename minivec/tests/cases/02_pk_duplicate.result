@@ -1,25 +1,12 @@
 === primary key uniqueness ===
 ERROR 1062 (HY000): Duplicate entry '1' for key 'PRIMARY'
-+----+------+
-| id | name |
-+----+------+
-|  1 | one  |
-|  2 | two  |
-+----+------+
-2 rows in set
-+----+------+
-| id | name |
-+----+------+
-|  1 | one  |
-|  2 | two  |
-+----+------+
-2 rows in set
+id	name
+1	one
+2	two
+id	name
+1	one
+2	two
 ERROR 1062 (HY000): Duplicate entry '2' for key 'PRIMARY'
-+----+-------+
-| id | name  |
-+----+-------+
-|  1 | one   |
-|  2 | two   |
-|  3 | three |
-+----+-------+
-3 rows in set
+id	name
+1	one
+2	two

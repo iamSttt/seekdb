@@ -725,7 +725,6 @@ def run_case(case_path: Path, protocol: dict, data_dir: str | None = None,
     if (protocol.get("feed") or "auto") == "auto":
         bulk = detect_feed(protocol) == "bulk"
     pending_bulk: list[Query] = []
-    bulk_error_warned = [False]
 
     def flush_bulk() -> None:
         """Send every buffered statement at once, close stdin, read to EOF."""
@@ -958,6 +957,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--binary", default=None, help="server binary (default ./minivec)")
     parser.add_argument("--set", dest="overrides", action="append", metavar="KEY=VALUE",
                         help="override a PROTOCOL entry (repeatable)")
+    parser.add_argument("--env", dest="env", action="append", metavar="KEY=VALUE",
+                        help="environment variable for the server binary (repeatable),"
+                             " e.g. --env MVDB_OUT=table")
     sub = parser.add_subparsers(dest="command", required=True)
 
     for name in ("run", "record", "list"):
@@ -973,8 +975,14 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     protocol = dict(PROTOCOL)
+    protocol["env"] = dict(PROTOCOL.get("env") or {})
     if args.binary:
         protocol["binary"] = args.binary
+    for item in args.env or []:
+        if "=" not in item:
+            raise SystemExit(f"--env expects KEY=VALUE, got {item!r}")
+        key, value = item.split("=", 1)
+        protocol["env"][key] = value
     try:
         apply_overrides(protocol, args.overrides)
         handlers = {"run": cmd_run, "record": cmd_record, "list": cmd_list}

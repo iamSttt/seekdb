@@ -1,29 +1,13 @@
 === create / insert / select ===
-+--------+
-| Tables |
-+--------+
-| items  |
-+--------+
-1 row in set
-+----+--------+---------+
-| id | name   | v       |
-+----+--------+---------+
-|  1 | apple  | [1,0,0] |
-|  2 | banana | [0,1,0] |
-|  3 | cherry | [0,0,1] |
-+----+--------+---------+
-3 rows in set
-+----+--------+
-| id | name   |
-+----+--------+
-|  1 | apple  |
-|  2 | banana |
-|  3 | cherry |
-+----+--------+
-3 rows in set
-+--------+
-| name   |
-+--------+
-| banana |
-+--------+
-1 row in set
+Tables
+items
+id	name	v
+1	apple	[1,0,0]
+2	banana	[0,1,0]
+3	cherry	[0,0,1]
+id	name
+1	apple
+2	banana
+3	cherry
+name
+banana
