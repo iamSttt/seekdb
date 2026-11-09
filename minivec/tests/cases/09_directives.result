@@ -1,0 +1,40 @@
+=== sourced setup ===
++----+--------+
+| id | name   |
++----+--------+
+|  3 | cherry |
+|  1 | apple  |
+|  2 | banana |
++----+--------+
+3 rows in set
++--------+
+| name   |
++--------+
+| cherry |
+| apple  |
+| banana |
++--------+
+3 rows in set
+=== delimiter switch ===
++----+------+
+| id | name |
++----+------+
+|  1 | x    |
+|  2 | y    |
++----+------+
+2 rows in set
++----+
+| id |
++----+
+|  1 |
+|  2 |
++----+
+2 rows in set
+=== replace_column keeps volatile columns stable ===
++----+------+
+| id | name |
++----+------+
+|  1 | x    |
+|  2 | y    |
++----+------+
+2 rows in set

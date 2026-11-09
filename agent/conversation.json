@@ -1,0 +1,19 @@
+{
+  "schema": "agent-learning-evidence-v3-unbounded",
+  "note": "Initial scaffold submission. The material below is the raw build log of the first working version. Student-authored evidence will be added as the work continues.",
+  "conversations": [
+    {
+      "id": "c0",
+      "role_context": "student asked the agent team to build MiniVectorDB from the competition brief",
+      "content": "Need a from-scratch vector DB: SQL subset, persistence, transactions, crash recovery, exact and approximate TopK over stdin/stdout, packaged in Docker. Start with the smallest thing that answers SQL."
+    }
+  ],
+  "experiments": [],
+  "retrospective": [
+    "First version: parser, in-memory tables, WAL + snapshot, exact L2 TopK. Not yet benchmarked against the platform."
+  ],
+  "limitations": [
+    "ANN index not yet wired into the executor",
+    "Output protocol is an assumption (mysqltest-style tab separated); the official driver is not published yet"
+  ]
+}
