@@ -1,7 +1,7 @@
 // Standalone stress test. Compile with automatic checkpoints disabled so the
 // first recovery phase really exercises a WAL larger than the address limit:
 // g++ -O2 -std=c++17 -Isrc -DMVDB_AUTO_CHECKPOINT_BYTES=1099511627776ULL \
-//   tests/test_large_recovery.cpp src/db.cpp src/value.cpp -o test_large_recovery
+//   tests/test_large_recovery.cpp src/db.cpp src/value.cpp src/flat_index.cpp -o test_large_recovery
 // Default payload: 256 MiB; WAL construction/recovery address limit: 160 MiB.
 // The snapshot phase uses a larger address limit because mmap address space is
 // not physical memory. Its RSS is reported, not misrepresented as cgroup usage.
@@ -21,6 +21,7 @@
 using namespace mvdb;
 static size_t nrows=16384, dimension=4096, limit_mib=160;
 static std::string directory;
+static bool checkpoint_failure=false;
 static void require(bool result, const std::string& why) {
   if (!result) { std::cerr << "FAIL: " << why << '\n'; std::exit(1); }
 }
@@ -56,6 +57,7 @@ static void build() {
   Column id; id.name="id"; id.type=Type::BIGINT; id.is_primary=true;
   Column vec; vec.name="v"; vec.type=Type::VECTOR; vec.len=static_cast<int32_t>(dimension);
   require(db.create_table("big",{id,vec},&err,&code),"create big: "+err);
+  if (checkpoint_failure) require(db.checkpoint(&err),"initial empty snapshot");
   for (size_t base=0;base<nrows;base+=128) {
     require(db.begin(&err,&code),"begin batch");
     for (size_t i=base;i<nrows && i<base+128;++i) {
@@ -67,7 +69,9 @@ static void build() {
   }
   verify(db);
   struct stat st{};
-  require(::stat((directory+"/snapshot.bin").c_str(),&st)!=0 && errno==ENOENT,
+  const int snapshot_status=::stat((directory+"/snapshot.bin").c_str(),&st);
+  require(checkpoint_failure ? (snapshot_status==0 && st.st_size<65536) :
+          (snapshot_status!=0 && errno==ENOENT),
           "compile this test with MVDB_AUTO_CHECKPOINT_BYTES=1099511627776ULL");
   report("build_under_address_limit");
 }
@@ -88,6 +92,48 @@ static void recover_snapshot() {
   require(db.open(directory,&err),"snapshot recovery: "+err);
   verify(db); report("snapshot_recovery_rss_only");
 }
+static uint64_t file_hash(const std::string& path) {
+  std::ifstream f(path,std::ios::binary);
+  require(f.is_open(),"hash open: "+path);
+  uint64_t hash=14695981039346656037ull;
+  char chunk[65536];
+  while (f.read(chunk,sizeof(chunk)) || f.gcount()) {
+    for (std::streamsize i=0;i<f.gcount();++i) {
+      hash^=static_cast<unsigned char>(chunk[i]); hash*=1099511628211ull;
+    }
+  }
+  require(f.eof(),"hash read: "+path);
+  return hash;
+}
+static void fail_checkpoint_under_file_limit() {
+  limit_address(limit_mib);
+  Database db; std::string err;
+  require(db.open(directory,&err),"failure-test recovery: "+err);
+  verify(db);
+  const auto snapshot_hash=file_hash(directory+"/snapshot.bin");
+  const auto wal_hash=file_hash(directory+"/data.log");
+  struct rlimit original{};
+  require(::getrlimit(RLIMIT_FSIZE,&original)==0,"get file limit");
+  struct sigaction ignored{},previous{};
+  ignored.sa_handler=SIG_IGN; ::sigemptyset(&ignored.sa_mask);
+  require(::sigaction(SIGXFSZ,&ignored,&previous)==0,"ignore SIGXFSZ");
+  struct rlimit restricted=original; restricted.rlim_cur=65536;
+  require(::setrlimit(RLIMIT_FSIZE,&restricted)==0,"restrict snapshot file size");
+  require(!db.checkpoint(&err),"snapshot write must fail");
+  require(::setrlimit(RLIMIT_FSIZE,&original)==0,"restore file limit");
+  require(::sigaction(SIGXFSZ,&previous,nullptr)==0,"restore SIGXFSZ");
+  require(!err.empty(),"snapshot failure has diagnostic");
+  struct stat st{};
+  require(::stat((directory+"/snapshot.bin.tmp").c_str(),&st)!=0 && errno==ENOENT,
+          "partial snapshot removed");
+  require(file_hash(directory+"/snapshot.bin")==snapshot_hash,"old snapshot unchanged");
+  require(file_hash(directory+"/data.log")==wal_hash,"committed WAL unchanged");
+  verify(db); db.close();
+  require(db.open(directory,&err),"reopen after failed snapshot: "+err);
+  verify(db);
+  require(db.checkpoint(&err),"retry snapshot after restoring limit: "+err);
+  report("checkpoint_write_failure_under_address_limit");
+}
 static void child_phase(void (*phase)()) {
   const pid_t pid=::fork(); require(pid>=0,"fork");
   if (pid==0) {
@@ -104,13 +150,21 @@ int main(int argc,char** argv) {
     if (a=="--rows" && i+1<argc) nrows=std::stoull(argv[++i]);
     else if (a=="--dim" && i+1<argc) dimension=std::stoull(argv[++i]);
     else if (a=="--limit-mib" && i+1<argc) limit_mib=std::stoull(argv[++i]);
-    else { std::cerr << "usage: test_large_recovery [--rows N] [--dim D] [--limit-mib M]\n"; return 2; }
+    else if (a=="--checkpoint-write-failure") checkpoint_failure=true;
+    else { std::cerr << "usage: test_large_recovery [--rows N] [--dim D] [--limit-mib M] [--checkpoint-write-failure]\n"; return 2; }
   }
   require(nrows>0 && dimension>1 && limit_mib>=64,"positive test parameters");
   char name[]="/tmp/mvdb-large-recovery-XXXXXX";
   const char* dir=::mkdtemp(name); require(dir!=nullptr,"mkdtemp"); directory=dir;
   std::cout << "data_directory=" << directory << '\n';
   child_phase(build);
+  if (checkpoint_failure) {
+    require(nrows*dimension*sizeof(float)>65536,"payload exceeds injected file limit");
+    child_phase(fail_checkpoint_under_file_limit);
+    child_phase(recover_snapshot);
+    std::cout << "PASS failed snapshot cleanup, durable files unchanged, recovery and retry\n";
+    return 0;
+  }
   // Torn tail plus interruption during recovery: every retry must continue to
   // recover exactly the committed state, including the final successful retry.
   { std::ofstream tail(directory+"/data.log",std::ios::binary|std::ios::app); tail.write("bad",3); }

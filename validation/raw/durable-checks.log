@@ -1,0 +1,79 @@
+[durable-checks.log]
+PASSED: 141 passed, 0 failed
+PASS transaction, DDL generation, WAL-tail and checkpoint regressions: /tmp/mvdb-recovery-K8RNzP
+PASS durable format limits and later commits
+PASS spilled update Undo, savepoints and table generations
+PASS recovery reclaims complete and torn uncommitted WAL tails
+PASS: 1053 checks, 0 failures
+PASS TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema
+PASS external run merge, signed BIGINT keys, DESC ties, payload integrity
+PASS physical flat index, filters, mutation/statement/transaction rollback, eager restart rebuild, disk scan
+PASS distance ties use ascending primary key
+PASS non-projected ordering and exact BIGINT order
+PASS filter before top-k and empty limit
+PASS quoted vector-like VARCHAR preserves spelling
+PASS Unicode codepoint length and order
+PASS failed explicit and implicit INSERT are atomic
+PASS finite float32 endpoints do not overflow distance
+PASS 200-operation independent transaction model
+PASS 45 filtered and unfiltered TopK oracle queries
+PASS fragmented multiline statement preserves WHERE
+RESULT 10 independent regression groups passed
+PASS sql_crud (9 statements)
+PASS sql_comparisons (7 statements)
+PASS sql_ordering (7 statements)
+PASS sql_empty (4 statements)
+PASS vector_euclidean (5 statements)
+PASS minivectordb-public-basic-v1: 5 cases, 32 statements, 17 queries checked in both modes, 10 affected-row assertions
+recovery_children_sigkilled=6
+wal_recovery_under_address_limit max_rss_kib=35184 payload_bytes=268435456
+snapshot_recovery_rss_only max_rss_kib=40200 payload_bytes=268435456
+PASS large payload, WAL restart, repeated recovery SIGKILL, snapshot integrity
+checkpoint_write_failure_under_address_limit max_rss_kib=36620 payload_bytes=268435456
+snapshot_recovery_rss_only max_rss_kib=39980 payload_bytes=268435456
+PASS failed snapshot cleanup, durable files unchanged, recovery and retry
+[image-test.log]
+Archive SHA256: c5afe24f850920075fd2d865daa1eff425ac0091c23cb1bf2906c1fe31a2c2f0
+PASS amd64 image config, entrypoint and status mode
+minivec ready data=/data
+minivec ready data=/data
+PASS image launch, live status, quoted delimiters, fragmented SQL, EOF and restart
+minivec ready data=/data
+minivec ready data=/data
+PASS SIGKILL after COMMIT acknowledgement: committed row kept, pending row absent
+PASS sql_crud (9 statements)
+PASS sql_comparisons (7 statements)
+PASS sql_ordering (7 statements)
+PASS sql_empty (4 statements)
+PASS vector_euclidean (5 statements)
+PASS minivectordb-public-basic-v1: 5 cases, 32 statements, 17 queries checked in both modes, 10 affected-row assertions
+PASS distance ties use ascending primary key
+PASS non-projected ordering and exact BIGINT order
+PASS filter before top-k and empty limit
+PASS quoted vector-like VARCHAR preserves spelling
+PASS Unicode codepoint length and order
+PASS failed explicit and implicit INSERT are atomic
+PASS finite float32 endpoints do not overflow distance
+PASS 200-operation independent transaction model
+PASS 45 filtered and unfiltered TopK oracle queries
+PASS fragmented multiline statement preserves WHERE
+RESULT 10 independent regression groups passed
+SIGKILL iteration 1 WAL before restart 4197592 after restart 194 committed prefix 194
+SIGKILL iteration 2 WAL before restart 4197592 after restart 194 committed prefix 194
+SIGKILL iteration 3 WAL before restart 4197592 after restart 194 committed prefix 194
+PASS committed contents across three abrupt restarts
+ALL IMAGE TESTS PASSED
+[old-crash.log]
+SIGKILL iteration 1 WAL before restart 4197592 after restart 4197592 committed prefix 194
+SIGKILL iteration 2 WAL before restart 8394990 after restart 8394990 committed prefix 194
+SIGKILL iteration 3 WAL before restart 12592388 after restart 12592388 committed prefix 194
+PASS committed contents across three abrupt restarts
+[old-checkpoint.log]
+data_directory=/tmp/mvdb-large-recovery-yX5hdK
+build_under_address_limit max_rss_kib=35244 payload_bytes=268435456
+child exception: std::bad_alloc
+FAIL: child phase completed
+[old-torn-header.log]
+512MiB torn header with 128MiB address cap: exit -6 WAL bytes 179 committed bytes 171
+[new-torn.log]
+512MiB torn header with 128MiB address cap: exit 0 WAL bytes 171 committed bytes 171

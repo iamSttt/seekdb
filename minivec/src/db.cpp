@@ -1199,7 +1199,8 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
     const Row& row = tb.read_row(i,scratch);
     if (!row_matches(pr, row)) continue;
 
-    std::vector<Value> nv = row.vals;
+    Row replacement = row;
+    auto& nv = replacement.vals;
     for (size_t k = 0; k < sets.size(); ++k) {
       nv[static_cast<size_t>(setcol[k])] = setvals[k];
     }
@@ -1214,6 +1215,18 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
       if (dup != tb.pk_pos.end()) {
         set_err(err, code, ErrCode::DUP_KEY,
                 "Duplicate entry '" + std::to_string(newpk) + "' for key 'PRIMARY'");
+        return -1;
+      }
+    }
+
+    // A cache write may fail independently of the WAL. Prepare the bytes
+    // without changing the visible offset, before logging this row update.
+    uint64_t replacement_offset = 0;
+    if (tb.payload_store) {
+      try {
+        replacement_offset = store_payload(*tb.payload_store, replacement);
+      } catch (const std::runtime_error& ex) {
+        set_err(err, code, ErrCode::TXN, std::string("cannot write update payload: ") + ex.what());
         return -1;
       }
     }
@@ -1264,8 +1277,12 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
       tb.pk_pos.erase(oldpk);
       tb.pk_pos[newpk] = i;
     }
-    Row replacement; replacement.rid=row.rid; replacement.vals=std::move(nv);
-    tb.replace_row(i,std::move(replacement));
+    if (tb.payload_store) {
+      tb.payload_offsets[i] = replacement_offset;
+      tb.vector_index.reset();
+    } else {
+      tb.replace_row(i, std::move(replacement));
+    }
     ++affected;
   }
   if (!txn_active_ && wal_bytes_ > kAutoCheckpointBytes) {
@@ -1814,7 +1831,18 @@ bool Database::load_snapshot(std::string* err) {
 bool Database::replay_wal(std::string* err) {
   const std::string path = dir_ + "/data.log";
   FILE* f = std::fopen(path.c_str(), "rb");
-  if (!f) return true;  // nothing to replay
+  if (!f) {
+    if (errno == ENOENT) return true;
+    if (err) *err = "cannot read WAL: " + std::string(std::strerror(errno));
+    return false;
+  }
+  struct stat wal_stat;
+  if (::fstat(::fileno(f), &wal_stat) != 0 || wal_stat.st_size < 0) {
+    std::fclose(f);
+    if (err) *err = "cannot determine WAL size";
+    return false;
+  }
+  const auto wal_size = static_cast<uint64_t>(wal_stat.st_size);
   const uint64_t snap_lsn = wal_rows_;
 
   struct Rec {
@@ -1937,6 +1965,8 @@ bool Database::replay_wal(std::string* err) {
 
   uint64_t pending_start = UINT64_MAX; // WAL offset, not a transaction-sized heap buffer
   uint64_t good_end = 0;     // byte offset just past the last valid record
+  uint64_t durable_end = 0;  // last replayed commit or snapshot-covered record
+  uint64_t durable_lsn = snap_lsn;
   bool torn = false;
 
   for (;;) {
@@ -1948,7 +1978,12 @@ bool Database::replay_wal(std::string* err) {
                    (static_cast<uint32_t>(hdr[2]) << 16) | (static_cast<uint32_t>(hdr[3]) << 24);
     uint32_t crc = static_cast<uint32_t>(hdr[4]) | (static_cast<uint32_t>(hdr[5]) << 8) |
                    (static_cast<uint32_t>(hdr[6]) << 16) | (static_cast<uint32_t>(hdr[7]) << 24);
-    if (len == 0 || len > kMaxRec) { torn = true; break; }
+    // A durable header can outlive its payload. Check the file boundary
+    // before using the header to size a buffer.
+    if (len == 0 || len > kMaxRec || good_end + sizeof(hdr) + len > wal_size) {
+      torn = true;
+      break;
+    }
     std::string pay;
     pay.resize(len);
     if (std::fread(&pay[0], 1, len, f) != len) { torn = true; break; }
@@ -1962,9 +1997,9 @@ bool Database::replay_wal(std::string* err) {
 
     if (rec.lsn <= snap_lsn) {  // already folded into the snapshot
       if (rec.kind == REC_TXN_BEGIN || rec.kind == REC_TXN_COMMIT) pending_start = UINT64_MAX;
+      durable_end = good_end;
       continue;
     }
-    if (rec.lsn > wal_rows_) wal_rows_ = rec.lsn;
 
     if (rec.kind == REC_TXN_BEGIN) {
       pending_start = good_end;
@@ -1997,27 +2032,33 @@ bool Database::replay_wal(std::string* err) {
         }
       }
       pending_start = UINT64_MAX;
+      durable_end = good_end;
+      durable_lsn = std::max(durable_lsn, rec.lsn);
     } else if (!(rec.flags & RF_TXN)) {
       pending_start = UINT64_MAX;
       apply_one(rec);
+      durable_end = good_end;
+      durable_lsn = std::max(durable_lsn, rec.lsn);
     }
   }
-  pending_start = UINT64_MAX;
+  const bool read_error = std::ferror(f);
   std::fclose(f);
-
-  // Repair: drop the torn tail so future appends stay contiguous.
-  if (torn) {
-    struct stat st;
-    if (::stat(path.c_str(), &st) == 0 && static_cast<uint64_t>(st.st_size) > good_end) {
-      int fd = ::open(path.c_str(), O_WRONLY);
-      if (fd < 0) { if (err) *err = "cannot open WAL for repair"; return false; }
-      const bool repaired = ::ftruncate(fd, static_cast<off_t>(good_end)) == 0 &&
-                            ::fdatasync(fd) == 0;
-      ::close(fd);
-      if (!repaired) { if (err) *err = "cannot repair torn WAL"; return false; }
-    }
+  if (read_error) {
+    if (err) *err = "cannot read WAL during recovery";
+    return false;
   }
-  (void)err;
+
+  // Keep the committed prefix. Even valid records from a trailing transaction
+  // without a commit are unreachable after recovery and must not accumulate.
+  if (torn || durable_end < good_end) {
+    int fd = ::open(path.c_str(), O_WRONLY);
+    if (fd < 0) { if (err) *err = "cannot open WAL for repair"; return false; }
+    const bool repaired = ::ftruncate(fd, static_cast<off_t>(durable_end)) == 0 &&
+                          ::fdatasync(fd) == 0;
+    ::close(fd);
+    if (!repaired) { if (err) *err = "cannot remove uncommitted WAL tail"; return false; }
+  }
+  wal_rows_ = durable_lsn;
   return true;
 }
 
@@ -2040,6 +2081,12 @@ bool Database::checkpoint(std::string* err) {
     if (err) *err = "cannot create " + tmp + ": " + std::strerror(errno);
     return false;
   }
+  auto failed_snapshot = [&]() -> bool {
+    std::fclose(f);
+    ::unlink(tmp.c_str());
+    if (err) *err = "failed writing " + tmp;
+    return false;
+  };
   std::string buf;
   buf.reserve(1u << 20);
   uint32_t crc = 0xFFFFFFFFu;
@@ -2050,17 +2097,17 @@ bool Database::checkpoint(std::string* err) {
     return ok;
   };
   bool io_ok = true;
-  auto put = [&](const void* p, size_t n) {
+  auto put = [&](const void* p, size_t n) -> bool {
     crc = crc32_upd(crc, p, n);
     buf.append(static_cast<const char*>(p), n);
-    if (buf.size() >= (1u << 20)) io_ok = io_ok && flush_out();
+    return buf.size() < (1u << 20) || flush_out();
   };
 
   std::string hdr;
   put_u32(hdr, kSnapMagic);
   put_u64(hdr, wal_rows_);
   put_u32(hdr, static_cast<uint32_t>(tables_.size()));
-  put(hdr.data(), hdr.size());
+  if (!put(hdr.data(), hdr.size())) return failed_snapshot();
   for (const auto& kv : tables_) {
     const Table& t = kv.second;
     std::string b;
@@ -2074,18 +2121,18 @@ bool Database::checkpoint(std::string* err) {
       Row scratch;
       put_row(b, t.read_row(i,scratch));
       if (b.size() >= (1u << 19)) {
-        put(b.data(), b.size());
+        if (!put(b.data(), b.size())) return failed_snapshot();
         b.clear();
       }
     }
-    put(b.data(), b.size());
+    if (!put(b.data(), b.size())) return failed_snapshot();
   }
   uint32_t fin = crc ^ 0xFFFFFFFFu;
   buf.append(reinterpret_cast<const char*>(&fin), 4);  // CRC is not part of itself
   io_ok = io_ok && flush_out();
   io_ok = io_ok && (std::fflush(f) == 0);
   io_ok = io_ok && (::fsync(::fileno(f)) == 0);
-  std::fclose(f);
+  if (std::fclose(f) != 0) io_ok = false;
   if (!io_ok) {
     ::unlink(tmp.c_str());
     if (err) *err = "failed writing " + tmp;
@@ -2093,6 +2140,7 @@ bool Database::checkpoint(std::string* err) {
   }
   if (::rename(tmp.c_str(), path.c_str()) != 0) {
     if (err) *err = "rename " + tmp + ": " + std::strerror(errno);
+    ::unlink(tmp.c_str());
     return false;
   }
   // Mirror file (informational; the snapshot header is authoritative).
