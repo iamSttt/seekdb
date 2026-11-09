@@ -87,6 +87,18 @@ INSERT INTO t VALUES(1,'[3.4028234663852886e38]'),(2,'[-3.4028234663852886e38]')
 SELECT id,L2_DISTANCE(v,'[-3.4028234663852886e38]') AS d FROM t ORDER BY d;
 ''', None, check_extreme)
 
+    check('vector literals round directly to float32', '''
+CREATE TABLE t(id BIGINT PRIMARY KEY,v VECTOR(1));
+INSERT INTO t VALUES(1,'[16777217.000000001]');
+SELECT L2_DISTANCE(v,'[16777216]') AS d FROM t;
+''', 'd\n2\n')
+
+    check('contextual keywords are allowed as column names', '''
+CREATE TABLE t(id BIGINT PRIMARY KEY, value BIGINT, count BIGINT);
+INSERT INTO t VALUE (1,20,2),(2,10,3);
+SELECT count FROM t WHERE value >= 10 ORDER BY value;
+''', 'count\n3\n2\n')
+
     # Independent Python state model; every mutation is followed by a sorted
     # projection. Includes repeated keys, transactions, rollback and commits.
     rng = random.Random(20261109)

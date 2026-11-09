@@ -1,0 +1,48 @@
+WARN[0000] Kaniko is being run outside of a container. This can have dangerous effects on your system
+INFO[0000] Resolved base name gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818 to build
+INFO[0000] Using dockerignore file: /kaniko/context/.dockerignore
+INFO[0000] Retrieving image manifest gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818
+INFO[0000] Retrieving image gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818 from mapped registry docker.m.daocloud.io
+INFO[0002] No base image, nothing to extract
+INFO[0002] Built cross stage deps: map[0:[/minivec /data]]
+INFO[0002] Retrieving image manifest gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818
+INFO[0002] Returning cached image manifest
+INFO[0002] Executing 0 build triggers
+INFO[0002] Building stage 'gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818' [idx: '0', base-idx: '-1']
+INFO[0002] Unpacking rootfs as cmd COPY minivec/src ./src requires it.
+INFO[0147] WORKDIR /src
+INFO[0147] Cmd: workdir
+INFO[0147] Changed working directory to /src
+INFO[0147] Creating directory /src with uid -1 and gid -1
+INFO[0147] Taking snapshot of files...
+INFO[0147] COPY minivec/src ./src
+INFO[0147] Taking snapshot of files...
+INFO[0147] RUN g++ -O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc src/*.cpp -o /minivec  && strip /minivec  && mkdir /data /smoke  && printf 'CREATE TABLE t(id BIGINT PRIMARY KEY); INSERT INTO t VALUES(7); SELECT id FROM t;\n' | MVDB_OUT=tsv-status /minivec --data /smoke > /smoke.out  && printf 'Query OK, 0 rows affected\nQuery OK, 1 row affected\nid\n7\n' > /smoke.expected  && cmp /smoke.out /smoke.expected
+INFO[0147] Initializing snapshotter ...
+INFO[0147] Taking snapshot of full filesystem...
+INFO[0150] Cmd: /bin/sh
+INFO[0150] Args: [-c g++ -O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc src/*.cpp -o /minivec  && strip /minivec  && mkdir /data /smoke  && printf 'CREATE TABLE t(id BIGINT PRIMARY KEY); INSERT INTO t VALUES(7); SELECT id FROM t;\n' | MVDB_OUT=tsv-status /minivec --data /smoke > /smoke.out  && printf 'Query OK, 0 rows affected\nQuery OK, 1 row affected\nid\n7\n' > /smoke.expected  && cmp /smoke.out /smoke.expected]
+INFO[0150] Running: [/bin/sh -c g++ -O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc src/*.cpp -o /minivec  && strip /minivec  && mkdir /data /smoke  && printf 'CREATE TABLE t(id BIGINT PRIMARY KEY); INSERT INTO t VALUES(7); SELECT id FROM t;\n' | MVDB_OUT=tsv-status /minivec --data /smoke > /smoke.out  && printf 'Query OK, 0 rows affected\nQuery OK, 1 row affected\nid\n7\n' > /smoke.expected  && cmp /smoke.out /smoke.expected]
+minivec ready data=/smoke
+INFO[0169] Taking snapshot of full filesystem...
+INFO[0170] Saving file data for later use
+INFO[0170] Saving file minivec for later use
+INFO[0170] Deleting filesystem...
+INFO[0172] No base image, nothing to extract
+INFO[0172] Executing 0 build triggers
+INFO[0172] Building stage 'scratch' [idx: '1', base-idx: '-1']
+INFO[0172] Unpacking rootfs as cmd COPY --from=build /minivec /minivec requires it.
+INFO[0172] ENV MVDB_OUT=tsv-status
+INFO[0172] COPY --from=build /minivec /minivec
+INFO[0172] Taking snapshot of files...
+INFO[0172] COPY --from=build /data /data
+INFO[0172] Taking snapshot of files...
+INFO[0172] VOLUME ["/data"]
+INFO[0172] Cmd: VOLUME
+INFO[0172] Adding volume /data to ignorelist
+INFO[0172] WORKDIR /data
+INFO[0172] Cmd: workdir
+INFO[0172] Changed working directory to /data
+INFO[0172] Taking snapshot of files...
+INFO[0172] ENTRYPOINT ["/minivec", "--data", "/data"]
+INFO[0172] Skipping push to container registry due to --no-push flag

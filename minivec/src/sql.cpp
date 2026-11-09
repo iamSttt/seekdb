@@ -299,13 +299,10 @@ bool parse_float_list(const std::string& body, std::vector<float>* out) {
     if (i >= n) break;
     const char* begin = body.c_str() + i;
     char* endp = nullptr;
-    errno = 0;
-    double v = std::strtod(begin, &endp);
-    if (endp == begin) return false;
-    if (errno == ERANGE) return false;
-    if (!std::isfinite(v)) return false;
-    const float stored = static_cast<float>(v);
-    if (!std::isfinite(stored)) return false;
+    // Parse at storage precision to avoid rounding first to double and then
+    // rounding again at a float32 midpoint. Subnormals and zero are finite.
+    const float stored = std::strtof(begin, &endp);
+    if (endp == begin || !std::isfinite(stored)) return false;
     out->push_back(stored);
     i += (size_t)(endp - begin);
     while (i < n && is_space((unsigned char)body[i])) ++i;
@@ -345,7 +342,7 @@ bool is_name_reserved(const std::string& up) {
       "ALTER",      "SHOW",   "IF",       "EXISTS", "DISTINCT", "CONSTRAINT", "UNIQUE",
       "DEFAULT",    "IS",     "LIKE",     "IN",     "BETWEEN", "OFFSET", "FOR",   "USING",
       "OUTER",      "L2_DISTANCE", "L2_DIST", "TRUE", "FALSE", "START", "EXCEPT",
-      "INTERSECT",  "TEMPORARY", "VIEW",   "DATABASE", "SCHEMA", "VALUE", "CASCADE",
+      "INTERSECT",  "TEMPORARY", "VIEW",   "DATABASE", "SCHEMA", "CASCADE",
       "RESTRICT",   "CHECK",   "FOREIGN",  "REFERENCES", "COLLATE", "UNSIGNED",
       "ZEROFILL",   "AUTO_INCREMENT", "PARTITION", "TRUNCATE", "GRANT", "REVOKE"};
   for (const char* w : kWords)
@@ -361,14 +358,6 @@ bool is_clause_word(const std::string& up) {
       "INNER",  "LEFT",    "RIGHT",  "OUTER", "WORK", "TRANSACTION", "JOIN", "STRAIGHT_JOIN",
       "WINDOW", "HAVING",  "FOR",    "INTO", "TO",   "CHAIN",  "STATUS"};
   for (const char* w : kExtra)
-    if (up == w) return true;
-  return false;
-}
-
-bool is_aggregate_word(const std::string& up) {
-  static const char* const kAgg[] = {"COUNT", "SUM",  "AVG",   "MIN",       "MAX",
-                                     "STD",   "STDDEV", "VARIANCE", "GROUP_CONCAT", "ARRAY_AGG"};
-  for (const char* w : kAgg)
     if (up == w) return true;
   return false;
 }
@@ -878,8 +867,6 @@ SelectItem Parser::parse_select_item() {
       expect_punct(",", "L2_DISTANCE");
       it.query = parse_query_vector();
       expect_punct(")", "L2_DISTANCE");
-    } else if (is_aggregate_word(up)) {
-      not_supported("aggregate functions (" + up + ")");
     } else if (is_name_reserved(up)) {
       syntax_error("expected a column name in the select list, found keyword '" + cur().text + "'");
     } else {

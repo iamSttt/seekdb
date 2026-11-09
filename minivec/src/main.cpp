@@ -169,6 +169,11 @@ int main(int argc, char** argv) {
   // Newlines can occur inside statements; never execute a pipe-read prefix.
   // EOF accepts one final SQL statement, not a sequence of guessed fragments.
   if (!stopping && has_token(buf)) run_statement(db, buf);
+  if (db.in_txn() && !db.rollback(&err, nullptr)) {
+    std::fprintf(stderr, "shutdown rollback failed: %s\n", err.c_str());
+    db.close();
+    return 1;
+  }
   db.close();
   return 0;
 }
