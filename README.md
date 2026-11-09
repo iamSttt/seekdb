@@ -126,3 +126,17 @@ count and the default final-version selection; explicitly select the final commi
 observed evidence. Agent reasoning, implementation and tests are not represented
 as student-authored understanding. The inherited vector.cpp IVF implementation is
 experimental, covered separately by unit tests, and not used by the SQL executor.
+
+## Integration with intermediate remote work
+
+Remote commit `6e948c3` remains a parent of this submission. Its table-level
+primary key, bare SELECT alias and moving input cursor ideas are retained,
+and primary-key UPDATE/DELETE use direct lookup. Its standalone experiments,
+evidence tooling and documentation are preserved for reference. The current
+transaction-safe core supersedes that intermediate implementation: use a fresh
+/data directory, because its MVS2 snapshots are not compatible with this MVS1
+engine. The inherited `agent/raw/00-scaffold-seed.md` is a historical paraphrase,
+not verified student testimony; it is excluded from the current evidence JSON.
+The inherited conversation generator/CI uses an older schema and must not
+replace the current attributed evidence. Root Dockerfile is the submission build;
+`minivec/Dockerfile` supplies the same build for a minivec-only context.

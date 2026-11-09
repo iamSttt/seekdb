@@ -1,0 +1,7 @@
+data_directory=/tmp/mvdb-large-recovery-BbVWDz
+build_under_address_limit max_rss_kib=34820 payload_bytes=268435456
+recovery_children_sigkilled=6
+wal_recovery_under_address_limit max_rss_kib=35008 payload_bytes=268435456
+checkpoint_under_address_limit max_rss_kib=36596 payload_bytes=268435456
+snapshot_recovery_rss_only max_rss_kib=40004 payload_bytes=268435456
+PASS large payload, WAL restart, repeated recovery SIGKILL, snapshot integrity

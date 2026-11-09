@@ -1,0 +1,1 @@
+PASS external run merge, signed BIGINT keys, DESC ties, payload integrity, fan-in under 96MiB address cap
