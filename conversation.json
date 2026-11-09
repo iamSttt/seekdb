@@ -105,6 +105,12 @@
       "source": "tool stdout and validation/raw",
       "status": "executed",
       "output": "Three independent 10k/128d/1000-query rounds: query speedups [5.132, 5.118, 5.884]; filtered/unfiltered recall=1.0 in every round. 256MiB payload restart and six recovery SIGKILLs passed, snapshot RSS 40004KiB after consumed-page reclamation. Full local suite and forced-disk Flat passed. Performance precedes final parser/cursor integration; no official score inferred."
+    },
+    {
+      "id": "integrated_final",
+      "source": "tool stdout, validation/raw/integrated-final.log and integrated-bench.json",
+      "status": "executed",
+      "output": "Final merged source: complete make test passed, 9 SQL harness cases passed, static build and 10 Python regression groups passed. 10k rows/128d/1000 queries: write_seconds=0.5270600998774171, query_seconds=0.6543118259869516, both recalls=1.0, restart=pass. Cloud and local src SHA256 hashes identical. An initial harness command omitted its required run subcommand, then was corrected and passed. No official score claimed."
     }
   ],
   "limitations": [

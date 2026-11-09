@@ -1,0 +1,40 @@
+[01_basic_crud.sql] ok (13 lines)
+[02_pk_duplicate.sql] ok (12 lines)
+[03_varchar_utf8.sql] ok (11 lines)
+[04_vector_l2.sql] ok (18 lines)
+[05_filtered_topk.sql] ok (17 lines)
+[06_update_delete.sql] ok (16 lines)
+[07_txn_commit_rollback.sql] ok (16 lines)
+[08_restart_persistence.sql] ok (26 lines)
+[09_directives.sql] ok (20 lines)
+
+9 case(s) passed
+PASS distance ties use ascending primary key
+PASS non-projected ordering and exact BIGINT order
+PASS filter before top-k and empty limit
+PASS quoted vector-like VARCHAR preserves spelling
+PASS Unicode codepoint length and order
+PASS failed explicit and implicit INSERT are atomic
+PASS finite float32 endpoints do not overflow distance
+PASS 200-operation independent transaction model
+PASS 45 filtered and unfiltered TopK oracle queries
+PASS fragmented multiline statement preserves WHERE
+RESULT 10 independent regression groups passed
+{
+  "kind": "local_provisional_protocol_not_official_score",
+  "binary": "/root/autodl-tmp/minivec-integrated",
+  "seed": 7319,
+  "rows": 10000,
+  "queries": 1000,
+  "dim": 128,
+  "index": true,
+  "index_prepare_seconds": 0.0031528673134744167,
+  "write_seconds": 0.5270600998774171,
+  "query_seconds": 0.6543118259869516,
+  "qps": 1528.3232860595465,
+  "process_peak_rss": "VmHWM:\t   16012 kB",
+  "process_io_before_close": "rchar: 27840537\nwchar: 5866984\nsyscr: 1404\nsyscw: 11309\nread_bytes: 0\nwrite_bytes: 6041600\ncancelled_write_bytes: 0\n",
+  "recall_unfiltered": 1.0,
+  "recall_filtered": 1.0,
+  "restart_contents": "pass"
+}

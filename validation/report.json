@@ -153,7 +153,33 @@
     "No formal score, rank, official baseline T/B/M or cgroup resource measurements. /proc proxies are diagnostic only.",
     "Docker daemon unavailable; equivalent static compilation tested, pinned Docker image build not executed.",
     "PK/row/undo metadata remains O(N); arbitrarily large single SQL statement or value is not bounded.",
-    "Storage format is MVS1; does not read intermediate remote MVS2 directories. Start with a fresh /data for this candidate.",
-    "Final parser/cursor integration needs regression confirmation recorded separately."
-  ]
+    "Storage format is MVS1; does not read intermediate remote MVS2 directories. Start with a fresh /data for this candidate."
+  ],
+  "integrated_final": {
+    "code_commit": "65030c6",
+    "make_test": "passed; trailing harness invocation missing subcommand was rerun correctly in integrated-final.log",
+    "static_compile_and_10_regression_groups": "passed",
+    "sql_harness_9_cases": "passed",
+    "benchmark": {
+      "kind": "local_provisional_protocol_not_official_score",
+      "binary": "/root/autodl-tmp/minivec-integrated",
+      "seed": 7319,
+      "rows": 10000,
+      "queries": 1000,
+      "dim": 128,
+      "index": true,
+      "index_prepare_seconds": 0.0031528673134744167,
+      "write_seconds": 0.5270600998774171,
+      "query_seconds": 0.6543118259869516,
+      "qps": 1528.3232860595465,
+      "process_peak_rss": "VmHWM:\t   16012 kB",
+      "process_io_before_close": "rchar: 27840537\nwchar: 5866984\nsyscr: 1404\nsyscw: 11309\nread_bytes: 0\nwrite_bytes: 6041600\ncancelled_write_bytes: 0\n",
+      "recall_unfiltered": 1.0,
+      "recall_filtered": 1.0,
+      "restart_contents": "pass"
+    },
+    "exit_code": 0,
+    "cloud_local_source_hashes": "all src files identical",
+    "source_manifest": "validation/source-sha256.json"
+  }
 }
