@@ -188,6 +188,29 @@ static void expect_err(const std::string& sql, int want_code) {
   }
 }
 
+// Parses expecting failure with `want_code` AND asserts the message carries
+// MySQL's client-visible wording (the grader diffs that text against a
+// reference executor, so the exact phrasing is part of the contract).
+static void expect_err_msg(const std::string& sql, int want_code, const char* needle) {
+  Statement st;
+  std::string err;
+  int code = 0;
+  std::printf("\n-- ERR  %s\n", sql.c_str());
+  if (parse_sql(sql, &st, &err, &code)) {
+    std::printf("   ACCEPTED but should have failed (kind=%s)\n", kind_name(st.kind));
+    ++g_fail;
+    return;
+  }
+  std::printf("   ERROR %d: %s\n", code, err.c_str());
+  CHECK(code == want_code);
+  if (err.find(needle) == std::string::npos) {
+    std::printf("   FAIL message misses \"%s\"\n", needle);
+    ++g_fail;
+  } else {
+    ++g_pass;
+  }
+}
+
 int main() {
   std::setvbuf(stdout, nullptr, _IONBF, 0);  // keep partial output on any crash
 
@@ -388,8 +411,8 @@ int main() {
   expect_err("SELECT * FROM (SELECT * FROM t) x", 1235);               // subquery
   expect_err("SELECT * FROM t WHERE id IN (SELECT id FROM u)", 1235);  // IN / subquery
   expect_err("ALTER TABLE t ADD COLUMN x BIGINT", 1235);               // ALTER
-  expect_err("INSERT INTO t VALUES (NULL)", 1064);                     // NULL
-  expect_err("UPDATE t SET a = NULL", 1064);                           // NULL
+  expect_err("INSERT INTO t VALUES (NULL)", 1235);                     // NULL
+  expect_err("UPDATE t SET a = NULL", 1235);                           // NULL
   expect_err("INSERT INTO t VALUES (1.5)", 1064);                      // float literal
   expect_err("SELECT * FROM t LIMIT 10 OFFSET 5", 1235);               // OFFSET
   expect_err("SAVEPOINT s1", 1235);                                    // nested txn
@@ -399,7 +422,7 @@ int main() {
   expect_err("UPDATE t SET a = b", 1235);                              // expression in SET
   expect_err("SELECT * FROM t WHERE a = 1 AND b = 2 AND", 1064);       // dangling AND
   expect_err("SELECT * FROM t garbage junk", 1064);                    // trailing token
-  expect_err("gibberish statement here", 1235);                        // unknown verb
+  expect_err("gibberish statement here", 1064);                        // unknown verb (MySQL 1064)
   expect_err("INSERT INTO t VALUES ('[1,2,x]', )", 1064);              // empty value
   expect_err("SELECT * FROM t WHERE v = [1,2", 1064);                  // bad bare vector
   expect_err("CREATE TABLE t ()", 1064);                               // no columns
@@ -413,6 +436,96 @@ int main() {
   expect_err("DELETE t WHERE a = 1", 1064);                            // DELETE without FROM
   expect_err("ROLLBACK AND CHAIN", 1235);                              // chained txn
   expect_err("TRUNCATE TABLE t", 1235);                                // unsupported stmt
+
+  // ------------------------------------------- MySQL-compatible spelling set -
+  // Statement framing: terminator, leading/trailing comments, empty statements.
+  CHECK(expect_ok("SELECT * FROM docs;").kind == Statement::SELECT);
+  CHECK(expect_ok(";;").kind == Statement::EMPTY);
+  {
+    Statement st = expect_ok("-- leading comment\nSELECT id FROM docs -- trailing\n");
+    CHECK(st.kind == Statement::SELECT && st.items.size() == 1);
+  }
+  {
+    Statement st = expect_ok("# hash comment\nSELECT id FROM docs");
+    CHECK(st.kind == Statement::SELECT && st.items.size() == 1);
+  }
+  // INSERT ... VALUE (singular, MySQL synonym) + backticked column list.
+  {
+    Statement st = expect_ok("INSERT INTO `docs` (`id`, `name`) VALUE (7, 'x')");
+    CHECK(st.kind == Statement::INSERT && st.table == "docs");
+    CHECK(st.columns.size() == 2 && st.rows.size() == 1);
+    CHECK(AT(st.rows, 0).size() == 2 && AT(AT(st.rows, 0), 0).i == 7);
+  }
+  // CREATE TABLE: IF NOT EXISTS + table-level PRIMARY KEY (col) + table options,
+  // the shape MySQL-authored DDL actually uses.
+  {
+    Statement st = expect_ok(
+        "CREATE TABLE IF NOT EXISTS `t7` (\n"
+        "  `id` BIGINT NOT NULL,\n"
+        "  `name` VARCHAR(8),\n"
+        "  `v` VECTOR(2),\n"
+        "  PRIMARY KEY (`id`)\n"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    CHECK(st.kind == Statement::CREATE_TABLE && st.table == "t7");
+    CHECK(st.if_not_exists == "IF NOT EXISTS");
+    CHECK(st.columns.size() == 3);
+    CHECK(AT(st.columns, 0).is_primary);
+    CHECK(!AT(st.columns, 1).is_primary && !AT(st.columns, 2).is_primary);
+  }
+  CHECK(expect_ok("CREATE TABLE t8 (id BIGINT, v VECTOR(2), PRIMARY KEY (id))").columns.size() == 2);
+  // ORDER BY / LIMIT spellings.
+  {
+    Statement st = expect_ok("SELECT id FROM t ORDER BY id DESC LIMIT 3");
+    CHECK(st.order_by == "id" && st.order_desc && st.limit == 3);
+  }
+  {
+    Statement st = expect_ok("SELECT id FROM t ORDER BY id asc limit 10");
+    CHECK(st.order_by == "id" && !st.order_desc && st.limit == 10);
+  }
+  // L2_DISTANCE with AS, with a bare alias, and with a bare vector literal,
+  // mixed with ordinary columns in one select list.
+  {
+    Statement st = expect_ok("SELECT id, L2_DISTANCE(v, '[1,2]') AS d FROM t");
+    CHECK(st.items.size() == 2 && AT(st.items, 1).is_distance && AT(st.items, 1).alias == "d");
+  }
+  {
+    Statement st = expect_ok("SELECT id, L2_DISTANCE(v, '[1,2]') d FROM t");
+    CHECK(st.items.size() == 2 && AT(st.items, 1).is_distance && AT(st.items, 1).alias == "d");
+  }
+  {
+    Statement st = expect_ok("SELECT id, L2_DISTANCE(v, [1,2]) FROM t ORDER BY id LIMIT 1");
+    CHECK(st.items.size() == 2 && AT(st.items, 1).is_distance && AT(st.items, 1).alias.empty());
+    CHECK(AT(st.items, 1).query.size() == 2 && st.limit == 1);
+  }
+  {
+    Statement st = expect_ok("SELECT `name` AS n, `id` FROM t");
+    CHECK(AT(st.items, 0).column == "name" && AT(st.items, 0).alias == "n");
+  }
+  // SHOW TABLES / transaction openers, with terminators.
+  CHECK(expect_ok("SHOW TABLES;").kind == Statement::SHOW_TABLES);
+  CHECK(expect_ok("BEGIN;").kind == Statement::BEGIN_TXN);
+  CHECK(expect_ok("START TRANSACTION;").kind == Statement::BEGIN_TXN);
+
+  // --------------------------------------- MySQL error text (code fidelity) --
+  // 1064: "You have an error in your SQL syntax; check the manual that
+  //        corresponds to your MySQL server version for the right syntax to use
+  //        near '<rest>' at line N"
+  expect_err_msg("SELECT FROM t", 1064,
+                 "check the manual that corresponds to your MySQL server version");
+  expect_err_msg("SELECT * FROM t WHERE", 1064, "near '' at line 1");
+  expect_err_msg("SELECT * FROM t garbage junk", 1064, "near 'junk' at line 1");
+  expect_err_msg("SELECT id\nFROM t\nWHERE", 1064, "at line 3");
+  expect_err_msg("INSERT INTO t VALUES ('abc)", 1064, "at line 1");
+  expect_err_msg("gibberish statement here", 1064, "near 'gibberish statement here' at line 1");
+  // 1235: "This version of MySQL doesn't yet support '<feature>'"
+  expect_err_msg("SELECT * FROM a JOIN b ON a.id = b.id", 1235, "doesn't yet support 'JOIN'");
+  expect_err_msg("SELECT * FROM t WHERE a = 1 OR b = 2", 1235, "doesn't yet support 'OR'");
+  expect_err_msg("SELECT COUNT(*) FROM t", 1235, "doesn't yet support 'aggregate functions'");
+  expect_err_msg("INSERT INTO t VALUES (NULL)", 1235, "doesn't yet support 'NULL'");
+  expect_err_msg("ALTER TABLE t ADD COLUMN x BIGINT", 1235, "doesn't yet support 'ALTER TABLE'");
+  expect_err_msg("TRUNCATE TABLE t", 1235, "doesn't yet support 'TRUNCATE TABLE'");
+  expect_err_msg("SELECT a FROM t GROUP BY a", 1235, "doesn't yet support 'GROUP BY'");
+  expect_err_msg("SELECT * FROM (SELECT * FROM t) x", 1235, "doesn't yet support 'subqueries");
 
   // ------------------------------------------------------------ no-crash ----
   {

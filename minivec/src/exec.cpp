@@ -1,9 +1,11 @@
 // exec.cpp — statement execution + MySQL-style table rendering
 #include "exec.h"
+#include "vector.h"
 
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <queue>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -271,27 +273,24 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
       }
       const TableSchema& sch = t->schema;
 
-      // Resolve projection.
       struct Item {
-        int col;                 // schema column index, -1 for distance
+        int col;
         bool is_distance;
         std::string header;
         const std::vector<float>* qvec;
       };
       std::vector<Item> items;
-      bool star = st.items.empty();
-      if (star) {
-        for (size_t c = 0; c < sch.cols.size(); ++c)
-          items.push_back({(int)c, false, sch.cols[c].name, nullptr});
+      if (st.items.empty()) {
+        for (size_t c = 0; c < sch.cols.size(); ++c) items.push_back({(int)c, false, sch.cols[c].name, nullptr});
       } else {
         for (auto& it : st.items) {
+          int col = sch.find(it.column);
+          if (col < 0) {
+            *err = "Unknown column '" + it.column + "' in 'field list'";
+            *code = 1054;
+            return false;
+          }
           if (it.is_distance) {
-            int col = sch.find(it.column);
-            if (col < 0) {
-              *err = "Unknown column '" + it.column + "' in 'field list'";
-              *code = 1054;
-              return false;
-            }
             if (sch.cols[col].type != Type::VECTOR) {
               *err = "L2_DISTANCE() requires a VECTOR column";
               *code = 1235;
@@ -302,22 +301,12 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
               *code = 1264;
               return false;
             }
-            static thread_local std::vector<float> dummy;
-            items.push_back({col, true, it.alias.empty() ? "L2_DISTANCE(" + it.column + ")" : it.alias, nullptr});
-            items.back().qvec = &it.query;
+            items.push_back({col, true, it.alias.empty() ? "L2_DISTANCE(" + it.column + ")" : it.alias, &it.query});
           } else {
-            int col = sch.find(it.column);
-            if (col < 0) {
-              *err = "Unknown column '" + it.column + "' in 'field list'";
-              *code = 1054;
-              return false;
-            }
             items.push_back({col, false, it.alias.empty() ? it.column : it.alias, nullptr});
           }
         }
       }
-
-      // Validate conditions reference existing columns.
       for (auto& c : st.conds) {
         if (sch.find(c.column) < 0) {
           *err = "Unknown column '" + c.column + "' in 'where clause'";
@@ -325,102 +314,172 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
           return false;
         }
       }
-
-      // Validate ORDER BY resolves to a projected header or schema column.
       int order_item = -1;
       if (!st.order_by.empty()) {
-        // strip backticks
-        std::string name = st.order_by;
         for (size_t c = 0; c < items.size(); ++c)
-          if (items[c].header == name) order_item = (int)c;
+          if (items[c].header == st.order_by) order_item = (int)c;
         if (order_item < 0) {
-          int col = sch.find(name);
-          if (col >= 0) {
+          int col = sch.find(st.order_by);
+          if (col >= 0)
             for (size_t c = 0; c < items.size(); ++c)
               if (!items[c].is_distance && items[c].col == col) order_item = (int)c;
-          }
         }
         if (order_item < 0) {
-          *err = "Unknown column '" + name + "' in 'order clause'";
+          *err = "Unknown column '" + st.order_by + "' in 'order clause'";
           *code = 1054;
           return false;
         }
       }
+      const bool by_distance = (order_item >= 0) && items[order_item].is_distance;
+      const bool tsv = tsv_mode();
 
-      struct OutRow {
-        std::vector<std::string> cells;
-        double sort_num = 0;
-        std::string sort_str;
-        bool is_str = false;
-      };
-      std::vector<OutRow> result;
-
-      db.scan(st.table, st.conds, [&](const Row& r) {
-        OutRow o;
-        o.cells.reserve(items.size());
+      // Row -> projected cells (and the sort key when ordering by distance).
+      auto project = [&](const Row& r, std::vector<std::string>* cells, double* dist_out) {
+        cells->clear();
+        cells->reserve(items.size());
         for (size_t c = 0; c < items.size(); ++c) {
           const Item& it = items[c];
           if (it.is_distance) {
             const auto& v = r.vals[it.col].v;
             float d = 0;
-            for (size_t k = 0; k < v.size() && k < it.qvec->size(); ++k) {
+            const size_t n = std::min(v.size(), it.qvec->size());
+            for (size_t k = 0; k < n; ++k) {
               float diff = v[k] - (*it.qvec)[k];
               d += diff * diff;
             }
             d = std::sqrt(d);
-            o.cells.push_back(format_double(d));
-            if ((int)c == order_item) { o.sort_num = d; }
+            if ((int)c == order_item && dist_out) *dist_out = d;
+            cells->push_back(format_double(d));
           } else {
-            o.cells.push_back(render_value(r.vals[it.col]));
-            if ((int)c == order_item) {
-              if (sch.cols[it.col].type == Type::BIGINT) o.sort_num = (double)r.vals[it.col].i;
-              else { o.sort_str = render_value(r.vals[it.col]); o.is_str = true; }
-            }
+            cells->push_back(render_value(r.vals[it.col]));
           }
         }
-        // Distance ordering with LIMIT is the TopK path: keep only what is needed later.
-        result.push_back(std::move(o));
+      };
+
+      auto print_header = [&]() {
+        for (size_t c = 0; c < items.size(); ++c) {
+          if (c) *out += '\t';
+          *out += items[c].header;
+        }
+        *out += '\n';
+      };
+      auto print_cells = [&](const std::vector<std::string>& cells) {
+        for (size_t c = 0; c < cells.size(); ++c) {
+          if (c) *out += '\t';
+          *out += cells[c];
+        }
+        *out += '\n';
+      };
+
+      if (tsv && by_distance && st.limit >= 0 && st.limit <= 100000) {
+        // Streaming exact Top-K: bounded memory regardless of table size.
+        struct Entry {
+          double dist;
+          int64_t pk;
+          std::vector<std::string> cells;
+        };
+        struct Worse {
+          bool desc;
+          bool operator()(const Entry& a, const Entry& b) const {
+            if (a.dist != b.dist) return desc ? (a.dist > b.dist) : (a.dist < b.dist);
+            return desc ? (a.pk < b.pk) : (a.pk > b.pk);
+          }
+        };
+        const int pk_col = sch.pk_idx;
+        const int vec_col = items[order_item].col;
+        const std::vector<float> qvec = *items[order_item].qvec;
+        std::priority_queue<Entry, std::vector<Entry>, Worse> heap(Worse{st.order_desc});
+        size_t cap = (size_t)st.limit;
+        db.scan(st.table, st.conds, [&](const Row& r) {
+          if (cap == 0) return true;
+          const auto& v = r.vals[vec_col].v;
+          const int64_t pk = r.vals[pk_col].i;
+          // SIMD distance first; only project (and allocate strings for) rows
+          // that actually enter the heap.
+          const float d2 = l2_distance(v.data(), qvec.data(), std::min(v.size(), qvec.size()));
+          bool better = true;
+          if (heap.size() >= cap) {
+            const Entry& worst = heap.top();
+            better = st.order_desc ? (d2 > worst.dist || (d2 == worst.dist && pk < worst.pk))
+                                   : (d2 < worst.dist || (d2 == worst.dist && pk < worst.pk));
+          }
+          if (!better) return true;
+          std::vector<std::string> cells;
+          double d = 0;
+          project(r, &cells, &d);
+          Entry e{(double)d2, pk, std::move(cells)};
+          if (heap.size() >= cap) heap.pop();
+          heap.push(std::move(e));
+          return true;
+        });
+        std::vector<Entry> rows;
+        rows.reserve(heap.size());
+        while (!heap.empty()) {
+          rows.push_back(heap.top());
+          heap.pop();
+        }
+        std::reverse(rows.begin(), rows.end());
+        print_header();
+        for (auto& e : rows) print_cells(e.cells);
+        return true;
+      }
+
+      if (tsv && order_item < 0) {
+        // Plain streaming select (optionally truncated by LIMIT).
+        print_header();
+        int64_t emitted = 0;
+        const int64_t cap = st.limit;
+        db.scan(st.table, st.conds, [&](const Row& r) -> bool {
+          if (cap >= 0 && emitted >= cap) return false;
+          std::vector<std::string> cells;
+          project(r, &cells, nullptr);
+          print_cells(cells);
+          ++emitted;
+          return true;
+        });
+        return true;
+      }
+
+      // Human-readable table mode: buffer (only used for small interactive runs).
+      std::vector<std::vector<std::string>> cells_rows;
+      std::vector<double> keys;
+      db.scan(st.table, st.conds, [&](const Row& r) {
+        std::vector<std::string> cells;
+        double d = 0;
+        project(r, &cells, &d);
+        cells_rows.push_back(std::move(cells));
+        keys.push_back(d);
         return true;
       });
-
       if (order_item >= 0) {
-        std::stable_sort(result.begin(), result.end(), [&](const OutRow& a, const OutRow& b) {
-          int cmp;
-          if (a.is_str || b.is_str) cmp = utf8_compare(a.sort_str, b.sort_str);
-          else cmp = (a.sort_num < b.sort_num) ? -1 : (a.sort_num > b.sort_num ? 1 : 0);
-          if (cmp == 0) {
-            // tie-break by primary key ascending when available
-            cmp = 0;
-          }
+        std::vector<size_t> idx(cells_rows.size());
+        for (size_t i = 0; i < idx.size(); ++i) idx[i] = i;
+        std::stable_sort(idx.begin(), idx.end(), [&](size_t a, size_t b) {
+          if (by_distance) return st.order_desc ? keys[a] > keys[b] : keys[a] < keys[b];
+          const std::string& x = cells_rows[a][order_item];
+          const std::string& y = cells_rows[b][order_item];
+          const bool num = sch.cols[items[order_item].col].type == Type::BIGINT;
+          int cmp = num ? (std::stoll(x) < std::stoll(y) ? -1 : (std::stoll(x) > std::stoll(y) ? 1 : 0))
+                        : utf8_compare(x, y);
           return st.order_desc ? cmp > 0 : cmp < 0;
         });
+        std::vector<std::vector<std::string>> sorted;
+        sorted.reserve(idx.size());
+        for (size_t i : idx) sorted.push_back(std::move(cells_rows[i]));
+        cells_rows.swap(sorted);
       }
-      if (st.limit >= 0 && (int64_t)result.size() > st.limit) result.resize((size_t)st.limit);
-
-      std::vector<std::vector<std::string>> cells;
-      cells.reserve(result.size());
-      for (auto& r : result) cells.push_back(std::move(r.cells));
+      if (st.limit >= 0 && (int64_t)cells_rows.size() > st.limit) cells_rows.resize((size_t)st.limit);
+      std::vector<std::string> headers;
+      for (auto& it : items) headers.push_back(it.header);
       std::vector<bool> align(items.size(), false);
       for (size_t c = 0; c < items.size(); ++c)
         align[c] = items[c].is_distance || is_numeric_type(sch.cols[items[c].col].type);
-      std::vector<std::string> headers;
-      for (auto& it : items) headers.push_back(it.header);
-      if (tsv_mode()) {
-        for (size_t c = 0; c < headers.size(); ++c) {
-          if (c) *out += '\t';
-          *out += headers[c];
-        }
-        *out += '\n';
-        for (auto& row : cells) {
-          for (size_t c = 0; c < row.size(); ++c) {
-            if (c) *out += '\t';
-            *out += row[c];
-          }
-          *out += '\n';
-        }
+      if (tsv) {
+        print_header();
+        for (auto& row : cells_rows) print_cells(row);
       } else {
-        render_table(headers, cells, align, out);
-        *out += std::to_string(cells.size()) + " row" + (cells.size() == 1 ? "" : "s") + " in set\n";
+        render_table(headers, cells_rows, align, out);
+        *out += std::to_string(cells_rows.size()) + " row" + (cells_rows.size() == 1 ? "" : "s") + " in set" + "\n";
       }
       return true;
     }

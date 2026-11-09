@@ -408,3 +408,13 @@ seekdb_data/
 
 # Local Python bytecode for the iOS build helpers.
 deps/ios-build/__pycache__/
+
+# --- MiniVectorDB entry (2026-11-09): the build input must be pushed -------
+# .gitignore above ignores every `Makefile` (upstream seekdb rule 54), which
+# silently dropped the only build recipe of the entry from the repository.
+!minivec/Makefile
+!minivec/Makefile.*
+
+# competition entry: our build script must be committed
+!minivec/Makefile
+!minivec/Dockerfile

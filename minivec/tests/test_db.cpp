@@ -13,8 +13,10 @@
 #include <string>
 #include <vector>
 
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -111,6 +113,47 @@ static double now_ms() {
   struct timespec ts;
   ::clock_gettime(CLOCK_MONOTONIC, &ts);
   return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1e6;
+}
+
+// ===========================================================================
+// Large-data section: the whole point of the disk-resident rewrite is that a
+// table many times the size of the memory budget still works. These checks run
+// by default; MVDB_TEST_BIG=0 skips the 2M row load (the rest stays).
+// ===========================================================================
+static const int kBigDim = 128;
+
+static std::vector<Column> big_schema() {
+  Column id;
+  id.name = "id";
+  id.type = Type::BIGINT;
+  id.is_primary = true;
+  Column emb;
+  emb.name = "emb";
+  emb.type = Type::VECTOR;
+  emb.len = kBigDim;
+  return {id, emb};
+}
+
+static void fill_vec(std::vector<float>& v, int64_t i) {
+  v.resize(kBigDim);
+  for (int d = 0; d < kBigDim; ++d) v[(size_t)d] = (float)((i * 31 + d * 7) % 1000) / 1000.0f;
+}
+
+static bool ins_big(Database& db, const std::string& t, int64_t i) {
+  std::vector<float> v;
+  fill_vec(v, i);
+  std::vector<Value> vals;
+  vals.push_back(Value::ofInt(i));
+  vals.push_back(Value::ofVec(std::move(v)));
+  std::string err;
+  int code = 0;
+  return db.insert(t, std::move(vals), &err, &code);
+}
+
+static long rss_kb() {
+  struct rusage ru;
+  ::getrusage(RUSAGE_SELF, &ru);
+  return ru.ru_maxrss;  // KiB on Linux
 }
 
 int main() {
@@ -491,6 +534,206 @@ int main() {
     CHECK(find_name(d, "cr", 7) == "auto", "autocommit row came back");
   }
 
+
+  // ========================================================= large tables ==
+  const bool big = []() {
+    const char* e = std::getenv("MVDB_TEST_BIG");
+    return !(e && (std::strcmp(e, "0") == 0 || std::strcmp(e, "off") == 0));
+  }();
+
+  if (big) {
+    const int N = 2000000;
+    const std::string ldir = dir + "/large";
+    std::printf("[large: %d x %d-d on disk, RSS gate]\n", N, kBigDim);
+    {
+      Database db;
+      CHECK(db.open(ldir, &err), "open large dir");
+      CHECK(db.create_table("big", big_schema(), &err, &code), "create 2M-row table");
+
+      double t0 = now_ms();
+      bool all_ok = true;
+      for (int base = 0; base < N && all_ok; base += 100) {
+        if (!db.begin(&err, &code)) { all_ok = false; break; }
+        const int hi = (base + 100 < N) ? base + 100 : N;
+        for (int i = base; i < hi; ++i)
+          if (!ins_big(db, "big", i)) { all_ok = false; break; }
+        if (!db.commit(&err, &code)) all_ok = false;
+      }
+      double t1 = now_ms();
+      CHECK(all_ok, "2,000,000 inserts in 100-row transactions");
+      const long rss_mb = rss_kb() / 1024;
+      std::printf("     load: %.1f s -> %.0f rows/s, peak RSS %ld MB, table %.0f MB\n",
+                  (t1 - t0) / 1000.0, N / ((t1 - t0) / 1000.0), rss_mb,
+                  (double)file_size(ldir + "/t_big.dat") / 1048576.0);
+      CHECK(db.table("big")->live_count() == (size_t)N, "live_count == 2,000,000");
+      CHECK(rss_mb < 300, "peak RSS < 300 MB for a ~1 GB table");
+
+      // full scan
+      size_t n = 0;
+      double s0 = now_ms();
+      db.scan("big", {}, [&](const Row&) { ++n; return true; });
+      double s1 = now_ms();
+      std::printf("     scan: %.2f s -> %.0f rows/s\n", (s1 - s0) / 1000.0,
+                  n / ((s1 - s0) / 1000.0));
+      CHECK(n == (size_t)N, "full scan sees every row");
+
+      // scan with a WHERE filter, and check the payload, not just the count
+      Cond ge;
+      ge.op = Cond::GE;
+      ge.column = "id";
+      ge.value = Value::ofInt(N / 2);
+      size_t half = 0;
+      bool payload_ok = true;
+      db.scan("big", {ge}, [&](const Row& r) {
+        ++half;
+        if (half == 1) {
+          std::vector<float> want;
+          fill_vec(want, r.vals[0].i);
+          if (r.vals[1].v != want) payload_ok = false;
+        }
+        return true;
+      });
+      CHECK(half == (size_t)(N - N / 2), "filtered scan (id >= N/2) returns half the rows");
+      CHECK(payload_ok, "first filtered row's 128-d payload is byte exact");
+
+      // pk lookups are single random reads
+      double p0 = now_ms();
+      int hits = 0;
+      for (int k = 0; k < 200; ++k) {
+        const int64_t want_pk = (int64_t)k * 7919;
+        Cond eq;
+        eq.op = Cond::EQ;
+        eq.column = "id";
+        eq.value = Value::ofInt(want_pk);
+        db.scan("big", {eq}, [&](const Row& r) {
+          std::vector<float> exp;
+          fill_vec(exp, want_pk);
+          if (r.vals[0].i == want_pk && r.vals[1].v == exp) ++hits;
+          return false;
+        });
+      }
+      double p1 = now_ms();
+      std::printf("     pk lookup: %.1f us/op\n", (p1 - p0) * 1000.0 / 200.0);
+      CHECK(hits == 200, "200 random pk lookups return exact rows");
+
+      // update / delete across a checkpoint + reopen
+      std::vector<std::pair<std::string, Value>> sets;
+      sets.emplace_back("emb", Value::ofVec(std::vector<float>(kBigDim, 0.5f)));
+      Cond idrange;
+      idrange.op = Cond::GE;
+      idrange.column = "id";
+      idrange.value = Value::ofInt(N - 1000);
+      CHECK(db.update_rows("big", {idrange}, sets, &err, &code) == 1000, "update 1000 rows by range");
+      Cond lt;
+      lt.op = Cond::LT;
+      lt.column = "id";
+      lt.value = Value::ofInt(1000);
+      CHECK(db.delete_rows("big", {lt}, &err, &code) == 1000, "delete 1000 rows by range");
+      CHECK(db.table("big")->live_count() == (size_t)(N - 1000), "live_count after update/delete");
+
+      double c0 = now_ms();
+      CHECK(db.checkpoint(&err), "checkpoint a 1 GB table");
+      double c1 = now_ms();
+      std::printf("     checkpoint: %.2f s\n", (c1 - c0) / 1000.0);
+      CHECK(file_size(ldir + "/data.log") == 0, "WAL truncated by the large checkpoint");
+      CHECK(file_size(ldir + "/t_big.dat") < (long long)N * (16 + 4 * kBigDim) + (1 << 20),
+            "compacted heap is close to the live footprint");
+      db.close();
+
+      double r0 = now_ms();
+      Database db2;
+      CHECK(db2.open(ldir, &err), "reopen the 1 GB table");
+      double r1 = now_ms();
+      std::printf("     reopen: %.2f s\n", (r1 - r0) / 1000.0);
+      CHECK(db2.table("big")->live_count() == (size_t)(N - 1000), "row count survives the reopen");
+      size_t n2 = 0;
+      db2.scan("big", {}, [&](const Row&) { ++n2; return true; });
+      CHECK(n2 == (size_t)(N - 1000), "scan after reopen sees every live row");
+
+      Cond upl;
+      upl.op = Cond::EQ;
+      upl.column = "id";
+      upl.value = Value::ofInt(N - 5);
+      bool up_ok = false;
+      db2.scan("big", {upl}, [&](const Row& r) {
+        up_ok = r.vals[1].v.size() == (size_t)kBigDim && r.vals[1].v[0] == 0.5f &&
+                r.vals[1].v[kBigDim - 1] == 0.5f;
+        return false;
+      });
+      CHECK(up_ok, "updated row kept its new payload across the reopen");
+
+      Cond del;
+      del.op = Cond::EQ;
+      del.column = "id";
+      del.value = Value::ofInt(500);
+      CHECK(count_rows(db2, "big", {del}) == 0, "deleted row stayed deleted");
+      Cond keep;
+      keep.op = Cond::EQ;
+      keep.column = "id";
+      keep.value = Value::ofInt(1500);
+      CHECK(count_rows(db2, "big", {keep}) == 1, "row above the delete range survived");
+    }
+
+    // ------------------------------------------------------- kill -9 crash --
+    std::printf("[large: kill -9 with a big table]\n");
+    {
+      const std::string cdir = dir + "/largecrash";
+      const int M = 300000;
+      pid_t pid = ::fork();
+      if (pid == 0) {
+        Database d;
+        std::string e;
+        int c = 0;
+        if (!d.open(cdir, &e)) ::_exit(2);
+        if (!d.create_table("big", big_schema(), &e, &c)) ::_exit(3);
+        for (int base = 0; base < M; base += 100) {
+          if (!d.begin(&e, &c)) ::_exit(4);
+          for (int i = base; i < base + 100; ++i)
+            if (!ins_big(d, "big", i)) ::_exit(5);
+          if (!d.commit(&e, &c)) ::_exit(6);
+        }
+        if (!d.begin(&e, &c)) ::_exit(7);
+        for (int i = M; i < M + 50; ++i) ins_big(d, "big", i);  // uncommitted
+        ::kill(::getpid(), SIGKILL);                            // no destructor, no flush
+        ::_exit(8);
+      }
+      int st = 0;
+      ::waitpid(pid, &st, 0);
+      CHECK(WIFSIGNALED(st) && WTERMSIG(st) == SIGKILL, "writer died from SIGKILL");
+
+      double c0 = now_ms();
+      Database d;
+      CHECK(d.open(cdir, &err), "reopen after kill -9 (recovery succeeds)");
+      double c1 = now_ms();
+      std::printf("     recovery: %.2f s\n", (c1 - c0) / 1000.0);
+      CHECK(d.table("big")->live_count() == (size_t)M, "every committed row recovered");
+      size_t got = 0;
+      d.scan("big", {}, [&](const Row&) { ++got; return true; });
+      CHECK(got == (size_t)M, "scan after recovery returns exactly the committed rows");
+      Cond extra;
+      extra.op = Cond::EQ;
+      extra.column = "id";
+      extra.value = Value::ofInt(M + 10);
+      CHECK(count_rows(d, "big", {extra}) == 0, "row from the in-flight transaction is gone");
+      bool spot = false;
+      Cond spot_c;
+      spot_c.op = Cond::EQ;
+      spot_c.column = "id";
+      spot_c.value = Value::ofInt(M - 1);
+      d.scan("big", {spot_c}, [&](const Row& r) {
+        std::vector<float> exp;
+        fill_vec(exp, M - 1);
+        spot = (r.vals[1].v == exp);
+        return false;
+      });
+      CHECK(spot, "recovered row payload is byte exact");
+      // and writes keep working after recovery
+      CHECK(ins_big(d, "big", M + 1000), "insert after recovery");
+      CHECK(count_rows(d, "big") == (size_t)M + 1, "post-recovery insert is visible");
+    }
+  } else {
+    std::printf("[large] skipped (MVDB_TEST_BIG=0)\n");
+  }
 
   std::printf("\n%s: %d passed, %d failed\n", g_fail ? "FAILED" : "PASSED", g_pass, g_fail);
   std::string cleanup = "rm -rf '" + dir + "'";

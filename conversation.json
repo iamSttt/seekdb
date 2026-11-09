@@ -1,0 +1,83 @@
+{
+  "schema": "agent-learning-evidence-v4",
+  "synthetic": false,
+  "dimensions": [
+    "问题理解与学习规划",
+    "Prompt 设计与迭代",
+    "验证纠错与独立判断",
+    "总结复盘与知识迁移"
+  ],
+  "generator": {
+    "tool": "tools/build_conversation.py",
+    "rules": {
+      "max_bytes": 131072,
+      "quote_max_chars": 240,
+      "score_per_instance": "0.5 / 1 / 1.5 / 2, decided by reviewers",
+      "citation": "each evidence item carries json_pointer + quote; the quote must occur verbatim at that pointer"
+    },
+    "note": "content is transcribed from agent/raw/; this tool only reorganises and validates it"
+  },
+  "user_prompts": [
+    {
+      "id": "seed-p0",
+      "dimension": "问题理解与学习规划",
+      "date": "2026-11-08",
+      "prompt": "Need a from-scratch vector DB: SQL subset, persistence, transactions, crash recovery, exact and approximate TopK over stdin/stdout, packaged in Docker. Start with the smallest thing that answers SQL.",
+      "note": "转录自 scaffold 初始提交（原 role_context：student asked the agent team to build MiniVectorDB from the competition brief）。",
+      "evidence": [],
+      "source": "agent/raw/00-scaffold-seed.md:14"
+    }
+  ],
+  "conversations": [],
+  "experiments": [],
+  "retrospective": [
+    {
+      "id": "seed-r0",
+      "dimension": "总结复盘与知识迁移",
+      "date": "2026-11-08",
+      "text": "First version: parser, in-memory tables, WAL + snapshot, exact L2 TopK. Not yet benchmarked against the platform.",
+      "evidence": [],
+      "source": "agent/raw/00-scaffold-seed.md:24"
+    }
+  ],
+  "limitations": [
+    {
+      "id": "seed-l0",
+      "dimension": "总结复盘与知识迁移",
+      "date": "2026-11-08",
+      "text": "ANN index not yet wired into the executor",
+      "evidence": [],
+      "source": "agent/raw/00-scaffold-seed.md:33"
+    },
+    {
+      "id": "seed-l1",
+      "dimension": "总结复盘与知识迁移",
+      "date": "2026-11-08",
+      "text": "Output protocol is an assumption (mysqltest-style tab separated); the official driver is not published yet",
+      "evidence": [],
+      "source": "agent/raw/00-scaffold-seed.md:41"
+    }
+  ],
+  "summary": {
+    "counts": {
+      "user_prompts": 1,
+      "conversations": 0,
+      "experiments": 0,
+      "retrospective": 1,
+      "limitations": 2
+    },
+    "per_dimension": {
+      "问题理解与学习规划": 1,
+      "Prompt 设计与迭代": 0,
+      "验证纠错与独立判断": 0,
+      "总结复盘与知识迁移": 3
+    },
+    "evidence_citations": 0,
+    "scored_instances": 0,
+    "score_range": {
+      "min": 0.0,
+      "max": 0.0
+    },
+    "score_note": "each instance with citations scores 0.5/1/1.5/2 at review time; the range above is arithmetic, not a claimed score"
+  }
+}

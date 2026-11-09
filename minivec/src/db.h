@@ -2,6 +2,7 @@
 #pragma once
 #include <cstdio>
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,13 +25,24 @@ struct TableSchema {
   }
 };
 
+// Defined in db.cpp: the disk-resident row heap (fixed-size records in
+// t_<tag>.dat, VARCHAR bytes in t_<tag>.str) plus the in-RAM pk -> record
+// index. A table's bulk data never lives in RAM.
+struct TableStorage;
+
 struct Table {
   TableSchema schema;
-  std::vector<Row> rows;                       // live rows (append-only; deletes are tombstones)
-  std::vector<uint8_t> dead;                   // 1 = deleted
-  std::unordered_map<int64_t, size_t> pk_pos;  // pk -> index into rows
+
+  // Legacy in-memory row store. Kept so that code written against the
+  // in-RAM engine still compiles and links; a disk-backed table keeps these
+  // empty and every read has to go through Database::scan().
+  std::vector<Row> rows;
+  std::vector<uint8_t> dead;
+  std::unordered_map<int64_t, size_t> pk_pos;
   int64_t next_rid = 1;
+
   bool has_index = false;
+  std::shared_ptr<TableStorage> store;  // bulk data + pk index (nullptr => none)
 
   size_t live_count() const;
 };
@@ -89,19 +101,34 @@ class Database {
 
  private:
   struct Undo;
-  void apply_insert(const std::string& t, std::vector<Value> vals, int64_t* pk);
+  struct TxnMark;
+  void apply_insert(const std::string& t, const std::vector<Value>& vals, int64_t* pk);
   void append_wal(const std::string& rec);
+  void flush_wal();
   bool fsync_wal();
-  bool load_snapshot(std::string* err);
+  bool load_catalog(std::string* err);
   bool replay_wal(std::string* err);
+  bool open_table(Table& tb, std::string* err);
+  bool checkpoint_table(Table& tb, uint64_t lsn, std::string* err);
+  bool save_checkpoint_meta(std::string* err);
+  uint64_t wal_limit() const;
+  void mark_table(const std::string& name);
+  void note_commit();
 
   std::string dir_;
   std::unordered_map<std::string, Table> tables_;
   std::vector<Undo> undo_;
+  std::vector<TxnMark> marks_;
   bool txn_active_ = false;
   FILE* wal_ = nullptr;
   uint64_t wal_rows_ = 0;
   uint64_t wal_bytes_ = 0;
+  // WAL write buffer: records are batched into one write(2) per commit, and
+  // the scratch strings are reused so a hot insert path does no allocation.
+  std::string wal_out_;
+  std::string wal_pay_;
+  std::string wal_rec_;
+  bool wal_err_ = false;
 };
 
 bool eval_conds(const Table& t, const Row& r, const std::vector<Cond>& conds);
