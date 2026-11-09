@@ -295,8 +295,8 @@ uint64_t store_payload(PayloadStore& store, const Row& row) {
   return off;
 }
 
-void spill_payloads(Table& table) {
-  if (table.payload_store || table.payload_bytes <= kSpillBytes) return;
+void spill_payloads(Table& table, bool force = false) {
+  if (table.payload_store || (!force && table.payload_bytes <= kSpillBytes)) return;
   std::string name=table.storage_dir+"/.payload-XXXXXX";
   std::vector<char> path(name.begin(),name.end()); path.push_back(0);
   auto store=std::make_shared<PayloadStore>();
@@ -323,8 +323,7 @@ void enforce_payload_budget(TableMap& tables) {
       if (!largest || table.payload_bytes > largest->payload_bytes) largest=&table;
     }
     if (!largest || resident <= (64ull << 20)) return;
-    largest->payload_bytes=kSpillBytes+1;
-    spill_payloads(*largest);
+    spill_payloads(*largest, true);
   }
 }
 
@@ -1180,6 +1179,19 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
     if (position==tb.pk_pos.end()) return 0;
     first=position->second;last=first+1;
     break;
+  }
+  // Store old row images on disk before the first transactional mutation.
+  // Repeated updates of a small resident table must not grow heap Undo images.
+  // Check for a match first so an empty UPDATE does not create a payload file.
+  if (txn_active_ && !tb.payload_store) {
+    while (first < last && (tb.dead[first] || !row_matches(pr, tb.rows[first]))) ++first;
+    if (first == last) return 0;
+    try {
+      spill_payloads(tb, true);
+    } catch (const std::exception& ex) {
+      set_err(err, code, ErrCode::TXN, std::string("cannot prepare update payloads: ") + ex.what());
+      return -1;
+    }
   }
   for (size_t i = first; i < last; ++i) {
     if (tb.dead[i]) continue;

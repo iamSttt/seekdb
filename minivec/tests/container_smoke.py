@@ -61,6 +61,17 @@ def smoke(command):
         send(db, f"SELECT id,s FROM {table} ORDER BY id;\n")
         expect(db, b"id\ts\n1\ta;'b\n2\tkeep\n")
 
+        send(db, f"UPDATE {table} SET s='quote\\")
+        time.sleep(0.05)
+        send(db, "';and'")
+        time.sleep(0.05)
+        send(db, "'tail' WHERE id=1; /")
+        expect(db, one)
+        send(db, "*" + "x" * 140_000 + "; still a comment *")
+        time.sleep(0.05)
+        send(db, f"/ SELECT id,s FROM {table} WHERE id=1;\n")
+        expect(db, b"id\ts\n1\tquote';and'tail\n")
+
         send(db, f"UPDATE {table} SET s='changed'\n")
         time.sleep(0.05)
         send(db, f"WHERE id=1; /* a comment with ; */ SELECT id,s FROM {table} ORDER BY id;\n")

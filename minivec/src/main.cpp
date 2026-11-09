@@ -5,6 +5,7 @@
 // open). Every complete `;`-terminated statement is executed and flushed
 // immediately so the grader can send the next one.
 #include <cerrno>
+#include <cctype>
 #include <csignal>
 #include <cstdio>
 #include <cstring>
@@ -21,52 +22,68 @@ using namespace mvdb;
 static volatile sig_atomic_t stopping = 0;
 static void stop_signal(int) { stopping = 1; }
 
-// Split a buffer into complete statements on ';' at top level (quotes and
-// comments respected). Returns the number of bytes consumed.
-static size_t take_statement(const std::string& buf, size_t begin, std::string* stmt) {
-  bool in_squote = false, in_dquote = false, in_backtick = false;
-  bool in_line_comment = false, in_block_comment = false;
-  for (size_t i = begin; i < buf.size(); ++i) {
-    char c = buf[i];
-    char n = (i + 1 < buf.size()) ? buf[i + 1] : '\0';
-    if (in_line_comment) {
-      if (c == '\n') in_line_comment = false;
-      continue;
-    }
-    if (in_block_comment) {
-      if (c == '*' && n == '/') { in_block_comment = false; ++i; }
-      continue;
-    }
-    if (in_squote) {
-      if (c == '\\' && i + 1 < buf.size()) { ++i; continue; }
-      if (c == '\'') {
-        if (n == '\'') { ++i; continue; }
-        in_squote = false;
+class StatementScanner {
+ public:
+  // The cursor and lexical state survive read boundaries. Leave a trailing
+  // byte pending only when a second byte can change its meaning.
+  size_t next_end(const std::string& buf) {
+    for (; cursor_ < buf.size(); ++cursor_) {
+      const char c = buf[cursor_];
+      const bool has_next = cursor_ + 1 < buf.size();
+      const char next = has_next ? buf[cursor_ + 1] : '\0';
+      switch (state_) {
+        case State::LineComment:
+          if (c == '\n') state_ = State::Sql;
+          break;
+        case State::BlockComment:
+          if (c == '*') {
+            if (!has_next) return std::string::npos;
+            if (next == '/') {
+              state_ = State::Sql;
+              ++cursor_;
+            }
+          }
+          break;
+        case State::Quoted:
+          if (c == '\\' && quote_ != '`') {
+            if (!has_next) return std::string::npos;
+            ++cursor_;
+          } else if (c == quote_) {
+            if (!has_next) return std::string::npos;
+            if (next == quote_) ++cursor_;
+            else state_ = State::Sql;
+          }
+          break;
+        case State::Sql:
+          if ((c == '-' || c == '/') && !has_next) return std::string::npos;
+          if (c == '-' && next == '-') {
+            state_ = State::LineComment;
+            ++cursor_;
+          } else if (c == '#') {
+            state_ = State::LineComment;
+          } else if (c == '/' && next == '*') {
+            state_ = State::BlockComment;
+            ++cursor_;
+          } else if (c == '\'' || c == '"' || c == '`') {
+            state_ = State::Quoted;
+            quote_ = c;
+          } else if (c == ';') {
+            return cursor_++;
+          }
+          break;
       }
-      continue;
     }
-    if (in_dquote) {
-      if (c == '\\' && i + 1 < buf.size()) { ++i; continue; }
-      if (c == '"') { in_dquote = false; }
-      continue;
-    }
-    if (in_backtick) {
-      if (c == '`') in_backtick = false;
-      continue;
-    }
-    if (c == '-' && n == '-') { in_line_comment = true; ++i; continue; }
-    if (c == '#') { in_line_comment = true; continue; }
-    if (c == '/' && n == '*') { in_block_comment = true; ++i; continue; }
-    if (c == '\'') { in_squote = true; continue; }
-    if (c == '"') { in_dquote = true; continue; }
-    if (c == '`') { in_backtick = true; continue; }
-    if (c == ';') {
-      *stmt = buf.substr(begin, i - begin);
-      return i + 1;
-    }
+    return std::string::npos;
   }
-  return 0;
-}
+
+  void discard_prefix(size_t count) { cursor_ -= count; }
+
+ private:
+  enum class State { Sql, Quoted, LineComment, BlockComment };
+  State state_ = State::Sql;
+  size_t cursor_ = 0;
+  char quote_ = '\0';
+};
 
 static bool has_token(const std::string& s) {
   for (char c : s)
@@ -125,7 +142,7 @@ int main(int argc, char** argv) {
   std::fflush(stderr);
 
   std::string buf;
-  size_t begin = 0;
+  StatementScanner scanner;
   char chunk[65536];
   while (!stopping) {
     ssize_t n = ::read(STDIN_FILENO, chunk, sizeof(chunk));
@@ -136,15 +153,17 @@ int main(int argc, char** argv) {
     if (n == 0) break;  // EOF
     buf.append(chunk, (size_t)n);
 
-    std::string stmt;
-    size_t used;
-    while ((used = take_statement(buf, begin, &stmt)) > 0) {
-      begin = used;
-      run_statement(db, stmt);
+    size_t begin = 0;
+    for (size_t end = scanner.next_end(buf); end != std::string::npos;
+         end = scanner.next_end(buf)) {
+      run_statement(db, buf.substr(begin, end - begin));
+      begin = end + 1;
     }
     // Compact once per input chunk, not once per statement in a bulk feed.
-    if (begin) { buf.erase(0, begin); begin = 0; }
-
+    if (begin) {
+      buf.erase(0, begin);
+      scanner.discard_prefix(begin);
+    }
   }
 
   // Newlines can occur inside statements; never execute a pipe-read prefix.

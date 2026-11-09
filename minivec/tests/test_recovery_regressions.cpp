@@ -70,6 +70,51 @@ static void durable_format_limits(const std::string& dir) {
   assert(keys(d,"wide")==std::vector<int64_t>({1}));
 }
 
+static void update_undo_payloads(const std::string& dir) {
+  Database d; std::string e; int code=0;
+  assert(d.open(dir,&e));
+  ok(d,"CREATE TABLE u (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
+  ok(d,"INSERT INTO u VALUES (1,'original')");
+  auto expect_value=[&](const std::string& value) {
+    size_t count=0;
+    d.scan("u",{},[&](const Row& r){assert(r.vals[1].s==value);++count;return true;});
+    assert(count==1);
+  };
+  ok(d,"UPDATE u SET s='missing' WHERE id=99");
+  ok(d,"UPDATE u SET s='missing' WHERE s='absent'");
+  assert(!d.table("u")->payload_store);
+  ok(d,"BEGIN");
+  ok(d,"CREATE TABLE prior (id BIGINT PRIMARY KEY)");
+  // Force mkstemp failure before mutation; the earlier transaction survives.
+  d.table("u")->storage_dir=dir+"/nonexistent/subdir";
+  assert(!run(d,"UPDATE u SET s='failed' WHERE id=1"));
+  assert(!d.table("u")->payload_store);
+  expect_value("original");
+  d.table("u")->storage_dir=dir;
+  ok(d,"COMMIT");
+  assert(d.has_table("prior"));
+  ok(d,"BEGIN");
+  ok(d,"UPDATE u SET s='kept' WHERE id=1");
+  assert(d.table("u")->payload_store);
+  const uint64_t kept_offset=d.table("u")->payload_offsets[0];
+  // Exercise the same savepoint unwind used after a later statement error.
+  assert(d.begin_statement(&e,&code));
+  assert(d.update_rows("u",{},{{"s",Value::ofStr("discarded")}},&e,&code)==1);
+  assert(!d.end_statement(false,&e,&code));
+  assert(d.table("u")->payload_offsets[0]==kept_offset);
+  expect_value("kept");
+  for (int i=0;i<128;++i) ok(d,"UPDATE u SET s='"+std::string(1024,'x')+"'");
+  ok(d,"DROP TABLE u");
+  ok(d,"CREATE TABLE u (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
+  ok(d,"INSERT INTO u VALUES (9,'new generation')");
+  ok(d,"ROLLBACK");
+  expect_value("original");
+  ok(d,"UPDATE u SET s='durable' WHERE id=1");
+  d.close(); assert(d.open(dir,&e)); expect_value("durable");
+  assert(d.checkpoint(&e)); d.close();
+  assert(d.open(dir,&e)); expect_value("durable");
+}
+
 int main() {
   char tmp[]="/tmp/mvdb-recovery-XXXXXX";
   const char* p=::mkdtemp(tmp); assert(p); const std::string dir=p;
@@ -141,4 +186,6 @@ int main() {
   std::cout << "PASS transaction, DDL generation, WAL-tail and checkpoint regressions: " << dir << '\n';
   durable_format_limits(dir+"/format-limits");
   std::cout << "PASS durable format limits and later commits\n";
+  update_undo_payloads(dir+"/update-undo");
+  std::cout << "PASS spilled update Undo, savepoints and table generations\n";
 }
