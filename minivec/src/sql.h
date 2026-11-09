@@ -50,6 +50,8 @@ struct Statement {
   std::vector<SelectItem> items;  // empty => SELECT *
   std::vector<Cond> conds;
   std::string order_by;
+  SelectItem order_expression;
+  bool order_is_expression = false;
   bool order_desc = false;
   int64_t limit = -1;
 

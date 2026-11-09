@@ -10,7 +10,9 @@ namespace mvdb {
 // Executes one parsed statement. On success appends the client-visible text to
 // `out` (already newline terminated). On failure returns false, sets *code and
 // *err.
-bool execute(Database& db, const Statement& st, std::string* out, std::string* err, int* code);
+using OutputSink = std::function<void(const std::string&)>;
+bool execute(Database& db, const Statement& st, std::string* out, std::string* err, int* code,
+             const OutputSink& sink = {});
 
 // Renders a float the way MySQL does (shortest round-trip, 6 digits default).
 std::string format_double(double v);

@@ -304,8 +304,9 @@ bool parse_float_list(const std::string& body, std::vector<float>* out) {
     if (endp == begin) return false;
     if (errno == ERANGE) return false;
     if (!std::isfinite(v)) return false;
-    if (v > 3.4028234e38 || v < -3.4028234e38) return false;
-    out->push_back((float)v);
+    const float stored = static_cast<float>(v);
+    if (!std::isfinite(stored)) return false;
+    out->push_back(stored);
     i += (size_t)(endp - begin);
     while (i < n && is_space((unsigned char)body[i])) ++i;
     if (i < n) {
@@ -325,7 +326,11 @@ Value value_from_string(const std::string& raw) {
   std::string t = trim_copy(raw);
   if (t.size() >= 2 && t.front() == '[' && t.back() == ']') {
     std::vector<float> v;
-    if (parse_float_list(t.substr(1, t.size() - 2), &v)) return Value::ofVec(std::move(v));
+    if (parse_float_list(t.substr(1, t.size() - 2), &v)) {
+      Value result = Value::ofVec(std::move(v));
+      result.s = raw;  // retain quoted spelling for a VARCHAR destination
+      return result;
+    }
   }
   return Value::ofStr(raw);
 }
@@ -657,13 +662,36 @@ void Parser::parse_create_table(Statement* st) {
   expect_punct("(", "CREATE TABLE");
 
   int primaries = 0;
+  bool table_primary = false;
+  std::string primary_column;
   for (;;) {
     if (is_punct(")")) syntax_error("a table needs at least one column");
-    st->columns.push_back(parse_column_def());
+    if (accept_kw("PRIMARY")) {
+      if (table_primary) syntax_error("duplicate PRIMARY KEY clause");
+      table_primary = true;
+      expect_kw("KEY", "PRIMARY KEY");
+      expect_punct("(", "PRIMARY KEY");
+      primary_column = ident("the PRIMARY KEY column");
+      if (is_punct(",")) not_supported("composite PRIMARY KEY");
+      expect_punct(")", "PRIMARY KEY");
+    } else {
+      st->columns.push_back(parse_column_def());
+    }
     if (!accept_punct(",")) break;
     if (is_punct(")")) syntax_error("trailing ',' before ')' in the column list");
   }
   expect_punct(")", "CREATE TABLE");
+
+  if (table_primary) {
+    bool found = false;
+    for (Column& column : st->columns) {
+      if (column.name != primary_column) continue;
+      if (column.is_primary) syntax_error("duplicate PRIMARY KEY declaration");
+      column.is_primary = true;
+      found = true;
+    }
+    if (!found) throw_err(1072, "Key column '" + primary_column + "' doesn't exist in table");
+  }
 
   for (const Column& c : st->columns)
     if (c.is_primary) ++primaries;
@@ -727,12 +755,10 @@ Column Parser::parse_column_def() {
       continue;
     }
     if (is_kw("NULL")) {
-      adv();
-      continue;
+      not_supported("nullable columns");
     }
-    if (is_kw("AUTO_INCREMENT")) {  // implied by the single BIGINT primary key
-      adv();
-      continue;
+    if (is_kw("AUTO_INCREMENT")) {
+      not_supported("AUTO_INCREMENT");
     }
     if (is_kw("UNIQUE") || is_kw("DEFAULT") || is_kw("COMMENT") || is_kw("CHECK") ||
         is_kw("REFERENCES") || is_kw("COLLATE") || is_kw("UNSIGNED") || is_kw("ZEROFILL") ||
@@ -861,7 +887,12 @@ SelectItem Parser::parse_select_item() {
       adv();
     }
   }
-  if (accept_kw("AS")) it.alias = ident("an alias");
+  if (accept_kw("AS")) {
+    it.alias = ident("an alias");
+  } else if (cur().kind == TK_IDENT &&
+             (cur().quoted || !is_clause_word(to_upper(cur().text)))) {
+    it.alias = ident("an alias");
+  }
   if (is_punct("(")) not_supported("function calls other than L2_DISTANCE");
   return it;
 }
@@ -897,20 +928,24 @@ void Parser::parse_select(Statement* st) {
     if (cur().quoted || !is_clause_word(up)) adv();  // optional alias, unused
   }
 
-  bool seen_where = false;
+  bool seen_where = false, seen_order = false, seen_limit = false;
   for (;;) {
     if (is_kw("WHERE")) {
-      if (seen_where) syntax_error("duplicate WHERE clause");
+      if (seen_where || seen_order || seen_limit) syntax_error("misplaced WHERE clause");
       seen_where = true;
       adv();
       parse_where(st);
       continue;
     }
     if (is_kw("ORDER")) {
+      if (seen_order || seen_limit) syntax_error("misplaced ORDER BY clause");
+      seen_order = true;
       adv();
       expect_kw("BY", "ORDER BY");
-      st->order_by = ident("an ORDER BY column");
-      if (is_punct("(")) not_supported("ORDER BY expressions");
+      st->order_expression = parse_select_item();
+      if (!st->order_expression.alias.empty()) syntax_error("alias in ORDER BY");
+      st->order_is_expression = st->order_expression.is_distance;
+      st->order_by = st->order_expression.column;
       if (accept_kw("ASC")) {
       } else if (accept_kw("DESC")) {
         st->order_desc = true;
@@ -919,6 +954,8 @@ void Parser::parse_select(Statement* st) {
       continue;
     }
     if (is_kw("LIMIT")) {
+      if (seen_limit) syntax_error("duplicate LIMIT clause");
+      seen_limit = true;
       adv();
       st->limit = int_literal("LIMIT");
       if (is_punct(",")) not_supported("LIMIT offset, count");

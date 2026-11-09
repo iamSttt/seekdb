@@ -5,6 +5,7 @@
 // open). Every complete `;`-terminated statement is executed and flushed
 // immediately so the grader can send the next one.
 #include <cerrno>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -17,13 +18,15 @@
 #include "sql.h"
 
 using namespace mvdb;
+static volatile sig_atomic_t stopping = 0;
+static void stop_signal(int) { stopping = 1; }
 
 // Split a buffer into complete statements on ';' at top level (quotes and
 // comments respected). Returns the number of bytes consumed.
-static size_t take_statement(const std::string& buf, std::string* stmt) {
+static size_t take_statement(const std::string& buf, size_t begin, std::string* stmt) {
   bool in_squote = false, in_dquote = false, in_backtick = false;
   bool in_line_comment = false, in_block_comment = false;
-  for (size_t i = 0; i < buf.size(); ++i) {
+  for (size_t i = begin; i < buf.size(); ++i) {
     char c = buf[i];
     char n = (i + 1 < buf.size()) ? buf[i + 1] : '\0';
     if (in_line_comment) {
@@ -58,7 +61,7 @@ static size_t take_statement(const std::string& buf, std::string* stmt) {
     if (c == '"') { in_dquote = true; continue; }
     if (c == '`') { in_backtick = true; continue; }
     if (c == ';') {
-      *stmt = buf.substr(0, i);
+      *stmt = buf.substr(begin, i - begin);
       return i + 1;
     }
   }
@@ -82,8 +85,10 @@ static void run_statement(Database& db, const std::string& text) {
     return;
   }
   if (st.kind == Statement::EMPTY) return;
-  if (execute(db, st, &out, &perr, &code)) {
-    std::fputs(out.c_str(), stdout);
+  if (execute(db, st, &out, &perr, &code, [](const std::string& text) {
+        std::fwrite(text.data(), 1, text.size(), stdout);
+      })) {
+    std::fwrite(out.data(), 1, out.size(), stdout);
   } else {
     std::printf("ERROR %d (HY000): %s\n", code ? code : 1105, perr.c_str());
   }
@@ -92,10 +97,22 @@ static void run_statement(Database& db, const std::string& text) {
 
 int main(int argc, char** argv) {
   std::string data_dir = "/data";
+  std::string mode = "exact";
   for (int i = 1; i < argc; ++i) {
     if (std::strcmp(argv[i], "--data") == 0 && i + 1 < argc) data_dir = argv[++i];
     else if (std::strncmp(argv[i], "--data=", 7) == 0) data_dir = argv[i] + 7;
+    else if (std::strcmp(argv[i], "--mode") == 0 && i+1<argc) mode=argv[++i];
+    else { std::fprintf(stderr,"unknown or incomplete option: %s\n",argv[i]);return 2; }
   }
+
+  if(mode!="exact" && mode!="ann") {std::fprintf(stderr,"mode must be exact or ann\n");return 2;}
+  // Both modes currently use exact Flat search. This is a safe recall-1
+  // implementation; the official mode framing still needs the frozen driver.
+  struct sigaction action {};
+  action.sa_handler = stop_signal;
+  sigemptyset(&action.sa_mask);
+  sigaction(SIGTERM, &action, nullptr);
+  sigaction(SIGINT, &action, nullptr);
 
   Database db;
   std::string err;
@@ -107,8 +124,9 @@ int main(int argc, char** argv) {
   std::fflush(stderr);
 
   std::string buf;
+  size_t begin = 0;
   char chunk[65536];
-  for (;;) {
+  while (!stopping) {
     ssize_t n = ::read(STDIN_FILENO, chunk, sizeof(chunk));
     if (n < 0) {
       if (errno == EINTR) continue;
@@ -119,49 +137,18 @@ int main(int argc, char** argv) {
 
     std::string stmt;
     size_t used;
-    while ((used = take_statement(buf, &stmt)) > 0) {
-      buf.erase(0, used);
+    while ((used = take_statement(buf, begin, &stmt)) > 0) {
+      begin = used;
       run_statement(db, stmt);
     }
+    // Compact once per input chunk, not once per statement in a bulk feed.
+    if (begin) { buf.erase(0, begin); begin = 0; }
 
-    // Hedge for a driver that terminates statements with a newline instead of
-    // ';': only when the buffer is exactly one non-empty line do we try to
-    // parse and run it, so multi-line statements are never chopped up.
-    if (!buf.empty() && buf.back() == '\n') {
-      size_t nl = buf.find('\n');
-      bool single_line = (nl != std::string::npos) && !has_token(buf.substr(nl + 1));
-      if (single_line) {
-        std::string line = buf.substr(0, nl);
-        Statement probe;
-        std::string perr;
-        int pcode = 0;
-        if (parse_sql(line, &probe, &perr, &pcode) && probe.kind != Statement::EMPTY) {
-          buf.clear();
-          run_statement(db, line);
-        }
-      }
-    }
   }
 
-  // Trailing statement without a terminating ';'. If the whole tail does not
-  // parse, fall back to one-statement-per-line (a newline-terminated driver
-  // that piped everything in one chunk).
-  if (has_token(buf)) {
-    Statement probe;
-    std::string perr;
-    int pcode = 0;
-    if (parse_sql(buf, &probe, &perr, &pcode)) {
-      run_statement(db, buf);
-    } else {
-      size_t pos = 0;
-      while (pos < buf.size()) {
-        size_t nl = buf.find('\n', pos);
-        std::string line = buf.substr(pos, (nl == std::string::npos ? buf.size() : nl) - pos);
-        pos = (nl == std::string::npos) ? buf.size() : nl + 1;
-        if (has_token(line)) run_statement(db, line);
-      }
-    }
-  }
+  // Newlines can occur inside statements; never execute a pipe-read prefix.
+  // EOF accepts one final SQL statement, not a sequence of guessed fragments.
+  if (!stopping && has_token(buf)) run_statement(db, buf);
   db.close();
   return 0;
 }

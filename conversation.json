@@ -1,0 +1,117 @@
+{
+  "schema": "agent-learning-evidence-v3-unbounded",
+  "synthetic": false,
+  "material_scope": "Actual excerpts from this Codex conversation and actual tool outputs during the 2026-11-09 MiniVectorDB development session. This is a selected, attributed record, not a complete transcript. Hidden model reasoning and credentials are excluded.",
+  "redactions": "SSH host/login/password and all access tokens omitted. User quotations below are exact selected non-sensitive excerpts; neighboring context is summarized separately and attributed to Agent.",
+  "base_commit": "bd69093f0ff2d2d075daaed46759f9a521cbf3ce",
+  "sources": {
+    "task": "https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/lg8enxlmwg69unt6",
+    "scoring": "https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/dbf6uzmwsuupp7hn"
+  },
+  "conversations": [
+    {
+      "id": "u1",
+      "role": "student",
+      "content": "开始，奔着满分去",
+      "context": "User supplied the new task link and authorized use of a cloud host; credentials redacted."
+    },
+    {
+      "id": "u2",
+      "role": "student",
+      "content": "我所有的东西都给你了，你先做这道题"
+    },
+    {
+      "id": "u3",
+      "role": "student",
+      "content": "好，尽量做吧，分数尽可能高"
+    },
+    {
+      "id": "u4",
+      "role": "student",
+      "content": "新的计分规则，好好研究一下怎么拿高分，然后完成这道题，所有的权限我都批准",
+      "context": "User supplied the separate scoring URL above."
+    },
+    {
+      "id": "a1",
+      "role": "agent",
+      "content": "The official branch has no published wire protocol/test package. The user fork contains an initial implementation. Use that as the baseline, retain a replaceable adapter, and do not call the independent local harness official functional admission."
+    },
+    {
+      "id": "a2",
+      "role": "agent",
+      "content": "Prioritize all functional gates before rank-based performance. Detect explicit-transaction partial INSERT, non-atomic UPDATE, catalog/snapshot generation mismatches, BIGINT-to-double ordering loss and missing primary-key tie breaking. These findings and the subsequent implementation are Agent contributions, not student-authored explanations."
+    },
+    {
+      "id": "a3",
+      "role": "agent",
+      "content": "Use statement savepoints inside a transaction; keep prior successful statements when a later statement fails. Commit WAL synchronously before acknowledgement. Recover only committed transaction records, and test interruption during recovery."
+    },
+    {
+      "id": "a4",
+      "role": "agent",
+      "content": "TopK must filter before ranking, preserve integer ordering, and break equal distances by ascending primary key. Promote float32 inputs to double before subtraction to avoid overflow. Only winner keys should be retained, then fetch projected data by primary key."
+    },
+    {
+      "id": "a5",
+      "role": "agent",
+      "content": "Initial sorted-run buffering was insufficient: merging every run at once could exceed memory with wide rows. Add bounded fan-in multi-pass merge and an independent 384MiB/96MiB address-limit test. Similarly, retaining whole TopK rows could consume gigabytes when projection only needs IDs; replace whole-row candidates with keys."
+    },
+    {
+      "id": "a6",
+      "role": "agent",
+      "content": "Implement a real exact Flat vector index, not only a persisted has_index flag. Bound resident index payload, use sequential disk records for larger data, invalidate derived structures on mutations/undo, and rebuild persisted definitions before startup readiness."
+    }
+  ],
+  "experiments": [
+    {
+      "id": "baseline",
+      "source": "tool stdout",
+      "status": "executed",
+      "output": "Initial fork baseline: 9 case(s) passed in the independently written local harness. This was not an official test result."
+    },
+    {
+      "id": "regression_initial",
+      "source": "tool stdout",
+      "status": "executed",
+      "output": "PASS failed explicit and implicit INSERT are atomic\nPASS finite float32 endpoints do not overflow distance\nPASS 200-operation independent transaction model\nPASS 45 filtered and unfiltered TopK oracle queries\nRESULT 9 independent regression groups passed"
+    },
+    {
+      "id": "initial_ab",
+      "source": "tool stdout",
+      "status": "executed_exploratory",
+      "output": "seed=7319, rows=10000, dim=128, queries=1000. Baseline query_seconds=3.706768097821623; first candidate query_seconds=1.3723418177105486. Both reported recall_unfiltered=1.0 and recall_filtered=1.0, restart_contents=pass. Baseline overlapped compilation, so this is exploratory and superseded by isolated repeated runs when available. Process RSS and /proc/io are not official cgroup metrics."
+    },
+    {
+      "id": "large_initial",
+      "source": "tool stdout",
+      "status": "executed",
+      "output": "build_under_address_limit max_rss_kib=35080 payload_bytes=268435456\nrecovery_children_sigkilled=6\nwal_recovery_under_address_limit max_rss_kib=35324 payload_bytes=268435456\ncheckpoint_under_address_limit max_rss_kib=36820 payload_bytes=268435456\nsnapshot_recovery_rss_only max_rss_kib=296644 payload_bytes=268435456\nPASS large payload, WAL restart, repeated recovery SIGKILL, snapshot integrity",
+      "agent_interpretation": "The address limit applies to construction/WAL/checkpoint, not snapshot mmap. Snapshot RSS remained high; add consumed-page MADV_DONTNEED and retest. This test is not cgroup memory.peak proof."
+    },
+    {
+      "id": "resource_counterexamples",
+      "source": "tool stdout",
+      "status": "executed",
+      "output": "PASS external run merge, signed BIGINT keys, DESC ties, payload integrity, fan-in under 96MiB address cap\nPASS 256MiB unprojected vector payload TopK under 160MiB address cap"
+    },
+    {
+      "id": "sanitizer_initial",
+      "source": "tool stdout",
+      "status": "executed",
+      "output": "AddressSanitizer/UndefinedBehaviorSanitizer recovery test exit=0. PASS transaction, DDL generation, WAL-tail and checkpoint regressions. This run preceded the physical Flat index addition; final version needs its own checks."
+    },
+    {
+      "id": "paired_flat_and_resources",
+      "source": "tool stdout and validation/raw",
+      "status": "executed",
+      "output": "Three independent 10k/128d/1000-query rounds: query speedups [5.132, 5.118, 5.884]; filtered/unfiltered recall=1.0 in every round. 256MiB payload restart and six recovery SIGKILLs passed, snapshot RSS 40004KiB after consumed-page reclamation. Full local suite and forced-disk Flat passed. Performance precedes final parser/cursor integration; no official score inferred."
+    }
+  ],
+  "limitations": [
+    "No official driver, hidden functional admission, baseline T/B/M or final leaderboard has been observed. No formal score is claimed.",
+    "Student messages mainly delegate implementation and identify the scoring document. Agent technical explanations and tool results do not establish student understanding; no student explanation, disagreement or experiment participation is fabricated.",
+    "Two public documents disagree on four versus five learning dimensions and best versus most recent default final version. Preserve authentic evidence and explicitly select a final commit.",
+    "Selected transcripts omit repetitive progress messages and source code; this selection is documented rather than represented as a complete record.",
+    "Prior repository agent/conversation.json contained a paraphrased English initial prompt whose original source is not available in this chat; it is excluded from current student evidence."
+  ]
+}

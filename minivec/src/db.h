@@ -2,6 +2,7 @@
 #pragma once
 #include <cstdio>
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -10,6 +11,9 @@
 #include "value.h"
 
 namespace mvdb {
+
+struct PayloadStore;
+class FlatIndex;
 
 struct TableSchema {
   std::string name;
@@ -31,8 +35,18 @@ struct Table {
   std::unordered_map<int64_t, size_t> pk_pos;  // pk -> index into rows
   int64_t next_rid = 1;
   bool has_index = false;
+  std::shared_ptr<FlatIndex> vector_index;
+  // Large row payloads spill to a rebuildable, unlinked file in /data. The
+  // primary-key and row-slot metadata remain resident.
+  std::string storage_dir;
+  std::shared_ptr<PayloadStore> payload_store;
+  std::vector<uint64_t> payload_offsets;
+  uint64_t payload_bytes = 0;
 
   size_t live_count() const;
+  const Row& read_row(size_t slot, Row& scratch) const;
+  void replace_row(size_t slot, Row row);
+  void append_row(Row row);
 };
 
 enum class ErrCode : int {
@@ -77,11 +91,19 @@ class Database {
   bool commit(std::string* err, int* code);
   bool rollback(std::string* err, int* code);
   bool in_txn() const { return txn_active_; }
+  const std::string& data_directory() const { return dir_; }
+  // Wrap one modifying SQL statement, including statements inside BEGIN.
+  bool begin_statement(std::string* err, int* code);
+  bool end_statement(bool success, std::string* err, int* code);
 
   // vector index
   bool create_vector_index(const std::string& t, const std::string& col, const std::string& name,
                            std::string* err, int* code);
   bool has_vector_index(const std::string& t) const;
+  // Pointer lifetime is limited to this callback. Filtering precedes distance
+  // computation by the caller; unindexed tables use the ordinary row scan.
+  void scan_vectors(const std::string& t, const std::vector<Cond>& conds,
+                    const std::function<bool(int64_t,const float*,size_t)>& cb);
 
   // durability
   bool checkpoint(std::string* err);
@@ -90,15 +112,22 @@ class Database {
  private:
   struct Undo;
   void apply_insert(const std::string& t, std::vector<Value> vals, int64_t* pk);
-  void append_wal(const std::string& rec);
+  bool append_wal(const std::string& rec);
+  void undo_to(size_t mark);
+  bool truncate_wal(uint64_t bytes, uint64_t lsn, std::string* err, int* code);
   bool fsync_wal();
   bool load_snapshot(std::string* err);
   bool replay_wal(std::string* err);
+  void build_vector_index(Table& table);
 
   std::string dir_;
   std::unordered_map<std::string, Table> tables_;
   std::vector<Undo> undo_;
   bool txn_active_ = false;
+  uint64_t txn_wal_start_ = 0, txn_lsn_start_ = 0;
+  bool stmt_active_ = false, stmt_implicit_ = false;
+  size_t stmt_undo_start_ = 0;
+  uint64_t stmt_wal_start_ = 0, stmt_lsn_start_ = 0;
   FILE* wal_ = nullptr;
   uint64_t wal_rows_ = 0;
   uint64_t wal_bytes_ = 0;

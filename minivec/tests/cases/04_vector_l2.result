@@ -1,13 +1,13 @@
 === vector insert and L2 ordering ===
 id	d
 2	0
-3	1.4142135381698608
+3	1.4142135623730951
 1	5
 4	10
 id	d
 4	10
 1	5
-3	1.4142135381698608
+3	1.4142135623730951
 2	0
 ERROR 1264 (HY000): Vector dimension mismatch
 ERROR 1235 (HY000): L2_DISTANCE() requires a VECTOR column

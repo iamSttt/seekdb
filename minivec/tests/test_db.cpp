@@ -333,18 +333,18 @@ int main() {
       sets.emplace_back("name", Value::ofStr("bulk"));
       CHECK(db.update_rows("t1", {}, sets, &err, &code) == 6, "update all 6 rows");
       CHECK(count_rows(db, "t1", {cond_eq("name", Value::ofStr("bulk"))}) == 6, "all renamed");
-      // pk update keeps pk_pos consistent
+      // The competition explicitly excludes primary-key updates.
       std::vector<std::pair<std::string, Value>> sets2;
       sets2.emplace_back("id", Value::ofInt(999));
-      CHECK(db.update_rows("t1", {cond_eq("id", Value::ofInt(2))}, sets2, &err, &code) == 1,
-            "update the primary key");
-      CHECK(count_rows(db, "t1", {cond_eq("id", Value::ofInt(2))}) == 0, "old pk gone");
-      CHECK(count_rows(db, "t1", {cond_eq("id", Value::ofInt(999))}) == 1, "new pk present");
+      CHECK(db.update_rows("t1", {cond_eq("id", Value::ofInt(2))}, sets2, &err, &code) == -1 && code == 1235,
+            "primary-key update rejected");
+      CHECK(count_rows(db, "t1", {cond_eq("id", Value::ofInt(2))}) == 1, "original pk retained");
+      CHECK(count_rows(db, "t1", {cond_eq("id", Value::ofInt(999))}) == 0, "no new pk created");
       std::vector<std::pair<std::string, Value>> sets3;
       sets3.emplace_back("id", Value::ofInt(999));
       CHECK(db.update_rows("t1", {cond_eq("id", Value::ofInt(300))}, sets3, &err, &code) == -1 &&
-                code == 1062,
-            "update to an existing pk -> 1062");
+                code == 1235,
+            "all primary-key updates rejected");
     }
   }
 
@@ -455,6 +455,31 @@ int main() {
     CHECK(count_rows(d2, "a") == 400, "every row survived the automatic checkpoint");
   }
 #endif
+
+  // PK equality DML must still check every other predicate, including on the
+  // spilled path, and its undo records must restore the original row slot.
+  {
+    Database d; const std::string pdir=dir+"/pk_dml";
+    CHECK(d.open(pdir,&err),"open PK DML fixture");
+    CHECK(d.create_table("t1",simple_schema(),&err,&code),"create PK DML fixture");
+    CHECK(ins(d,"t1",-7,"old",{1,2,3}),"insert negative PK fixture");
+    CHECK(ins(d,"t1",8,"other",{4,5,6}),"insert second PK fixture");
+    const std::vector<std::pair<std::string,Value>> sets{{"name",Value::ofStr("new")}};
+    const Cond key=cond_eq("id",Value::ofInt(-7));
+    const Cond wrong=cond_eq("name",Value::ofStr("wrong"));
+    CHECK(d.update_rows("t1",{key,wrong},sets,&err,&code)==0,"PK UPDATE checks residual predicate");
+    CHECK(d.delete_rows("t1",{key,wrong},&err,&code)==0,"PK DELETE checks residual predicate");
+    CHECK(d.update_rows("t1",{cond_eq("id",Value::ofInt(999))},sets,&err,&code)==0,"PK UPDATE miss");
+    CHECK(d.delete_rows("t1",{cond_eq("id",Value::ofInt(999))},&err,&code)==0,"PK DELETE miss");
+    CHECK(d.begin(&err,&code),"begin PK DML rollback");
+    CHECK(d.update_rows("t1",{key},sets,&err,&code)==1,"PK UPDATE selects exactly one row");
+    CHECK(find_name(d,"t1",-7)=="new" && find_name(d,"t1",8)=="other","PK UPDATE preserves other row");
+    CHECK(d.delete_rows("t1",{key},&err,&code)==1,"PK DELETE selects exactly one row");
+    CHECK(count_rows(d,"t1")==1,"one row remains after PK DELETE");
+    CHECK(d.rollback(&err,&code),"rollback PK DML");
+    CHECK(find_name(d,"t1",-7)=="old" && count_rows(d,"t1")==2,"PK DML undo restores original row");
+    CHECK(d.delete_rows("t1",{key,cond_eq("id",Value::ofInt(8))},&err,&code)==0,"contradictory PK equalities match no row");
+  }
 
   // ------------------------------------------- real crash (fork + _exit) ---
   // A child commits rows, then dies via _exit(0) in the middle of a second

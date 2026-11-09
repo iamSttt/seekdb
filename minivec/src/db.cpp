@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 // On-disk layout (all integers little-endian, all strings length prefixed)
 // ---------------------------------------------------------------------------
-//   <dir>/catalog.bin    table schemas (+ per table: has_index flag), CRC32 tail
+//   <dir>/catalog.bin    legacy file, ignored by recovery
 //   <dir>/snapshot.bin   full table contents at LSN N (+ N in the header), CRC32 tail
 //   <dir>/snapshot.lsn   mirror of N as text (informational; header is authoritative)
 //   <dir>/data.log       append-only WAL: [u32 len][u32 crc][payload]
@@ -16,8 +16,8 @@
 //   * Autocommit DML (no BEGIN active) appends its record and fdatasync()s before
 //     returning, i.e. a statement is durable before the caller reports success.
 //   * Explicit transaction records carry RF_TXN and are appended without fsync;
-//     commit() appends a TXN_COMMIT record and fdatasync()s once. Replay buffers
-//     RF_TXN records and only applies them when a TXN_COMMIT arrives, so a
+//     commit() appends a TXN_COMMIT record and fdatasync()s once. Replay re-reads
+//     RF_TXN records only after a TXN_COMMIT has been validated, so a
 //     rolled back or crashed transaction never reaches the in-memory state.
 //   * Replay stops at the first bad/truncated record and then truncates data.log
 //     back to the last good record boundary, so later appends stay contiguous.
@@ -26,6 +26,7 @@
 //     skipped on replay using the LSN stored in the snapshot header.
 // ---------------------------------------------------------------------------
 #include "db.h"
+#include "flat_index.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -34,6 +35,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -41,15 +43,22 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 namespace mvdb {
+
+struct PayloadStore {
+  int fd = -1;
+  uint64_t end = 0;
+  ~PayloadStore() { if (fd >= 0) ::close(fd); }
+};
+
 namespace {
 
 using TableMap = std::unordered_map<std::string, Table>;
 
-constexpr uint32_t kCatMagic = 0x4D564331u;   // "MVC1"
 constexpr uint32_t kSnapMagic = 0x4D565331u;  // "MVS1"
 
 constexpr uint32_t kMaxStr = 1u << 26;   // 64 MiB for a single string field
@@ -65,6 +74,10 @@ constexpr uint32_t kMaxRec = 1u << 30;   // WAL payload sanity bound
 #define MVDB_AUTO_CHECKPOINT_BYTES (64ull << 20)
 #endif
 constexpr uint64_t kAutoCheckpointBytes = MVDB_AUTO_CHECKPOINT_BYTES;
+#ifndef MVDB_SPILL_BYTES
+#define MVDB_SPILL_BYTES (32ull << 20)
+#endif
+constexpr uint64_t kSpillBytes = MVDB_SPILL_BYTES;
 
 // WAL record kinds.
 enum RecKind : uint8_t {
@@ -73,6 +86,7 @@ enum RecKind : uint8_t {
   REC_DELETE = 3,
   REC_CREATE_TABLE = 4,
   REC_DROP_TABLE = 5,
+  REC_CREATE_INDEX = 6,
   REC_TXN_BEGIN = 16,
   REC_TXN_COMMIT = 17,
 };
@@ -251,6 +265,69 @@ bool get_row(Rd& r, Row* row) {
   return true;
 }
 
+uint64_t row_heap_bytes(const Row& row) {
+  uint64_t n = row.vals.size() * sizeof(Value);
+  for (const Value& v : row.vals) n += v.s.size() + v.v.size() * sizeof(float);
+  return n;
+}
+
+void positional_io(int fd, void* data, size_t size, uint64_t off, bool writing) {
+  char* p = static_cast<char*>(data);
+  while (size) {
+    ssize_t n = writing ? ::pwrite(fd,p,size,static_cast<off_t>(off))
+                        : ::pread(fd,p,size,static_cast<off_t>(off));
+    if (n < 0 && errno == EINTR) continue;
+    if (n <= 0) throw std::runtime_error("row payload cache I/O failed");
+    p += n; size -= static_cast<size_t>(n); off += static_cast<uint64_t>(n);
+  }
+}
+
+uint64_t store_payload(PayloadStore& store, const Row& row) {
+  std::string b;
+  put_u32(b,0);
+  put_row(b,row);
+  if (b.size()-4 > kMaxRec) throw std::runtime_error("row exceeds storage record limit");
+  const uint32_t len=static_cast<uint32_t>(b.size()-4);
+  std::memcpy(&b[0],&len,4);
+  const uint64_t off=store.end;
+  positional_io(store.fd,&b[0],b.size(),off,true);
+  store.end+=b.size();
+  return off;
+}
+
+void spill_payloads(Table& table) {
+  if (table.payload_store || table.payload_bytes <= kSpillBytes) return;
+  std::string name=table.storage_dir+"/.payload-XXXXXX";
+  std::vector<char> path(name.begin(),name.end()); path.push_back(0);
+  auto store=std::make_shared<PayloadStore>();
+  store->fd=::mkstemp(path.data());
+  if (store->fd < 0) throw std::runtime_error("cannot create row payload cache");
+  ::unlink(path.data()); // source of truth is snapshot + WAL, never this cache
+  std::vector<uint64_t> offsets;
+  offsets.reserve(table.rows.size());
+  for (const Row& row : table.rows) offsets.push_back(store_payload(*store,row));
+  table.payload_offsets=std::move(offsets);
+  table.payload_store=std::move(store);
+  for (Row& row : table.rows) std::vector<Value>().swap(row.vals);
+  table.payload_bytes=0;
+}
+
+void enforce_payload_budget(TableMap& tables) {
+  for (;;) {
+    uint64_t resident=0;
+    Table* largest=nullptr;
+    for (auto& kv : tables) {
+      Table& table=kv.second;
+      if (table.payload_store) continue;
+      resident+=table.payload_bytes;
+      if (!largest || table.payload_bytes > largest->payload_bytes) largest=&table;
+    }
+    if (!largest || resident <= (64ull << 20)) return;
+    largest->payload_bytes=kSpillBytes+1;
+    spill_payloads(*largest);
+  }
+}
+
 void put_schema(std::string& b, const TableSchema& s) {
   put_str(b, s.name);
   put_u32(b, static_cast<uint32_t>(s.cols.size()));
@@ -321,18 +398,6 @@ bool fsync_dir(const std::string& d) {
   return ok;
 }
 
-bool read_file(const std::string& path, std::string* out) {
-  FILE* f = std::fopen(path.c_str(), "rb");
-  if (!f) return false;
-  char buf[262144];
-  size_t n;
-  out->clear();
-  while ((n = std::fread(buf, 1, sizeof(buf), f)) > 0) out->append(buf, n);
-  bool ok = !std::ferror(f);
-  std::fclose(f);
-  return ok;
-}
-
 bool write_atomic(const std::string& path, const std::string& data, std::string* err) {
   std::string tmp = path + ".tmp";
   int fd = ::open(tmp.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -349,6 +414,11 @@ bool write_atomic(const std::string& path, const std::string& data, std::string*
       ::close(fd);
       return false;
     }
+    if (w == 0) {
+      if (err) *err = "short write " + tmp;
+      ::close(fd);
+      return false;
+    }
     off += static_cast<size_t>(w);
   }
   if (::fsync(fd) != 0) {
@@ -362,67 +432,11 @@ bool write_atomic(const std::string& path, const std::string& data, std::string*
     return false;
   }
   std::string dir = path.substr(0, path.find_last_of('/'));
-  if (!dir.empty()) fsync_dir(dir);
-  return true;
-}
-
-// ------------------------------------------------------------- catalog -----
-std::string encode_catalog(const TableMap& tables) {
-  std::string b;
-  b.reserve(256 + tables.size() * 128);
-  put_u32(b, kCatMagic);
-  put_u32(b, static_cast<uint32_t>(tables.size()));
-  for (const auto& kv : tables) {
-    put_schema(b, kv.second.schema);
-    put_u8(b, kv.second.has_index ? 1 : 0);
-  }
-  put_u32(b, crc32_of(b.data(), b.size()));
-  return b;
-}
-
-bool decode_catalog(const std::string& blob, TableMap* out, std::string* err) {
-  if (blob.size() < 12) {
-    *err = "catalog.bin: truncated";
+  if (!dir.empty() && !fsync_dir(dir)) {
+    if (err) *err = "cannot sync directory " + dir;
     return false;
-  }
-  Rd r(blob.data(), blob.size() - 4);
-  uint32_t crc_stored;
-  std::memcpy(&crc_stored, blob.data() + blob.size() - 4, 4);
-  if (crc32_of(blob.data(), blob.size() - 4) != crc_stored) {
-    *err = "catalog.bin: CRC mismatch";
-    return false;
-  }
-  if (r.u32() != kCatMagic) {
-    *err = "catalog.bin: bad magic";
-    return false;
-  }
-  uint32_t n = r.u32();
-  if (r.bad || n > 100000) {
-    *err = "catalog.bin: bad table count";
-    return false;
-  }
-  out->clear();
-  for (uint32_t i = 0; i < n; ++i) {
-    TableSchema s;
-    if (!get_schema(r, &s)) {
-      *err = "catalog.bin: bad schema";
-      return false;
-    }
-    bool has_index = r.u8() != 0;
-    if (r.bad) {
-      *err = "catalog.bin: truncated schema";
-      return false;
-    }
-    Table t;
-    t.schema = std::move(s);
-    t.has_index = has_index;
-    out->emplace(t.schema.name, std::move(t));
   }
   return true;
-}
-
-bool save_catalog(const std::string& dir, const TableMap& tables, std::string* err) {
-  return write_atomic(dir + "/catalog.bin", encode_catalog(tables), err);
 }
 
 // ------------------------------------------------------- predicate eval ----
@@ -484,8 +498,10 @@ bool coerce_literal(Type ct, const Value& in, Value* out) {
       }
       return false;
     case Type::VARCHAR:
-      if (in.type == Type::VARCHAR) {
+      if (in.type == Type::VARCHAR || (in.type == Type::VECTOR && !in.s.empty())) {
         *out = in;
+        out->type = Type::VARCHAR;
+        out->v.clear();
         return true;
       }
       if (in.type == Type::BIGINT) {
@@ -593,6 +609,10 @@ bool check_value(const Column& c, Value* v, std::string* err) {
       }
       return true;
     case Type::VARCHAR:
+      if (v->type == Type::VECTOR && !v->s.empty()) {
+        v->type = Type::VARCHAR;
+        v->v.clear();
+      }
       if (v->type == Type::BIGINT) {
         *v = Value::ofStr(std::to_string(v->i));
       } else if (v->type != Type::VARCHAR) {
@@ -623,6 +643,7 @@ bool check_value(const Column& c, Value* v, std::string* err) {
           return false;
         }
       }
+      std::string().swap(v->s);
       return true;
   }
   if (err) *err = "unknown column type";
@@ -662,16 +683,58 @@ size_t Table::live_count() const {
   return live + (rows.size() > n ? rows.size() - n : 0);
 }
 
+const Row& Table::read_row(size_t slot, Row& scratch) const {
+  if (!payload_store) return rows[slot];
+  const uint64_t off=payload_offsets[slot];
+  uint32_t len=0;
+  positional_io(payload_store->fd,&len,4,off,false);
+  if (len > kMaxRec) throw std::runtime_error("invalid payload cache record");
+  std::string b(len,'\0');
+  if (len) positional_io(payload_store->fd,&b[0],len,off+4,false);
+  Rd rd(b.data(),b.size());
+  scratch.rid=rows[slot].rid;
+  if (!get_row(rd,&scratch)) throw std::runtime_error("invalid payload cache row");
+  return scratch;
+}
+
+void Table::append_row(Row row) {
+  vector_index.reset();
+  if (payload_store) {
+    payload_offsets.push_back(store_payload(*payload_store,row));
+    Row meta; meta.rid=row.rid; rows.push_back(std::move(meta));
+  } else {
+    payload_bytes+=row_heap_bytes(row);
+    rows.push_back(std::move(row));
+    spill_payloads(*this);
+  }
+}
+
+void Table::replace_row(size_t slot, Row row) {
+  vector_index.reset();
+  if (payload_store) {
+    payload_offsets[slot]=store_payload(*payload_store,row);
+    rows[slot].rid=row.rid;
+  } else {
+    payload_bytes-=std::min(payload_bytes,row_heap_bytes(rows[slot]));
+    payload_bytes+=row_heap_bytes(row);
+    rows[slot]=std::move(row);
+    spill_payloads(*this);
+  }
+}
+
 // ===========================================================================
 // Undo log
 // ===========================================================================
 struct Database::Undo {
-  enum K : uint8_t { K_INS, K_UPD, K_DEL, K_DROP } k = K_INS;
+  enum K : uint8_t { K_INS, K_UPD, K_DEL, K_DROP, K_CREATE, K_INDEX } k = K_INS;
   std::string table;
   int64_t pk = 0;
   size_t slot = 0;
   std::unique_ptr<Row> old;        // K_UPD: previous row image
   std::unique_ptr<Table> dropped;  // K_DROP: entire table as it was
+  bool old_index = false;
+  bool old_spilled = false;
+  uint64_t old_offset = 0;
 };
 
 // ===========================================================================
@@ -690,6 +753,8 @@ void Database::close() {
   tables_.clear();
   undo_.clear();
   txn_active_ = false;
+  stmt_active_ = false;
+  stmt_implicit_ = false;
   wal_rows_ = 0;
   wal_bytes_ = 0;
   dir_.clear();
@@ -707,7 +772,7 @@ bool Database::open(const std::string& data_dir, std::string* err) {
     if (err) *err = "cannot create data directory '" + dir_ + "': " + std::strerror(errno);
     return false;
   }
-  if (!load_snapshot(err)) {  // also loads the catalog first
+  if (!load_snapshot(err)) {
     close();
     return false;
   }
@@ -724,6 +789,18 @@ bool Database::open(const std::string& data_dir, std::string* err) {
   }
   struct stat st;
   wal_bytes_ = (::stat(log.c_str(), &st) == 0) ? static_cast<uint64_t>(st.st_size) : 0;
+  if (!fsync_dir(dir_)) {
+    if (err) *err = "cannot sync data directory";
+    close();
+    return false;
+  }
+  try {
+    for (auto& kv : tables_) if (kv.second.has_index) build_vector_index(kv.second);
+  } catch (const std::exception& e) {
+    if (err) *err=std::string("cannot rebuild vector index: ")+e.what();
+    close();
+    return false;
+  }
   return true;
 }
 
@@ -805,6 +882,7 @@ bool Database::create_table(const std::string& name, const std::vector<Column>& 
 
   Table t;
   t.schema.name = name;
+  t.storage_dir = dir_;
   t.schema.cols = cols;
   t.schema.pk_idx = pk_idx;
   t.schema.vec_idx = vec_idx;
@@ -813,11 +891,12 @@ bool Database::create_table(const std::string& name, const std::vector<Column>& 
   const size_t expect = t.rows.capacity();
   t.pk_pos.reserve(expect / 2 + 16);
 
-  auto ins = tables_.emplace(name, std::move(t));
-  if (!save_catalog(dir_, tables_, err)) {
-    tables_.erase(ins.first);
-    set_err(err, code, ErrCode::TXN, "cannot persist catalog: " + (err ? *err : ""));
-    return false;
+  tables_.emplace(name, std::move(t));
+  if (txn_active_) {
+    Undo u;
+    u.k = Undo::K_CREATE;
+    u.table = name;
+    undo_.push_back(std::move(u));
   }
   // WAL marker so that replay is order-faithful even if the catalog write is lost.
   {
@@ -833,7 +912,12 @@ bool Database::create_table(const std::string& name, const std::vector<Column>& 
     rec.append(reinterpret_cast<const char*>(&len), 4);
     rec.append(reinterpret_cast<const char*>(&crc), 4);
     rec.append(pay);
-    append_wal(rec);
+    if (!append_wal(rec) || (!txn_active_ && !fsync_wal())) {
+      tables_.erase(name);
+      if (txn_active_) undo_.pop_back();
+      set_err(err, code, ErrCode::TXN, "cannot persist CREATE TABLE");
+      return false;
+    }
   }
   return true;
 }
@@ -844,6 +928,7 @@ bool Database::drop_table(const std::string& name, std::string* err, int* code) 
     set_err(err, code, ErrCode::NO_SUCH_TABLE, "table '" + name + "' does not exist");
     return false;
   }
+  it->second.vector_index.reset();
   if (txn_active_) {
     Undo u;
     u.k = Undo::K_DROP;
@@ -853,10 +938,6 @@ bool Database::drop_table(const std::string& name, std::string* err, int* code) 
     tables_.erase(it);
   } else {
     tables_.erase(it);
-  }
-  if (!save_catalog(dir_, tables_, err)) {
-    set_err(err, code, ErrCode::TXN, "cannot persist catalog");
-    return false;
   }
   std::string rec;
   {
@@ -871,7 +952,10 @@ bool Database::drop_table(const std::string& name, std::string* err, int* code) 
     rec.append(reinterpret_cast<const char*>(&len), 4);
     rec.append(reinterpret_cast<const char*>(&crc), 4);
     rec.append(pay);
-    append_wal(rec);
+    if (!append_wal(rec) || (!txn_active_ && !fsync_wal())) {
+      set_err(err, code, ErrCode::TXN, "cannot persist DROP TABLE");
+      return false;
+    }
   }
   return true;
 }
@@ -911,32 +995,24 @@ void Database::apply_insert(const std::string& t, std::vector<Value> vals, int64
   Row row;
   row.rid = tb.next_rid++;
   row.vals = std::move(vals);
-  tb.rows.push_back(std::move(row));
+  tb.append_row(std::move(row));
   tb.dead.push_back(0);
   tb.pk_pos[key] = tb.rows.size() - 1;
   if (pk) *pk = key;
+  enforce_payload_budget(tables_);
 }
 
-void Database::append_wal(const std::string& rec) {
-  if (!wal_) return;
+bool Database::append_wal(const std::string& rec) {
+  if (!wal_) return false;
   size_t done = 0;
   write_all_fd(::fileno(wal_), rec.data(), rec.size(), &done);
   wal_bytes_ += done;
+  return done == rec.size();
 }
 
 bool Database::fsync_wal() {
   if (!wal_) return false;
   if (std::fflush(wal_) != 0) return false;
-  // MVDB_FSYNC=0 turns the per-statement fdatasync into a plain write(). Default
-  // (unset / anything else) is the durable behaviour: the record is on stable
-  // storage before the caller is told the statement succeeded.
-  static const bool durable = []() {
-    const char* e = std::getenv("MVDB_FSYNC");
-    if (!e) return true;
-    std::string s(e);
-    return !(s == "0" || s == "off" || s == "false" || s == "no");
-  }();
-  if (!durable) return true;
   return ::fdatasync(::fileno(wal_)) == 0;
 }
 
@@ -1005,6 +1081,7 @@ bool Database::insert(const std::string& t, std::vector<Value> vals, std::string
     u.k = Undo::K_INS;
     u.table = t;
     u.pk = got;
+    u.slot = tables_.find(t)->second.rows.size() - 1;
     undo_.push_back(std::move(u));
   } else if (wal_bytes_ > kAutoCheckpointBytes) {
     std::string ignored;
@@ -1024,11 +1101,29 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
   Table& tb = it->second;
   const TableSchema& sc = tb.schema;
   std::vector<int> setcol(sets.size(), -1);
+  std::vector<Value> setvals;
+  setvals.reserve(sets.size());
   for (size_t k = 0; k < sets.size(); ++k) {
     setcol[k] = sc.find(sets[k].first);
     if (setcol[k] < 0) {
       set_err(err, code, ErrCode::NO_SUCH_COLUMN,
               "Unknown column '" + sets[k].first + "' in 'field list'");
+      return -1;
+    }
+    if (setcol[k] == sc.pk_idx) {
+      set_err(err, code, ErrCode::NOT_SUPPORTED, "updating the primary key is not supported");
+      return -1;
+    }
+    Value v=sets[k].second;
+    if (!check_value(sc.cols[static_cast<size_t>(setcol[k])],&v,err)) {
+      if (code) *code=static_cast<int>(ErrCode::BAD_VALUE);
+      return -1;
+    }
+    setvals.push_back(std::move(v));
+  }
+  for (const Cond& cond : conds) {
+    if (sc.find(cond.column) < 0) {
+      set_err(err,code,ErrCode::NO_SUCH_COLUMN,"Unknown column '"+cond.column+"'");
       return -1;
     }
   }
@@ -1037,19 +1132,23 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
   if (pr.never) return 0;
 
   int64_t affected = 0;
-  for (size_t i = 0; i < tb.rows.size(); ++i) {
+  size_t first=0,last=tb.rows.size();
+  for (const RCond& cond : pr.c) {
+    if (static_cast<int>(cond.col)!=sc.pk_idx || cond.op!=static_cast<uint8_t>(Cond::EQ)) continue;
+    auto position=tb.pk_pos.find(cond.lit->i);
+    if (position==tb.pk_pos.end()) return 0;
+    first=position->second;last=first+1;
+    break;
+  }
+  for (size_t i = first; i < last; ++i) {
     if (tb.dead[i]) continue;
-    Row& row = tb.rows[i];
+    Row scratch;
+    const Row& row = tb.read_row(i,scratch);
     if (!row_matches(pr, row)) continue;
 
     std::vector<Value> nv = row.vals;
     for (size_t k = 0; k < sets.size(); ++k) {
-      Value v = sets[k].second;  // may be coerced in place
-      if (!check_value(sc.cols[static_cast<size_t>(setcol[k])], &v, err)) {
-        if (code) *code = static_cast<int>(ErrCode::BAD_VALUE);
-        return -1;
-      }
-      nv[static_cast<size_t>(setcol[k])] = std::move(v);
+      nv[static_cast<size_t>(setcol[k])] = setvals[k];
     }
     const int64_t oldpk = row.vals[static_cast<size_t>(sc.pk_idx)].i;
     const int64_t newpk = nv[static_cast<size_t>(sc.pk_idx)].i;
@@ -1096,14 +1195,20 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
       u.table = t;
       u.pk = oldpk;
       u.slot = i;
-      u.old.reset(new Row(row));
+      if (tb.payload_store) {
+        u.old_spilled = true;
+        u.old_offset = tb.payload_offsets[i];
+      } else {
+        u.old.reset(new Row(row));
+      }
       undo_.push_back(std::move(u));
     }
     if (newpk != oldpk) {
       tb.pk_pos.erase(oldpk);
       tb.pk_pos[newpk] = i;
     }
-    row.vals = std::move(nv);
+    Row replacement; replacement.rid=row.rid; replacement.vals=std::move(nv);
+    tb.replace_row(i,std::move(replacement));
     ++affected;
   }
   if (!txn_active_ && wal_bytes_ > kAutoCheckpointBytes) {
@@ -1121,14 +1226,30 @@ int64_t Database::delete_rows(const std::string& t, const std::vector<Cond>& con
     return -1;
   }
   Table& tb = it->second;
+  tb.vector_index.reset();
+  for (const Cond& cond : conds) {
+    if (tb.schema.find(cond.column) < 0) {
+      set_err(err,code,ErrCode::NO_SUCH_COLUMN,"Unknown column '"+cond.column+"'");
+      return -1;
+    }
+  }
   Pred pr;
   compile_pred(tb, conds, &pr);
   if (pr.never) return 0;
 
   int64_t affected = 0;
-  for (size_t i = 0; i < tb.rows.size(); ++i) {
+  size_t first=0,last=tb.rows.size();
+  for (const RCond& cond : pr.c) {
+    if (static_cast<int>(cond.col)!=tb.schema.pk_idx || cond.op!=static_cast<uint8_t>(Cond::EQ)) continue;
+    auto position=tb.pk_pos.find(cond.lit->i);
+    if (position==tb.pk_pos.end()) return 0;
+    first=position->second;last=first+1;
+    break;
+  }
+  for (size_t i = first; i < last; ++i) {
     if (tb.dead[i]) continue;
-    const Row& row = tb.rows[i];
+    Row scratch;
+    const Row& row = tb.read_row(i,scratch);
     if (!row_matches(pr, row)) continue;
     const int64_t pk = row.vals[static_cast<size_t>(tb.schema.pk_idx)].i;
 
@@ -1187,7 +1308,6 @@ void Database::scan(const std::string& t, const std::vector<Cond>& conds,
   compile_pred(tb, conds, &pr);
   if (pr.never) return;
 
-  const Row* rows = tb.rows.data();
   const uint8_t* dead = tb.dead.data();
   const size_t n = tb.rows.size();
 
@@ -1198,7 +1318,11 @@ void Database::scan(const std::string& t, const std::vector<Cond>& conds,
         auto pos = tb.pk_pos.find(c.lit->i);
         if (pos == tb.pk_pos.end()) return;
         const size_t s = pos->second;
-        if (s < n && !dead[s] && row_matches(pr, rows[s])) cb(rows[s]);
+        if (s < n && !dead[s]) {
+          Row scratch;
+          const Row& row=tb.read_row(s,scratch);
+          if (row_matches(pr,row)) cb(row);
+        }
         return;
       }
     }
@@ -1206,8 +1330,10 @@ void Database::scan(const std::string& t, const std::vector<Cond>& conds,
 
   for (size_t i = 0; i < n; ++i) {
     if (dead[i]) continue;
-    if (!row_matches(pr, rows[i])) continue;
-    if (!cb(rows[i])) return;
+    Row scratch;
+    const Row& row=tb.read_row(i,scratch);
+    if (!row_matches(pr, row)) continue;
+    if (!cb(row)) return;
   }
 }
 
@@ -1217,7 +1343,8 @@ bool Database::begin(std::string* err, int* code) {
     set_err(err, code, ErrCode::TXN, "a transaction is already in progress");
     return false;
   }
-  txn_active_ = true;
+  txn_wal_start_ = wal_bytes_;
+  txn_lsn_start_ = wal_rows_;
   undo_.clear();
   std::string pay;
   const uint64_t lsn = ++wal_rows_;
@@ -1231,12 +1358,18 @@ bool Database::begin(std::string* err, int* code) {
   rec.append(reinterpret_cast<const char*>(&len), 4);
   rec.append(reinterpret_cast<const char*>(&crc), 4);
   rec.append(pay);
-  append_wal(rec);
+  if (!append_wal(rec)) {
+    truncate_wal(txn_wal_start_, txn_lsn_start_, err, code);
+    set_err(err, code, ErrCode::TXN, "cannot write transaction begin");
+    return false;
+  }
+  txn_active_ = true;
   return true;
 }
 
 bool Database::commit(std::string* err, int* code) {
   if (txn_active_) {
+    const uint64_t before_bytes = wal_bytes_, before_lsn = wal_rows_;
     std::string pay;
     const uint64_t lsn = ++wal_rows_;
     put_u8(pay, REC_TXN_COMMIT);
@@ -1249,25 +1382,29 @@ bool Database::commit(std::string* err, int* code) {
     rec.append(reinterpret_cast<const char*>(&len), 4);
     rec.append(reinterpret_cast<const char*>(&crc), 4);
     rec.append(pay);
-    append_wal(rec);
+    if (!append_wal(rec) || !fsync_wal()) {
+      truncate_wal(before_bytes, before_lsn, err, code);
+      set_err(err, code, ErrCode::TXN, "cannot persist transaction commit");
+      return false;
+    }
     undo_.clear();
     undo_.shrink_to_fit();
     txn_active_ = false;
   }
-  if (!fsync_wal()) {
-    set_err(err, code, ErrCode::TXN, "WAL fdatasync failed");
-    return false;
+  if (wal_bytes_ > kAutoCheckpointBytes) {
+    std::string ignored;
+    checkpoint(&ignored);
   }
   return true;
 }
 
-bool Database::rollback(std::string* err, int* code) {
-  (void)err;
-  (void)code;
-  if (!txn_active_) return true;  // no-op, like COMMIT outside a transaction
-
-  for (size_t i = undo_.size(); i-- > 0;) {
+void Database::undo_to(size_t mark) {
+  for (size_t i = undo_.size(); i-- > mark;) {
     Undo& u = undo_[i];
+    if (u.k == Undo::K_CREATE) {
+      tables_.erase(u.table);
+      continue;
+    }
     if (u.k == Undo::K_DROP) {
       if (u.dropped) {
         Table t = std::move(*u.dropped);
@@ -1279,6 +1416,7 @@ bool Database::rollback(std::string* err, int* code) {
     auto it = tables_.find(u.table);
     if (it == tables_.end()) continue;  // table dropped later in the txn
     Table& tb = it->second;
+    tb.vector_index.reset();
     switch (u.k) {
       case Undo::K_INS: {
         auto pos = tb.pk_pos.find(u.pk);
@@ -1286,15 +1424,21 @@ bool Database::rollback(std::string* err, int* code) {
           if (pos->second < tb.dead.size()) tb.dead[pos->second] = 1;
           tb.pk_pos.erase(pos);
         }
+        // Undo runs in reverse insertion order; reclaim appended payloads too.
+        if (!tb.rows.empty() && u.slot == tb.rows.size() - 1) {
+          if (tb.payload_store) tb.payload_offsets.pop_back();
+          tb.rows.pop_back();
+          tb.dead.pop_back();
+        }
         break;
       }
       case Undo::K_UPD: {
+        if (u.old_spilled && u.slot < tb.rows.size()) {
+          tb.payload_offsets[u.slot]=u.old_offset;
+          break;
+        }
         if (u.slot < tb.rows.size() && u.old) {
-          int64_t cur = u.pk;
-          if (static_cast<size_t>(tb.schema.pk_idx) < tb.rows[u.slot].vals.size())
-            cur = tb.rows[u.slot].vals[static_cast<size_t>(tb.schema.pk_idx)].i;
-          tb.pk_pos.erase(cur);
-          tb.rows[u.slot] = std::move(*u.old);
+          tb.replace_row(u.slot,std::move(*u.old));
           tb.pk_pos[u.pk] = u.slot;
         }
         break;
@@ -1306,25 +1450,74 @@ bool Database::rollback(std::string* err, int* code) {
         }
         break;
       }
+      case Undo::K_INDEX:
+        tb.has_index = u.old_index;
+        break;
       default:
         break;
     }
   }
-  undo_.clear();
-  undo_.shrink_to_fit();
-  txn_active_ = false;
-  // DDL effects (catalog.bin) may have been undone; rewrite it from memory.
-  std::string ignored;
-  save_catalog(dir_, tables_, &ignored);
-  // The WAL keeps the aborted transaction's records until the next checkpoint;
-  // they are never applied because no TXN_COMMIT record follows them.
+  undo_.resize(mark);
+}
+
+bool Database::truncate_wal(uint64_t bytes, uint64_t lsn, std::string* err, int* code) {
+  if (!wal_ || ::ftruncate(::fileno(wal_), static_cast<off_t>(bytes)) != 0 ||
+      ::fdatasync(::fileno(wal_)) != 0) {
+    set_err(err, code, ErrCode::TXN, "cannot restore WAL boundary");
+    return false;
+  }
+  wal_bytes_ = bytes;
+  wal_rows_ = lsn;
   return true;
+}
+
+bool Database::rollback(std::string* err, int* code) {
+  if (!txn_active_) return true;
+  if (!truncate_wal(txn_wal_start_, txn_lsn_start_, err, code)) return false;
+  undo_to(0);
+  txn_active_ = false;
+  return true;
+}
+
+bool Database::begin_statement(std::string* err, int* code) {
+  if (stmt_active_) {
+    set_err(err, code, ErrCode::TXN, "statement already active");
+    return false;
+  }
+  stmt_wal_start_ = wal_bytes_;
+  stmt_lsn_start_ = wal_rows_;
+  stmt_implicit_ = !txn_active_;
+  if (stmt_implicit_ && !begin(err, code)) return false;
+  stmt_undo_start_ = undo_.size();
+  stmt_active_ = true;
+  return true;
+}
+
+bool Database::end_statement(bool success, std::string* err, int* code) {
+  if (!stmt_active_) {
+    set_err(err, code, ErrCode::TXN, "no active statement");
+    return false;
+  }
+  if (success) enforce_payload_budget(tables_);
+  if (success && stmt_implicit_) success = commit(err, code);
+  if (!success) {
+    // No committed transaction can contain these records: the boundary precedes
+    // this statement and the explicit transaction's previous statements remain.
+    if (!truncate_wal(stmt_wal_start_, stmt_lsn_start_, err, code)) {
+      stmt_active_ = false;
+      return false;
+    }
+    undo_to(stmt_undo_start_);
+    if (stmt_implicit_) txn_active_ = false;
+  }
+  stmt_active_ = false;
+  return success;
 }
 
 // ----------------------------------------------------------- vector index --
 bool Database::create_vector_index(const std::string& t, const std::string& col,
                                    const std::string& name, std::string* err, int* code) {
-  (void)name;  // index build is a later phase: only the flag is recorded
+  (void)name;  // the schema permits only one vector column/index per table
   auto it = tables_.find(t);
   if (it == tables_.end()) {
     set_err(err, code, ErrCode::NO_SUCH_TABLE, "table '" + t + "' does not exist");
@@ -1339,11 +1532,33 @@ bool Database::create_vector_index(const std::string& t, const std::string& col,
     set_err(err, code, ErrCode::BAD_VALUE, "column '" + col + "' is not a VECTOR column");
     return false;
   }
-  it->second.has_index = true;
-  if (!save_catalog(dir_, tables_, err)) {
-    set_err(err, code, ErrCode::TXN, "cannot persist catalog");
+  try {
+    build_vector_index(it->second);
+  } catch (const std::exception& e) {
+    set_err(err,code,ErrCode::TXN,std::string("cannot build vector index: ")+e.what());
     return false;
   }
+  std::string pay, rec;
+  put_u8(pay, REC_CREATE_INDEX);
+  put_u8(pay, txn_active_ ? RF_TXN : 0);
+  put_u64(pay, ++wal_rows_);
+  put_str(pay, t);
+  put_u32(rec, static_cast<uint32_t>(pay.size()));
+  put_u32(rec, crc32_of(pay.data(), pay.size()));
+  rec.append(pay);
+  if (!append_wal(rec) || (!txn_active_ && !fsync_wal())) {
+    it->second.vector_index.reset();
+    set_err(err, code, ErrCode::TXN, "cannot persist index metadata");
+    return false;
+  }
+  if (txn_active_) {
+    Undo u;
+    u.k = Undo::K_INDEX;
+    u.table = t;
+    u.old_index = it->second.has_index;
+    undo_.push_back(std::move(u));
+  }
+  it->second.has_index = true;
   return true;
 }
 
@@ -1352,16 +1567,63 @@ bool Database::has_vector_index(const std::string& t) const {
   return it != tables_.end() && it->second.has_index;
 }
 
+void Database::build_vector_index(Table& table) {
+  if (table.vector_index) return;
+  if (table.schema.vec_idx < 0) throw std::runtime_error("table has no vector column");
+#ifndef MVDB_FLAT_INDEX_MEMORY_BYTES
+#define MVDB_FLAT_INDEX_MEMORY_BYTES (16ull << 20)
+#endif
+  size_t budget=MVDB_FLAT_INDEX_MEMORY_BYTES;
+  for (const auto& kv : tables_) {
+    if (!kv.second.vector_index) continue;
+    const size_t used=kv.second.vector_index->resident_bytes();
+    budget-=std::min(budget,used);
+  }
+  const size_t dimension=static_cast<size_t>(table.schema.cols[table.schema.vec_idx].len);
+  auto index=std::make_shared<FlatIndex>(dir_,dimension,table.live_count(),budget);
+  for (size_t slot=0;slot<table.rows.size();++slot) {
+    if (table.dead[slot]) continue;
+    Row scratch;
+    const Row& row=table.read_row(slot,scratch);
+    const auto& vector=row.vals[table.schema.vec_idx].v;
+    index->add(row.vals[table.schema.pk_idx].i,slot,vector.data(),vector.size());
+  }
+  index->finish();
+  table.vector_index=std::move(index);
+}
+
+void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
+                           const std::function<bool(int64_t,const float*,size_t)>& cb) {
+  auto it=tables_.find(t);
+  if (it==tables_.end() || it->second.schema.vec_idx<0) return;
+  Table& table=it->second;
+  if (!table.has_index) {
+    scan(t,conds,[&](const Row& row) {
+      const auto& vector=row.vals[table.schema.vec_idx].v;
+      return cb(row.vals[table.schema.pk_idx].i,vector.data(),vector.size());
+    });
+    return;
+  }
+  Pred predicate;
+  compile_pred(table,conds,&predicate);
+  if (predicate.never) return;
+  build_vector_index(table);
+  table.vector_index->scan([&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
+    if (slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
+      throw std::runtime_error("stale flat vector index slot");
+    if (!conds.empty()) {
+      Row scratch;
+      if (!row_matches(predicate,table.read_row(static_cast<size_t>(slot),scratch))) return true;
+    }
+    return cb(pk,vector,dimension);
+  });
+}
+
 // ------------------------------------------------------------- durability --
 bool Database::load_snapshot(std::string* err) {
-  // 1. catalog
-  std::string blob;
-  if (read_file(dir_ + "/catalog.bin", &blob) && !blob.empty()) {
-    if (!decode_catalog(blob, &tables_, err)) {
-      tables_.clear();
-      return false;
-    }
-  }
+  // The snapshot and committed WAL are the sole source of truth. A separately
+  // written catalog may describe an uncommitted or newer table generation.
+  tables_.clear();
   wal_rows_ = 0;
 
   // 2. snapshot
@@ -1372,8 +1634,7 @@ bool Database::load_snapshot(std::string* err) {
     if (err) *err = "snapshot.bin: truncated";
     return false;
   }
-  // Verify the trailing CRC in a streaming pass (the snapshot is then read whole,
-  // trading peak memory for a simple parser).
+  // Verify the trailing CRC in a streaming pass, then map reclaimable file pages.
   {
     FILE* f = std::fopen(path.c_str(), "rb");
     if (!f) {
@@ -1407,11 +1668,20 @@ bool Database::load_snapshot(std::string* err) {
     }
   }
 
-  if (!read_file(path, &blob)) {
-    if (err) *err = "cannot read " + path;
-    return false;
-  }
-  Rd r(blob.data(), blob.size() - 4);
+  struct Mapping {
+    void* p=MAP_FAILED; size_t size=0;
+    ~Mapping() { if (p != MAP_FAILED) ::munmap(p,size); }
+  } mapping;
+  const int snap_fd=::open(path.c_str(),O_RDONLY);
+  if (snap_fd < 0) { if (err) *err="cannot open snapshot"; return false; }
+  mapping.size=static_cast<size_t>(st.st_size);
+  mapping.p=::mmap(nullptr,mapping.size,PROT_READ,MAP_PRIVATE,snap_fd,0);
+  ::close(snap_fd);
+  if (mapping.p == MAP_FAILED) { if (err) *err="cannot map snapshot"; return false; }
+  ::madvise(mapping.p,mapping.size,MADV_SEQUENTIAL);
+  Rd r(mapping.p,mapping.size-4);
+  size_t released_pages=0;
+  const size_t page_size=static_cast<size_t>(::sysconf(_SC_PAGESIZE));
   if (r.u32() != kSnapMagic) {
     if (err) *err = "snapshot.bin: bad magic";
     return false;
@@ -1436,24 +1706,15 @@ bool Database::load_snapshot(std::string* err) {
       return false;
     }
 
-    auto exists = tables_.find(sc.name);
-    const bool compatible = exists != tables_.end() && same_schema(exists->second.schema, sc);
-    Table fresh;
-    Table* tb = nullptr;
-    if (compatible) {
-      tb = &exists->second;  // catalog is authoritative (it may be newer than the snapshot)
-      tb->rows.clear();
-      tb->dead.clear();
-      tb->pk_pos.clear();
-    } else if (exists != tables_.end()) {
-      // Schema changed after the checkpoint: the snapshot rows belong to the old
-      // generation. Skip them; WAL replay carries DROP/CREATE/rows for the new one.
-      tb = nullptr;
-    } else {
-      fresh.schema = sc;
-      fresh.has_index = has_index;
-      tb = &fresh;
+    if (tables_.count(sc.name)) {
+      if (err) *err="snapshot.bin: duplicate table";
+      return false;
     }
+    Table fresh;
+    fresh.storage_dir=dir_;
+    fresh.schema=sc;
+    fresh.has_index=has_index;
+    Table* tb=&fresh;
 
     if (tb) {
       tb->rows.reserve(static_cast<size_t>(nrows));
@@ -1468,17 +1729,25 @@ bool Database::load_snapshot(std::string* err) {
         if (err) *err = "snapshot.bin: bad row";
         return false;
       }
+      const size_t consumed=static_cast<size_t>(r.p-static_cast<const uint8_t*>(mapping.p));
+      const size_t reclaim_until=consumed/page_size*page_size;
+      if (reclaim_until-released_pages >= (4u<<20)) {
+        ::madvise(static_cast<char*>(mapping.p)+released_pages,
+                  reclaim_until-released_pages,MADV_DONTNEED);
+        released_pages=reclaim_until;
+      }
       if (!tb) continue;
       int64_t pk = 0;
       if (static_cast<size_t>(tb->schema.pk_idx) < row.vals.size())
         pk = row.vals[static_cast<size_t>(tb->schema.pk_idx)].i;
       if (row.rid >= tb->next_rid) tb->next_rid = row.rid + 1;
       tb->pk_pos[pk] = tb->rows.size();
-      tb->rows.push_back(std::move(row));
+      tb->append_row(std::move(row));
       tb->dead.push_back(0);
     }
     if (tb == &fresh && !fresh.schema.name.empty()) {
       tables_[fresh.schema.name] = std::move(fresh);
+      enforce_payload_budget(tables_);
     }
   }
   wal_rows_ = lsn;  // LSN of everything contained in the snapshot
@@ -1521,12 +1790,16 @@ bool Database::replay_wal(std::string* err) {
           tb.pk_pos.erase(pos);
           tb.pk_pos[newpk] = s;
         }
-        tb.rows[s].vals = std::move(rec.vals);
+        Row replacement; replacement.rid=tb.rows[s].rid;
+        replacement.vals=std::move(rec.vals);
+        tb.replace_row(s,std::move(replacement));
+        enforce_payload_budget(tables_);
         break;
       }
       case REC_DELETE: {
         if (it == tables_.end()) break;
         Table& tb = it->second;
+        tb.vector_index.reset();
         auto pos = tb.pk_pos.find(rec.pk);
         if (pos == tb.pk_pos.end()) break;
         const size_t s = pos->second;
@@ -1541,6 +1814,7 @@ bool Database::replay_wal(std::string* err) {
           tables_.erase(ex);
         }
         Table t;
+        t.storage_dir=dir_;
         t.schema = rec.schema;
         tables_.emplace(t.schema.name, std::move(t));
         break;
@@ -1548,32 +1822,17 @@ bool Database::replay_wal(std::string* err) {
       case REC_DROP_TABLE:
         tables_.erase(rec.name);
         break;
+      case REC_CREATE_INDEX:
+        if (it != tables_.end()) it->second.has_index = true;
+        break;
       default:
         break;
     }
   };
 
-  std::vector<Rec> pending;  // records of the open (uncommitted) transaction
-  uint64_t good_end = 0;     // byte offset just past the last valid record
-  bool torn = false;
-
-  for (;;) {
-    uint8_t hdr[8];
-    size_t got = std::fread(hdr, 1, 8, f);
-    if (got == 0) break;
-    if (got != 8) { torn = true; break; }
-    uint32_t len = static_cast<uint32_t>(hdr[0]) | (static_cast<uint32_t>(hdr[1]) << 8) |
-                   (static_cast<uint32_t>(hdr[2]) << 16) | (static_cast<uint32_t>(hdr[3]) << 24);
-    uint32_t crc = static_cast<uint32_t>(hdr[4]) | (static_cast<uint32_t>(hdr[5]) << 8) |
-                   (static_cast<uint32_t>(hdr[6]) << 16) | (static_cast<uint32_t>(hdr[7]) << 24);
-    if (len == 0 || len > kMaxRec) { torn = true; break; }
-    std::string pay;
-    pay.resize(len);
-    if (std::fread(&pay[0], 1, len, f) != len) { torn = true; break; }
-    if (crc32_of(pay.data(), pay.size()) != crc) { torn = true; break; }
-
+  auto decode = [](const std::string& pay, Rec* out) {
     Rd r(pay.data(), pay.size());
-    Rec rec;
+    Rec& rec = *out;
     rec.kind = r.u8();
     rec.flags = r.u8();
     rec.lsn = r.u64();
@@ -1583,6 +1842,7 @@ bool Database::replay_wal(std::string* err) {
         case REC_INSERT:
         case REC_UPDATE:
         case REC_DELETE:
+        case REC_CREATE_INDEX:
         case REC_DROP_TABLE: {
           ok = r.str(&rec.name);
           if (ok && (rec.kind == REC_UPDATE || rec.kind == REC_DELETE)) rec.pk = r.i64();
@@ -1615,29 +1875,77 @@ bool Database::replay_wal(std::string* err) {
           break;
       }
     }
+    return ok;
+  };
+
+  uint64_t pending_start = UINT64_MAX; // WAL offset, not a transaction-sized heap buffer
+  uint64_t good_end = 0;     // byte offset just past the last valid record
+  bool torn = false;
+
+  for (;;) {
+    uint8_t hdr[8];
+    size_t got = std::fread(hdr, 1, 8, f);
+    if (got == 0) break;
+    if (got != 8) { torn = true; break; }
+    uint32_t len = static_cast<uint32_t>(hdr[0]) | (static_cast<uint32_t>(hdr[1]) << 8) |
+                   (static_cast<uint32_t>(hdr[2]) << 16) | (static_cast<uint32_t>(hdr[3]) << 24);
+    uint32_t crc = static_cast<uint32_t>(hdr[4]) | (static_cast<uint32_t>(hdr[5]) << 8) |
+                   (static_cast<uint32_t>(hdr[6]) << 16) | (static_cast<uint32_t>(hdr[7]) << 24);
+    if (len == 0 || len > kMaxRec) { torn = true; break; }
+    std::string pay;
+    pay.resize(len);
+    if (std::fread(&pay[0], 1, len, f) != len) { torn = true; break; }
+    if (crc32_of(pay.data(), pay.size()) != crc) { torn = true; break; }
+
+    Rec rec;
+    bool ok=decode(pay,&rec);
     if (!ok) { torn = true; break; }
 
     good_end += 8 + static_cast<uint64_t>(len);
 
     if (rec.lsn <= snap_lsn) {  // already folded into the snapshot
-      if (rec.kind == REC_TXN_BEGIN || rec.kind == REC_TXN_COMMIT) pending.clear();
+      if (rec.kind == REC_TXN_BEGIN || rec.kind == REC_TXN_COMMIT) pending_start = UINT64_MAX;
       continue;
     }
     if (rec.lsn > wal_rows_) wal_rows_ = rec.lsn;
 
     if (rec.kind == REC_TXN_BEGIN) {
-      pending.clear();
+      pending_start = good_end;
     } else if (rec.kind == REC_TXN_COMMIT) {
-      for (Rec& p : pending) apply_one(p);
-      pending.clear();
-    } else if (rec.flags & RF_TXN) {
-      pending.push_back(std::move(rec));
-    } else {
-      if (!pending.empty()) pending.clear();  // orphaned txn records
+      // Re-read only committed transactions one record at a time. No writes to
+      // authoritative state occur during recovery, so interruption is harmless.
+      const uint64_t commit_start=good_end-8-len;
+      if (pending_start != UINT64_MAX) {
+        if (::fseeko(f,static_cast<off_t>(pending_start),SEEK_SET) != 0) {
+          std::fclose(f); if (err) *err="cannot seek transaction WAL"; return false;
+        }
+        uint64_t pos=pending_start;
+        while (pos < commit_start) {
+          uint32_t h[2];
+          if (std::fread(h,1,8,f) != 8 || h[0] == 0 || h[0] > kMaxRec ||
+              pos+8+h[0] > commit_start) {
+            std::fclose(f); if (err) *err="cannot reread transaction WAL"; return false;
+          }
+          std::string body(h[0],'\0');
+          Rec item;
+          if (std::fread(&body[0],1,body.size(),f) != body.size() ||
+              crc32_of(body.data(),body.size()) != h[1] || !decode(body,&item)) {
+            std::fclose(f); if (err) *err="invalid transaction WAL reread"; return false;
+          }
+          if (item.lsn > snap_lsn) apply_one(item);
+          pos+=8+h[0];
+        }
+        if (::fseeko(f,static_cast<off_t>(good_end),SEEK_SET) != 0) {
+          std::fclose(f); if (err) *err="cannot resume WAL replay"; return false;
+        }
+      }
+      pending_start = UINT64_MAX;
+    } else if (!(rec.flags & RF_TXN)) {
+      pending_start = UINT64_MAX;
       apply_one(rec);
     }
   }
-  pending.clear();
+  pending_start = UINT64_MAX;
   std::fclose(f);
 
   // Repair: drop the torn tail so future appends stay contiguous.
@@ -1645,10 +1953,11 @@ bool Database::replay_wal(std::string* err) {
     struct stat st;
     if (::stat(path.c_str(), &st) == 0 && static_cast<uint64_t>(st.st_size) > good_end) {
       int fd = ::open(path.c_str(), O_WRONLY);
-      if (fd >= 0) {
-        if (::ftruncate(fd, static_cast<off_t>(good_end)) == 0) ::fdatasync(fd);
-        ::close(fd);
-      }
+      if (fd < 0) { if (err) *err = "cannot open WAL for repair"; return false; }
+      const bool repaired = ::ftruncate(fd, static_cast<off_t>(good_end)) == 0 &&
+                            ::fdatasync(fd) == 0;
+      ::close(fd);
+      if (!repaired) { if (err) *err = "cannot repair torn WAL"; return false; }
     }
   }
   (void)err;
@@ -1705,7 +2014,8 @@ bool Database::checkpoint(std::string* err) {
     for (size_t i = 0; i < t.rows.size(); ++i) {
       if (i < t.dead.size() && t.dead[i]) continue;
       put_i64(b, t.rows[i].rid);
-      put_row(b, t.rows[i]);
+      Row scratch;
+      put_row(b, t.read_row(i,scratch));
       if (b.size() >= (1u << 19)) {
         put(b.data(), b.size());
         b.clear();
@@ -1730,15 +2040,20 @@ bool Database::checkpoint(std::string* err) {
   }
   // Mirror file (informational; the snapshot header is authoritative).
   write_atomic(dir_ + "/snapshot.lsn", std::to_string(wal_rows_) + "\n", nullptr);
-  if (!save_catalog(dir_, tables_, err)) return false;
-  fsync_dir(dir_);
+  if (!fsync_dir(dir_)) {
+    if (err) *err = "cannot sync checkpoint directory";
+    return false;
+  }
 
   // The snapshot is durable: truncating the WAL cannot lose anything.
   if (std::fflush(wal_) != 0 || ::ftruncate(::fileno(wal_), 0) != 0) {
     if (err) *err = "cannot truncate data.log";
     return false;
   }
-  ::fdatasync(::fileno(wal_));
+  if (::fdatasync(::fileno(wal_)) != 0) {
+    if (err) *err = "cannot sync truncated WAL";
+    return false;
+  }
   wal_bytes_ = 0;
   return true;
 }

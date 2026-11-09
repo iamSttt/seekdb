@@ -1,0 +1,18 @@
+{
+  "kind": "local_provisional_protocol_not_official_score",
+  "binary": "/root/autodl-tmp/minivec-baseline",
+  "seed": 38021,
+  "rows": 10000,
+  "queries": 1000,
+  "dim": 128,
+  "index": false,
+  "index_prepare_seconds": 1.9008293747901917e-06,
+  "write_seconds": 0.514910442288965,
+  "query_seconds": 3.6137442169710994,
+  "qps": 276.72130066752794,
+  "process_peak_rss": "VmHWM:\t   14884 kB",
+  "process_io_before_close": "rchar: 27847104\nwchar: 5866563\nsyscr: 1414\nsyscw: 11304\nread_bytes: 0\nwrite_bytes: 6037504\ncancelled_write_bytes: 0\n",
+  "recall_unfiltered": 1.0,
+  "recall_filtered": 1.0,
+  "restart_contents": "pass"
+}

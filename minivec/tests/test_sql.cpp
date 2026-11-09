@@ -221,8 +221,9 @@ int main() {
     CHECK(AT(st.columns, 0).name == "select");
     CHECK(AT(st.columns, 1).name == "v");
   }
-  expect_ok("CREATE TABLE t (id BIGINT PRIMARY KEY NOT NULL, v VECTOR(8) NULL)");
-  expect_ok("CREATE TABLE t3 (id BIGINT AUTO_INCREMENT PRIMARY KEY, v VECTOR(2))");
+  expect_ok("CREATE TABLE t (id BIGINT PRIMARY KEY NOT NULL, v VECTOR(8))");
+  expect_err("CREATE TABLE t (id BIGINT PRIMARY KEY, v VECTOR(8) NULL)", 1235);
+  expect_err("CREATE TABLE t3 (id BIGINT AUTO_INCREMENT PRIMARY KEY, v VECTOR(2))", 1235);
 
   // ------------------------------------------------------------------ DROP --
   {
@@ -413,6 +414,29 @@ int main() {
   expect_err("DELETE t WHERE a = 1", 1064);                            // DELETE without FROM
   expect_err("ROLLBACK AND CHAIN", 1235);                              // chained txn
   expect_err("TRUNCATE TABLE t", 1235);                                // unsupported stmt
+
+  // Table-level single-column PK and bare SELECT aliases retain strict errors.
+  {
+    Statement st; std::string error; int code=0;
+    CHECK(parse_sql("CREATE TABLE t (id BIGINT, v VECTOR(2), PRIMARY KEY (id))",&st,&error,&code));
+    CHECK(st.columns.size()==2 && AT(st.columns,0).is_primary && !AT(st.columns,1).is_primary);
+    CHECK(parse_sql("CREATE TABLE t (PRIMARY KEY (`key`), `key` BIGINT)",&st,&error,&code));
+    CHECK(st.columns.size()==1 && AT(st.columns,0).is_primary);
+    CHECK(parse_sql("SELECT id ident, L2_DISTANCE(v,'[0,0]') dist FROM t ORDER BY dist DESC LIMIT 3",&st,&error,&code));
+    CHECK(st.items.size()==2 && AT(st.items,0).alias=="ident" && AT(st.items,1).alias=="dist");
+    CHECK(st.order_by=="dist" && st.order_desc && st.limit==3);
+    CHECK(parse_sql("SELECT id `order` FROM t ORDER BY `order` ASC",&st,&error,&code));
+    CHECK(AT(st.items,0).alias=="order" && !st.order_desc);
+  }
+  expect_err("CREATE TABLE t (id BIGINT, PRIMARY KEY (missing))",1072);
+  expect_err("CREATE TABLE t (id BIGINT, PRIMARY KEY (id), PRIMARY KEY (id))",1064);
+  expect_err("CREATE TABLE t (id BIGINT PRIMARY KEY, PRIMARY KEY (id))",1064);
+  expect_err("CREATE TABLE t (id BIGINT PRIMARY KEY, n BIGINT, PRIMARY KEY (n))",1064);
+  expect_err("CREATE TABLE t (id BIGINT, n BIGINT, PRIMARY KEY (id,n))",1235);
+  expect_err("CREATE TABLE t (id BIGINT, PRIMARY KEY ())",1064);
+  expect_err("SELECT id first second FROM t",1064);
+  expect_err("SELECT id FROM t ORDER BY id bogus",1064);
+  expect_err("SELECT id FROM t ORDER BY id AS bogus",1064);
 
   // ------------------------------------------------------------ no-crash ----
   {

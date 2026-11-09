@@ -1,5 +1,8 @@
 // exec.cpp — statement execution + MySQL-style table rendering
 #include "exec.h"
+#include "result_sort.h"
+#include "distance.h"
+#include <limits>
 
 #include <algorithm>
 #include <charconv>
@@ -118,7 +121,7 @@ void render_table(const std::vector<std::string>& headers,
 
 }  // namespace
 
-bool execute(Database& db, const Statement& st, std::string* out, std::string* err, int* code) {
+static bool execute_impl(Database& db, const Statement& st, std::string* out, std::string* err, int* code, const OutputSink& sink) {
   *code = 0;
   switch (st.kind) {
     case Statement::EMPTY:
@@ -126,7 +129,7 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
 
     case Statement::CREATE_TABLE: {
       if (!db.create_table(st.table, st.columns, err, code)) {
-        if (*code == 1050 && st.if_not_exists == "IF NOT EXISTS") { *code = 0; *err = ""; *out += "Query OK, 0 rows affected\n"; return true; }
+        if (*code == 1050 && st.if_not_exists == "IF NOT EXISTS") { *code = 0; *err = ""; emit_ok("0 rows affected", out); return true; }
         return false;
       }
       emit_ok("0 rows affected", out);
@@ -134,7 +137,7 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
     }
     case Statement::DROP_TABLE: {
       if (!db.drop_table(st.table, err, code)) {
-        if (*code == 1146 && st.if_not_exists == "IF EXISTS") { *code = 0; *err = ""; *out += "Query OK, 0 rows affected\n"; return true; }
+        if (*code == 1146 && st.if_not_exists == "IF EXISTS") { *code = 0; *err = ""; emit_ok("0 rows affected", out); return true; }
         return false;
       }
       emit_ok("0 rows affected", out);
@@ -192,6 +195,9 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
             *code = 1054;
             return false;
           }
+          if (std::find(pos.begin(), pos.end(), idx) != pos.end()) {
+            *err = "Duplicate column in INSERT"; *code = 1110; return false;
+          }
           pos.push_back(idx);
         }
       } else {
@@ -203,21 +209,14 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
         }
       }
       int64_t n = 0;
-      // A multi-row INSERT is atomic in MySQL; wrapping it in one implicit
-      // transaction also collapses N fsyncs into one, which matters a lot for
-      // the write benchmark (100-row batches).
-      const bool implicit_txn = (st.rows.size() > 1) && !db.in_txn();
-      if (implicit_txn) db.begin(err, code);
       for (auto& row : st.rows) {
         if (row.size() != pos.size()) {
           *err = "Column count doesn't match value count at row " + std::to_string(n + 1);
           *code = 1136;
-          if (implicit_txn) db.rollback(err, code);
           return false;
         }
         if (pos.size() == sch.cols.size() && st.columns.empty()) {
           if (!db.insert(st.table, row, err, code)) {
-            if (implicit_txn) { std::string e2; int c2 = 0; db.rollback(&e2, &c2); }
             return false;
           }
         } else {
@@ -231,21 +230,14 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
             if (!filled[k]) {
               *err = "Field '" + sch.cols[k].name + "' doesn't have a default value";
               *code = 1364;
-              if (implicit_txn) db.rollback(err, code);
-              return false;
+                  return false;
             }
           }
           if (!db.insert(st.table, full, err, code)) {
-            if (implicit_txn) { std::string e2; int c2 = 0; db.rollback(&e2, &c2); }
             return false;
           }
         }
         ++n;
-      }
-      if (implicit_txn) {
-        std::string cerr_msg;
-        int ccode = 0;
-        if (!db.commit(&cerr_msg, &ccode)) { *err = cerr_msg; *code = ccode; return false; }
       }
       emit_dml(n, out);
       return true;
@@ -326,80 +318,149 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
         }
       }
 
-      // Validate ORDER BY resolves to a projected header or schema column.
-      int order_item = -1;
-      if (!st.order_by.empty()) {
-        // strip backticks
-        std::string name = st.order_by;
-        for (size_t c = 0; c < items.size(); ++c)
-          if (items[c].header == name) order_item = (int)c;
-        if (order_item < 0) {
-          int col = sch.find(name);
-          if (col >= 0) {
-            for (size_t c = 0; c < items.size(); ++c)
-              if (!items[c].is_distance && items[c].col == col) order_item = (int)c;
+      // Resolve ordering separately from projection: SQL may order by a column
+      // or distance expression that is not in the selected fields.
+      Item order{-1, false, "", nullptr};
+      const bool ordered = !st.order_by.empty();
+      if (ordered) {
+        bool found = false;
+        if (st.order_is_expression) {
+          order.col = sch.find(st.order_expression.column);
+          order.is_distance = true;
+          order.qvec = &st.order_expression.query;
+          found = order.col >= 0;
+        } else {
+          for (const auto& item : items) {
+            if (item.header == st.order_by) { order = item; found = true; break; }
           }
+          if (!found) { order.col = sch.find(st.order_by); found = order.col >= 0; }
         }
-        if (order_item < 0) {
-          *err = "Unknown column '" + name + "' in 'order clause'";
-          *code = 1054;
-          return false;
+        if (!found) { *err = "Unknown column '" + st.order_by + "' in 'order clause'"; *code = 1054; return false; }
+        if (order.is_distance && (sch.cols[order.col].type != Type::VECTOR ||
+            order.qvec->size() != static_cast<size_t>(sch.cols[order.col].len))) {
+          *err = "Vector dimension or type mismatch"; *code = 1264; return false;
+        }
+        if (!order.is_distance && sch.cols[order.col].type == Type::VECTOR) {
+          *err = "ORDER BY VECTOR requires a distance expression"; *code = 1235; return false;
         }
       }
-
-      struct OutRow {
-        std::vector<std::string> cells;
-        double sort_num = 0;
-        std::string sort_str;
-        bool is_str = false;
+      auto distance2 = [](const std::vector<float>& a, const std::vector<float>& b) {
+        // Subtraction must also be double: finite float32 endpoints can differ
+        // by more than FLT_MAX. Exact mode never relies on float overflow.
+        return distance_squared(a.data(), b.data(), a.size());
       };
-      std::vector<OutRow> result;
-
-      db.scan(st.table, st.conds, [&](const Row& r) {
-        OutRow o;
-        o.cells.reserve(items.size());
-        for (size_t c = 0; c < items.size(); ++c) {
-          const Item& it = items[c];
-          if (it.is_distance) {
-            const auto& v = r.vals[it.col].v;
-            float d = 0;
-            for (size_t k = 0; k < v.size() && k < it.qvec->size(); ++k) {
-              float diff = v[k] - (*it.qvec)[k];
-              d += diff * diff;
-            }
-            d = std::sqrt(d);
-            o.cells.push_back(format_double(d));
-            if ((int)c == order_item) { o.sort_num = d; }
-          } else {
-            o.cells.push_back(render_value(r.vals[it.col]));
-            if ((int)c == order_item) {
-              if (sch.cols[it.col].type == Type::BIGINT) o.sort_num = (double)r.vals[it.col].i;
-              else { o.sort_str = render_value(r.vals[it.col]); o.is_str = true; }
-            }
-          }
+      struct Candidate {
+        int64_t pk = 0;
+        int64_t integer = 0;
+        double distance = 0;
+        std::string text;
+      };
+      auto better = [&](const auto& a, const auto& b) {
+        int cmp = 0;
+        if (order.is_distance) cmp = a.distance < b.distance ? -1 : (a.distance > b.distance ? 1 : 0);
+        else if (ordered && sch.cols[order.col].type == Type::BIGINT)
+          cmp = a.integer < b.integer ? -1 : (a.integer > b.integer ? 1 : 0);
+        else if (ordered) cmp = utf8_compare(a.text, b.text);
+        if (cmp == 0) return a.pk < b.pk; // always ASC, even for ORDER BY ... DESC
+        return st.order_desc ? cmp > 0 : cmp < 0;
+      };
+      // Streaming output and external sort for large result sets. The normal
+      // TopK path below keeps keys only for the current K winners.
+      const bool wide_keys = ordered && !order.is_distance &&
+          sch.cols[order.col].type == Type::VARCHAR && st.limit > 0 &&
+          static_cast<uint64_t>(st.limit) > (8u<<20)/(static_cast<uint64_t>(sch.cols[order.col].len)*4+1);
+      if (sink && tsv_mode() && (st.limit < 0 || st.limit >= 4096 || wide_keys)) {
+        for (size_t j=0;j<items.size();++j) {
+          if(j)*out+='\t'; *out+=items[j].header;
         }
-        // Distance ordering with LIMIT is the TopK path: keep only what is needed later.
-        result.push_back(std::move(o));
-        return true;
-      });
-
-      if (order_item >= 0) {
-        std::stable_sort(result.begin(), result.end(), [&](const OutRow& a, const OutRow& b) {
-          int cmp;
-          if (a.is_str || b.is_str) cmp = utf8_compare(a.sort_str, b.sort_str);
-          else cmp = (a.sort_num < b.sort_num) ? -1 : (a.sort_num > b.sort_num ? 1 : 0);
-          if (cmp == 0) {
-            // tie-break by primary key ascending when available
-            cmp = 0;
+        *out+='\n';
+        auto emit = [&](const std::string& row) {
+          *out+=row;
+          if(out->size()>=65536){sink(*out);out->clear();}
+        };
+        auto render = [&](const Row& row) {
+          std::string text;
+          for(size_t j=0;j<items.size();++j) {
+            if(j)text+='\t';
+            const auto& item=items[j];
+            text += item.is_distance ? format_double(std::sqrt(distance2(row.vals[item.col].v,*item.qvec)))
+                                     : render_value(row.vals[item.col]);
           }
-          return st.order_desc ? cmp > 0 : cmp < 0;
+          text+='\n';return text;
+        };
+        const size_t limit=st.limit<0 ? std::numeric_limits<size_t>::max() : static_cast<size_t>(st.limit);
+        if(ordered) {
+          ResultSorter sorter(db.data_directory(),better);
+          db.scan(st.table,st.conds,[&](const Row& row){
+            SortRow c; c.pk=row.vals[sch.pk_idx].i;
+            if(order.is_distance)c.distance=distance2(row.vals[order.col].v,*order.qvec);
+            else if(sch.cols[order.col].type==Type::BIGINT)c.integer=row.vals[order.col].i;
+            else c.text=row.vals[order.col].s;
+            c.payload=render(row);sorter.add(std::move(c));return true;
+          });
+          sorter.emit(limit,emit);
+        } else {
+          size_t count=0;
+          db.scan(st.table,st.conds,[&](const Row& row){emit(render(row));return ++count<limit;});
+        }
+        return true;
+      }
+      std::vector<Candidate> result;
+      const bool bounded = st.limit >= 0;
+      const size_t k = bounded ? static_cast<size_t>(st.limit) : 0;
+      auto offer = [&](Candidate c) {
+        if (!bounded || result.size() < k) {
+          result.push_back(std::move(c));
+          if (bounded && ordered) std::push_heap(result.begin(), result.end(), better);
+        } else if (ordered && better(c, result.front())) {
+          std::pop_heap(result.begin(), result.end(), better);
+          result.back() = std::move(c);
+          std::push_heap(result.begin(), result.end(), better);
+        }
+        return ordered || !bounded || result.size() < k;
+      };
+      if (!bounded || k != 0) {
+        if (ordered && order.is_distance) {
+          db.scan_vectors(st.table,st.conds,[&](int64_t pk,const float* v,size_t dim){
+            Candidate c;c.pk=pk;c.distance=distance_squared(v,order.qvec->data(),dim);
+            return offer(std::move(c));
+          });
+        } else db.scan(st.table, st.conds, [&](const Row& r) {
+          Candidate c;c.pk=r.vals[sch.pk_idx].i;
+          if(ordered) {
+            if(sch.cols[order.col].type==Type::BIGINT)c.integer=r.vals[order.col].i;
+            else c.text=r.vals[order.col].s;
+          }
+          return offer(std::move(c));
         });
       }
-      if (st.limit >= 0 && (int64_t)result.size() > st.limit) result.resize((size_t)st.limit);
-
+      if (ordered) std::sort(result.begin(), result.end(), better);
+      // Candidates retain only keys, not entire rows. Retrieve the winning
+      // projection by PK after selection, including on the spilled table path.
       std::vector<std::vector<std::string>> cells;
-      cells.reserve(result.size());
-      for (auto& r : result) cells.push_back(std::move(r.cells));
+      const bool stream = sink && tsv_mode();
+      if (stream) {
+        for(size_t j=0;j<items.size();++j){if(j)*out+='\t';*out+=items[j].header;}
+        *out+='\n';
+      } else cells.reserve(result.size());
+      for (const auto& c : result) {
+        Cond pk;pk.column=sch.cols[sch.pk_idx].name;pk.value=Value::ofInt(c.pk);
+        db.scan(st.table,{pk},[&](const Row& r){
+          std::vector<std::string> row;
+          if(!stream)row.reserve(items.size());
+          for (size_t j=0;j<items.size();++j) {
+            const auto& item=items[j];
+            std::string cell=item.is_distance ? format_double(std::sqrt(distance2(r.vals[item.col].v,*item.qvec)))
+                                              : render_value(r.vals[item.col]);
+            if(stream){if(j)*out+='\t';*out+=cell;}
+            else row.push_back(std::move(cell));
+          }
+          if(stream){*out+='\n';if(out->size()>=65536){sink(*out);out->clear();}}
+          else cells.push_back(std::move(row));
+          return false;
+        });
+      }
+      if(stream)return true;
       std::vector<bool> align(items.size(), false);
       for (size_t c = 0; c < items.size(); ++c)
         align[c] = items[c].is_distance || is_numeric_type(sch.cols[items[c].col].type);
@@ -429,6 +490,18 @@ bool execute(Database& db, const Statement& st, std::string* out, std::string* e
       *code = 1235;
       return false;
   }
+}
+
+bool execute(Database& db, const Statement& st, std::string* out, std::string* err, int* code, const OutputSink& sink) {
+  const bool mutation = st.kind == Statement::INSERT || st.kind == Statement::UPDATE ||
+      st.kind == Statement::DELETE_ROWS || st.kind == Statement::CREATE_TABLE ||
+      st.kind == Statement::DROP_TABLE || st.kind == Statement::CREATE_INDEX;
+  if (!mutation) return execute_impl(db, st, out, err, code, sink);
+  if (!db.begin_statement(err, code)) return false;
+  const bool ok = execute_impl(db, st, out, err, code, sink);
+  const bool ended = db.end_statement(ok, err, code);
+  if (!ok || !ended) out->clear();
+  return ok && ended;
 }
 
 }  // namespace mvdb
