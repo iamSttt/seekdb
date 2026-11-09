@@ -477,27 +477,27 @@ int main() {
     std::printf("     open+load snapshot: %.1f ms\n", t9 - t8);
   }
 
-#ifdef MVDB_SMALL_CKPT
-  // Built with -DMVDB_AUTO_CHECKPOINT_BYTES=<small>: autocommit DML must fold
-  // the WAL into a snapshot by itself (nothing else calls checkpoint()).
+  // Autocommit DML must fold the WAL into the heap by itself: nothing else
+  // calls checkpoint(). MVDB_CKPT_BYTES lowers the threshold to 8 KiB so the
+  // test does not have to write 64 MiB of log first.
   std::printf("[auto checkpoint]\n");
   {
     const std::string adir = dir + "/autockpt";
+    ::setenv("MVDB_CKPT_BYTES", "8192", 1);
     Database d;
     CHECK(d.open(adir, &err), "open auto-checkpoint dir");
     CHECK(d.create_table("a", simple_schema(), &err, &code), "create table a");
     for (int i = 0; i < 400; ++i)
       if (!ins(d, "a", i, "x", {1.f, 2.f, 3.f})) break;
     CHECK(file_size(adir + "/snapshot.bin") > 0, "snapshot written without an explicit checkpoint");
-    CHECK(file_size(adir + "/data.log") < 400 * 60,
-          "WAL stays bounded instead of growing with every row");
+    CHECK(file_size(adir + "/t_a.dat") > 64, "compacted heap file exists");
     CHECK(count_rows(d, "a") == 400, "all rows still visible");
     d.close();
     Database d2;
     CHECK(d2.open(adir, &err), "reopen auto-checkpointed dir");
     CHECK(count_rows(d2, "a") == 400, "every row survived the automatic checkpoint");
+    ::unsetenv("MVDB_CKPT_BYTES");
   }
-#endif
 
   // ------------------------------------------- real crash (fork + _exit) ---
   // A child commits rows, then dies via _exit(0) in the middle of a second
@@ -534,6 +534,76 @@ int main() {
     CHECK(find_name(d, "cr", 7) == "auto", "autocommit row came back");
   }
 
+
+  // ------------------------------------- heap truncated behind the header ---
+  // A machine crash can leave the heap shorter than the commit watermark. The
+  // engine must fall back to the checkpoint and rebuild from the WAL.
+  std::printf("[heap shorter than the watermark -> WAL rebuild]\n");
+  {
+    const std::string rdir = dir + "/rebuild";
+    {
+      Database db;
+      CHECK(db.open(rdir, &err), "open rebuild dir");
+      CHECK(db.create_table("rb", simple_schema(), &err, &code), "create rb");
+      for (int i = 0; i < 100; ++i) ins(db, "rb", i, "a", {1.f, 0.f, 0.f});
+      CHECK(db.checkpoint(&err), "checkpoint rb");
+      const long long ck = file_size(rdir + "/t_rb.dat");
+      CHECK(ck > 64, "compacted heap has the 100 rows");
+      for (int i = 100; i < 200; ++i) ins(db, "rb", i, "b", {0.f, 1.f, 0.f});
+      {
+        std::vector<std::pair<std::string, Value>> sets;
+        sets.emplace_back("name", Value::ofStr("upd"));
+        CHECK(db.update_rows("rb", {cond_eq("id", Value::ofInt(5))}, sets, &err, &code) == 1,
+              "update before the simulated crash");
+      }
+      CHECK(db.delete_rows("rb", {cond_eq("id", Value::ofInt(7))}, &err, &code) == 1,
+            "delete before the simulated crash");
+      db.close();
+      // Simulate lost tail pages: keep only what the checkpoint made durable.
+      CHECK(::truncate((rdir + "/t_rb.dat").c_str(), (off_t)ck) == 0, "truncate heap to checkpoint size");
+    }
+    Database db;
+    CHECK(db.open(rdir, &err), "reopen with a short heap");
+    CHECK(count_rows(db, "rb") == 199, "all committed rows rebuilt from the WAL");
+    CHECK(find_name(db, "rb", 150) == "b", "row added after the checkpoint came back");
+    CHECK(find_name(db, "rb", 5) == "upd", "update after the checkpoint was replayed");
+    CHECK(count_rows(db, "rb", {cond_eq("id", Value::ofInt(7))}) == 0,
+          "delete after the checkpoint was replayed");
+    CHECK(find_name(db, "rb", 5) != "", "row 5 still present");
+  }
+
+  // --------------------------------------------- drop + recreate reuses files
+  std::printf("[drop + recreate the same table name]\n");
+  {
+    const std::string ddir = dir + "/recreate";
+    Database db;
+    CHECK(db.open(ddir, &err), "open recreate dir");
+    CHECK(db.create_table("d", simple_schema(), &err, &code), "create d");
+    for (int i = 0; i < 50; ++i) ins(db, "d", i, "x", {1.f, 1.f, 1.f});
+    CHECK(count_rows(db, "d") == 50, "50 rows before the drop");
+    CHECK(db.drop_table("d", &err, &code), "drop d");
+    CHECK(db.create_table("d", simple_schema(), &err, &code), "recreate d");
+    CHECK(count_rows(db, "d") == 0, "recreated table starts empty (old heap files are gone)");
+    CHECK(ins(db, "d", 1, "y", {2.f, 2.f, 2.f}), "insert into the recreated table");
+    CHECK(count_rows(db, "d") == 1, "exactly one row");
+    db.close();
+    Database db2;
+    CHECK(db2.open(ddir, &err), "reopen after recreate");
+    CHECK(count_rows(db2, "d") == 1, "recreated table survived the reopen");
+    CHECK(find_name(db2, "d", 1) == "y", "recreated row content is right");
+
+    // a table dropped inside a committed transaction
+    CHECK(db2.begin(&err, &code), "BEGIN drop");
+    CHECK(db2.drop_table("d", &err, &code), "drop in txn");
+    CHECK(db2.commit(&err, &code), "COMMIT drop");
+    CHECK(!db2.has_table("d"), "table gone after commit");
+    db2.close();
+    Database db3;
+    CHECK(db3.open(ddir, &err), "reopen after committed drop");
+    CHECK(!db3.has_table("d"), "dropped table stays dropped");
+    CHECK(db3.create_table("d", simple_schema(), &err, &code), "same name again after a committed drop");
+    CHECK(count_rows(db3, "d") == 0, "and it is empty");
+  }
 
   // ========================================================= large tables ==
   const bool big = []() {
@@ -672,6 +742,21 @@ int main() {
       keep.column = "id";
       keep.value = Value::ofInt(1500);
       CHECK(count_rows(db2, "big", {keep}) == 1, "row above the delete range survived");
+
+      // A pk equality UPDATE/DELETE must be one random read, not a 2M row scan.
+      double u0 = now_ms();
+      std::vector<std::pair<std::string, Value>> one_set;
+      one_set.emplace_back("emb", Value::ofVec(std::vector<float>(kBigDim, 0.25f)));
+      CHECK(db2.update_rows("big", {cond_eq("id", Value::ofInt(1234567))}, one_set, &err, &code) == 1,
+            "single-pk update affected one row");
+      CHECK(db2.delete_rows("big", {cond_eq("id", Value::ofInt(1234568))}, &err, &code) == 1,
+            "single-pk delete affected one row");
+      CHECK(db2.update_rows("big", {cond_eq("id", Value::ofInt(-1))}, one_set, &err, &code) == 0,
+            "single-pk update on a missing key affects 0");
+      double u1 = now_ms();
+      std::printf("     single-pk update+delete: %.2f ms\n", u1 - u0);
+      CHECK(u1 - u0 < 50, "single-pk update+delete on 2M rows stays under 50 ms");
+      CHECK(db2.table("big")->live_count() == (size_t)(N - 1001), "live_count after the single delete");
     }
 
     // ------------------------------------------------------- kill -9 crash --

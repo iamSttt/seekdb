@@ -123,6 +123,7 @@ class Database {
   FILE* wal_ = nullptr;
   uint64_t wal_rows_ = 0;
   uint64_t wal_bytes_ = 0;
+  uint64_t ckpt_base_ = 0;  // auto-checkpoint threshold floor (env overrideable)
   // WAL write buffer: records are batched into one write(2) per commit, and
   // the scratch strings are reused so a hot insert path does no allocation.
   std::string wal_out_;

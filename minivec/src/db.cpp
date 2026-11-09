@@ -50,6 +50,29 @@
 //   * ROLLBACK truncates the heap back to the transaction's watermark and
 //     restores the index, so an aborted transaction leaves no trace.
 //   * MVDB_FSYNC=0 downgrades every fdatasync to a plain write.
+//
+// ---------------------------------------------------------------------------
+// Deliberate deviations from the original sketch, and why
+// ---------------------------------------------------------------------------
+//   1. VARCHAR bytes live in a side file (t_<tag>.str) instead of inside the
+//      .dat. Fixed-size records need a fixed slot, and an append-only arena
+//      whose offsets never move means a checkpoint only ever rewrites .dat --
+//      .str is never copied, never renamed, and cannot be caught half swapped.
+//      The price is that string bytes freed by an UPDATE or DELETE are only
+//      reclaimed by DROP TABLE; a table that is rewritten in place forever
+//      grows its .str (disk, not RAM) accordingly.
+//   2. The map holds pk -> record *id* (12 B: int64 key + u32 rid in two
+//      parallel arrays) rather than pk -> byte offset; the offset is
+//      rid*rec_size, so this is 25% smaller and just as fast. 2M rows ~= 30 MB.
+//   3. t_<tag>.idx caches the map so a reopen of a 1 GB heap is a 24 MB read
+//      instead of a 1 GB scan. It is pure cache: a stale generation or a size
+//      mismatch silently falls back to rebuilding it by streaming .dat.
+//   4. Replay applies only records a committed transaction covers, discovered
+//      by a first pass that keeps just the (begin, commit) LSN pairs, so a
+//      multi-million-row transaction is never buffered in RAM to be discarded.
+//   5. The auto-checkpoint threshold is max(64 MiB, live heap size) rather than
+//      a flat 64 MiB, so a bulk load does not rewrite a growing heap every
+//      64 MiB (write amplification stays ~O(n) instead of O(n^2/64 MiB)).
 // ---------------------------------------------------------------------------
 #include "db.h"
 
@@ -1123,6 +1146,10 @@ struct TableStorage {
 
   // -------------------------------------------------------------- open ----
   bool open_files(std::string* err) {
+    // A checkpoint that died between "write tmp" and "rename" leaves these
+    // behind; nothing can be mid-flight while we are opening.
+    ::unlink((dat_path() + ".tmp").c_str());
+    ::unlink((idx_path() + ".tmp").c_str());
     fd_dat = ::open(dat_path().c_str(), O_RDWR | O_CREAT, 0644);
     fd_str = ::open(str_path().c_str(), O_RDWR | O_CREAT, 0644);
     if (fd_dat < 0 || fd_str < 0) {
@@ -1602,6 +1629,12 @@ bool Database::open(const std::string& data_dir, std::string* err) {
   }
   dir_ = data_dir;
   while (dir_.size() > 1 && dir_.back() == '/') dir_.pop_back();
+  ckpt_base_ = kAutoCheckpointBytes;
+  if (const char* e = std::getenv("MVDB_CKPT_BYTES")) {
+    char* end = nullptr;
+    const unsigned long long v = std::strtoull(e, &end, 10);
+    if (end && *end == '\0' && v >= 4096) ckpt_base_ = static_cast<uint64_t>(v);
+  }
   if (!ensure_dir(dir_)) {
     if (err) *err = "cannot create data directory '" + dir_ + "': " + std::strerror(errno);
     return false;
@@ -1887,19 +1920,10 @@ void Database::note_commit() {
 }
 
 uint64_t Database::wal_limit() const {
-  static const uint64_t base = []() {
-    const char* e = std::getenv("MVDB_CKPT_BYTES");
-    if (e && *e) {
-      char* end = nullptr;
-      unsigned long long v = std::strtoull(e, &end, 10);
-      if (end && *end == '\0' && v >= 4096) return static_cast<uint64_t>(v);
-    }
-    return kAutoCheckpointBytes;
-  }();
   uint64_t data = 0;
   for (const auto& kv : tables_)
     if (kv.second.store) data += kv.second.store->next_rid * kv.second.store->rec_size();
-  return std::max(base, data);
+  return std::max(ckpt_base_, data);
 }
 
 bool Database::insert(const std::string& t, std::vector<Value> vals, std::string* err,
@@ -2003,7 +2027,17 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
   scratch.vals.resize(sc.cols.size());
   std::vector<Value> nv;
 
-  st.for_each_live(0, n0, [&](uint64_t rid, const char* raw) {
+  // "UPDATE ... WHERE pk = x" is one random read through the offset map, not a
+  // scan. pk_eq: -1 = no pk equality in the predicate, 0 = absent, 1 = present.
+  int pk_eq = -1;
+  uint32_t one = 0;
+  for (const RCond& c : pr.c) {
+    if (static_cast<int>(c.col) != sc.pk_idx || c.op != static_cast<uint8_t>(Cond::EQ)) continue;
+    pk_eq = st.idx.find(c.lit->i, &one) ? 1 : 0;
+    break;
+  }
+
+  auto body = [&](uint64_t rid, const char* raw) -> bool {
     st.decode(raw, sc, &scratch, rid);
     if (!row_matches(pr, scratch)) return true;
 
@@ -2073,7 +2107,14 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
     tb.next_rid = static_cast<int64_t>(st.next_rid) + 1;
     ++affected;
     return true;
-  });
+  };
+  if (pk_eq < 0) {
+    st.for_each_live(0, n0, body);
+  } else if (pk_eq == 1) {
+    st.flush();
+    std::vector<char> rec0(static_cast<size_t>(st.rec_size()));
+    if (st.read_rec(one, rec0.data()) && st.bit_get(one)) body(one, rec0.data());
+  }
   if (rc != 0) return rc;
   if (!txn_active_) {
     st.flush();
@@ -2105,7 +2146,18 @@ int64_t Database::delete_rows(const std::string& t, const std::vector<Cond>& con
   Row scratch;
   scratch.vals.resize(tb.schema.cols.size());
 
-  st.for_each_live(0, n0, [&](uint64_t rid, const char* raw) {
+  // Same shortcut as UPDATE: a pk equality condition is a single random read.
+  int pk_eq = -1;
+  uint32_t one = 0;
+  for (const RCond& c : pr.c) {
+    if (static_cast<int>(c.col) != tb.schema.pk_idx ||
+        c.op != static_cast<uint8_t>(Cond::EQ))
+      continue;
+    pk_eq = st.idx.find(c.lit->i, &one) ? 1 : 0;
+    break;
+  }
+
+  auto body = [&](uint64_t rid, const char* raw) -> bool {
     st.decode(raw, tb.schema, &scratch, rid);
     if (!row_matches(pr, scratch)) return true;
     const int64_t pk = scratch.vals[static_cast<size_t>(tb.schema.pk_idx)].i;
@@ -2147,7 +2199,14 @@ int64_t Database::delete_rows(const std::string& t, const std::vector<Cond>& con
     tb.next_rid = static_cast<int64_t>(st.next_rid) + 1;
     ++affected;
     return true;
-  });
+  };
+  if (pk_eq < 0) {
+    st.for_each_live(0, n0, body);
+  } else if (pk_eq == 1) {
+    st.flush();
+    std::vector<char> rec0(static_cast<size_t>(st.rec_size()));
+    if (st.read_rec(one, rec0.data()) && st.bit_get(one)) body(one, rec0.data());
+  }
   if (rc != 0) return rc;
   if (!txn_active_) {
     st.flush();
@@ -2369,6 +2428,8 @@ bool Database::replay_wal(std::string* err) {
   FILE* f = std::fopen(path.c_str(), "rb");
   if (!f) return true;  // nothing to replay
   uint64_t max_lsn = wal_rows_;
+  uint64_t good_end = 0;   // byte offset just past the last valid record
+  bool torn = false;
 
   // ---- pass 1: which explicit transactions actually committed? -------------
   // Only the (begin, commit) LSN pairs are kept, so a multi-million-row
@@ -2388,11 +2449,12 @@ bool Database::replay_wal(std::string* err) {
                      (static_cast<uint32_t>(hdr[2]) << 16) | (static_cast<uint32_t>(hdr[3]) << 24);
       uint32_t crc = static_cast<uint32_t>(hdr[4]) | (static_cast<uint32_t>(hdr[5]) << 8) |
                      (static_cast<uint32_t>(hdr[6]) << 16) | (static_cast<uint32_t>(hdr[7]) << 24);
-      if (len == 0 || len > kMaxRec) break;
+      if (len == 0 || len > kMaxRec) { torn = true; break; }
       pay.resize(len);
-      if (std::fread(&pay[0], 1, len, f) != len) break;
-      if (crc32_of(pay.data(), pay.size()) != crc) break;
-      if (len < 10) break;
+      if (std::fread(&pay[0], 1, len, f) != len) { torn = true; break; }
+      if (crc32_of(pay.data(), pay.size()) != crc) { torn = true; break; }
+      if (len < 10) { torn = true; break; }
+      good_end += 8 + static_cast<uint64_t>(len);
       Rd r(pay.data(), pay.size());
       const uint8_t kind = r.u8();
       const uint8_t flags = r.u8();
@@ -2408,12 +2470,36 @@ bool Database::replay_wal(std::string* err) {
     }
     // Drop unterminated transactions.
     while (!committed.empty() && committed.back().end == 0) committed.pop_back();
-    std::fseek(f, 0, SEEK_SET);
+  }
+
+  // Repair: drop the torn tail so future appends stay contiguous.
+  if (torn) {
+    struct stat st;
+    if (::stat(path.c_str(), &st) == 0 && static_cast<uint64_t>(st.st_size) > good_end) {
+      int fd = ::open(path.c_str(), O_WRONLY);
+      if (fd >= 0) {
+        if (::ftruncate(fd, static_cast<off_t>(good_end)) == 0) ::fdatasync(fd);
+        ::close(fd);
+      }
+    }
+  }
+  if (max_lsn > wal_rows_) wal_rows_ = max_lsn;
+
+  // Every heap may already hold every committed row (the commit watermark is
+  // written ahead of the WAL being truncated). Then nothing has to be
+  // re-appended and the second pass can be skipped entirely.
+  bool need_apply = false;
+  for (auto& kv : tables_) {
+    if (!kv.second.store) continue;
+    if (kv.second.store->heap_lsn < max_lsn) { need_apply = true; break; }
+  }
+  if (!need_apply) {
+    std::fclose(f);
+    return true;
   }
 
   // ---- pass 2: apply the committed records --------------------------------
-  uint64_t good_end = 0;
-  bool torn = false;
+  std::fseek(f, 0, SEEK_SET);
   size_t rpos = 0;
   std::string pay;
   for (;;) {
@@ -2534,18 +2620,6 @@ bool Database::replay_wal(std::string* err) {
   }
   std::fclose(f);
   if (max_lsn > wal_rows_) wal_rows_ = max_lsn;
-
-  // Repair: drop the torn tail so future appends stay contiguous.
-  if (torn) {
-    struct stat st;
-    if (::stat(path.c_str(), &st) == 0 && static_cast<uint64_t>(st.st_size) > good_end) {
-      int fd = ::open(path.c_str(), O_WRONLY);
-      if (fd >= 0) {
-        if (::ftruncate(fd, static_cast<off_t>(good_end)) == 0) ::fdatasync(fd);
-        ::close(fd);
-      }
-    }
-  }
   return true;
 }
 
