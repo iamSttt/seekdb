@@ -29,6 +29,47 @@ static std::vector<int64_t> keys(Database& d, const char* table="t") {
 static void expect(Database& d, std::initializer_list<int64_t> k) {
   assert(keys(d)==std::vector<int64_t>(k));
 }
+static void durable_format_limits(const std::string& dir) {
+  Database d; std::string e; int code=0;
+  assert(d.open(dir,&e));
+  ok(d,"CREATE TABLE marker (id BIGINT PRIMARY KEY)");
+  std::string columns="id BIGINT PRIMARY KEY";
+  std::string values="1";
+  for (int i=1;i<4096;++i) {
+    columns+=",c"+std::to_string(i)+" BIGINT";
+    values+=",0";
+  }
+  // The inclusive reader limit remains supported, including actual row data.
+  ok(d,"CREATE TABLE wide ("+columns+")");
+  ok(d,"INSERT INTO wide VALUES ("+values+")");
+  const std::string too_wide="CREATE TABLE rejected ("+columns+",overflow BIGINT)";
+  assert(!run(d,too_wide));
+  ok(d,"INSERT INTO marker VALUES (1)");
+  ok(d,"BEGIN");
+  ok(d,"INSERT INTO marker VALUES (2)");
+  assert(!run(d,too_wide));
+  ok(d,"INSERT INTO marker VALUES (3)");
+  ok(d,"COMMIT");
+  // Direct API callers must not bypass the vector dimension decoder bound.
+  Statement schema;
+  assert(parse_sql("CREATE TABLE oversized (id BIGINT PRIMARY KEY, v VECTOR(1))",
+                   &schema,&e,&code));
+  schema.columns[1].len=(1<<20)+1;
+  assert(!d.create_table("oversized",schema.columns,&e,&code));
+  d.close();
+  // WAL-only reopen catches the original bug: the invalid schema used to make
+  // recovery truncate all later acknowledged transactions as a corrupt tail.
+  assert(d.open(dir,&e));
+  assert(!d.has_table("rejected") && !d.has_table("oversized"));
+  assert(keys(d,"marker")==std::vector<int64_t>({1,2,3}));
+  assert(keys(d,"wide")==std::vector<int64_t>({1}));
+  assert(d.table("wide")->schema.cols.size()==4096);
+  assert(d.checkpoint(&e)); d.close();
+  assert(d.open(dir,&e));
+  assert(keys(d,"marker")==std::vector<int64_t>({1,2,3}));
+  assert(keys(d,"wide")==std::vector<int64_t>({1}));
+}
+
 int main() {
   char tmp[]="/tmp/mvdb-recovery-XXXXXX";
   const char* p=::mkdtemp(tmp); assert(p); const std::string dir=p;
@@ -98,4 +139,6 @@ int main() {
   assert(d.open(dir,&e)); expect(d,{1,2,6,7,8});
   assert(d.table("t")->schema.cols[1].type==Type::VECTOR);
   std::cout << "PASS transaction, DDL generation, WAL-tail and checkpoint regressions: " << dir << '\n';
+  durable_format_limits(dir+"/format-limits");
+  std::cout << "PASS durable format limits and later commits\n";
 }

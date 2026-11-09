@@ -1,0 +1,10 @@
+PASS external run merge, signed BIGINT keys, DESC ties, payload integrity, fan-in under 96MiB address cap
+PASS 256MiB unprojected vector payload TopK under 160MiB address cap
+PASS physical flat index, filters, mutation/statement/transaction rollback, eager restart rebuild, disk scan
+data_directory=/tmp/mvdb-large-recovery-T9sTyU
+build_under_address_limit max_rss_kib=35068 payload_bytes=268435456
+recovery_children_sigkilled=6
+wal_recovery_under_address_limit max_rss_kib=35052 payload_bytes=268435456
+checkpoint_under_address_limit max_rss_kib=36600 payload_bytes=268435456
+snapshot_recovery_rss_only max_rss_kib=40148 payload_bytes=268435456
+PASS large payload, WAL restart, repeated recovery SIGKILL, snapshot integrity

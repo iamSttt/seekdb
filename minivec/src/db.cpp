@@ -592,6 +592,11 @@ inline bool row_matches(const Pred& pr, const Row& row) {
 
 // Validates/normalises one value against its column definition.
 bool check_value(const Column& c, Value* v, std::string* err) {
+  if ((v->type == Type::VARCHAR && v->s.size() > kMaxStr) ||
+      (v->type == Type::VECTOR && v->v.size() > kMaxDim)) {
+    if (err) *err = "value exceeds durable format limit";
+    return false;
+  }
   switch (c.type) {
     case Type::BIGINT:
       if (v->type != Type::BIGINT) {
@@ -617,6 +622,10 @@ bool check_value(const Column& c, Value* v, std::string* err) {
         *v = Value::ofStr(std::to_string(v->i));
       } else if (v->type != Type::VARCHAR) {
         if (err) *err = "column '" + c.name + "': expected VARCHAR";
+        return false;
+      }
+      if (v->s.size() > kMaxStr) {
+        if (err) *err = "string exceeds durable format limit";
         return false;
       }
       if (static_cast<int64_t>(utf8_length(v->s)) > static_cast<int64_t>(c.len)) {
@@ -653,6 +662,20 @@ bool check_value(const Column& c, Value* v, std::string* err) {
 void set_err(std::string* err, int* code, ErrCode c, const std::string& msg) {
   if (err) *err = msg;
   if (code) *code = static_cast<int>(c);
+}
+
+// Check before constructing or narrowing the record length. UPDATE has the
+// largest row-record header, so this bound also covers INSERT and spill rows.
+bool row_fits_record(const std::string& table, const std::vector<Value>& vals) {
+  uint64_t bytes = 10 + 4 + static_cast<uint64_t>(table.size()) + 8 + 4;
+  for (const Value& v : vals) {
+    bytes += 1;
+    if (v.type == Type::BIGINT) bytes += 8;
+    else if (v.type == Type::VARCHAR) bytes += 4 + static_cast<uint64_t>(v.s.size());
+    else bytes += 4 + static_cast<uint64_t>(v.v.size()) * 4;
+    if (bytes > kMaxRec) return false;
+  }
+  return bytes <= kMaxRec;
 }
 
 void write_all_fd(int fd, const void* p, size_t n, size_t* done) {
@@ -807,6 +830,20 @@ bool Database::open(const std::string& data_dir, std::string* err) {
 // ---------------------------------------------------------------- schema ---
 bool Database::create_table(const std::string& name, const std::vector<Column>& cols,
                             std::string* err, int* code) {
+  // Readers reject these bounds; never acknowledge a schema they cannot replay.
+  if (name.size() > kMaxStr || cols.size() > kMaxCols || tables_.size() >= 100000) {
+    set_err(err, code, ErrCode::BAD_VALUE, "schema exceeds durable format limit");
+    return false;
+  }
+  uint64_t schema_bytes = 10 + 4 + static_cast<uint64_t>(name.size()) + 4 + 8;
+  for (const Column& c : cols) {
+    schema_bytes += 4 + static_cast<uint64_t>(c.name.size()) + 1 + 4 + 1;
+    if (c.name.size() > kMaxStr || schema_bytes > kMaxRec ||
+        (c.type == Type::VECTOR && c.len > static_cast<int32_t>(kMaxDim))) {
+      set_err(err, code, ErrCode::BAD_VALUE, "schema exceeds durable format limit");
+      return false;
+    }
+  }
   if (name.empty()) {
     set_err(err, code, ErrCode::SYNTAX, "empty table name");
     return false;
@@ -1038,6 +1075,10 @@ bool Database::insert(const std::string& t, std::vector<Value> vals, std::string
     }
   }
   const int64_t key = vals[static_cast<size_t>(sc.pk_idx)].i;
+  if (!row_fits_record(t, vals)) {
+    set_err(err, code, ErrCode::BAD_VALUE, "row exceeds durable record limit");
+    return false;
+  }
   if (tb.pk_pos.count(key)) {
     set_err(err, code, ErrCode::DUP_KEY,
             "Duplicate entry '" + std::to_string(key) + "' for key 'PRIMARY'");
@@ -1151,6 +1192,10 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
       nv[static_cast<size_t>(setcol[k])] = setvals[k];
     }
     const int64_t oldpk = row.vals[static_cast<size_t>(sc.pk_idx)].i;
+    if (!row_fits_record(t, nv)) {
+      set_err(err, code, ErrCode::BAD_VALUE, "row exceeds durable record limit");
+      return -1;
+    }
     const int64_t newpk = nv[static_cast<size_t>(sc.pk_idx)].i;
     if (newpk != oldpk) {
       auto dup = tb.pk_pos.find(newpk);

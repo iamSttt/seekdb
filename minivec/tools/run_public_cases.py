@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Check the organizer's public-basic-v1 results through MiniVectorDB's CLI.
 
-The organizer's fixture JSON describes SQL results. This runner uses the
-existing table output for statement success and affected rows, and checks
-queries separately through the default TSV output.
+The organizer's fixture JSON describes SQL results. Check the image's
+TSV status output and cross-check query rows through legacy TSV output.
 """
 
 import argparse
@@ -20,12 +19,6 @@ from pathlib import Path
 def require(condition, message):
     if not condition:
         raise ValueError(message)
-
-
-def table_cells(line):
-    require(line.startswith("|") and line.endswith("|"), f"expected table row, got {line!r}")
-    # Public v1 has no cells containing delimiters or significant padding.
-    return [cell.strip(" ") for cell in line[1:-1].split("|")]
 
 
 def compare_rows(actual, expected, unordered):
@@ -45,10 +38,7 @@ def compare_rows(actual, expected, unordered):
 
 
 def run_case(binary, sql, expected, mode):
-    env = dict(os.environ)
-    env.pop("MVDB_OUT", None)
-    if mode == "table":
-        env["MVDB_OUT"] = "table"
+    env = {**os.environ, "MVDB_OUT": mode}
     with tempfile.TemporaryDirectory(prefix="mvdb-public-") as data:
         run = subprocess.run([str(binary), "--data", data], input="\n".join(sql) + "\n",
                              encoding="utf-8", capture_output=True, env=env, timeout=30)
@@ -58,21 +48,11 @@ def run_case(binary, sql, expected, mode):
         try:
             if "columns" in result:
                 count = len(result["rows"])
-                if mode == "table":
-                    border = next(lines)
-                    require(re.fullmatch(r"(?:\+-+)+\+", border), f"expected table, got {border!r}")
-                    header = table_cells(next(lines))
-                    require(next(lines) == border, "missing header border")
-                    rows = [table_cells(next(lines)) for _ in range(count)]
-                    require(next(lines) == border, "extra result row or missing closing border")
-                    require(next(lines) == f"{count} {'row' if count == 1 else 'rows'} in set",
-                            "incorrect result row count")
-                else:
-                    header = next(lines).split("\t")
-                    rows = [next(lines).split("\t") for _ in range(count)]
+                header = next(lines).split("\t")
+                rows = [next(lines).split("\t") for _ in range(count)]
                 require(header == result["columns"], f"unexpected column names {header!r}")
                 compare_rows(rows, result["rows"], result.get("unordered", False))
-            elif mode == "table":
+            elif mode == "tsv-status":
                 line = next(lines)
                 ack = re.fullmatch(r"Query OK, (\d+) rows? affected", line)
                 require(ack, f"expected successful statement, got {line!r}")
@@ -98,7 +78,7 @@ def main():
                if line.strip()]
         expected = json.loads(path.with_suffix(".result").read_text(encoding="utf-8"))
         require(len(sql) == len(expected) == case["statements"], f"fixture count mismatch: {path}")
-        for mode in ("table", "tsv"):
+        for mode in ("tsv-status", "tsv"):
             run_case(args.binary.resolve(), sql, expected, mode)
         statements += len(sql)
         queries += sum("columns" in item for item in expected)

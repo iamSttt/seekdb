@@ -47,25 +47,37 @@ def expect(db, expected):
 
 def smoke(command):
     table = "image_smoke_" + uuid.uuid4().hex
+    ok = b"Query OK, 0 rows affected\n"
+    one = b"Query OK, 1 row affected\n"
     with session(command) as db:
-        send(db, f"CREATE TABLE {table}(id BIGINT PRIMARY KEY, s VARCHAR(20));"
-                 f"BEGIN; INSERT INTO {table} VALUES(1,'a;''b'),(2,'keep'); COMMIT;"
-                 f"SELECT id,s FROM {table} ORDER BY id;\n")
+        send(db, f"CREATE TABLE {table}(id BIGINT PRIMARY KEY, s VARCHAR(20));\n")
+        expect(db, ok)
+        send(db, "BEGIN;\n")
+        expect(db, ok)
+        send(db, f"INSERT INTO {table} VALUES(1,'a;''b'),(2,'keep');\n")
+        expect(db, b"Query OK, 2 rows affected\n")
+        send(db, "COMMIT;\n")
+        expect(db, ok)
+        send(db, f"SELECT id,s FROM {table} ORDER BY id;\n")
         expect(db, b"id\ts\n1\ta;'b\n2\tkeep\n")
 
         send(db, f"UPDATE {table} SET s='changed'\n")
         time.sleep(0.05)
         send(db, f"WHERE id=1; /* a comment with ; */ SELECT id,s FROM {table} ORDER BY id;\n")
-        expect(db, b"id\ts\n1\tchanged\n2\tkeep\n")
+        expect(db, one + b"id\ts\n1\tchanged\n2\tkeep\n")
 
-        send(db, f"BEGIN; DELETE FROM {table} WHERE id=2; SELECT id FROM {table};\n")
-        expect(db, b"id\n1\n")
+        send(db, "BEGIN;\n")
+        expect(db, ok)
+        send(db, f"INSERT INTO {table} VALUES(3,'partial'),(1,'duplicate');\n")
+        expect(db, b"ERROR 1062 (HY000): Duplicate entry '1' for key 'PRIMARY'\n")
+        send(db, f"DELETE FROM {table} WHERE id=2; SELECT id FROM {table};\n")
+        expect(db, one + b"id\n1\n")
 
     with session(command) as db:
         send(db, f"SELECT id,s FROM {table} ORDER BY id;\n")
         expect(db, b"id\ts\n1\tchanged\n2\tkeep\n")
 
-    print("PASS image launch, live stdin, quoted delimiters, fragmented SQL, EOF and restart")
+    print("PASS image launch, live status, quoted delimiters, fragmented SQL, EOF and restart")
 
 
 if __name__ == "__main__":

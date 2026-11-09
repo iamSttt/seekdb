@@ -54,21 +54,22 @@ directory and building the executable:
 python3 minivec/tools/run_public_cases.py --binary minivec/minivec --cases /path/to/mysqltest
 ```
 
-The runner validates affected rows using diagnostic table output and checks
-queries in both table and TSV modes. See the [public case results](validation/public-basic-v1.md).
+The runner validates affected rows using the image's `tsv-status` mode and
+cross-checks query results in `tsv` mode.
 
-Current adapter: semicolon-terminated SQL on stdin, tab-separated result headers
-and rows on stdout, no output for successful mutations, `ERROR <code> (...)` for
-errors; readiness and diagnostics on stderr. EOF closes normally and rolls back
-an unfinished transaction. SIGTERM/SIGINT also close normally. Newlines within a
-statement do not execute incomplete prefixes. Results are flushed after each
-statement. The current TSV adapter does not define escaping for embedded tabs or
-newlines; it must be adapted to the actual official framing when supplied.
+The image accepts semicolon-terminated SQL on stdin. Queries return
+tab-separated headers and rows on stdout. Successful changes and transaction
+commands return `Query OK, N row(s) affected`, with the count rendered in singular
+or plural form. Successful autocommit and COMMIT responses follow the durable
+commit. Errors return `ERROR <code> (...)`. Startup diagnostics go to stderr.
+EOF, SIGTERM and SIGINT close normally and roll back an unfinished transaction.
+Results are flushed after each statement. The exact framing and escaping still
+require the official driver to verify.
 
-`--mode exact` is the default. `--mode ann` is accepted and currently uses the
-same exact search, returning recall 1 instead of an approximation. This CLI is a
-local adapter choice, not a claim about the unpublished official mode syntax.
-`MVDB_OUT=table` enables diagnostic human-readable tables (not the test protocol).
+`--mode exact` is the default. `--mode ann` also uses exact search. Both modes
+accept `--mode=<mode>` syntax. `MVDB_OUT=tsv` selects the legacy CLI output,
+which omits success acknowledgements. `MVDB_OUT=table` selects human-readable
+boxed tables.
 
 ## SQL and semantics
 

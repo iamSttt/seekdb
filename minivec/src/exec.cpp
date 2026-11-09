@@ -8,6 +8,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -26,25 +27,26 @@ std::string format_double(double v) {
 
 namespace {
 
-// Output mode. The grader's driver is not published yet; MySQL's own mysqltest
-// compares tab-separated rows with a header line and no "Query OK"/border
-// noise, while a plain `mysql` client prints the boxed table. Default to the
-// mysqltest-compatible form and allow MVDB_OUT=table to switch for humans.
-bool tsv_mode() {
-  static int cached = -1;
-  if (cached < 0) {
-    const char* e = std::getenv("MVDB_OUT");
-    cached = (e && std::strcmp(e, "table") == 0) ? 0 : 1;
-  }
-  return cached == 1;
+enum class OutputMode { Tsv, TsvStatus, Table };
+
+OutputMode output_mode() {
+  static const OutputMode mode = [] {
+    const char* value = std::getenv("MVDB_OUT");
+    if (value && std::strcmp(value, "tsv-status") == 0) return OutputMode::TsvStatus;
+    if (value && std::strcmp(value, "table") == 0) return OutputMode::Table;
+    return OutputMode::Tsv;
+  }();
+  return mode;
 }
 
+bool tsv_mode() { return output_mode() != OutputMode::Table; }
+
 void emit_ok(const char* what, std::string* out) {
-  if (!tsv_mode()) *out += std::string("Query OK, ") + what + "\n";
+  if (output_mode() != OutputMode::Tsv) *out += std::string("Query OK, ") + what + "\n";
 }
 
 void emit_dml(int64_t n, std::string* out) {
-  if (tsv_mode()) return;
+  if (output_mode() == OutputMode::Tsv) return;
   *out += "Query OK, " + std::to_string(n) + " row" + (n == 1 ? "" : "s") + " affected\n";
 }
 

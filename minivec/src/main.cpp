@@ -102,6 +102,7 @@ int main(int argc, char** argv) {
     if (std::strcmp(argv[i], "--data") == 0 && i + 1 < argc) data_dir = argv[++i];
     else if (std::strncmp(argv[i], "--data=", 7) == 0) data_dir = argv[i] + 7;
     else if (std::strcmp(argv[i], "--mode") == 0 && i+1<argc) mode=argv[++i];
+    else if (std::strncmp(argv[i], "--mode=", 7) == 0) mode = argv[i] + 7;
     else { std::fprintf(stderr,"unknown or incomplete option: %s\n",argv[i]);return 2; }
   }
 
