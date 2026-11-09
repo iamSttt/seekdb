@@ -1,0 +1,30 @@
+aef664f6e4345a995478c326f520a986521e9dd0fda160f3bc4eb25f040577d4  old/builder/kaniko/minivec-image.tar
+image config SHA256: 0519ab342590c0357c83d6dca2293ad1c3fe2ce991305d40fd85e2c83cb03ba6
+Docker archive metadata and layers verified
+  Machine:                           Advanced Micro Devices X86-64
+No dynamic interpreter
+minivec ready data=/data
+minivec ready data=/data
+PASS image launch, live stdin, quoted delimiters, fragmented SQL, EOF and restart
+PASS distance ties use ascending primary key
+PASS non-projected ordering and exact BIGINT order
+PASS filter before top-k and empty limit
+PASS quoted vector-like VARCHAR preserves spelling
+PASS Unicode codepoint length and order
+PASS failed explicit and implicit INSERT are atomic
+PASS finite float32 endpoints do not overflow distance
+PASS 200-operation independent transaction model
+PASS 45 filtered and unfiltered TopK oracle queries
+PASS fragmented multiline statement preserves WHERE
+RESULT 10 independent regression groups passed
+[01_basic_crud.sql] ok (13 lines)
+[02_pk_duplicate.sql] ok (12 lines)
+[03_varchar_utf8.sql] ok (11 lines)
+[04_vector_l2.sql] ok (18 lines)
+[05_filtered_topk.sql] ok (17 lines)
+[06_update_delete.sql] ok (16 lines)
+[07_txn_commit_rollback.sql] ok (16 lines)
+[08_restart_persistence.sql] ok (26 lines)
+[09_directives.sql] ok (20 lines)
+
+9 case(s) passed

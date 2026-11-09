@@ -10,6 +10,18 @@ docker build --platform linux/amd64 -t minivec .
 docker run --rm -i -v minivec-data:/data minivec
 ```
 
+Run the live stdin and restart smoke test on Linux with a disposable volume:
+
+```sh
+volume=$(docker volume create)
+python3 minivec/tests/container_smoke.py -- \
+  docker run --rm -i --network none -v "$volume:/data" minivec
+docker volume rm "$volume"
+```
+
+See [container validation](validation/container-build.md) for the verified
+build, runtime checks and official protocol availability.
+
 The Dockerfile pins the GCC 13.3.0 build image by digest and produces a static
 binary in a scratch runtime. There are no runtime network or package-manager
 dependencies. The program never starts a network listener. All database, WAL,
