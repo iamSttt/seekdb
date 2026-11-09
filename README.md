@@ -54,8 +54,12 @@ directory and building the executable:
 python3 minivec/tools/run_public_cases.py --binary minivec/minivec --cases /path/to/mysqltest
 ```
 
-The runner validates affected rows using the image's `tsv-status` mode and
-cross-checks query results in `tsv` mode.
+The runner sends SQL one statement at a time in `tsv-status` mode with stdin
+open, and cross-checks query results in batch `tsv` mode. Restart directives
+use SIGTERM and reuse the data directory. Since the local adapter has no
+result terminator, these small-fixture tests use a 25 ms output quiet window
+to collect each response. This is a local check, separate from verification
+against the official driver. `--batch-status` retains the former batch check.
 
 The image accepts semicolon-terminated SQL on stdin. Queries return
 tab-separated headers and rows on stdout. Successful changes and transaction
@@ -156,6 +160,11 @@ count and the default final-version selection; explicitly select the final commi
 observed evidence. Agent reasoning, implementation and tests are not represented
 as student-authored understanding. The inherited vector.cpp IVF implementation is
 experimental, covered separately by unit tests, and not used by the SQL executor.
+
+The follow-up [interactive checks](validation/interactive-gate.md) cover malformed
+vector framing, failed row-cache/WAL writes, and a 50,000-row disk-backed index.
+Run the latter on Linux with
+`python3 minivec/tests/spilled_index.py --binary /path/to/minivec`.
 
 ## Integration with intermediate remote work
 

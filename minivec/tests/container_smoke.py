@@ -45,6 +45,19 @@ def expect(db, expected):
         assert expected.startswith(received), (expected, received)
 
 
+def expect_error(db, code, detail):
+    received = bytearray()
+    deadline = time.monotonic() + 10
+    while not received.endswith(b"\n"):
+        remaining = max(0, deadline - time.monotonic())
+        assert select.select([db.stdout], [], [], remaining)[0], bytes(received)
+        data = os.read(db.stdout.fileno(), 1)
+        assert data, f"unexpected EOF: {received!r}"
+        received.extend(data)
+    assert received.startswith(f"ERROR {code} (42000): ".encode()), received
+    assert detail in received, received
+
+
 def smoke(command):
     table = "image_smoke_" + uuid.uuid4().hex
     ok = b"Query OK, 0 rows affected\n"
@@ -77,6 +90,39 @@ def smoke(command):
         send(db, f"WHERE id=1; /* a comment with ; */ SELECT id,s FROM {table} ORDER BY id;\n")
         expect(db, one + b"id\ts\n1\tchanged\n2\tkeep\n")
 
+        vectors = table + "_vectors"
+        injected = table + "_injected"
+        send(db, f"CREATE TABLE {vectors}(id BIGINT PRIMARY KEY,v VECTOR(3));\n")
+        expect(db, ok)
+        # A quoted vector and its closing quote cross separate pipe writes.
+        send(db, f"INSERT INTO {vectors} VALUES(1,'[1,")
+        time.sleep(0.05)
+        send(db, "2,3]'")
+        time.sleep(0.05)
+        send(db, ");\n")
+        expect(db, one)
+        send(db, f"INSERT INTO {vectors} VALUES(2,[4,")
+        time.sleep(0.05)
+        send(db, "5,6]);\n")
+        expect(db, one)
+        # Bare-vector tokenization treats these as data, not quotes/comments
+        # or statement delimiters. Malformed vectors must not stall the pipe
+        # or execute the CREATE embedded between their brackets.
+        bad_vectors = ("'", '"', "`", "/*", "--", "#", "[1,2]",
+                       f"0; CREATE TABLE {injected}(id BIGINT PRIMARY KEY);")
+        for body in bad_vectors:
+            send(db, f"INSERT INTO {vectors} VALUES(3,[")
+            time.sleep(0.01)
+            send(db, body)
+            time.sleep(0.01)
+            send(db, f"]); SELECT id FROM {vectors} ORDER BY id;\n")
+            expect_error(db, 1064, b"invalid vector literal")
+            expect(db, b"id\n1\n2\n")
+        # This must succeed without IF NOT EXISTS: the embedded CREATE above
+        # was part of the rejected literal and must not have changed the DB.
+        send(db, f"CREATE TABLE {injected}(id BIGINT PRIMARY KEY);\n")
+        expect(db, ok)
+
         send(db, "BEGIN;\n")
         expect(db, ok)
         send(db, f"INSERT INTO {table} VALUES(3,'partial'),(1,'duplicate');\n")
@@ -102,6 +148,7 @@ def smoke(command):
             expect(db, expected)
 
     print("PASS image launch, live status, quoted delimiters, fragmented SQL, EOF and restart")
+    print("PASS fragmented vectors, malformed-vector recovery and embedded SQL isolation")
     print("PASS escaped TSV fields across bounded and streaming result paths")
 
 

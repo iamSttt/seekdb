@@ -54,6 +54,13 @@ class StatementScanner {
             else state_ = State::Sql;
           }
           break;
+        case State::Vector:
+          // Match tokenize(): a bare vector consumes balanced brackets;
+          // quotes, comments and semicolons inside it are ordinary data.
+          // Invalid contents are rejected by the parser after the frame ends.
+          if (c == '[') ++vector_depth_;
+          else if (c == ']' && --vector_depth_ == 0) state_ = State::Sql;
+          break;
         case State::Sql:
           if ((c == '-' || c == '/') && !has_next) return std::string::npos;
           if (c == '-' && next == '-') {
@@ -67,6 +74,9 @@ class StatementScanner {
           } else if (c == '\'' || c == '"' || c == '`') {
             state_ = State::Quoted;
             quote_ = c;
+          } else if (c == '[') {
+            state_ = State::Vector;
+            vector_depth_ = 1;
           } else if (c == ';') {
             return cursor_++;
           }
@@ -79,9 +89,10 @@ class StatementScanner {
   void discard_prefix(size_t count) { cursor_ -= count; }
 
  private:
-  enum class State { Sql, Quoted, LineComment, BlockComment };
+  enum class State { Sql, Quoted, Vector, LineComment, BlockComment };
   State state_ = State::Sql;
   size_t cursor_ = 0;
+  size_t vector_depth_ = 0;
   char quote_ = '\0';
 };
 

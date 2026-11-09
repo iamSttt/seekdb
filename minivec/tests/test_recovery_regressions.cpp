@@ -72,18 +72,21 @@ static void durable_format_limits(const std::string& dir) {
   assert(keys(d,"wide")==std::vector<int64_t>({1}));
 }
 
-static void failed_spill_update(const std::string& dir) {
+static void failed_payload_writes(const std::string& dir) {
   Database d;
   std::string error;
   int code = 0;
   assert(d.open(dir, &error));
   ok(d, "CREATE TABLE spill (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
   ok(d, "CREATE TABLE marker (id BIGINT PRIMARY KEY)");
+  ok(d, "CREATE TABLE resident (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
   ok(d, "INSERT INTO spill VALUES (1,'first')");
   ok(d, "UPDATE spill SET s='" + std::string(8192, 'x') + "'");
   ok(d, "UPDATE spill SET s='kept'");
-  assert(d.table("spill")->payload_offsets[0] > 4096);
+  const uint64_t kept_offset = d.table("spill")->payload_offsets[0];
+  assert(kept_offset > 4096);
   assert(d.checkpoint(&error));
+  const auto wal_size = [&] { return std::filesystem::file_size(dir + "/data.log"); };
   const auto expect_kept = [&] {
     size_t count = 0;
     d.scan("spill", {}, [&](const Row& row) {
@@ -94,7 +97,7 @@ static void failed_spill_update(const std::string& dir) {
     assert(count == 1);
   };
 
-  // Keep enough space in the empty WAL for a small UPDATE, while writes to
+  // Keep enough space in the empty WAL for a small INSERT or UPDATE, while writes to
   // the end of the larger spilled row cache fail with EFBIG.
   struct rlimit original;
   assert(::getrlimit(RLIMIT_FSIZE, &original) == 0);
@@ -106,20 +109,52 @@ static void failed_spill_update(const std::string& dir) {
 
   assert(d.update_rows("spill", {}, {{"s", Value::ofStr("failed")}}, &error, &code) == -1);
   assert(code == static_cast<int>(ErrCode::TXN));
-  assert(std::ifstream(dir + "/data.log", std::ios::binary | std::ios::ate).tellg() == 0);
+  assert(!d.insert("spill", {Value::ofInt(2), Value::ofStr("failed")}, &error, &code));
+  assert(code == static_cast<int>(ErrCode::TXN));
+  assert(!run(d, "INSERT INTO spill VALUES (2,'failed')"));
+  assert(wal_size() == 0);
   expect_kept();
+
+  // A resident row can be staged even though its WAL write fails partway.
+  assert(!d.insert("resident", {Value::ofInt(1), Value::ofStr(std::string(8192, 'x'))},
+                   &error, &code));
+  assert(code == static_cast<int>(ErrCode::TXN) && error == "WAL write failed");
+  assert(keys(d, "resident").empty() && wal_size() == 0);
+
   ok(d, "BEGIN");
   ok(d, "INSERT INTO marker VALUES (2)");
+  const auto before_commit = wal_size();
   assert(!run(d, "UPDATE spill SET s='failed'"));
+  assert(!run(d, "INSERT INTO spill VALUES (2,'failed')"));
+  assert(wal_size() == before_commit);
   expect_kept();
   assert(keys(d, "marker") == std::vector<int64_t>{2});
   ok(d, "COMMIT");
 
+  // After the kept record, the cache cap allows one more short row and a
+  // partial second write. Both rows of the failed batch must disappear.
+  limited.rlim_cur = kept_offset + 64;
+  assert(::setrlimit(RLIMIT_FSIZE, &limited) == 0);
+  const auto committed_size = wal_size();
+  ok(d, "BEGIN");
+  ok(d, "INSERT INTO marker VALUES (3)");
+  const auto before_batch = wal_size();
+  assert(!run(d, "INSERT INTO spill VALUES (2,'fits'),(3,'" + std::string(128, 'x') + "')"));
+  assert(wal_size() == before_batch);
+  expect_kept();
+  assert((keys(d, "marker") == std::vector<int64_t>{2, 3}));
+  ok(d, "ROLLBACK");
+  assert(wal_size() == committed_size);
+
   assert(::setrlimit(RLIMIT_FSIZE, &original) == 0);
   assert(::signal(SIGXFSZ, previous_handler) != SIG_ERR);
+  ok(d, "INSERT INTO spill VALUES (2,'retry')");
+  assert((keys(d, "spill") == std::vector<int64_t>{1, 2}));
+  ok(d, "DELETE FROM spill WHERE id=2");
   d.close();
   assert(d.open(dir, &error));
   assert(keys(d, "marker") == std::vector<int64_t>{2});
+  assert(keys(d, "resident").empty());
   expect_kept();
 }
 
@@ -166,7 +201,6 @@ static void update_undo_payloads(const std::string& dir) {
   d.close(); assert(d.open(dir,&e)); expect_value("durable");
   assert(d.checkpoint(&e)); d.close();
   assert(d.open(dir,&e)); expect_value("durable");
-  failed_spill_update(dir + "/cache-write-failure");
 }
 
 static void discard_uncommitted_wal_tail(const std::string& dir) {
@@ -273,6 +307,8 @@ int main() {
   std::cout << "PASS durable format limits and later commits\n";
   update_undo_payloads(dir+"/update-undo");
   std::cout << "PASS spilled update Undo, savepoints and table generations\n";
+  failed_payload_writes(dir + "/cache-write-failure");
+  std::cout << "PASS spilled INSERT and UPDATE failures, partial WAL and transaction boundaries\n";
   discard_uncommitted_wal_tail(dir+"/discard-wal-tail");
   std::cout << "PASS recovery reclaims complete and torn uncommitted WAL tails\n";
 }

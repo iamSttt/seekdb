@@ -276,6 +276,12 @@ uint64_t row_heap_bytes(const Row& row) {
   return n;
 }
 
+void discard_appended_row(Table& table) {
+  if (table.payload_store) table.payload_offsets.pop_back();
+  else table.payload_bytes -= row_heap_bytes(table.rows.back());
+  table.rows.pop_back();
+}
+
 void positional_io(int fd, void* data, size_t size, uint64_t off, bool writing) {
   char* p = static_cast<char*>(data);
   while (size) {
@@ -735,15 +741,30 @@ const Row& Table::read_row(size_t slot, Row& scratch) const {
 }
 
 void Table::append_row(Row row) {
-  vector_index.reset();
   if (payload_store) {
-    payload_offsets.push_back(store_payload(*payload_store,row));
-    Row meta; meta.rid=row.rid; rows.push_back(std::move(meta));
+    const uint64_t before = payload_store->end;
+    Row meta;
+    meta.rid = row.rid;
+    rows.push_back(std::move(meta));
+    try {
+      payload_offsets.push_back(store_payload(*payload_store, row));
+    } catch (...) {
+      rows.pop_back();
+      payload_store->end = before;
+      throw;
+    }
   } else {
-    payload_bytes+=row_heap_bytes(row);
+    const uint64_t bytes = row_heap_bytes(row);
     rows.push_back(std::move(row));
-    spill_payloads(*this);
+    payload_bytes += bytes;
+    try {
+      spill_payloads(*this);
+    } catch (...) {
+      discard_appended_row(*this);
+      throw;
+    }
   }
+  vector_index.reset();
 }
 
 void Table::replace_row(size_t slot, Row row) {
@@ -1038,19 +1059,27 @@ void Database::apply_insert(const std::string& t, std::vector<Value> vals, int64
   if (tb.schema.pk_idx >= 0 && static_cast<size_t>(tb.schema.pk_idx) < vals.size())
     key = vals[static_cast<size_t>(tb.schema.pk_idx)].i;
 
-  auto prev = tb.pk_pos.find(key);
-  if (prev != tb.pk_pos.end()) {
-    if (prev->second < tb.dead.size()) tb.dead[prev->second] = 1;  // last writer wins
-    tb.pk_pos.erase(prev);
-  }
+  const size_t slot = tb.rows.size();
   Row row;
-  row.rid = tb.next_rid++;
+  row.rid = tb.next_rid;
   row.vals = std::move(vals);
   tb.append_row(std::move(row));
-  tb.dead.push_back(0);
-  tb.pk_pos[key] = tb.rows.size() - 1;
+  try {
+    enforce_payload_budget(tables_);
+    tb.dead.push_back(0);
+    const auto [pos, inserted] = tb.pk_pos.try_emplace(key, slot);
+    if (!inserted) {
+      if (pos->second < slot) tb.dead[pos->second] = 1;  // replay: last writer wins
+      pos->second = slot;
+    }
+  } catch (...) {
+    if (tb.dead.size() > slot) tb.dead.pop_back();
+    if (tb.payload_store) tb.payload_store->end = tb.payload_offsets.back();
+    discard_appended_row(tb);
+    throw;
+  }
+  ++tb.next_rid;
   if (pk) *pk = key;
-  enforce_payload_budget(tables_);
 }
 
 bool Database::append_wal(const std::string& rec) {
@@ -1099,10 +1128,9 @@ bool Database::insert(const std::string& t, std::vector<Value> vals, std::string
     return false;
   }
 
-  // Write-ahead: the record hits the log before the row becomes visible.
+  const uint64_t lsn = wal_rows_ + 1;
   std::string rec;
   {
-    const uint64_t lsn = ++wal_rows_;
     std::string pay;
     pay.reserve(64 + vals.size() * 16);
     put_u8(pay, REC_INSERT);
@@ -1118,29 +1146,43 @@ bool Database::insert(const std::string& t, std::vector<Value> vals, std::string
     rec.append(reinterpret_cast<const char*>(&crc), 4);
     rec.append(pay);
   }
-  const uint64_t before = wal_bytes_;
-  append_wal(rec);
-  if (wal_ && wal_bytes_ - before != rec.size()) {
-    set_err(err, code, ErrCode::TXN, "WAL write failed");
-    return false;
-  }
-  if (!txn_active_ && !fsync_wal()) {
-    set_err(err, code, ErrCode::TXN, "WAL fdatasync failed");
+  // Prepare the rebuildable payload before logging the insert. A cache write
+  // can fail even when the authoritative WAL still has space.
+  const size_t undo_mark = undo_.size();
+  Undo u;
+  u.k = Undo::K_INS;
+  u.table = t;
+  u.pk = key;
+  u.slot = tb.rows.size();
+  undo_.push_back(std::move(u));
+  try {
+    apply_insert(t, std::move(vals), nullptr);
+  } catch (const std::exception& ex) {
+    undo_.pop_back();
+    set_err(err, code, ErrCode::TXN, std::string("cannot write insert payload: ") + ex.what());
     return false;
   }
 
-  int64_t got = 0;
-  apply_insert(t, std::move(vals), &got);
-  if (txn_active_) {
-    Undo u;
-    u.k = Undo::K_INS;
-    u.table = t;
-    u.pk = got;
-    u.slot = tables_.find(t)->second.rows.size() - 1;
-    undo_.push_back(std::move(u));
-  } else if (wal_bytes_ > kAutoCheckpointBytes) {
-    std::string ignored;
-    checkpoint(&ignored);  // best effort; the row is already durable
+  const uint64_t before = wal_bytes_;
+  const bool wrote = append_wal(rec);
+  if (!wrote || (!txn_active_ && !fsync_wal())) {
+    if (tb.payload_store) tb.payload_store->end = tb.payload_offsets.back();
+    undo_to(undo_mark);
+    --tb.next_rid;
+    // The statement wrapper restores the full statement boundary. Direct
+    // callers need the failed insert's own WAL suffix removed here.
+    if (!stmt_active_ && wal_bytes_ != before && !truncate_wal(before, wal_rows_, err, code))
+      return false;
+    set_err(err, code, ErrCode::TXN, wrote ? "WAL fdatasync failed" : "WAL write failed");
+    return false;
+  }
+  wal_rows_ = lsn;
+  if (!txn_active_) {
+    undo_.pop_back();
+    if (wal_bytes_ > kAutoCheckpointBytes) {
+      std::string ignored;
+      checkpoint(&ignored);  // best effort; the row is already durable
+    }
   }
   return true;
 }
@@ -1502,8 +1544,7 @@ void Database::undo_to(size_t mark) {
         }
         // Undo runs in reverse insertion order; reclaim appended payloads too.
         if (!tb.rows.empty() && u.slot == tb.rows.size() - 1) {
-          if (tb.payload_store) tb.payload_offsets.pop_back();
-          tb.rows.pop_back();
+          discard_appended_row(tb);
           tb.dead.pop_back();
         }
         break;
