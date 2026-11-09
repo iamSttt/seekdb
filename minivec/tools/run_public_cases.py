@@ -43,7 +43,13 @@ def run_segment(binary, data, mode, search_mode, statements):
                          input="\n".join(sql for _, sql, _ in statements) + "\n",
                          encoding="utf-8", capture_output=True, env=env, timeout=30)
     require(run.returncode == 0, f"exit {run.returncode}: {run.stderr}")
-    lines = iter(run.stdout.splitlines())
+    lines = iter(run.stdout.removesuffix("\n").split("\n") if run.stdout else [])
+    escapes = {"t": "\t", "n": "\n", "r": "\r", "0": "\0", "\\": "\\"}
+    def fields(line):
+        values = line.split("\t")
+        if mode == "tsv-status":
+            return [re.sub(r"\\([tnr0\\])", lambda m: escapes[m[1]], value) for value in values]
+        return values
     for index, statement, result in statements:
         try:
             if "error" in result:
@@ -53,8 +59,8 @@ def run_segment(binary, data, mode, search_mode, statements):
                 require(error, f"expected {result['error']!r}, got {line!r}")
             elif "columns" in result:
                 count = len(result["rows"])
-                header = next(lines).split("\t")
-                rows = [next(lines).split("\t") for _ in range(count)]
+                header = fields(next(lines))
+                rows = [fields(next(lines)) for _ in range(count)]
                 require(header == result["columns"], f"unexpected column names {header!r}")
                 compare_rows(rows, result["rows"], result.get("unordered", False))
             elif mode == "tsv-status":

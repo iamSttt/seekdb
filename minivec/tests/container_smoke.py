@@ -88,7 +88,21 @@ def smoke(command):
         send(db, f"SELECT id,s FROM {table} ORDER BY id;\n")
         expect(db, b"id\ts\n1\tchanged\n2\tkeep\n")
 
+    # Escaped status output preserves column/row boundaries and literal slashes.
+    escaped = table + "_escaped"
+    with session(command) as db:
+        send(db, f"CREATE TABLE {escaped}(id BIGINT PRIMARY KEY,a VARCHAR(32),b VARCHAR(32));\n")
+        expect(db, ok)
+        send(db, f"INSERT INTO {escaped} VALUES "
+             r"(1,'x\t','y'),(2,'x','\ty'),(3,'line\nbreak','slash\\t\0\r'),(4,'','');" + "\n")
+        expect(db, b"Query OK, 4 rows affected\n")
+        expected = b"id\ta\tb\n1\tx\\t\ty\n2\tx\t\\ty\n3\tline\\nbreak\tslash\\\\t\\0\\r\n4\t\t\n"
+        for limit in (" LIMIT 10", " LIMIT 4096", ""):
+            send(db, f"SELECT id,a,b FROM {escaped} ORDER BY id{limit};\n")
+            expect(db, expected)
+
     print("PASS image launch, live status, quoted delimiters, fragmented SQL, EOF and restart")
+    print("PASS escaped TSV fields across bounded and streaming result paths")
 
 
 if __name__ == "__main__":

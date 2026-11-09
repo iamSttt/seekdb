@@ -43,7 +43,6 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -154,6 +153,12 @@ struct Rd {
     if (left() < n) { bad = true; return false; }
     return true;
   }
+  bool read(void* out, size_t n) {
+    if (!need(n)) return false;
+    if (n) std::memcpy(out, p, n);
+    p += n;
+    return true;
+  }
   uint8_t u8() {
     if (!need(1)) return 0;
     return *p++;
@@ -220,7 +225,8 @@ void put_value(std::string& b, const Value& v) {
   }
 }
 
-bool get_value(Rd& r, Value* v) {
+template <class Reader>
+bool get_value(Reader& r, Value* v) {
   uint8_t t = r.u8();
   if (r.bad) return false;
   switch (static_cast<Type>(t)) {
@@ -240,9 +246,7 @@ bool get_value(Rd& r, Value* v) {
         return false;
       }
       v->v.resize(n);
-      std::memcpy(v->v.data(), r.p, static_cast<size_t>(n) * 4);
-      r.p += static_cast<size_t>(n) * 4;
-      return true;
+      return r.read(v->v.data(), static_cast<size_t>(n) * 4);
     }
     default:
       r.bad = true;
@@ -255,7 +259,8 @@ void put_row(std::string& b, const Row& row) {
   for (const Value& v : row.vals) put_value(b, v);
 }
 
-bool get_row(Rd& r, Row* row) {
+template <class Reader>
+bool get_row(Reader& r, Row* row) {
   uint32_t n = r.u32();
   if (r.bad || n > kMaxCols) { r.bad = true; return false; }
   row->vals.clear();
@@ -340,7 +345,8 @@ void put_schema(std::string& b, const TableSchema& s) {
   put_i32(b, s.vec_idx);
 }
 
-bool get_schema(Rd& r, TableSchema* s) {
+template <class Reader>
+bool get_schema(Reader& r, TableSchema* s) {
   if (!r.str(&s->name)) return false;
   uint32_t n = r.u32();
   if (r.bad || n > kMaxCols) { r.bad = true; return false; }
@@ -451,8 +457,13 @@ struct RCond {
 struct Pred {
   std::vector<RCond> c;
   std::vector<Value> owned;  // coerced literals; reserved so pointers stay valid
-  bool never = false;        // predicate can never match (unknown column / bad type)
+  bool never = false;        // a scalar literal cannot be coerced to its column type
 };
+
+void set_err(std::string* err, int* code, ErrCode c, const std::string& msg) {
+  if (err) *err = msg;
+  if (code) *code = static_cast<int>(c);
+}
 
 bool parse_i64(const std::string& s, int64_t* out) {
   if (s.empty()) return false;
@@ -480,8 +491,28 @@ bool parse_i64(const std::string& s, int64_t* out) {
   return true;
 }
 
-// Coerces `lit` to the column type. Returns false when the comparison can never
-// hold (type mismatch that is not convertible).
+bool check_vector_value(const Column& column, const Value& value, std::string* err) {
+  if (value.type != Type::VECTOR) {
+    if (err) *err = "column '" + column.name + "': expected VECTOR";
+    return false;
+  }
+  if (value.v.size() != static_cast<size_t>(column.len)) {
+    if (err)
+      *err = "column '" + column.name + "': vector dimension " +
+             std::to_string(value.v.size()) + " != " + std::to_string(column.len);
+    return false;
+  }
+  for (float f : value.v) {
+    if (!std::isfinite(f)) {
+      if (err) *err = "column '" + column.name + "': vector contains NaN/Inf";
+      return false;
+    }
+  }
+  return true;
+}
+
+// Coerces a validated predicate literal to the column type. Returns false
+// when a scalar conversion cannot succeed.
 bool coerce_literal(Type ct, const Value& in, Value* out) {
   switch (ct) {
     case Type::BIGINT:
@@ -509,42 +540,46 @@ bool coerce_literal(Type ct, const Value& in, Value* out) {
       }
       return false;
     case Type::VECTOR:
-      if (in.type != Type::VECTOR) return false;
       *out = in;
       return true;
   }
   return false;
 }
 
-void compile_pred(const Table& t, const std::vector<Cond>& conds, Pred* out) {
-  out->never = false;
-  out->c.clear();
-  out->owned.clear();
-  if (conds.empty()) return;
-  out->c.reserve(conds.size());
-  out->owned.reserve(conds.size());  // no reallocation => &owned.back() stays valid
+bool compile_pred(const Table& t, const std::vector<Cond>& conds, Pred* out,
+                  std::string* err = nullptr, int* code = nullptr) {
+  if (out) {
+    out->c.reserve(conds.size());
+    out->owned.reserve(conds.size());  // no reallocation => &owned.back() stays valid
+  }
   for (const Cond& cond : conds) {
-    int idx = t.schema.find(cond.column);
+    const int idx = t.schema.find(cond.column);
     if (idx < 0) {
-      out->never = true;  // unknown column: nothing can match
-      out->c.clear();
-      return;
+      set_err(err, code, ErrCode::NO_SUCH_COLUMN,
+              "Unknown column '" + cond.column + "' in 'where clause'");
+      return false;
     }
-    Type ct = t.schema.cols[static_cast<size_t>(idx)].type;
+    const Column& column = t.schema.cols[static_cast<size_t>(idx)];
+    if (column.type == Type::VECTOR && !check_vector_value(column, cond.value, err)) {
+      if (code) *code = static_cast<int>(ErrCode::BAD_VALUE);
+      return false;
+    }
+    // Still validate later terms after a scalar comparison can never match.
+    if (!out || out->never) continue;
     Value coerced;
-    if (!coerce_literal(ct, cond.value, &coerced)) {
+    if (!coerce_literal(column.type, cond.value, &coerced)) {
       out->never = true;
-      out->c.clear();
-      return;
+      continue;
     }
     out->owned.push_back(std::move(coerced));
     RCond rc;
     rc.col = static_cast<uint32_t>(idx);
     rc.op = static_cast<uint8_t>(cond.op);
-    rc.vt = static_cast<uint8_t>(ct);
+    rc.vt = static_cast<uint8_t>(column.type);
     rc.lit = &out->owned.back();
     out->c.push_back(rc);
   }
+  return true;
 }
 
 inline int cmp_vecf(const std::vector<float>& a, const std::vector<float>& b) {
@@ -635,32 +670,12 @@ bool check_value(const Column& c, Value* v, std::string* err) {
       }
       return true;
     case Type::VECTOR:
-      if (v->type != Type::VECTOR) {
-        if (err) *err = "column '" + c.name + "': expected VECTOR";
-        return false;
-      }
-      if (static_cast<int32_t>(v->v.size()) != c.len) {
-        if (err)
-          *err = "column '" + c.name + "': vector dimension " +
-                 std::to_string(v->v.size()) + " != " + std::to_string(c.len);
-        return false;
-      }
-      for (float f : v->v) {
-        if (!std::isfinite(f)) {
-          if (err) *err = "column '" + c.name + "': vector contains NaN/Inf";
-          return false;
-        }
-      }
+      if (!check_vector_value(c, *v, err)) return false;
       std::string().swap(v->s);
       return true;
   }
   if (err) *err = "unknown column type";
   return false;
-}
-
-void set_err(std::string* err, int* code, ErrCode c, const std::string& msg) {
-  if (err) *err = msg;
-  if (code) *code = static_cast<int>(c);
 }
 
 // Check before constructing or narrowing the record length. UPDATE has the
@@ -1161,14 +1176,8 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
     }
     setvals.push_back(std::move(v));
   }
-  for (const Cond& cond : conds) {
-    if (sc.find(cond.column) < 0) {
-      set_err(err,code,ErrCode::NO_SUCH_COLUMN,"Unknown column '"+cond.column+"'");
-      return -1;
-    }
-  }
   Pred pr;
-  compile_pred(tb, conds, &pr);
+  if (!compile_pred(tb, conds, &pr, err, code)) return -1;
   if (pr.never) return 0;
 
   int64_t affected = 0;
@@ -1300,16 +1309,10 @@ int64_t Database::delete_rows(const std::string& t, const std::vector<Cond>& con
     return -1;
   }
   Table& tb = it->second;
-  tb.vector_index.reset();
-  for (const Cond& cond : conds) {
-    if (tb.schema.find(cond.column) < 0) {
-      set_err(err,code,ErrCode::NO_SUCH_COLUMN,"Unknown column '"+cond.column+"'");
-      return -1;
-    }
-  }
   Pred pr;
-  compile_pred(tb, conds, &pr);
+  if (!compile_pred(tb, conds, &pr, err, code)) return -1;
   if (pr.never) return 0;
+  tb.vector_index.reset();
 
   int64_t affected = 0;
   size_t first=0,last=tb.rows.size();
@@ -1379,8 +1382,7 @@ void Database::scan(const std::string& t, const std::vector<Cond>& conds,
   if (it == tables_.end()) return;
   const Table& tb = it->second;
   Pred pr;
-  compile_pred(tb, conds, &pr);
-  if (pr.never) return;
+  if (!compile_pred(tb, conds, &pr) || pr.never) return;
 
   const uint8_t* dead = tb.dead.data();
   const size_t n = tb.rows.size();
@@ -1679,8 +1681,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
     return;
   }
   Pred predicate;
-  compile_pred(table,conds,&predicate);
-  if (predicate.never) return;
+  if (!compile_pred(table, conds, &predicate) || predicate.never) return;
   build_vector_index(table);
   table.vector_index->scan([&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
     if (slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
@@ -1694,137 +1695,200 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
 }
 
 // ------------------------------------------------------------- durability --
+namespace {
+
+// Decode the original format without mapping the entire file. The byte
+// budget excludes the trailing checksum, which is validated before decoding.
+class SnapshotReader {
+ public:
+  SnapshotReader(FILE* file, size_t size) : file_(file), remaining_(size) {}
+
+  size_t left() const { return remaining_; }
+
+  bool need(size_t n) {
+    if (n > remaining_) bad = true;
+    return !bad;
+  }
+
+  bool read(void* out, size_t n) {
+    if (!need(n)) return false;
+    auto* dest = static_cast<uint8_t*>(out);
+    while (n != 0) {
+      if (cursor_ == filled_) {
+        cursor_ = 0;
+        filled_ = std::min(remaining_, sizeof(buffer_));
+        if (std::fread(buffer_, 1, filled_, file_) != filled_) {
+          bad = true;
+          return false;
+        }
+      }
+      const size_t take = std::min(n, filled_ - cursor_);
+      std::memcpy(dest, buffer_ + cursor_, take);
+      dest += take;
+      cursor_ += take;
+      remaining_ -= take;
+      n -= take;
+    }
+    return true;
+  }
+
+  uint8_t u8() {
+    uint8_t value = 0;
+    read(&value, 1);
+    return value;
+  }
+
+  uint32_t u32() {
+    uint8_t bytes[4];
+    return read(bytes, sizeof(bytes)) ? Rd(bytes, sizeof(bytes)).u32() : 0;
+  }
+
+  uint64_t u64() {
+    uint8_t bytes[8];
+    return read(bytes, sizeof(bytes)) ? Rd(bytes, sizeof(bytes)).u64() : 0;
+  }
+
+  int64_t i64() { return static_cast<int64_t>(u64()); }
+  int32_t i32() { return static_cast<int32_t>(u32()); }
+
+  bool str(std::string* out) {
+    const uint32_t n = u32();
+    if (n > kMaxStr || !need(n)) {
+      bad = true;
+      return false;
+    }
+    out->resize(n);
+    return read(out->data(), n);
+  }
+
+  bool bad = false;
+
+ private:
+  FILE* file_;
+  size_t remaining_;
+  size_t cursor_ = 0;
+  size_t filled_ = 0;
+  uint8_t buffer_[64 * 1024];
+};
+
+}  // namespace
+
 bool Database::load_snapshot(std::string* err) {
-  // The snapshot and committed WAL are the sole source of truth. A separately
-  // written catalog may describe an uncommitted or newer table generation.
   tables_.clear();
   wal_rows_ = 0;
 
-  // 2. snapshot
   const std::string path = dir_ + "/snapshot.bin";
-  struct stat st;
-  if (::stat(path.c_str(), &st) != 0) return true;  // no checkpoint yet
+  std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen(path.c_str(), "rb"), std::fclose);
+  if (!file) {
+    if (errno == ENOENT) return true;
+    if (err) *err = "cannot open " + path + ": " + std::strerror(errno);
+    return false;
+  }
+  struct stat st{};
+  if (::fstat(::fileno(file.get()), &st) != 0) {
+    if (err) *err = "cannot determine snapshot size";
+    return false;
+  }
   if (st.st_size < 20) {
     if (err) *err = "snapshot.bin: truncated";
     return false;
   }
-  // Verify the trailing CRC in a streaming pass, then map reclaimable file pages.
+  const size_t payload_size = static_cast<size_t>(st.st_size) - 4;
+  // Verify the CRC before allocating tables or creating their spill files.
   {
-    FILE* f = std::fopen(path.c_str(), "rb");
-    if (!f) {
-      if (err) *err = "cannot open " + path + ": " + std::strerror(errno);
-      return false;
-    }
-    const size_t limit = static_cast<size_t>(st.st_size) - 4;
     uint32_t crc = 0xFFFFFFFFu;
     char buf[262144];
-    size_t got_total = 0;
-    while (got_total < limit) {
-      size_t want = std::min(sizeof(buf), limit - got_total);
-      size_t got = std::fread(buf, 1, want, f);
-      if (got == 0) break;
-      crc = crc32_upd(crc, buf, got);
-      got_total += got;
+    size_t remaining = payload_size;
+    while (remaining != 0) {
+      const size_t want = std::min(sizeof(buf), remaining);
+      if (std::fread(buf, 1, want, file.get()) != want) {
+        if (err) *err = "snapshot.bin: short read";
+        return false;
+      }
+      crc = crc32_upd(crc, buf, want);
+      remaining -= want;
     }
-    uint8_t tail[4] = {0, 0, 0, 0};
-    size_t tg = std::fread(tail, 1, 4, f);
-    std::fclose(f);
-    if (got_total != limit || tg != 4) {
+    uint8_t tail[4];
+    if (std::fread(tail, 1, sizeof(tail), file.get()) != sizeof(tail)) {
       if (err) *err = "snapshot.bin: short read";
       return false;
     }
-    uint32_t stored = static_cast<uint32_t>(tail[0]) | (static_cast<uint32_t>(tail[1]) << 8) |
-                      (static_cast<uint32_t>(tail[2]) << 16) |
-                      (static_cast<uint32_t>(tail[3]) << 24);
-    if ((crc ^ 0xFFFFFFFFu) != stored) {
+    if ((crc ^ 0xFFFFFFFFu) != Rd(tail, sizeof(tail)).u32()) {
       if (err) *err = "snapshot.bin: CRC mismatch";
       return false;
     }
   }
+  if (::fseeko(file.get(), 0, SEEK_SET) != 0) {
+    if (err) *err = "cannot rewind snapshot";
+    return false;
+  }
 
-  struct Mapping {
-    void* p=MAP_FAILED; size_t size=0;
-    ~Mapping() { if (p != MAP_FAILED) ::munmap(p,size); }
-  } mapping;
-  const int snap_fd=::open(path.c_str(),O_RDONLY);
-  if (snap_fd < 0) { if (err) *err="cannot open snapshot"; return false; }
-  mapping.size=static_cast<size_t>(st.st_size);
-  mapping.p=::mmap(nullptr,mapping.size,PROT_READ,MAP_PRIVATE,snap_fd,0);
-  ::close(snap_fd);
-  if (mapping.p == MAP_FAILED) { if (err) *err="cannot map snapshot"; return false; }
-  ::madvise(mapping.p,mapping.size,MADV_SEQUENTIAL);
-  Rd r(mapping.p,mapping.size-4);
-  size_t released_pages=0;
-  const size_t page_size=static_cast<size_t>(::sysconf(_SC_PAGESIZE));
+  SnapshotReader r(file.get(), payload_size);
   if (r.u32() != kSnapMagic) {
     if (err) *err = "snapshot.bin: bad magic";
     return false;
   }
   const uint64_t lsn = r.u64();
-  uint32_t ntab = r.u32();
+  const uint32_t ntab = r.u32();
   if (r.bad || ntab > 100000) {
     if (err) *err = "snapshot.bin: bad table count";
     return false;
   }
   for (uint32_t ti = 0; ti < ntab; ++ti) {
-    TableSchema sc;
-    if (!get_schema(r, &sc)) {
+    Table table;
+    table.storage_dir = dir_;
+    if (!get_schema(r, &table.schema) || table.schema.name.empty()) {
       if (err) *err = "snapshot.bin: bad schema";
       return false;
     }
+    const size_t pk_column = static_cast<size_t>(table.schema.pk_idx);
+    if (pk_column >= table.schema.cols.size() ||
+        table.schema.cols[pk_column].type != Type::BIGINT) {
+      if (err) *err = "snapshot.bin: bad primary key column";
+      return false;
+    }
     const int64_t next_rid = r.i64();
-    const bool has_index = r.u8() != 0;
-    uint64_t nrows = r.u64();
-    if (r.bad || nrows > (1ull << 34)) {
+    table.has_index = r.u8() != 0;
+    const uint64_t nrows = r.u64();
+    // Each row has a row ID, field count and at least its BIGINT primary key.
+    constexpr size_t min_row_bytes = 8 + 4 + 1 + 8;
+    if (r.bad || nrows > (1ull << 34) || nrows > r.left() / min_row_bytes) {
       if (err) *err = "snapshot.bin: bad row count";
       return false;
     }
-
-    if (tables_.count(sc.name)) {
-      if (err) *err="snapshot.bin: duplicate table";
+    if (tables_.count(table.schema.name)) {
+      if (err) *err = "snapshot.bin: duplicate table";
       return false;
     }
-    Table fresh;
-    fresh.storage_dir=dir_;
-    fresh.schema=sc;
-    fresh.has_index=has_index;
-    Table* tb=&fresh;
-
-    if (tb) {
-      tb->rows.reserve(static_cast<size_t>(nrows));
-      tb->dead.reserve(static_cast<size_t>(nrows));
-      tb->pk_pos.reserve(static_cast<size_t>(nrows) / 2 + 16);
-      tb->next_rid = next_rid > 0 ? next_rid : 1;
-    }
+    table.rows.reserve(static_cast<size_t>(nrows));
+    table.dead.reserve(static_cast<size_t>(nrows));
+    table.pk_pos.reserve(static_cast<size_t>(nrows) / 2 + 16);
+    table.next_rid = next_rid > 0 ? next_rid : 1;
     for (uint64_t k = 0; k < nrows; ++k) {
       Row row;
       row.rid = r.i64();
-      if (!get_row(r, &row)) {
+      if (!get_row(r, &row) || row.vals.size() != table.schema.cols.size() ||
+          row.vals[pk_column].type != Type::BIGINT || row.rid == INT64_MAX) {
         if (err) *err = "snapshot.bin: bad row";
         return false;
       }
-      const size_t consumed=static_cast<size_t>(r.p-static_cast<const uint8_t*>(mapping.p));
-      const size_t reclaim_until=consumed/page_size*page_size;
-      if (reclaim_until-released_pages >= (4u<<20)) {
-        ::madvise(static_cast<char*>(mapping.p)+released_pages,
-                  reclaim_until-released_pages,MADV_DONTNEED);
-        released_pages=reclaim_until;
+      if (row.rid >= table.next_rid) table.next_rid = row.rid + 1;
+      if (!table.pk_pos.emplace(row.vals[pk_column].i, table.rows.size()).second) {
+        if (err) *err = "snapshot.bin: duplicate primary key";
+        return false;
       }
-      if (!tb) continue;
-      int64_t pk = 0;
-      if (static_cast<size_t>(tb->schema.pk_idx) < row.vals.size())
-        pk = row.vals[static_cast<size_t>(tb->schema.pk_idx)].i;
-      if (row.rid >= tb->next_rid) tb->next_rid = row.rid + 1;
-      tb->pk_pos[pk] = tb->rows.size();
-      tb->append_row(std::move(row));
-      tb->dead.push_back(0);
+      table.append_row(std::move(row));
+      table.dead.push_back(0);
     }
-    if (tb == &fresh && !fresh.schema.name.empty()) {
-      tables_[fresh.schema.name] = std::move(fresh);
-      enforce_payload_budget(tables_);
-    }
+    const std::string table_name = table.schema.name;
+    tables_.emplace(table_name, std::move(table));
+    enforce_payload_budget(tables_);
   }
-  wal_rows_ = lsn;  // LSN of everything contained in the snapshot
+  if (r.bad || r.left() != 0) {
+    if (err) *err = "snapshot.bin: unexpected trailing bytes";
+    return false;
+  }
+  wal_rows_ = lsn;
   return true;
 }
 
@@ -2164,12 +2228,15 @@ bool Database::checkpoint(std::string* err) {
 }
 
 // ---------------------------------------------------------------- conds ----
+bool validate_conditions(const Table& t, const std::vector<Cond>& conds,
+                         std::string* err, int* code) {
+  return compile_pred(t, conds, nullptr, err, code);
+}
+
 bool eval_conds(const Table& t, const Row& r, const std::vector<Cond>& conds) {
   if (conds.empty()) return true;
   Pred pr;
-  compile_pred(t, conds, &pr);
-  if (pr.never) return false;
-  return row_matches(pr, r);
+  return compile_pred(t, conds, &pr) && !pr.never && row_matches(pr, r);
 }
 
 }  // namespace mvdb

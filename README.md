@@ -63,12 +63,14 @@ commands return `Query OK, N row(s) affected`, with the count rendered in singul
 or plural form. Successful autocommit and COMMIT responses follow the durable
 commit. Errors return `ERROR <code> (...)`. Startup diagnostics go to stderr.
 EOF, SIGTERM and SIGINT close normally and roll back an unfinished transaction.
-Results are flushed after each statement. The exact framing and escaping still
-require the official driver to verify.
+Results are flushed after each statement. In `tsv-status`, tab, newline,
+carriage return, NUL and backslash inside fields are escaped as `\t`, `\n`,
+`\r`, `\0` and `\\`. This local convention must still be checked against the
+official driver, including its response framing and readiness handling.
 
 `--mode exact` is the default. `--mode ann` also uses exact search. Both modes
 accept `--mode=<mode>` syntax. `MVDB_OUT=tsv` selects the legacy CLI output,
-which omits success acknowledgements. `MVDB_OUT=table` selects human-readable
+which omits success acknowledgements and retains raw fields. `MVDB_OUT=table` selects human-readable
 boxed tables.
 
 ## SQL and semantics
@@ -103,7 +105,7 @@ truncation. Repeated interruption of recovery is covered by crash tests.
 Row payloads spill from heap to rebuildable files at about 32 MiB per table,
 with a 64 MiB global resident payload budget. Metadata such as PK/slot/undo entries
 still scales with row/transaction count. Flat index resident payload has a shared
-16 MiB budget. Snapshot parsing releases consumed mapping pages. Small TopK keeps
+16 MiB budget. Snapshot parsing uses bounded streaming reads. Small TopK keeps
 keys rather than whole rows; large ordered outputs use bounded runs and bounded
 merge fan-in under the data directory. Output is streamed in chunks.
 
@@ -140,8 +142,12 @@ Its write acknowledgement SELECT and RSS/IO proxies are explicitly not official
 T/B/M. `tools/score_metrics.py` accepts complete official metrics and computes E;
 it cannot derive a leaderboard rank or points from speedup alone.
 
-The requested branch is `2026-competition-round2`. Full official functional
-admission remains unverified without the official driver/hidden cases. Performance
+The requested branch is `2026-competition-round2`. Formal submission `d10abbc`
+failed the MySQL admission gate despite passing all 20 published v4 examples.
+The result did not identify the failing SQL or provide an execution log.
+The subsequent repairs and their regression evidence are recorded in
+[admission fixes](validation/admission-fixes.md). Official functional admission
+of those repairs remains unverified without a new formal result. Performance
 and evidence each contribute up to 40 rank-based points. No local result proves
 80 points or first place. The two public documents disagree on evidence dimension
 count and the default final-version selection; explicitly select the final commit.

@@ -2,9 +2,8 @@
 // first recovery phase really exercises a WAL larger than the address limit:
 // g++ -O2 -std=c++17 -Isrc -DMVDB_AUTO_CHECKPOINT_BYTES=1099511627776ULL \
 //   tests/test_large_recovery.cpp src/db.cpp src/value.cpp src/flat_index.cpp -o test_large_recovery
-// Default payload: 256 MiB; WAL construction/recovery address limit: 160 MiB.
-// The snapshot phase uses a larger address limit because mmap address space is
-// not physical memory. Its RSS is reported, not misrepresented as cgroup usage.
+// Default payload: 256 MiB. Construction, WAL replay, checkpoint and snapshot
+// loading all run with the same 160 MiB address limit.
 #include "db.h"
 #include <cassert>
 #include <cerrno>
@@ -84,13 +83,30 @@ static void recover_wal_and_checkpoint() {
   report("checkpoint_under_address_limit");
 }
 static void recover_snapshot() {
-  // Permit enough virtual address space to map the snapshot. This is explicitly
-  // a reporting phase; a cgroup is needed for a physical-memory cap.
-  const size_t payload_mib=(nrows*dimension*sizeof(float)+(1u<<20)-1)/(1u<<20);
-  limit_address(limit_mib+payload_mib+256);
+  limit_address(limit_mib);
   Database db; std::string err;
-  require(db.open(directory,&err),"snapshot recovery: "+err);
-  verify(db); report("snapshot_recovery_rss_only");
+  const bool opened=db.open(directory,&err);
+  require(opened,"snapshot recovery: "+err);
+  verify(db); report("snapshot_recovery_under_address_limit");
+}
+static void reject_corrupt_snapshot() {
+  limit_address(limit_mib);
+  const std::string path=directory+"/snapshot.bin";
+  std::fstream file(path,std::ios::binary | std::ios::in | std::ios::out);
+  require(file.is_open(),"open snapshot for checksum corruption");
+  file.seekg(-1,std::ios::end);
+  char original=0;
+  require(static_cast<bool>(file.get(original)),"read snapshot checksum byte");
+  file.seekp(-1,std::ios::end);
+  file.put(static_cast<char>(original ^ 1));
+  require(static_cast<bool>(file.flush()),"write corrupted checksum");
+  Database db; std::string err;
+  const bool opened=db.open(directory,&err);
+  db.close();
+  file.seekp(-1,std::ios::end);
+  file.put(original);
+  require(static_cast<bool>(file.flush()),"restore snapshot checksum");
+  require(!opened && err=="snapshot.bin: CRC mismatch","reject snapshot with corrupted checksum");
 }
 static uint64_t file_hash(const std::string& path) {
   std::ifstream f(path,std::ios::binary);
@@ -190,6 +206,7 @@ int main(int argc,char** argv) {
   require(interrupted>0,"at least one recovery interrupted");
   child_phase(recover_wal_and_checkpoint);
   child_phase(recover_snapshot);
+  child_phase(reject_corrupt_snapshot);
   std::cout << "PASS large payload, WAL restart, repeated recovery SIGKILL, snapshot integrity\n";
   // Keep files for inspection; no broad or computed recursive deletion here.
 }

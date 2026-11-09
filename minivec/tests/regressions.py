@@ -74,6 +74,30 @@ INSERT INTO t VALUES(3),(1);
 SELECT id FROM t ORDER BY id;
 ''', None, check_atomic)
 
+    with tempfile.TemporaryDirectory(prefix='mvdb-vector-predicate-') as d:
+        out = run(binary, d, '''
+CREATE TABLE t(id BIGINT PRIMARY KEY, g BIGINT, s VARCHAR(12), v VECTOR(2));
+INSERT INTO t VALUES(1,10,'[NaN,0]','[1,2]'),(2,20,'keep','[2,3]');
+CREATE VECTOR INDEX t_vec ON t(v);
+BEGIN;
+UPDATE t SET g=11 WHERE id='1' AND s='[NaN,0]';
+SELECT id FROM t WHERE v='[NaN,0]' LIMIT 0;
+SELECT id FROM t WHERE id='invalid' AND v='[Infinity,0]' ORDER BY L2_DISTANCE(v,'[0,0]') LIMIT 1;
+UPDATE t SET g=999 WHERE v <> '[1]';
+DELETE FROM t WHERE v <> '[1]';
+DELETE FROM t WHERE v='[3.5e38,0]';
+COMMIT;
+SELECT id,g FROM t ORDER BY id;
+''')
+        lines = out.splitlines()
+        assert len(lines) == 8 and all(line.startswith('ERROR 1264 ') for line in lines[:5]), out
+        assert lines[5:] == ['id\tg', '1\t11', '2\t20'], out
+        reopened = run(binary, d, "SELECT id,g FROM t WHERE v='[1,2]' "
+                                   "ORDER BY L2_DISTANCE(v,'[0,0]') LIMIT 1;\n")
+        assert reopened == 'id\tg\n1\t11\n', reopened
+    passed += 1
+    print('PASS invalid vector predicates preserve earlier transaction writes', flush=True)
+
     def check_extreme(out):
         lines = out.splitlines()
         assert not any(x.startswith('ERROR') for x in lines), out

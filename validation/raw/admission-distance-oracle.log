@@ -1,0 +1,1 @@
+PASS 6000 random full-range and common-scale float32 distances match independent exact-integer oracle bit for bit

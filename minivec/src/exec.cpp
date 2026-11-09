@@ -41,6 +41,23 @@ OutputMode output_mode() {
 
 bool tsv_mode() { return output_mode() != OutputMode::Table; }
 
+std::string render_text(const std::string& text) {
+  if (output_mode() != OutputMode::TsvStatus) return text;
+  std::string escaped;
+  escaped.reserve(text.size());
+  for (char c : text) {
+    switch (c) {
+      case '\\': escaped += "\\\\"; break;
+      case '\t': escaped += "\\t"; break;
+      case '\n': escaped += "\\n"; break;
+      case '\r': escaped += "\\r"; break;
+      case '\0': escaped += "\\0"; break;
+      default: escaped += c; break;
+    }
+  }
+  return escaped;
+}
+
 void emit_ok(const char* what, std::string* out) {
   if (output_mode() != OutputMode::Tsv) *out += std::string("Query OK, ") + what + "\n";
 }
@@ -55,7 +72,7 @@ std::string render_value(const Value& v) {
     case Type::BIGINT:
       return std::to_string(v.i);
     case Type::VARCHAR:
-      return v.s;
+      return render_text(v.s);
     case Type::VECTOR: {
       std::string s = "[";
       for (size_t i = 0; i < v.v.size(); ++i) {
@@ -152,7 +169,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
       for (auto& n : names) rows.push_back({n});
       if (tsv_mode()) {
         *out += "Tables\n";
-        for (auto& r : rows) { *out += r[0]; *out += '\n'; }
+        for (auto& r : rows) { *out += render_text(r[0]); *out += '\n'; }
       } else {
         render_table({"Tables"}, rows, {false}, out);
         *out += std::to_string(rows.size()) + " row" + (rows.size() == 1 ? "" : "s") + " in set\n";
@@ -311,14 +328,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         }
       }
 
-      // Validate conditions reference existing columns.
-      for (auto& c : st.conds) {
-        if (sch.find(c.column) < 0) {
-          *err = "Unknown column '" + c.column + "' in 'where clause'";
-          *code = 1054;
-          return false;
-        }
-      }
+      if (!validate_conditions(*t, st.conds, err, code)) return false;
 
       // Resolve ordering separately from projection: SQL may order by a column
       // or distance expression that is not in the selected fields.
@@ -373,7 +383,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           static_cast<uint64_t>(st.limit) > (8u<<20)/(static_cast<uint64_t>(sch.cols[order.col].len)*4+1);
       if (sink && tsv_mode() && (st.limit < 0 || st.limit >= 4096 || wide_keys)) {
         for (size_t j=0;j<items.size();++j) {
-          if(j)*out+='\t'; *out+=items[j].header;
+          if(j)*out+='\t'; *out+=render_text(items[j].header);
         }
         *out+='\n';
         auto emit = [&](const std::string& row) {
@@ -442,7 +452,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
       std::vector<std::vector<std::string>> cells;
       const bool stream = sink && tsv_mode();
       if (stream) {
-        for(size_t j=0;j<items.size();++j){if(j)*out+='\t';*out+=items[j].header;}
+        for(size_t j=0;j<items.size();++j){if(j)*out+='\t';*out+=render_text(items[j].header);}
         *out+='\n';
       } else cells.reserve(result.size());
       for (const auto& c : result) {
@@ -471,7 +481,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
       if (tsv_mode()) {
         for (size_t c = 0; c < headers.size(); ++c) {
           if (c) *out += '\t';
-          *out += headers[c];
+          *out += render_text(headers[c]);
         }
         *out += '\n';
         for (auto& row : cells) {

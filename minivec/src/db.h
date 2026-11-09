@@ -133,6 +133,8 @@ class Database {
   uint64_t wal_bytes_ = 0;
 };
 
+bool validate_conditions(const Table& t, const std::vector<Cond>& conds,
+                         std::string* err, int* code);
 bool eval_conds(const Table& t, const Row& r, const std::vector<Cond>& conds);
 
 }  // namespace mvdb
