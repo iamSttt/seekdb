@@ -42,9 +42,20 @@ python3 tools/harness.py run tests/cases
 ## Protocol status — must be checked against the official driver
 
 The published brief delegates statement framing, response framing, error codes,
-readiness, exit and exact/ann selection to a separate frozen package. That package
-was not present in the official branch inspected on 2026-11-09. The local harness
-is independently written and is **not** the official test driver.
+readiness, exit and exact/ann selection to a separate frozen package. The
+[official public SQL cases](https://github.com/oceanbase/seekdb/tree/a3dba559c1e7ebdc48bc990ffb1a4c75d1c1075c/mysqltest)
+now define sample input and result semantics. The official README specifies
+that the complete driver and process framing are outside that release.
+
+Run the public fixtures against the CLI after downloading that `mysqltest`
+directory and building the executable:
+
+```sh
+python3 minivec/tools/run_public_cases.py --binary minivec/minivec --cases /path/to/mysqltest
+```
+
+The runner validates affected rows using diagnostic table output and checks
+queries in both table and TSV modes. See the [public case results](validation/public-basic-v1.md).
 
 Current adapter: semicolon-terminated SQL on stdin, tab-separated result headers
 and rows on stdout, no output for successful mutations, `ERROR <code> (...)` for
