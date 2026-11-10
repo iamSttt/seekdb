@@ -5,7 +5,7 @@ BIN := minivec
 
 all: $(BIN)
 
-$(BIN): $(SRC) $(wildcard src/*.h)
+$(BIN): $(SRC) $(wildcard src/*.h) $(wildcard third_party/*.hpp)
 	$(CXX) $(CXXFLAGS) -o $@ $(SRC)
 
 TEST_COMMON := src/db.cpp src/exec.cpp src/sql.cpp src/value.cpp src/flat_index.cpp
@@ -31,7 +31,7 @@ test: all test_sql test_db test_recovery test_vector test_query test_sort test_f
 	./test_query
 	./test_sort
 	./test_flat
-	python3 tests/regressions.py
+	MVDB_PROTOCOL=sql python3 tests/regressions.py
 
 clean:
 	rm -f $(BIN)

@@ -3,3 +3,5 @@
 !minivec/
 !minivec/src/
 !minivec/src/**
+!minivec/third_party/
+!minivec/third_party/**

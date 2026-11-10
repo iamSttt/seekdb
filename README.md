@@ -39,43 +39,48 @@ python3 tools/harness.py run tests/cases
 ./minivec --data /path/to/data --mode exact
 ```
 
-## Protocol status — must be checked against the official driver
+## Official JSONL protocol
 
-The published brief delegates statement framing, response framing, error codes,
-readiness, exit and exact/ann selection to a separate frozen package. The
-[official public SQL cases](https://github.com/oceanbase/seekdb/tree/a3dba559c1e7ebdc48bc990ffb1a4c75d1c1075c/mysqltest)
-now define sample input and result semantics. The official README specifies
-that the complete driver and process framing are outside that release.
+The default entrypoint implements the organizer's protocol published in commit
+`f4d4e26653af823a7601668802f80e374ad6643c` on 2026-11-10. The verbatim protocol,
+public fixtures and diagnostic driver are included in `STDIO_PROTOCOL.md`,
+`mysqltest/`, and `protocol_check/` for reproducible local checks.
 
-Run the public fixtures against the CLI after downloading that `mysqltest`
-directory and building the executable:
+After opening and recovering `/data`, the program writes `{"type":"ready"}`.
+Each physical input line is one JSON request with `id`, `op`, and, for execute,
+`sql` and optional `search_mode`. Each response preserves `id`, includes boolean
+`ok`, and contains typed `columns`/`rows`, integer `affected_rows`, or a structured
+error. BIGINT values remain integers, strings remain strings, and vector cells
+are arrays. Output is one compact JSON line, flushed per request; diagnostics
+are sent only to stderr. A shutdown request rolls back pending changes, closes
+storage, acknowledges success, then exits. Durable commits survive SIGKILL.
+
+Run the official checks against the default submitted image:
 
 ```sh
-python3 minivec/tools/run_public_cases.py --binary minivec/minivec --cases /path/to/mysqltest
+python3 protocol_check/run.py --image minivec --handshake-only --output protocol-results/handshake
+python3 protocol_check/run.py --image minivec --output protocol-results/public
 ```
 
-The runner sends SQL one statement at a time in `tsv-status` mode with stdin
-open, and cross-checks query results in batch `tsv` mode. Restart directives
-use SIGTERM and reuse the data directory. Since the local adapter has no
-result terminator, these small-fixture tests use a 25 ms output quiet window
-to collect each response. This is a local check, separate from verification
-against the official driver. `--batch-status` retains the former batch check.
+Use a fresh output directory for each run. The organizer's driver applies
+2 CPU, 2 GiB RAM, a read-only root filesystem, and writable `/data`. It verifies
+startup, per-request responses, all public fixtures, normal restart and mode
+switching. It does not contain the hidden formal cases or calculate a score.
+The published error-code mapping is currently empty; failures return stable,
+nonempty string codes based on the engine errors.
 
-The image accepts semicolon-terminated SQL on stdin. Queries return
-tab-separated headers and rows on stdout. Successful changes and transaction
-commands return `Query OK, N row(s) affected`, with the count rendered in singular
-or plural form. Successful autocommit and COMMIT responses follow the durable
-commit. Errors return `ERROR <code> (...)`. Startup diagnostics go to stderr.
-EOF, SIGTERM and SIGINT close normally and roll back an unfinished transaction.
-Results are flushed after each statement. In `tsv-status`, tab, newline,
-carriage return, NUL and backslash inside fields are escaped as `\t`, `\n`,
-`\r`, `\0` and `\\`. This local convention must still be checked against the
-official driver, including its response framing and readiness handling.
+For source development on Linux:
 
-`--mode exact` is the default. `--mode ann` also uses exact search. Both modes
-accept `--mode=<mode>` syntax. `MVDB_OUT=tsv` selects the legacy CLI output,
-which omits success acknowledgements and retains raw fields. `MVDB_OUT=table` selects human-readable
-boxed tables.
+```sh
+python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --output protocol-results/source
+python3 minivec/tests/json_protocol.py --binary minivec/minivec
+```
+
+The earlier plain-SQL adapter remains available explicitly with `--protocol sql`
+or `MVDB_PROTOCOL=sql` for engine regressions and older benchmarks. Its
+`MVDB_OUT=tsv`, `tsv-status`, and `table` options do not select the formal protocol.
+Historical TSV validation reports are not evidence of JSONL compatibility.
+`exact` and `ann` requests both use the exact Flat index, which has recall 1.
 
 ## SQL and semantics
 

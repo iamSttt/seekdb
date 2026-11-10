@@ -2,6 +2,7 @@
 #include "exec.h"
 #include "result_sort.h"
 #include "distance.h"
+#include "../third_party/json.hpp"
 #include <limits>
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -26,6 +28,8 @@ std::string format_double(double v) {
 }
 
 namespace {
+
+using Json = nlohmann::json;
 
 enum class OutputMode { Tsv, TsvStatus, Table };
 
@@ -58,13 +62,26 @@ std::string render_text(const std::string& text) {
   return escaped;
 }
 
-void emit_ok(const char* what, std::string* out) {
-  if (output_mode() != OutputMode::Tsv) *out += std::string("Query OK, ") + what + "\n";
-}
-
-void emit_dml(int64_t n, std::string* out) {
+void emit_affected_rows(int64_t n, std::string* out, bool json_response) {
+  if (json_response) {
+    *out += "{\"affected_rows\":" + std::to_string(n) + "}";
+    return;
+  }
   if (output_mode() == OutputMode::Tsv) return;
   *out += "Query OK, " + std::to_string(n) + " row" + (n == 1 ? "" : "s") + " affected\n";
+}
+
+Json json_value(const Value& value) {
+  switch (value.type) {
+    case Type::BIGINT: return value.i;
+    case Type::VARCHAR: return value.s;
+    case Type::VECTOR:
+      for (const float component : value.v) {
+        if (!std::isfinite(component)) throw std::runtime_error("non-finite vector result");
+      }
+      return value.v;
+  }
+  throw std::runtime_error("invalid result type");
 }
 
 std::string render_value(const Value& v) {
@@ -140,31 +157,39 @@ void render_table(const std::vector<std::string>& headers,
 
 }  // namespace
 
-static bool execute_impl(Database& db, const Statement& st, std::string* out, std::string* err, int* code, const OutputSink& sink) {
+static bool execute_impl(Database& db, const Statement& st, std::string* out, std::string* err,
+                         int* code, const OutputSink& sink, bool json_response) {
   *code = 0;
   switch (st.kind) {
     case Statement::EMPTY:
+      if (json_response) emit_affected_rows(0, out, true);
       return true;
 
     case Statement::CREATE_TABLE: {
       if (!db.create_table(st.table, st.columns, err, code)) {
-        if (*code == 1050 && st.if_not_exists == "IF NOT EXISTS") { *code = 0; *err = ""; emit_ok("0 rows affected", out); return true; }
+        if (*code == 1050 && st.if_not_exists == "IF NOT EXISTS") { *code = 0; *err = ""; emit_affected_rows(0, out, json_response); return true; }
         return false;
       }
-      emit_ok("0 rows affected", out);
+      emit_affected_rows(0, out, json_response);
       return true;
     }
     case Statement::DROP_TABLE: {
       if (!db.drop_table(st.table, err, code)) {
-        if (*code == 1146 && st.if_not_exists == "IF EXISTS") { *code = 0; *err = ""; emit_ok("0 rows affected", out); return true; }
+        if (*code == 1146 && st.if_not_exists == "IF EXISTS") { *code = 0; *err = ""; emit_affected_rows(0, out, json_response); return true; }
         return false;
       }
-      emit_ok("0 rows affected", out);
+      emit_affected_rows(0, out, json_response);
       return true;
     }
     case Statement::SHOW_TABLES: {
       auto names = db.table_names();
       std::sort(names.begin(), names.end());
+      if (json_response) {
+        Json rows = Json::array();
+        for (const auto& name : names) rows.push_back(Json::array({name}));
+        *out = Json{{"columns", Json::array({"Tables"})}, {"rows", std::move(rows)}}.dump();
+        return true;
+      }
       std::vector<std::vector<std::string>> rows;
       for (auto& n : names) rows.push_back({n});
       if (tsv_mode()) {
@@ -178,22 +203,22 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
     }
     case Statement::BEGIN_TXN: {
       if (!db.begin(err, code)) return false;
-      emit_ok("0 rows affected", out);
+      emit_affected_rows(0, out, json_response);
       return true;
     }
     case Statement::COMMIT_TXN: {
       if (!db.commit(err, code)) return false;
-      emit_ok("0 rows affected", out);
+      emit_affected_rows(0, out, json_response);
       return true;
     }
     case Statement::ROLLBACK_TXN: {
       if (!db.rollback(err, code)) return false;
-      emit_ok("0 rows affected", out);
+      emit_affected_rows(0, out, json_response);
       return true;
     }
     case Statement::CREATE_INDEX: {
       if (!db.create_vector_index(st.table, st.index_column, st.index_name, err, code)) return false;
-      emit_ok("0 rows affected", out);
+      emit_affected_rows(0, out, json_response);
       return true;
     }
     case Statement::INSERT: {
@@ -258,19 +283,19 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         }
         ++n;
       }
-      emit_dml(n, out);
+      emit_affected_rows(n, out, json_response);
       return true;
     }
     case Statement::UPDATE: {
       int64_t n = db.update_rows(st.table, st.conds, st.sets, err, code);
       if (*code) return false;
-      emit_dml(n, out);
+      emit_affected_rows(n, out, json_response);
       return true;
     }
     case Statement::DELETE_ROWS: {
       int64_t n = db.delete_rows(st.table, st.conds, err, code);
       if (*code) return false;
-      emit_dml(n, out);
+      emit_affected_rows(n, out, json_response);
       return true;
     }
     case Statement::SELECT: {
@@ -376,21 +401,60 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         if (cmp == 0) return a.pk < b.pk; // always ASC, even for ORDER BY ... DESC
         return st.order_desc ? cmp > 0 : cmp < 0;
       };
+      auto begin_json_rows = [&] {
+        Json columns = Json::array();
+        for (const auto& item : items) columns.push_back(item.header);
+        *out += "{\"columns\":" + columns.dump() + ",\"rows\":[";
+      };
+      auto encode_json_row = [&](const Row& row) {
+        Json cells = Json::array();
+        for (const auto& item : items) {
+          const Value& value = row.vals[item.col];
+          if (!item.is_distance) {
+            cells.push_back(json_value(value));
+          } else {
+            const double distance = std::sqrt(distance2(value.v, *item.qvec));
+            if (!std::isfinite(distance)) throw std::runtime_error("non-finite L2 distance result");
+            cells.push_back(distance);
+          }
+        }
+        return cells.dump();
+      };
+      bool first_json_row = true;
+      auto append_json_row = [&](const std::string& row) {
+        if (!first_json_row) *out += ',';
+        *out += row;
+        first_json_row = false;
+      };
       // Streaming output and external sort for large result sets. The normal
       // TopK path below keeps keys only for the current K winners.
       const bool wide_keys = ordered && !order.is_distance &&
           sch.cols[order.col].type == Type::VARCHAR && st.limit > 0 &&
           static_cast<uint64_t>(st.limit) > (8u<<20)/(static_cast<uint64_t>(sch.cols[order.col].len)*4+1);
-      if (sink && tsv_mode() && (st.limit < 0 || st.limit >= 4096 || wide_keys)) {
-        for (size_t j=0;j<items.size();++j) {
-          if(j)*out+='\t'; *out+=render_text(items[j].header);
+      if ((json_response || (sink && tsv_mode())) &&
+          (st.limit < 0 || st.limit >= 4096 || wide_keys)) {
+        if (json_response) {
+          begin_json_rows();
+        } else {
+          for (size_t j = 0; j < items.size(); ++j) {
+            if (j) *out += '\t';
+            *out += render_text(items[j].header);
+          }
+          *out += '\n';
         }
-        *out+='\n';
         auto emit = [&](const std::string& row) {
-          *out+=row;
-          if(out->size()>=65536){sink(*out);out->clear();}
+          if (json_response) {
+            append_json_row(row);
+          } else {
+            *out += row;
+            if (out->size() >= 65536) {
+              sink(*out);
+              out->clear();
+            }
+          }
         };
         auto render = [&](const Row& row) {
+          if (json_response) return encode_json_row(row);
           std::string text;
           for(size_t j=0;j<items.size();++j) {
             if(j)text+='\t';
@@ -415,6 +479,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           size_t count=0;
           db.scan(st.table,st.conds,[&](const Row& row){emit(render(row));return ++count<limit;});
         }
+        if (json_response) *out += "]}";
         return true;
       }
       std::vector<Candidate> result;
@@ -450,14 +515,20 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
       // Candidates retain only keys, not entire rows. Retrieve the winning
       // projection by PK after selection, including on the spilled table path.
       std::vector<std::vector<std::string>> cells;
-      const bool stream = sink && tsv_mode();
-      if (stream) {
+      const bool stream = !json_response && sink && tsv_mode();
+      if (json_response) {
+        begin_json_rows();
+      } else if (stream) {
         for(size_t j=0;j<items.size();++j){if(j)*out+='\t';*out+=render_text(items[j].header);}
         *out+='\n';
       } else cells.reserve(result.size());
       for (const auto& c : result) {
         Cond pk;pk.column=sch.cols[sch.pk_idx].name;pk.value=Value::ofInt(c.pk);
         db.scan(st.table,{pk},[&](const Row& r){
+          if (json_response) {
+            append_json_row(encode_json_row(r));
+            return false;
+          }
           std::vector<std::string> row;
           if(!stream)row.reserve(items.size());
           for (size_t j=0;j<items.size();++j) {
@@ -471,6 +542,10 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           else cells.push_back(std::move(row));
           return false;
         });
+      }
+      if (json_response) {
+        *out += "]}";
+        return true;
       }
       if(stream)return true;
       std::vector<bool> align(items.size(), false);
@@ -504,16 +579,45 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
   }
 }
 
-bool execute(Database& db, const Statement& st, std::string* out, std::string* err, int* code, const OutputSink& sink) {
+static bool execute_statement(Database& db, const Statement& st, std::string* out,
+                              std::string* err, int* code, const OutputSink& sink,
+                              bool json_response) {
   const bool mutation = st.kind == Statement::INSERT || st.kind == Statement::UPDATE ||
       st.kind == Statement::DELETE_ROWS || st.kind == Statement::CREATE_TABLE ||
       st.kind == Statement::DROP_TABLE || st.kind == Statement::CREATE_INDEX;
-  if (!mutation) return execute_impl(db, st, out, err, code, sink);
+  if (!mutation) return execute_impl(db, st, out, err, code, sink, json_response);
   if (!db.begin_statement(err, code)) return false;
-  const bool ok = execute_impl(db, st, out, err, code, sink);
+  bool ok;
+  try {
+    ok = execute_impl(db, st, out, err, code, sink, json_response);
+  } catch (...) {
+    if (json_response) db.end_statement(false, err, code);
+    throw;
+  }
   const bool ended = db.end_statement(ok, err, code);
   if (!ok || !ended) out->clear();
   return ok && ended;
+}
+
+bool execute(Database& db, const Statement& st, std::string* out, std::string* err,
+             int* code, const OutputSink& sink) {
+  return execute_statement(db, st, out, err, code, sink, false);
+}
+
+bool execute_json(Database& db, const Statement& st, std::string* out, std::string* err, int* code) {
+  out->clear();
+  err->clear();
+  *code = 0;
+  try {
+    if (execute_statement(db, st, out, err, code, {}, true)) return true;
+  } catch (const std::exception& ex) {
+    if (*code == 0) {
+      *code = 1105;
+      *err = ex.what();
+    }
+  }
+  out->clear();
+  return false;
 }
 
 }  // namespace mvdb
