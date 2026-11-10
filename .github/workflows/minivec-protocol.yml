@@ -30,7 +30,7 @@ jobs:
       - name: Distance kernel A/B and JSONL workload
         run: |
           ./minivec/test_distance_neighbors --bench
-          python3 minivec/tools/benchmark_jsonl.py --image minivec:jsonl --output protocol-results/jsonl-benchmark.json
+          bash minivec/tools/compare_jsonl.sh
       - name: Show diagnostic reports
         if: always()
         run: |
