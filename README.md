@@ -10,17 +10,8 @@ docker build --platform linux/amd64 -t minivec .
 docker run --rm -i -v minivec-data:/data minivec
 ```
 
-Run the live stdin and restart smoke test on Linux with a disposable volume:
-
-```sh
-volume=$(docker volume create)
-python3 minivec/tests/container_smoke.py -- \
-  docker run --rm -i --network none -v "$volume:/data" minivec
-docker volume rm "$volume"
-```
-
-See [container validation](validation/container-build.md) for the verified
-build, runtime checks and official protocol availability.
+Use the official protocol checks documented below. Latest JSONL validation is
+recorded in [validation/jsonl-admission.md](validation/jsonl-admission.md).
 
 The Dockerfile pins the GCC 13.3.0 build image by digest and produces a static
 binary in a scratch runtime. There are no runtime network or package-manager
@@ -33,7 +24,7 @@ Local Linux build and tests:
 cd minivec
 make -j4
 make -j4 test
-python3 tools/harness.py run tests/cases
+MVDB_PROTOCOL=sql python3 tools/harness.py run tests/cases
 ./test_sort --stress-fanin
 ./test_query --stress-topk
 ./minivec --data /path/to/data --mode exact

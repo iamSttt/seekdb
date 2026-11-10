@@ -23,7 +23,9 @@ test_sort: tests/test_sort.cpp src/result_sort.h
 	$(CXX) $(CXXFLAGS) -o $@ tests/test_sort.cpp
 test_flat: tests/test_flat_index.cpp $(TEST_COMMON)
 	$(CXX) $(CXXFLAGS) -o $@ $^
-test: all test_sql test_db test_recovery test_vector test_query test_sort test_flat
+test_distance_neighbors: tests/test_distance_neighbors.cpp src/distance.h
+	$(CXX) $(CXXFLAGS) -o $@ tests/test_distance_neighbors.cpp
+test: all test_sql test_db test_recovery test_vector test_query test_sort test_flat test_distance_neighbors
 	./test_sql
 	./test_db
 	./test_recovery
@@ -31,6 +33,7 @@ test: all test_sql test_db test_recovery test_vector test_query test_sort test_f
 	./test_query
 	./test_sort
 	./test_flat
+	./test_distance_neighbors
 	MVDB_PROTOCOL=sql python3 tests/regressions.py
 
 clean:

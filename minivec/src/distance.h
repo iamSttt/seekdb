@@ -8,6 +8,20 @@
 
 namespace mvdb {
 namespace distance_detail {
+struct Neighbors { double lower, upper; };
+// Precondition: finite nonnegative input. IEEE binary64 encodings are ordered
+// by value here, including the subnormal/normal transition and max -> infinity.
+inline Neighbors positive_neighbors(double value) {
+  static_assert(sizeof(double)==8 && std::numeric_limits<double>::is_iec559 &&
+                std::numeric_limits<double>::digits==53,"IEEE binary64 required");
+  uint64_t bits=0;
+  if(value!=0)std::memcpy(&bits,&value,sizeof(bits));
+  const uint64_t lo=bits ? bits-1 : 0,hi=bits+1;
+  Neighbors result;
+  std::memcpy(&result.lower,&lo,sizeof(lo));
+  std::memcpy(&result.upper,&hi,sizeof(hi));
+  return result;
+}
 // A finite binary32 is an integer times 2^-149. Its squared distance is
 // therefore an integer times 2^-298. Ten limbs cover every such sum even
 // for SIZE_MAX coordinates on a 64-bit platform: the sum is below 2^620.
@@ -134,9 +148,10 @@ inline double distance_scalar(const float* a,const float* b,size_t n) {
       // itself, and conversion from relative exact to computed-sum error.
       const long double error=sum*(static_cast<long double>(n/4)+8)*
         (2*std::numeric_limits<long double>::epsilon());
-      const long double lower=(static_cast<long double>(result)+std::nextafter(result,0.0))*0.5L;
+      const auto neighbors=distance_detail::positive_neighbors(result);
+      const long double lower=(static_cast<long double>(result)+neighbors.lower)*0.5L;
       const long double upper=(static_cast<long double>(result)+
-        std::nextafter(result,std::numeric_limits<double>::infinity()))*0.5L;
+        neighbors.upper)*0.5L;
       if(sum-lower>error && upper-sum>error)return result;
     }
   }
