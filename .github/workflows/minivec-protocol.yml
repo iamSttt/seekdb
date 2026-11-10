@@ -27,6 +27,10 @@ jobs:
           python3 protocol_check/run.py --image minivec:jsonl --handshake-only --output protocol-results/image-handshake
           python3 protocol_check/run.py --image minivec:jsonl --output protocol-results/image-public
           docker image inspect minivec:jsonl --format '{{.Id}}'
+      - name: Distance kernel A/B and JSONL workload
+        run: |
+          ./minivec/test_distance_neighbors --bench
+          python3 minivec/tools/benchmark_jsonl.py --image minivec:jsonl --output protocol-results/jsonl-benchmark.json
       - name: Show diagnostic reports
         if: always()
         run: |
