@@ -1,0 +1,34 @@
+name: MiniVectorDB official protocol
+on:
+  push:
+    branches: [codex/round2-jsonl-20261110, 2026-competition-round2]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  official-protocol:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build and engine regressions
+        run: |
+          make -C minivec -j2 test
+          MVDB_PROTOCOL=sql python3 minivec/tools/harness.py --binary minivec/minivec run minivec/tests/cases
+      - name: Official source protocol checks
+        run: |
+          python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --handshake-only --output protocol-results/source-handshake
+          python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --output protocol-results/source-public
+          python3 minivec/tests/json_protocol.py --binary minivec/minivec
+      - name: Build submitted Dockerfile
+        run: docker build --platform linux/amd64 -t minivec:jsonl .
+      - name: Official image protocol checks
+        run: |
+          python3 protocol_check/run.py --image minivec:jsonl --handshake-only --output protocol-results/image-handshake
+          python3 protocol_check/run.py --image minivec:jsonl --output protocol-results/image-public
+          docker image inspect minivec:jsonl --format '{{.Id}}'
+      - name: Show diagnostic reports
+        if: always()
+        run: |
+          if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
+          if [ -d protocol-results ]; then find protocol-results -name '*.stderr.log' -exec sh -c 'echo "$1"; tail -30 "$1"' _ {} \;; fi
