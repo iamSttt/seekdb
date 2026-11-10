@@ -1,0 +1,1230 @@
+﻿2026-11-10T13:05:58.5499150Z Current runner version: '2.338.2'
+2026-11-10T13:05:58.5526331Z ##[group]Runner Image Provisioner
+2026-11-10T13:05:58.5527209Z Hosted Compute Agent
+2026-11-10T13:05:58.5527785Z Version: 20261028.624
+2026-11-10T13:05:58.5528513Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+2026-11-10T13:05:58.5529297Z Build Date: 2026-10-28T21:51:42Z
+2026-11-10T13:05:58.5530091Z Worker ID: {f209a2c0-b88b-4402-bce3-c85dbb1b3505}
+2026-11-10T13:05:58.5530866Z Region: northcentralus
+2026-11-10T13:05:58.5531443Z Cloud: Azure
+2026-11-10T13:05:58.5532060Z ##[endgroup]
+2026-11-10T13:05:58.5533656Z ##[group]Operating System
+2026-11-10T13:05:58.5534369Z Ubuntu
+2026-11-10T13:05:58.5535148Z 24.04.5
+2026-11-10T13:05:58.5535674Z LTS
+2026-11-10T13:05:58.5536338Z ##[endgroup]
+2026-11-10T13:05:58.5536940Z ##[group]Runner Image
+2026-11-10T13:05:58.5537622Z Image: ubuntu-24.04
+2026-11-10T13:05:58.5538216Z Version: 20261101.360.1
+2026-11-10T13:05:58.5539548Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-10T13:05:58.5541128Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+2026-11-10T13:05:58.5542179Z ##[endgroup]
+2026-11-10T13:05:58.5543328Z ##[group]GITHUB_TOKEN Permissions
+2026-11-10T13:05:58.5545704Z Contents: read
+2026-11-10T13:05:58.5546428Z Metadata: read
+2026-11-10T13:05:58.5547069Z ##[endgroup]
+2026-11-10T13:05:58.5550021Z Secret source: Actions
+2026-11-10T13:05:58.5551002Z Cache mode: write
+2026-11-10T13:05:58.5551832Z Prepare workflow directory
+2026-11-10T13:05:58.6033299Z Prepare all required actions
+2026-11-10T13:05:58.6113638Z Getting action download info
+2026-11-10T13:05:58.8720794Z Download action repository 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-10T13:05:59.0725489Z Complete job name: official-protocol
+2026-11-10T13:05:59.1927902Z ##[group]Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+2026-11-10T13:05:59.1929002Z with:
+2026-11-10T13:05:59.1929485Z   repository: iamSttt/seekdb
+2026-11-10T13:05:59.1933181Z   token: ***
+2026-11-10T13:05:59.1933631Z   ssh-strict: true
+2026-11-10T13:05:59.1934080Z   ssh-user: git
+2026-11-10T13:05:59.1934542Z   persist-credentials: true
+2026-11-10T13:05:59.1935553Z   clean: true
+2026-11-10T13:05:59.1936179Z   sparse-checkout-cone-mode: true
+2026-11-10T13:05:59.1936722Z   fetch-depth: 1
+2026-11-10T13:05:59.1937157Z   fetch-tags: false
+2026-11-10T13:05:59.1937615Z   show-progress: true
+2026-11-10T13:05:59.1938077Z   lfs: false
+2026-11-10T13:05:59.1938501Z   submodules: false
+2026-11-10T13:05:59.1938967Z   set-safe-directory: true
+2026-11-10T13:05:59.1939508Z   allow-unsafe-pr-checkout: false
+2026-11-10T13:05:59.1940429Z ##[endgroup]
+2026-11-10T13:05:59.4706135Z Syncing repository: iamSttt/seekdb
+2026-11-10T13:05:59.4709444Z ##[group]Getting Git version info
+2026-11-10T13:05:59.4711015Z Working directory is '/home/runner/work/seekdb/seekdb'
+2026-11-10T13:05:59.4712170Z [command]/usr/bin/git version
+2026-11-10T13:05:59.4792301Z git version 2.56.0
+2026-11-10T13:05:59.4816997Z ##[endgroup]
+2026-11-10T13:05:59.4831797Z Temporarily overriding HOME='/home/runner/work/_temp/6d32f90f-e22b-406b-be6e-0a652d93d4d0' before making global git config changes
+2026-11-10T13:05:59.4835063Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-10T13:05:59.4837500Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/seekdb/seekdb
+2026-11-10T13:05:59.4901356Z Deleting the contents of '/home/runner/work/seekdb/seekdb'
+2026-11-10T13:05:59.4912762Z ##[group]Initializing the repository
+2026-11-10T13:05:59.4914206Z [command]/usr/bin/git init /home/runner/work/seekdb/seekdb
+2026-11-10T13:05:59.5041851Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-10T13:05:59.5044089Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-10T13:05:59.5046188Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-10T13:05:59.5048965Z hint: call:
+2026-11-10T13:05:59.5050081Z hint:
+2026-11-10T13:05:59.5051415Z hint: 	git config --global init.defaultBranch <name>
+2026-11-10T13:05:59.5052697Z hint:
+2026-11-10T13:05:59.5054264Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-10T13:05:59.5056464Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-10T13:05:59.5057953Z hint:
+2026-11-10T13:05:59.5058783Z hint: 	git branch -m <name>
+2026-11-10T13:05:59.5059741Z hint:
+2026-11-10T13:05:59.5061120Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-10T13:05:59.5063925Z Initialized empty Git repository in /home/runner/work/seekdb/seekdb/.git/
+2026-11-10T13:05:59.5077354Z [command]/usr/bin/git remote add origin https://github.com/iamSttt/seekdb
+2026-11-10T13:05:59.5141020Z ##[endgroup]
+2026-11-10T13:05:59.5142832Z ##[group]Disabling automatic garbage collection
+2026-11-10T13:05:59.5146433Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-10T13:05:59.5227375Z ##[endgroup]
+2026-11-10T13:05:59.5228304Z ##[group]Setting up auth
+2026-11-10T13:05:59.5229334Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-10T13:05:59.5270333Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-10T13:05:59.5726963Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-10T13:05:59.5778493Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-10T13:05:59.6080106Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-10T13:05:59.6137088Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-10T13:05:59.6439835Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-10T13:05:59.6496928Z ##[endgroup]
+2026-11-10T13:05:59.6498474Z ##[group]Fetching the repository
+2026-11-10T13:05:59.6511100Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +6f8659801c82955eed4d4a7fe7101f0ac497f898:refs/remotes/origin/codex/round2-jsonl-20261110
+2026-11-10T13:06:00.1098589Z From https://github.com/iamSttt/seekdb
+2026-11-10T13:06:00.1101615Z  * [new ref]         6f8659801c82955eed4d4a7fe7101f0ac497f898 -> origin/codex/round2-jsonl-20261110
+2026-11-10T13:06:00.1108093Z ##[endgroup]
+2026-11-10T13:06:00.1110309Z ##[group]Determining the checkout info
+2026-11-10T13:06:00.1112807Z ##[endgroup]
+2026-11-10T13:06:00.1114434Z [command]/usr/bin/git sparse-checkout disable
+2026-11-10T13:06:00.1186323Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-10T13:06:00.1232453Z ##[group]Checking out the ref
+2026-11-10T13:06:00.1247257Z [command]/usr/bin/git checkout --progress --force -B codex/round2-jsonl-20261110 refs/remotes/origin/codex/round2-jsonl-20261110
+2026-11-10T13:06:00.1470825Z Switched to a new branch 'codex/round2-jsonl-20261110'
+2026-11-10T13:06:00.1477282Z branch 'codex/round2-jsonl-20261110' set up to track 'origin/codex/round2-jsonl-20261110'.
+2026-11-10T13:06:00.1485822Z ##[endgroup]
+2026-11-10T13:06:00.1546857Z [command]/usr/bin/git log -1 --format=%H
+2026-11-10T13:06:00.1585484Z 6f8659801c82955eed4d4a7fe7101f0ac497f898
+2026-11-10T13:06:00.1899214Z ##[group]Run make -C minivec -j2 test
+2026-11-10T13:06:00.1900740Z make -C minivec -j2 test
+2026-11-10T13:06:00.1903122Z MVDB_PROTOCOL=sql python3 minivec/tools/harness.py --binary minivec/minivec run minivec/tests/cases
+2026-11-10T13:06:00.1930649Z shell: /usr/bin/bash -e {0}
+2026-11-10T13:06:00.1931870Z ##[endgroup]
+2026-11-10T13:06:00.2266557Z make: Entering directory '/home/runner/work/seekdb/seekdb/minivec'
+2026-11-10T13:06:00.2270491Z g++ -O2 -std=c++17 -Wall -Wextra -Isrc -pthread -o minivec src/db.cpp src/exec.cpp src/flat_index.cpp src/main.cpp src/sql.cpp src/value.cpp src/vector.cpp
+2026-11-10T13:06:00.2336990Z g++ -O2 -std=c++17 -Wall -Wextra -Isrc -pthread -o test_sql tests/test_sql.cpp src/sql.cpp src/value.cpp
+2026-11-10T13:06:02.2128308Z src/db.cpp: In member function ‘bool mvdb::Database::load_snapshot(std::string*)’:
+2026-11-10T13:06:02.2129976Z src/db.cpp:1822:47: warning: ignoring attributes on template argument ‘int (*)(FILE*)’ [-Wignored-attributes]
+2026-11-10T13:06:02.2131401Z  1822 |   std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen(path.c_str(), "rb"), std::fclose);
+2026-11-10T13:06:02.2132935Z       |                                               ^
+2026-11-10T13:06:06.2218840Z g++ -O2 -std=c++17 -Wall -Wextra -Isrc -pthread -o test_db tests/test_db.cpp src/db.cpp src/value.cpp src/flat_index.cpp
+2026-11-10T13:06:08.8673978Z src/db.cpp: In member function ‘bool mvdb::Database::load_snapshot(std::string*)’:
+2026-11-10T13:06:08.8675892Z src/db.cpp:1822:47: warning: ignoring attributes on template argument ‘int (*)(FILE*)’ [-Wignored-attributes]
+2026-11-10T13:06:08.8677283Z  1822 |   std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen(path.c_str(), "rb"), std::fclose);
+2026-11-10T13:06:08.8678205Z       |                                               ^
+2026-11-10T13:06:12.9449366Z g++ -O2 -std=c++17 -Wall -Wextra -Isrc -pthread -o test_recovery tests/test_recovery_regressions.cpp src/db.cpp src/exec.cpp src/sql.cpp src/value.cpp src/flat_index.cpp
+2026-11-10T13:06:15.0133739Z src/db.cpp: In member function ‘bool mvdb::Database::load_snapshot(std::string*)’:
+2026-11-10T13:06:15.0136286Z src/db.cpp:1822:47: warning: ignoring attributes on template argument ‘int (*)(FILE*)’ [-Wignored-attributes]
+2026-11-10T13:06:15.0138059Z  1822 |   std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen(path.c_str(), "rb"), std::fclose);
+2026-11-10T13:06:15.0139449Z       |                                               ^
+2026-11-10T13:06:21.4227952Z g++ -O2 -std=c++17 -Wall -Wextra -Isrc -pthread -o test_vector tests/test_vector.cpp src/vector.cpp src/value.cpp
+2026-11-10T13:06:26.0431154Z g++ -O2 -std=c++17 -Wall -Wextra -Isrc -pthread -o test_query tests/test_query_regressions.cpp src/db.cpp src/exec.cpp src/sql.cpp src/value.cpp src/flat_index.cpp
+2026-11-10T13:06:26.5558224Z tests/test_query_regressions.cpp: In lambda function:
+2026-11-10T13:06:26.5560308Z tests/test_query_regressions.cpp:128:7: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+2026-11-10T13:06:26.5561370Z   128 |       if(a.n==b.n)return a.id<b.id;return desc?a.n>b.n:a.n<b.n;
+2026-11-10T13:06:26.5561950Z       |       ^~
+2026-11-10T13:06:26.5563051Z tests/test_query_regressions.cpp:128:36: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+2026-11-10T13:06:26.5564179Z   128 |       if(a.n==b.n)return a.id<b.id;return desc?a.n>b.n:a.n<b.n;
+2026-11-10T13:06:26.5565055Z       |                                    ^~~~~~
+2026-11-10T13:06:26.5571035Z tests/test_query_regressions.cpp: In lambda function:
+2026-11-10T13:06:26.5572472Z tests/test_query_regressions.cpp:136:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+2026-11-10T13:06:26.5573668Z   136 |     if(a.d==b.d)return a.id<b.id;return a.d<b.d;
+2026-11-10T13:06:26.5574356Z       |     ^~
+2026-11-10T13:06:26.5576879Z tests/test_query_regressions.cpp:136:34: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+2026-11-10T13:06:26.5578324Z   136 |     if(a.d==b.d)return a.id<b.id;return a.d<b.d;
+2026-11-10T13:06:26.5579104Z       |                                  ^~~~~~
+2026-11-10T13:06:26.9456296Z g++ -O2 -std=c++17 -Wall -Wextra -Isrc -pthread -o test_sort tests/test_sort.cpp
+2026-11-10T13:06:28.7319065Z src/db.cpp: In member function ‘bool mvdb::Database::load_snapshot(std::string*)’:
+2026-11-10T13:06:28.7321085Z src/db.cpp:1822:47: warning: ignoring attributes on template argument ‘int (*)(FILE*)’ [-Wignored-attributes]
+2026-11-10T13:06:28.7322331Z  1822 |   std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen(path.c_str(), "rb"), std::fclose);
+2026-11-10T13:06:28.7323185Z       |                                               ^
+2026-11-10T13:06:29.4681553Z g++ -O2 -std=c++17 -Wall -Wextra -Isrc -pthread -o test_flat tests/test_flat_index.cpp src/db.cpp src/exec.cpp src/sql.cpp src/value.cpp src/flat_index.cpp
+2026-11-10T13:06:31.4837019Z src/db.cpp: In member function ‘bool mvdb::Database::load_snapshot(std::string*)’:
+2026-11-10T13:06:31.4838545Z src/db.cpp:1822:47: warning: ignoring attributes on template argument ‘int (*)(FILE*)’ [-Wignored-attributes]
+2026-11-10T13:06:43.3392499Z  1822 |   std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen(path.c_str(), "rb"), std::fclose);
+2026-11-10T13:06:43.3393181Z       |                                               ^
+2026-11-10T13:06:43.3393505Z ./test_sql
+2026-11-10T13:06:43.3409230Z 
+2026-11-10T13:06:43.3409747Z -- OK   CREATE TABLE IF NOT EXISTS docs (id BIGINT PRIMARY KEY, name VARCHAR(20), emb VECTOR(4))
+2026-11-10T13:06:43.3410984Z    kind=CREATE_TABLE raw="CREATE TABLE IF NOT EXISTS docs (id BIGINT PRIMARY KEY, name VARCHAR(20), emb VECTOR(4))"
+2026-11-10T13:06:43.3411885Z    table=docs if_not_exists="IF NOT EXISTS"
+2026-11-10T13:06:43.3412470Z    columns(3): id:BIGINT(0) PK name:VARCHAR(20) emb:VECTOR(4)
+2026-11-10T13:06:43.3412891Z 
+2026-11-10T13:06:43.3413227Z -- OK   create table t (id int primary key, v vector( 3 ), s varchar(8))
+2026-11-10T13:06:43.3414099Z    kind=CREATE_TABLE raw="create table t (id int primary key, v vector( 3 ), s varchar(8))"
+2026-11-10T13:06:43.3415115Z    table=t if_not_exists=""
+2026-11-10T13:06:43.3415599Z    columns(3): id:BIGINT(0) PK v:VECTOR(3) s:VARCHAR(8)
+2026-11-10T13:06:43.3415987Z 
+2026-11-10T13:06:43.3416351Z -- OK   CREATE TABLE `weird name` (`select` BIGINT PRIMARY KEY, `v` VECTOR(2))
+2026-11-10T13:06:43.3417335Z    kind=CREATE_TABLE raw="CREATE TABLE `weird name` (`select` BIGINT PRIMARY KEY, `v` VECTOR(2))"
+2026-11-10T13:06:43.3418127Z    table=weird name if_not_exists=""
+2026-11-10T13:06:43.3418617Z    columns(2): select:BIGINT(0) PK v:VECTOR(2)
+2026-11-10T13:06:43.3418957Z 
+2026-11-10T13:06:43.3419247Z -- OK   CREATE TABLE t (id BIGINT PRIMARY KEY NOT NULL, v VECTOR(8))
+2026-11-10T13:06:43.3420084Z    kind=CREATE_TABLE raw="CREATE TABLE t (id BIGINT PRIMARY KEY NOT NULL, v VECTOR(8))"
+2026-11-10T13:06:43.3420813Z    table=t if_not_exists=""
+2026-11-10T13:06:43.3421243Z    columns(2): id:BIGINT(0) PK v:VECTOR(8)
+2026-11-10T13:06:43.3421571Z 
+2026-11-10T13:06:43.3421838Z -- ERR  CREATE TABLE t (id BIGINT PRIMARY KEY, v VECTOR(8) NULL)
+2026-11-10T13:06:43.3422597Z    ERROR 1235: nullable columns is not supported by MiniVectorDB
+2026-11-10T13:06:43.3423038Z 
+2026-11-10T13:06:43.3423366Z -- ERR  CREATE TABLE t3 (id BIGINT AUTO_INCREMENT PRIMARY KEY, v VECTOR(2))
+2026-11-10T13:06:43.3424134Z    ERROR 1235: AUTO_INCREMENT is not supported by MiniVectorDB
+2026-11-10T13:06:43.3424559Z 
+2026-11-10T13:06:43.3425026Z -- OK   DROP TABLE IF EXISTS docs
+2026-11-10T13:06:43.3425526Z    kind=DROP_TABLE raw="DROP TABLE IF EXISTS docs"
+2026-11-10T13:06:43.3426058Z    table=docs if_not_exists="IF EXISTS"
+2026-11-10T13:06:43.3426373Z 
+2026-11-10T13:06:43.3426513Z -- OK   drop table docs
+2026-11-10T13:06:43.3426916Z    kind=DROP_TABLE raw="drop table docs"
+2026-11-10T13:06:43.3427389Z    table=docs if_not_exists=""
+2026-11-10T13:06:43.3427660Z 
+2026-11-10T13:06:43.3428237Z -- OK   INSERT INTO docs VALUES (1, 'alpha', '[0.1,0.2,0.3,0.4]')
+2026-11-10T13:06:43.3429025Z    kind=INSERT raw="INSERT INTO docs VALUES (1, 'alpha', '[0.1,0.2,0.3,0.4]')"
+2026-11-10T13:06:43.3429671Z    table=docs if_not_exists=""
+2026-11-10T13:06:43.3430054Z    rows(1):
+2026-11-10T13:06:43.3430374Z      (1, "alpha", VEC[0.1,0.2,0.3,0.4])
+2026-11-10T13:06:43.3430673Z 
+2026-11-10T13:06:43.3431406Z -- OK   insert into docs (name, id, emb) values ('it''s', -7, [1, 2.5, -3.5, 0]), ('a\'b', 8, '[0,0,0,0]'), ('tab\there', 9, [1,1,1,1])
+2026-11-10T13:06:43.3432682Z    kind=INSERT raw="insert into docs (name, id, emb) values ('it''s', -7, [1, 2.5, -3.5, 0]), ('a\'b', 8, '[0,0,0,0]'), ('tab\there', 9, [1,1,1,1])"
+2026-11-10T13:06:43.3433598Z    table=docs if_not_exists=""
+2026-11-10T13:06:43.3434084Z    columns(3): name:BIGINT(0) id:BIGINT(0) emb:BIGINT(0)
+2026-11-10T13:06:43.3434784Z    rows(3):
+2026-11-10T13:06:43.3435113Z      ("it's", -7, VEC[1,2.5,-3.5,0])
+2026-11-10T13:06:43.3435549Z      ("a'b", 8, VEC[0,0,0,0])
+2026-11-10T13:06:43.3435954Z      ("tab	here", 9, VEC[1,1,1,1])
+2026-11-10T13:06:43.3436233Z 
+2026-11-10T13:06:43.3436511Z -- OK   INSERT INTO t VALUES (-9223372036854775808, 9223372036854775807)
+2026-11-10T13:06:43.3437300Z    kind=INSERT raw="INSERT INTO t VALUES (-9223372036854775808, 9223372036854775807)"
+2026-11-10T13:06:43.3437964Z    table=t if_not_exists=""
+2026-11-10T13:06:43.3438347Z    rows(1):
+2026-11-10T13:06:43.3438678Z      (-9223372036854775808, 9223372036854775807)
+2026-11-10T13:06:43.3438993Z 
+2026-11-10T13:06:43.3439156Z -- OK   INSERT INTO t VALUE (1)
+2026-11-10T13:06:43.3439602Z    kind=INSERT raw="INSERT INTO t VALUE (1)"
+2026-11-10T13:06:43.3440067Z    table=t if_not_exists=""
+2026-11-10T13:06:43.3440464Z    rows(1):
+2026-11-10T13:06:43.3440749Z      (1)
+2026-11-10T13:06:43.3440918Z 
+2026-11-10T13:06:43.3441057Z -- OK   INSERT t VALUES (1)
+2026-11-10T13:06:43.3441461Z    kind=INSERT raw="INSERT t VALUES (1)"
+2026-11-10T13:06:43.3441951Z    table=t if_not_exists=""
+2026-11-10T13:06:43.3442316Z    rows(1):
+2026-11-10T13:06:43.3442609Z      (1)
+2026-11-10T13:06:43.3442769Z 
+2026-11-10T13:06:43.3442917Z -- OK   SELECT * FROM docs
+2026-11-10T13:06:43.3443317Z    kind=SELECT raw="SELECT * FROM docs"
+2026-11-10T13:06:43.3443764Z    table=docs if_not_exists=""
+2026-11-10T13:06:43.3444025Z 
+2026-11-10T13:06:43.3444779Z -- OK   select id, name, l2_distance(emb, '[1,2,3,4]') as d from docs where id >= 2 and name != 'x' and id < 100 order by d desc limit 5
+2026-11-10T13:06:43.3446289Z    kind=SELECT raw="select id, name, l2_distance(emb, '[1,2,3,4]') as d from docs where id >= 2 and name != 'x' and id < 100 order by d desc limit 5"
+2026-11-10T13:06:43.3447265Z    table=docs if_not_exists=""
+2026-11-10T13:06:43.3447724Z    items(3): id; name; L2_DISTANCE(emb, 1,2,3,4) AS d;
+2026-11-10T13:06:43.3448379Z    conds(3): id >= 2; name <> "x"; id < 100;
+2026-11-10T13:06:43.3448852Z    order_by=d desc=1
+2026-11-10T13:06:43.3449254Z    limit=5
+2026-11-10T13:06:43.3449429Z 
+2026-11-10T13:06:43.3449676Z -- OK   SELECT * FROM t WHERE (a = 1 AND b <= 2) AND c <> 'z'
+2026-11-10T13:06:43.3450379Z    kind=SELECT raw="SELECT * FROM t WHERE (a = 1 AND b <= 2) AND c <> 'z'"
+2026-11-10T13:06:43.3450996Z    table=t if_not_exists=""
+2026-11-10T13:06:43.3451392Z    conds(3): a = 1; b <= 2; c <> "z";
+2026-11-10T13:06:43.3451684Z 
+2026-11-10T13:06:43.3451899Z -- OK   SELECT a, b AS bee FROM t ORDER BY a ASC LIMIT 0
+2026-11-10T13:06:43.3452564Z    kind=SELECT raw="SELECT a, b AS bee FROM t ORDER BY a ASC LIMIT 0"
+2026-11-10T13:06:43.3453160Z    table=t if_not_exists=""
+2026-11-10T13:06:43.3453538Z    items(2): a; b AS bee;
+2026-11-10T13:06:43.3453909Z    order_by=a desc=0
+2026-11-10T13:06:43.3454247Z    limit=0
+2026-11-10T13:06:43.3454421Z 
+2026-11-10T13:06:43.3454882Z -- OK   SELECT L2_DISTANCE(emb, '[1, 2, 3, 4]') FROM t WHERE id > -3
+2026-11-10T13:06:43.3455679Z    kind=SELECT raw="SELECT L2_DISTANCE(emb, '[1, 2, 3, 4]') FROM t WHERE id > -3"
+2026-11-10T13:06:43.3456346Z    table=t if_not_exists=""
+2026-11-10T13:06:43.3456972Z    items(1): L2_DISTANCE(emb, 1,2,3,4);
+2026-11-10T13:06:43.3457478Z    conds(1): id > -3;
+2026-11-10T13:06:43.3457702Z 
+2026-11-10T13:06:43.3457857Z -- OK   SELECT * FROM t WHERE v = [1,2]
+2026-11-10T13:06:43.3458365Z    kind=SELECT raw="SELECT * FROM t WHERE v = [1,2]"
+2026-11-10T13:06:43.3458876Z    table=t if_not_exists=""
+2026-11-10T13:06:43.3459267Z    conds(1): v = VEC[1,2];
+2026-11-10T13:06:43.3459684Z 
+2026-11-10T13:06:43.3460078Z -- OK   update docs set name = 'beta', emb = '[1,2,3,4]', id = 42 where id = 1 and name = 'alpha'
+2026-11-10T13:06:43.3461113Z    kind=UPDATE raw="update docs set name = 'beta', emb = '[1,2,3,4]', id = 42 where id = 1 and name = 'alpha'"
+2026-11-10T13:06:43.3461900Z    table=docs if_not_exists=""
+2026-11-10T13:06:43.3548666Z    conds(2): id = 1; name = "alpha";
+2026-11-10T13:06:43.3549162Z    sets(3): name="beta"; emb=VEC[1,2,3,4]; id=42;
+2026-11-10T13:06:43.3549558Z 
+2026-11-10T13:06:43.3549731Z -- OK   DELETE FROM docs WHERE id = 3
+2026-11-10T13:06:43.3550627Z    kind=DELETE_ROWS raw="DELETE FROM docs WHERE id = 3"
+2026-11-10T13:06:43.3551315Z    table=docs if_not_exists=""
+2026-11-10T13:06:43.3551798Z    conds(1): id = 3;
+2026-11-10T13:06:43.3551999Z 
+2026-11-10T13:06:43.3552143Z -- OK   delete from docs
+2026-11-10T13:06:43.3552527Z    kind=DELETE_ROWS raw="delete from docs"
+2026-11-10T13:06:43.3552998Z    table=docs if_not_exists=""
+2026-11-10T13:06:43.3553279Z 
+2026-11-10T13:06:43.3553498Z -- OK   CREATE VECTOR INDEX idx_emb ON docs (emb)
+2026-11-10T13:06:43.3554159Z    kind=CREATE_INDEX raw="CREATE VECTOR INDEX idx_emb ON docs (emb)"
+2026-11-10T13:06:43.3555141Z    table=docs if_not_exists=""
+2026-11-10T13:06:43.3555572Z    index=idx_emb on column=emb
+2026-11-10T13:06:43.3556024Z 
+2026-11-10T13:06:43.3556165Z -- OK   SHOW TABLES
+2026-11-10T13:06:43.3556559Z    kind=SHOW_TABLES raw="SHOW TABLES"
+2026-11-10T13:06:43.3556866Z 
+2026-11-10T13:06:43.3557010Z -- OK   BEGIN
+2026-11-10T13:06:43.3557375Z    kind=BEGIN_TXN raw="BEGIN"
+2026-11-10T13:06:43.3557657Z 
+2026-11-10T13:06:43.3557976Z -- OK   START TRANSACTION
+2026-11-10T13:06:43.3558423Z    kind=BEGIN_TXN raw="START TRANSACTION"
+2026-11-10T13:06:43.3558774Z 
+2026-11-10T13:06:43.3558910Z -- OK   begin work
+2026-11-10T13:06:43.3559287Z    kind=BEGIN_TXN raw="begin work"
+2026-11-10T13:06:43.3559597Z 
+2026-11-10T13:06:43.3559725Z -- OK   COMMIT
+2026-11-10T13:06:43.3560100Z    kind=COMMIT_TXN raw="COMMIT"
+2026-11-10T13:06:43.3560405Z 
+2026-11-10T13:06:43.3560567Z -- OK   commit work
+2026-11-10T13:06:43.3560961Z    kind=COMMIT_TXN raw="commit work"
+2026-11-10T13:06:43.3561489Z 
+2026-11-10T13:06:43.3561642Z -- OK   ROLLBACK
+2026-11-10T13:06:43.3562008Z    kind=ROLLBACK_TXN raw="ROLLBACK"
+2026-11-10T13:06:43.3562319Z 
+2026-11-10T13:06:43.3562454Z -- OK   <empty>
+2026-11-10T13:06:43.3562914Z    kind=EMPTY
+2026-11-10T13:06:43.3563264Z -- OK   <comment only>
+2026-11-10T13:06:43.3563512Z 
+2026-11-10T13:06:43.3563711Z -- ERR  INSERT INTO t VALUES (1, 'unterminated)
+2026-11-10T13:06:43.3564272Z    ERROR 1064: unterminated string literal
+2026-11-10T13:06:43.3564959Z 
+2026-11-10T13:06:43.3565154Z -- ERR  SELECT * FROM t WHERE name = 'abc
+2026-11-10T13:06:43.3565699Z    ERROR 1064: unterminated string literal
+2026-11-10T13:06:43.3566018Z 
+2026-11-10T13:06:43.3566215Z -- ERR  CREATE TABLE t (id BIGINT PRIMARY KEY
+2026-11-10T13:06:43.3566934Z    ERROR 1064: You have an error in your SQL syntax: expected ')' in CREATE TABLE near end of the statement
+2026-11-10T13:06:43.3567373Z 
+2026-11-10T13:06:43.3567644Z -- ERR  INSERT INTO t VALUES (1, 2
+2026-11-10T13:06:43.3568363Z    ERROR 1064: You have an error in your SQL syntax: expected ')' in VALUES near end of the statement
+2026-11-10T13:06:43.3568910Z 
+2026-11-10T13:06:43.3569167Z -- ERR  CREATE TABLE t (id BLOB)
+2026-11-10T13:06:43.3569895Z    ERROR 1064: You have an error in your SQL syntax: unknown column type 'BLOB' (expected BIGINT, INT, VARCHAR(n) or VECTOR(n)) near 'BLOB)'
+2026-11-10T13:06:43.3570411Z 
+2026-11-10T13:06:43.3570513Z -- ERR  CREATE TABLE t (id VARCHAR)
+2026-11-10T13:06:43.3571850Z    ERROR 1064: You have an error in your SQL syntax: expected '(' in VARCHAR near ')'
+2026-11-10T13:06:43.3572480Z 
+2026-11-10T13:06:43.3572601Z -- ERR  CREATE TABLE t (v VECTOR(0))
+2026-11-10T13:06:43.3573113Z    ERROR 1064: You have an error in your SQL syntax: invalid VECTOR dimension 0 (expected 1..65536) near ')'
+2026-11-10T13:06:43.3573520Z 
+2026-11-10T13:06:43.3573628Z -- ERR  SELECT * FROM t WHERE a = 1 OR b = 2
+2026-11-10T13:06:43.3574486Z    ERROR 1235: OR (only AND is supported in WHERE) is not supported by MiniVectorDB
+2026-11-10T13:06:43.3575105Z 
+2026-11-10T13:06:43.3575230Z -- ERR  SELECT * FROM a JOIN b ON a.id = b.id
+2026-11-10T13:06:43.3575564Z    ERROR 1235: JOIN is not supported by MiniVectorDB
+2026-11-10T13:06:43.3575910Z 
+2026-11-10T13:06:43.3576118Z -- ERR  SELECT a FROM t GROUP BY a
+2026-11-10T13:06:43.3576680Z    ERROR 1235: GROUP BY is not supported by MiniVectorDB
+2026-11-10T13:06:43.3576962Z 
+2026-11-10T13:06:43.3577062Z -- ERR  SELECT COUNT(*) FROM t
+2026-11-10T13:06:43.3577463Z    ERROR 1235: function calls other than L2_DISTANCE is not supported by MiniVectorDB
+2026-11-10T13:06:43.3577796Z 
+2026-11-10T13:06:43.3577895Z -- ERR  SELECT * FROM (SELECT * FROM t) x
+2026-11-10T13:06:43.3578262Z    ERROR 1235: subqueries in FROM is not supported by MiniVectorDB
+2026-11-10T13:06:43.3578527Z 
+2026-11-10T13:06:43.3578662Z -- ERR  SELECT * FROM t WHERE id IN (SELECT id FROM u)
+2026-11-10T13:06:43.3579024Z    ERROR 1235: IN (...) is not supported by MiniVectorDB
+2026-11-10T13:06:43.3579425Z 
+2026-11-10T13:06:43.3579607Z -- ERR  ALTER TABLE t ADD COLUMN x BIGINT
+2026-11-10T13:06:43.3580115Z    ERROR 1235: ALTER TABLE is not supported by MiniVectorDB
+2026-11-10T13:06:43.3580563Z 
+2026-11-10T13:06:43.3580717Z -- ERR  INSERT INTO t VALUES (NULL)
+2026-11-10T13:06:43.3581210Z    ERROR 1064: You have an error in your SQL syntax: NULL is not supported; supply a concrete value near 'NULL)'
+2026-11-10T13:06:43.3581628Z 
+2026-11-10T13:06:43.3581820Z -- ERR  UPDATE t SET a = NULL
+2026-11-10T13:06:43.3582547Z    ERROR 1064: You have an error in your SQL syntax: NULL is not supported; supply a concrete value near 'NULL'
+2026-11-10T13:06:43.3583140Z 
+2026-11-10T13:06:43.3583306Z -- ERR  INSERT INTO t VALUES (1.5)
+2026-11-10T13:06:43.3583953Z    ERROR 1064: You have an error in your SQL syntax: floating point literal '1.5' is not a valid value; use an integer, a quoted string or '[..]' near '1.5)'
+2026-11-10T13:06:43.3584503Z 
+2026-11-10T13:06:43.3584961Z -- ERR  SELECT * FROM t LIMIT 10 OFFSET 5
+2026-11-10T13:06:43.3585570Z    ERROR 1235: LIMIT ... OFFSET is not supported by MiniVectorDB
+2026-11-10T13:06:43.3585847Z 
+2026-11-10T13:06:43.3585932Z -- ERR  SAVEPOINT s1
+2026-11-10T13:06:43.3586524Z    ERROR 1235: savepoints / nested transactions is not supported by MiniVectorDB
+2026-11-10T13:06:43.3586842Z 
+2026-11-10T13:06:43.3586939Z -- ERR  ROLLBACK TO SAVEPOINT s1
+2026-11-10T13:06:43.3587285Z    ERROR 1235: ROLLBACK TO SAVEPOINT is not supported by MiniVectorDB
+2026-11-10T13:06:43.3587705Z 
+2026-11-10T13:06:43.3587886Z -- ERR  CREATE INDEX i ON t (emb)
+2026-11-10T13:06:43.3588561Z    ERROR 1235: non-vector index (only CREATE VECTOR INDEX) is not supported by MiniVectorDB
+2026-11-10T13:06:43.3588980Z 
+2026-11-10T13:06:43.3589085Z -- ERR  SELECT * FROM t ORDER BY a, b
+2026-11-10T13:06:43.3589439Z    ERROR 1235: multiple ORDER BY keys is not supported by MiniVectorDB
+2026-11-10T13:06:43.3589724Z 
+2026-11-10T13:06:43.3589811Z -- ERR  UPDATE t SET a = b
+2026-11-10T13:06:43.3590486Z    ERROR 1235: column references / expressions in SET is not supported by MiniVectorDB
+2026-11-10T13:06:43.3591023Z 
+2026-11-10T13:06:43.3591169Z -- ERR  SELECT * FROM t WHERE a = 1 AND b = 2 AND
+2026-11-10T13:06:43.3591695Z    ERROR 1064: You have an error in your SQL syntax: expected a column name in WHERE near end of the statement
+2026-11-10T13:06:43.3592091Z 
+2026-11-10T13:06:43.3592191Z -- ERR  SELECT * FROM t garbage junk
+2026-11-10T13:06:43.3593348Z    ERROR 1064: You have an error in your SQL syntax: unexpected trailing input after the statement near 'junk'
+2026-11-10T13:06:43.3593931Z 
+2026-11-10T13:06:43.3594038Z -- ERR  gibberish statement here
+2026-11-10T13:06:43.3594930Z    ERROR 1235: statement 'GIBBERISH' is not supported by MiniVectorDB
+2026-11-10T13:06:43.3595229Z 
+2026-11-10T13:06:43.3595340Z -- ERR  INSERT INTO t VALUES ('[1,2,x]', )
+2026-11-10T13:06:43.3596165Z    ERROR 1064: You have an error in your SQL syntax: expected a literal value in the VALUES list near ')'
+2026-11-10T13:06:43.3597003Z 
+2026-11-10T13:06:43.3597115Z -- ERR  SELECT * FROM t WHERE v = [1,2
+2026-11-10T13:06:43.3597425Z    ERROR 1064: unterminated vector literal '['
+2026-11-10T13:06:43.3597650Z 
+2026-11-10T13:06:43.3597759Z -- ERR  CREATE TABLE t ()
+2026-11-10T13:06:43.3598486Z    ERROR 1064: You have an error in your SQL syntax: a table needs at least one column near ')'
+2026-11-10T13:06:43.3599066Z 
+2026-11-10T13:06:43.3599172Z -- ERR  CREATE TABLE t (a BIGINT,)
+2026-11-10T13:06:43.3599622Z    ERROR 1064: You have an error in your SQL syntax: trailing ',' before ')' in the column list near ')'
+2026-11-10T13:06:43.3600169Z 
+2026-11-10T13:06:43.3600478Z -- ERR  CREATE TABLE t (a BIGINT PRIMARY KEY, b BIGINT PRIMARY KEY)
+2026-11-10T13:06:43.3601407Z    ERROR 1064: You have an error in your SQL syntax: only one PRIMARY KEY column is supported near end of the statement
+2026-11-10T13:06:43.3601844Z 
+2026-11-10T13:06:43.3601961Z -- ERR  SELECT * FROM t WHERE a = 1 AND (b = 2
+2026-11-10T13:06:43.3602900Z    ERROR 1064: You have an error in your SQL syntax: expected ')' in a parenthesised condition group near end of the statement
+2026-11-10T13:06:43.3603651Z 
+2026-11-10T13:06:43.3603942Z -- ERR  SELECT * FROM t WHERE a IS NULL
+2026-11-10T13:06:43.3604379Z    ERROR 1235: IS NULL / IS NOT NULL is not supported by MiniVectorDB
+2026-11-10T13:06:43.3604953Z 
+2026-11-10T13:06:43.3605069Z -- ERR  SELECT * FROM t WHERE a LIKE 'x%'
+2026-11-10T13:06:43.3605403Z    ERROR 1235: LIKE is not supported by MiniVectorDB
+2026-11-10T13:06:43.3605633Z 
+2026-11-10T13:06:43.3605761Z -- ERR  SELECT * FROM t WHERE a BETWEEN 1 AND 2
+2026-11-10T13:06:43.3606362Z    ERROR 1235: BETWEEN is not supported by MiniVectorDB
+2026-11-10T13:06:43.3606829Z 
+2026-11-10T13:06:43.3607005Z -- ERR  INSERT INTO t (a, b) VALUES (1)
+2026-11-10T13:06:43.3607924Z    ERROR 1064: You have an error in your SQL syntax: each VALUES row must supply exactly 2 value(s) near end of the statement
+2026-11-10T13:06:43.3608396Z 
+2026-11-10T13:06:43.3608582Z -- ERR  DELETE t WHERE a = 1
+2026-11-10T13:06:43.3609258Z    ERROR 1064: You have an error in your SQL syntax: expected 'FROM' in DELETE near 't WHERE a = 1'
+2026-11-10T13:06:43.3609811Z 
+2026-11-10T13:06:43.3609904Z -- ERR  ROLLBACK AND CHAIN
+2026-11-10T13:06:43.3610219Z    ERROR 1235: ROLLBACK AND CHAIN is not supported by MiniVectorDB
+2026-11-10T13:06:43.3610486Z 
+2026-11-10T13:06:43.3610571Z -- ERR  TRUNCATE TABLE t
+2026-11-10T13:06:43.3610867Z    ERROR 1235: TRUNCATE TABLE is not supported by MiniVectorDB
+2026-11-10T13:06:43.3611360Z 
+2026-11-10T13:06:43.3611648Z -- ERR  CREATE TABLE t (id BIGINT, PRIMARY KEY (missing))
+2026-11-10T13:06:43.3612341Z    ERROR 1072: Key column 'missing' doesn't exist in table
+2026-11-10T13:06:43.3612740Z 
+2026-11-10T13:06:43.3613221Z -- ERR  CREATE TABLE t (id BIGINT, PRIMARY KEY (id), PRIMARY KEY (id))
+2026-11-10T13:06:43.3614155Z    ERROR 1064: You have an error in your SQL syntax: duplicate PRIMARY KEY clause near 'KEY (id))'
+2026-11-10T13:06:43.3615432Z 
+2026-11-10T13:06:43.3615721Z -- ERR  CREATE TABLE t (id BIGINT PRIMARY KEY, PRIMARY KEY (id))
+2026-11-10T13:06:43.3616747Z    ERROR 1064: You have an error in your SQL syntax: duplicate PRIMARY KEY declaration near end of the statement
+2026-11-10T13:06:43.3617314Z 
+2026-11-10T13:06:43.3617532Z -- ERR  CREATE TABLE t (id BIGINT PRIMARY KEY, n BIGINT, PRIMARY KEY (n))
+2026-11-10T13:06:43.3618219Z    ERROR 1064: You have an error in your SQL syntax: only one PRIMARY KEY column is supported near end of the statement
+2026-11-10T13:06:43.3618947Z 
+2026-11-10T13:06:43.3619342Z -- ERR  CREATE TABLE t (id BIGINT, n BIGINT, PRIMARY KEY (id,n))
+2026-11-10T13:06:43.3619792Z    ERROR 1235: composite PRIMARY KEY is not supported by MiniVectorDB
+2026-11-10T13:06:43.3620072Z 
+2026-11-10T13:06:43.3620197Z -- ERR  CREATE TABLE t (id BIGINT, PRIMARY KEY ())
+2026-11-10T13:06:43.3620768Z    ERROR 1064: You have an error in your SQL syntax: expected the PRIMARY KEY column near '))'
+2026-11-10T13:06:43.3621570Z 
+2026-11-10T13:06:43.3621677Z -- ERR  SELECT id first second FROM t
+2026-11-10T13:06:43.3622122Z    ERROR 1064: You have an error in your SQL syntax: expected 'FROM' in SELECT near 'second FROM t'
+2026-11-10T13:06:43.3622703Z 
+2026-11-10T13:06:43.3622874Z -- ERR  SELECT id FROM t ORDER BY id bogus
+2026-11-10T13:06:43.3623325Z    ERROR 1064: You have an error in your SQL syntax: alias in ORDER BY near end of the statement
+2026-11-10T13:06:43.3623673Z 
+2026-11-10T13:06:43.3623789Z -- ERR  SELECT id FROM t ORDER BY id AS bogus
+2026-11-10T13:06:43.3624236Z    ERROR 1064: You have an error in your SQL syntax: alias in ORDER BY near end of the statement
+2026-11-10T13:06:43.3624787Z 
+2026-11-10T13:06:43.3624975Z -- no-crash sweep: 50 inputs, 0 unexpected
+2026-11-10T13:06:43.3625187Z 
+2026-11-10T13:06:43.3625327Z ==================== 212 checks passed, 0 failed ====================
+2026-11-10T13:06:43.3625649Z ./test_db
+2026-11-10T13:06:43.3625911Z test dir: /tmp/minivec_tdbUnbYtF
+2026-11-10T13:06:43.3626164Z [utf8 helpers]
+2026-11-10T13:06:43.3626370Z   ok   utf8_length("") == 0
+2026-11-10T13:06:43.3626607Z   ok   utf8_length ascii == 3
+2026-11-10T13:06:43.3627077Z   ok   utf8_length 汉字 == 2 (6 bytes)
+2026-11-10T13:06:43.3627404Z   ok   utf8_length héllo == 5
+2026-11-10T13:06:43.3627658Z   ok   utf8_length emoji == 1 (4 bytes)
+2026-11-10T13:06:43.3627926Z   ok   utf8_compare abc < abd
+2026-11-10T13:06:43.3628175Z   ok   utf8_compare equal
+2026-11-10T13:06:43.3628420Z   ok   utf8_compare prefix shorter first
+2026-11-10T13:06:43.3628763Z   ok   utf8_compare 汉 > z (code point order)
+2026-11-10T13:06:43.3629082Z   ok   utf8_compare é > e
+2026-11-10T13:06:43.3629324Z [create + insert + scan]
+2026-11-10T13:06:43.3629544Z   ok   open fresh dir
+2026-11-10T13:06:43.3629752Z   ok   create table t1
+2026-11-10T13:06:43.3629957Z   ok   has_table
+2026-11-10T13:06:43.3630169Z   ok   duplicate table -> 1050
+2026-11-10T13:06:43.3630407Z   ok   insert id=1
+2026-11-10T13:06:43.3630602Z   ok   insert id=2
+2026-11-10T13:06:43.3630807Z   ok   insert id=3
+2026-11-10T13:06:43.3631006Z   ok   scan counts 3 rows
+2026-11-10T13:06:43.3631226Z   ok   live_count == 3
+2026-11-10T13:06:43.3631443Z   ok   scan name = 'beta' -> 1
+2026-11-10T13:06:43.3631681Z   ok   scan id >= 2 -> 2
+2026-11-10T13:06:43.3631912Z   ok   ANDed conds -> 1
+2026-11-10T13:06:43.3632138Z   ok   pk lookup miss -> 0
+2026-11-10T13:06:43.3632389Z   ok   pk equality returns the right row
+2026-11-10T13:06:43.3632675Z   ok   VARCHAR counts code points (2/8)
+2026-11-10T13:06:43.3633025Z      (insert failed: 1264 column 'name': value too long (9 > 8 chars))
+2026-11-10T13:06:43.3633402Z   ok   VARCHAR(8) rejects 9 chars -> 1264
+2026-11-10T13:06:43.3633735Z      (insert failed: 1264 column 'emb': vector dimension 2 != 3)
+2026-11-10T13:06:43.3634076Z   ok   vector dim mismatch -> 1264
+2026-11-10T13:06:43.3634384Z      (insert failed: 1264 column 'emb': vector contains NaN/Inf)
+2026-11-10T13:06:43.3634983Z   ok   NaN in vector -> 1264
+2026-11-10T13:06:43.3635282Z      (insert failed: 1264 column 'emb': vector contains NaN/Inf)
+2026-11-10T13:06:43.3635614Z   ok   Inf in vector -> 1264
+2026-11-10T13:06:43.3635852Z   ok   arity mismatch -> 1264
+2026-11-10T13:06:43.3636116Z   ok   still 4 live rows after rejected inserts
+2026-11-10T13:06:43.3636401Z [pk duplicate]
+2026-11-10T13:06:43.3636676Z      (insert failed: 1062 Duplicate entry '1' for key 'PRIMARY')
+2026-11-10T13:06:43.3637006Z   ok   duplicate PK -> 1062
+2026-11-10T13:06:43.3637254Z   ok   duplicate insert did not add a row
+2026-11-10T13:06:43.3637520Z [transactions]
+2026-11-10T13:06:43.3637706Z   ok   BEGIN
+2026-11-10T13:06:43.3637893Z   ok   in_txn() true
+2026-11-10T13:06:43.3638305Z   ok   nested BEGIN -> 1568
+2026-11-10T13:06:43.3638541Z   ok   txn insert id=100
+2026-11-10T13:06:43.3638758Z   ok   txn insert id=101
+2026-11-10T13:06:43.3638991Z   ok   reads see uncommitted rows (6)
+2026-11-10T13:06:43.3639248Z   ok   txn update id=2
+2026-11-10T13:06:43.3639477Z   ok   update visible before commit
+2026-11-10T13:06:43.3639889Z   ok   txn delete id=3
+2026-11-10T13:06:43.3640118Z   ok   5 rows after txn insert/update/delete
+2026-11-10T13:06:43.3640387Z   ok   ROLLBACK
+2026-11-10T13:06:43.3640592Z   ok   in_txn() false after rollback
+2026-11-10T13:06:43.3640865Z   ok   rollback removed the 2 inserted rows
+2026-11-10T13:06:43.3641152Z   ok   rollback restored the updated row
+2026-11-10T13:06:43.3641433Z   ok   rollback restored the deleted row
+2026-11-10T13:06:43.3641716Z   ok   insert id=100 works again after rollback
+2026-11-10T13:06:43.3641993Z   ok   BEGIN (2)
+2026-11-10T13:06:43.3642193Z   ok   txn insert id=200
+2026-11-10T13:06:43.3642409Z   ok   COMMIT
+2026-11-10T13:06:43.3642616Z   ok   COMMIT outside txn is a no-op
+2026-11-10T13:06:43.3642885Z   ok   ROLLBACK outside txn is a no-op
+2026-11-10T13:06:43.3643145Z   ok   6 rows after commit
+2026-11-10T13:06:43.3643417Z [wal replay into a second Database (no checkpoint)]
+2026-11-10T13:06:43.3643759Z   ok   second open() on the same dir replays the WAL
+2026-11-10T13:06:43.3644087Z   ok   second instance sees all 6 committed rows
+2026-11-10T13:06:43.3644383Z   ok   replayed row content matches
+2026-11-10T13:06:43.3644799Z   ok   committed txn row was replayed
+2026-11-10T13:06:43.3645122Z   ok   row inserted after a rollback is present exactly once
+2026-11-10T13:06:43.3645462Z   ok   catalog round-trips the schema
+2026-11-10T13:06:43.3645758Z   ok   3 columns after reopen
+2026-11-10T13:06:43.3645996Z [checkpoint + reopen]
+2026-11-10T13:06:43.3646203Z   ok   checkpoint
+2026-11-10T13:06:43.3646413Z   ok   WAL truncated after checkpoint
+2026-11-10T13:06:43.3646699Z   ok   snapshot.bin written
+2026-11-10T13:06:43.3646934Z   ok   snapshot.lsn written
+2026-11-10T13:06:43.3647177Z   ok   second checkpoint is a no-op success
+2026-11-10T13:06:43.3647454Z   ok   reopen after checkpoint
+2026-11-10T13:06:43.3647709Z   ok   checkpoint + reopen preserved 6 rows
+2026-11-10T13:06:43.3647985Z   ok   row content preserved
+2026-11-10T13:06:43.3648248Z   ok   rolled-back row 100 is the committed one
+2026-11-10T13:06:43.3648537Z   ok   schema round-trip
+2026-11-10T13:06:43.3648750Z   ok   delete id=1
+2026-11-10T13:06:43.3648954Z   ok   5 rows after delete
+2026-11-10T13:06:43.3649184Z   ok   checkpoint after delete
+2026-11-10T13:06:43.3649425Z   ok   insert after checkpoint
+2026-11-10T13:06:43.3649663Z   ok   committed_rows() advances
+2026-11-10T13:06:43.3649928Z   ok   reopen after post-checkpoint insert
+2026-11-10T13:06:43.3650210Z   ok   snapshot + WAL replay = 6 rows
+2026-11-10T13:06:43.3650473Z   ok   deleted row stayed deleted
+2026-11-10T13:06:43.3650723Z [create_table validation]
+2026-11-10T13:06:43.3650962Z   ok   duplicate column name rejected
+2026-11-10T13:06:43.3651228Z   ok   two primary keys rejected
+2026-11-10T13:06:43.3651477Z   ok   missing primary key rejected
+2026-11-10T13:06:43.3651727Z   ok   VARCHAR(0) rejected
+2026-11-10T13:06:43.3651948Z   ok   VECTOR(0) rejected
+2026-11-10T13:06:43.3652177Z   ok   two VECTOR columns rejected
+2026-11-10T13:06:43.3652437Z   ok   non-BIGINT primary key rejected
+2026-11-10T13:06:43.3652697Z [vector index flag]
+2026-11-10T13:06:43.3652902Z   ok   no index initially
+2026-11-10T13:06:43.3653125Z   ok   create_vector_index
+2026-11-10T13:06:43.3653350Z   ok   has_vector_index true
+2026-11-10T13:06:43.3653614Z   ok   index on a non-VECTOR column rejected
+2026-11-10T13:06:43.3653899Z   ok   index on missing table rejected
+2026-11-10T13:06:43.3654151Z   ok   only t1 exists
+2026-11-10T13:06:43.3654355Z [update / delete]
+2026-11-10T13:06:43.3654676Z   ok   update all 6 rows
+2026-11-10T13:06:43.3654896Z   ok   all renamed
+2026-11-10T13:06:43.3655106Z   ok   primary-key update rejected
+2026-11-10T13:06:43.3655498Z   ok   original pk retained
+2026-11-10T13:06:43.3655728Z   ok   no new pk created
+2026-11-10T13:06:43.3655963Z   ok   all primary-key updates rejected
+2026-11-10T13:06:43.3656218Z [torn WAL tail]
+2026-11-10T13:06:43.3656426Z   ok   reopen before corruption
+2026-11-10T13:06:43.3656668Z   ok   insert before tearing
+2026-11-10T13:06:43.3656908Z   ok   open data.log for corruption
+2026-11-10T13:06:43.3657299Z   ok   data.log has a torn tail
+2026-11-10T13:06:43.3657558Z   ok   reopen with a torn tail (must not fail)
+2026-11-10T13:06:43.3657868Z   ok   all committed rows survived the torn tail
+2026-11-10T13:06:43.3658162Z   ok   torn tail truncated on replay
+2026-11-10T13:06:43.3658414Z   ok   insert after repair
+2026-11-10T13:06:43.3658645Z   ok   reopen after repair + insert
+2026-11-10T13:06:43.5225259Z   ok   post-repair insert survived
+2026-11-10T13:06:43.5225883Z   ok   and another insert
+2026-11-10T13:06:43.5226211Z [bulk insert]
+2026-11-10T13:06:43.5226509Z   ok   open perf dir
+2026-11-10T13:06:43.5226845Z   ok   create perf table
+2026-11-10T13:06:43.5227163Z   ok   BEGIN bulk
+2026-11-10T13:06:43.5227455Z   ok   20000 inserts in one txn
+2026-11-10T13:06:43.5227797Z   ok   COMMIT bulk
+2026-11-10T13:06:43.5228088Z      20000 txn rows: 43.6 ms
+2026-11-10T13:06:43.5228423Z   ok   scan sees all 20000
+2026-11-10T13:06:43.5228744Z      full scan: 0.2 ms
+2026-11-10T13:06:43.5229114Z      300 autocommit rows (fdatasync each): 78.5 ms
+2026-11-10T13:06:43.5229548Z   ok   checkpoint 20000 rows
+2026-11-10T13:06:43.5229882Z      checkpoint: 8.3 ms
+2026-11-10T13:06:43.5230198Z   ok   reopen 20000-row snapshot
+2026-11-10T13:06:43.5230550Z   ok   all rows after reopen
+2026-11-10T13:06:43.5230888Z      open+load snapshot: 6.1 ms
+2026-11-10T13:06:43.5231234Z   ok   open PK DML fixture
+2026-11-10T13:06:43.5231564Z   ok   create PK DML fixture
+2026-11-10T13:06:43.5231906Z   ok   insert negative PK fixture
+2026-11-10T13:06:43.5232268Z   ok   insert second PK fixture
+2026-11-10T13:06:43.5232644Z   ok   PK UPDATE checks residual predicate
+2026-11-10T13:06:43.5233066Z   ok   PK DELETE checks residual predicate
+2026-11-10T13:06:43.5233450Z   ok   PK UPDATE miss
+2026-11-10T13:06:43.5233816Z   ok   PK DELETE miss
+2026-11-10T13:06:43.5234228Z   ok   begin PK DML rollback
+2026-11-10T13:06:43.5235040Z   ok   PK UPDATE selects exactly one row
+2026-11-10T13:06:43.5235680Z   ok   PK UPDATE preserves other row
+2026-11-10T13:06:43.5236205Z   ok   PK DELETE selects exactly one row
+2026-11-10T13:06:43.5236817Z   ok   one row remains after PK DELETE
+2026-11-10T13:06:43.5237202Z   ok   rollback PK DML
+2026-11-10T13:06:43.5237532Z   ok   PK DML undo restores original row
+2026-11-10T13:06:43.5237956Z   ok   contradictory PK equalities match no row
+2026-11-10T13:06:43.5238434Z [crash: _exit mid-transaction, no clean shutdown]
+2026-11-10T13:06:43.5238895Z   ok   child committed then died via _exit
+2026-11-10T13:06:43.5239291Z   ok   reopen after crash
+2026-11-10T13:06:43.5239595Z   ok   60 committed rows recovered, 10 uncommitted dropped
+2026-11-10T13:06:43.5239978Z   ok   row from the uncommitted txn is gone
+2026-11-10T13:06:43.5240283Z   ok   row from the committed txn came back
+2026-11-10T13:06:43.5240572Z   ok   autocommit row came back
+2026-11-10T13:06:43.5240735Z 
+2026-11-10T13:06:43.5240843Z PASSED: 141 passed, 0 failed
+2026-11-10T13:06:43.5241103Z ./test_recovery
+2026-11-10T13:06:43.6005396Z PASS transaction, DDL generation, WAL-tail and checkpoint regressions: /tmp/mvdb-recovery-70e6Ec
+2026-11-10T13:06:43.6006540Z PASS durable format limits and later commits
+2026-11-10T13:06:43.6007379Z PASS spilled update Undo, savepoints and table generations
+2026-11-10T13:06:43.6008329Z PASS spilled INSERT and UPDATE failures, partial WAL and transaction boundaries
+2026-11-10T13:06:43.6009352Z PASS recovery reclaims complete and torn uncommitted WAL tails
+2026-11-10T13:06:43.6010092Z ./test_vector quick
+2026-11-10T13:06:43.8965949Z MiniVectorDB vector engine tests (quick)
+2026-11-10T13:06:43.8966437Z [1] l2_distance
+2026-11-10T13:06:43.8967330Z [2] exact_topk vs brute force
+2026-11-10T13:06:43.8967674Z [3] tie-break (dist asc, pk asc)
+2026-11-10T13:06:43.8968028Z [4] IVF (radius-pruned) == exact  [key invariant]
+2026-11-10T13:06:43.8968401Z     insert / erase / compaction
+2026-11-10T13:06:43.8968753Z [5] search_filtered (predicate applied before top-k)
+2026-11-10T13:06:43.8969170Z     filtered recall@10 (nprobe=8, no prune) = 0.990
+2026-11-10T13:06:43.8969716Z [6] write_to / read_from round-trip
+2026-11-10T13:06:43.8969935Z 
+2026-11-10T13:06:43.8970046Z PASS: 1053 checks, 0 failures
+2026-11-10T13:06:43.8972816Z ./test_query
+2026-11-10T13:06:44.4092948Z PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema
+2026-11-10T13:06:44.4159000Z ./test_sort
+2026-11-10T13:06:44.4917242Z PASS external run merge, signed BIGINT keys, DESC ties, payload integrity
+2026-11-10T13:06:44.4920092Z ./test_flat
+2026-11-10T13:06:44.5035643Z PASS physical flat index, filters, mutation/statement/transaction rollback, eager restart rebuild, disk scan
+2026-11-10T13:06:44.5038332Z MVDB_PROTOCOL=sql python3 tests/regressions.py
+2026-11-10T13:06:44.5419015Z PASS distance ties use ascending primary key
+2026-11-10T13:06:44.5451530Z PASS non-projected ordering and exact BIGINT order
+2026-11-10T13:06:44.5484421Z PASS filter before top-k and empty limit
+2026-11-10T13:06:44.5515706Z PASS quoted vector-like VARCHAR preserves spelling
+2026-11-10T13:06:44.5544276Z PASS Unicode codepoint length and order
+2026-11-10T13:06:44.5593503Z PASS failed explicit and implicit INSERT are atomic
+2026-11-10T13:06:44.5655303Z PASS invalid vector predicates preserve earlier transaction writes
+2026-11-10T13:06:44.5690035Z PASS finite float32 endpoints do not overflow distance
+2026-11-10T13:06:44.5745471Z PASS vector literals round directly to float32
+2026-11-10T13:06:44.5774976Z PASS contextual keywords are allowed as column names
+2026-11-10T13:06:44.6313655Z PASS 200-operation independent transaction model
+2026-11-10T13:06:44.6505839Z PASS 45 filtered and unfiltered TopK oracle queries
+2026-11-10T13:06:44.7057958Z PASS fragmented multiline statement preserves WHERE
+2026-11-10T13:06:44.7058703Z RESULT 13 independent regression groups passed
+2026-11-10T13:06:44.7137005Z make: Leaving directory '/home/runner/work/seekdb/seekdb/minivec'
+2026-11-10T13:07:03.8915708Z [01_basic_crud.sql] ok (13 lines)
+2026-11-10T13:07:03.8916257Z [02_pk_duplicate.sql] ok (12 lines)
+2026-11-10T13:07:03.8916686Z [03_varchar_utf8.sql] ok (11 lines)
+2026-11-10T13:07:03.8917098Z [04_vector_l2.sql] ok (18 lines)
+2026-11-10T13:07:03.8917496Z [05_filtered_topk.sql] ok (17 lines)
+2026-11-10T13:07:03.8917937Z [06_update_delete.sql] ok (16 lines)
+2026-11-10T13:07:03.8918358Z [07_txn_commit_rollback.sql] ok (16 lines)
+2026-11-10T13:07:03.8918812Z [08_restart_persistence.sql] ok (26 lines)
+2026-11-10T13:07:03.8919251Z [09_directives.sql] ok (20 lines)
+2026-11-10T13:07:03.8919520Z 
+2026-11-10T13:07:03.8919654Z 9 case(s) passed
+2026-11-10T13:07:03.9048997Z ##[group]Run python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --handshake-only --output protocol-results/source-handshake
+2026-11-10T13:07:03.9050130Z python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --handshake-only --output protocol-results/source-handshake
+2026-11-10T13:07:03.9051063Z python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --output protocol-results/source-public
+2026-11-10T13:07:03.9051754Z python3 minivec/tests/json_protocol.py --binary minivec/minivec
+2026-11-10T13:07:03.9072955Z shell: /usr/bin/bash -e {0}
+2026-11-10T13:07:03.9073218Z ##[endgroup]
+2026-11-10T13:07:03.9563600Z handshake: PASS 
+2026-11-10T13:07:03.9567019Z Report: protocol-results/source-handshake/result.json
+2026-11-10T13:07:04.0068286Z sql_crud: PASS 
+2026-11-10T13:07:04.0123491Z sql_comparisons: PASS 
+2026-11-10T13:07:04.0175637Z sql_ordering: PASS 
+2026-11-10T13:07:04.0225209Z sql_empty: PASS 
+2026-11-10T13:07:04.0279201Z sql_primary_key: PASS 
+2026-11-10T13:07:04.0332091Z sql_unicode: PASS 
+2026-11-10T13:07:04.0384998Z sql_bigint: PASS 
+2026-11-10T13:07:04.0438383Z sql_unsupported: PASS 
+2026-11-10T13:07:04.0522815Z storage_restart: PASS 
+2026-11-10T13:07:04.0582687Z vector_euclidean: PASS 
+2026-11-10T13:07:04.0651113Z transaction_commit: PASS 
+2026-11-10T13:07:04.0712586Z transaction_rollback: PASS 
+2026-11-10T13:07:04.0808291Z storage_mutations: PASS 
+2026-11-10T13:07:04.0900490Z storage_multiple_tables: PASS 
+2026-11-10T13:07:04.0956643Z vector_ties_and_filter: PASS 
+2026-11-10T13:07:04.1011562Z vector_float32: PASS 
+2026-11-10T13:07:04.1161511Z vector_index_maintenance: PASS 
+2026-11-10T13:07:04.1262021Z transaction_failed_insert: PASS 
+2026-11-10T13:07:04.1352792Z transaction_autocommit_atomic: PASS 
+2026-11-10T13:07:04.1442029Z transaction_shutdown_rollback: PASS 
+2026-11-10T13:07:04.1447776Z Report: protocol-results/source-public/result.json
+2026-11-10T13:07:04.1984523Z PASS typed_rows
+2026-11-10T13:07:04.2096583Z PASS transactions_and_invalid_input
+2026-11-10T13:07:04.2321610Z PASS crash_recovery
+2026-11-10T13:07:04.2385717Z PASS mode_switch
+2026-11-10T13:07:04.2461222Z PASS legacy_mode
+2026-11-10T13:07:04.2585461Z ##[group]Run docker build --platform linux/amd64 -t minivec:jsonl .
+2026-11-10T13:07:04.2586024Z docker build --platform linux/amd64 -t minivec:jsonl .
+2026-11-10T13:07:04.2607210Z shell: /usr/bin/bash -e {0}
+2026-11-10T13:07:04.2607485Z ##[endgroup]
+2026-11-10T13:07:07.9121271Z #0 building with "default" instance using docker driver
+2026-11-10T13:07:07.9121681Z 
+2026-11-10T13:07:07.9121837Z #1 [internal] load build definition from Dockerfile
+2026-11-10T13:07:07.9122187Z #1 transferring dockerfile: 818B 0.0s done
+2026-11-10T13:07:07.9122462Z #1 DONE 0.0s
+2026-11-10T13:07:07.9122570Z 
+2026-11-10T13:07:07.9122731Z #2 [auth] library/gcc:pull token for registry-1.docker.io
+2026-11-10T13:07:08.0626357Z #2 DONE 0.0s
+2026-11-10T13:07:08.0626674Z 
+2026-11-10T13:07:08.0627600Z #3 [internal] load metadata for docker.io/library/gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818
+2026-11-10T13:07:08.3280761Z #3 DONE 0.5s
+2026-11-10T13:07:08.4594312Z 
+2026-11-10T13:07:08.4595040Z #4 [internal] load .dockerignore
+2026-11-10T13:07:08.4595641Z #4 transferring context: 140B done
+2026-11-10T13:07:08.4596089Z #4 DONE 0.0s
+2026-11-10T13:07:08.4596704Z 
+2026-11-10T13:07:08.4597469Z #5 [internal] load build context
+2026-11-10T13:07:08.4598019Z #5 transferring context: 1.13MB 0.0s done
+2026-11-10T13:07:08.4598412Z #5 DONE 0.0s
+2026-11-10T13:07:08.4598596Z 
+2026-11-10T13:07:08.4599250Z #6 [build 1/5] FROM docker.io/library/gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818
+2026-11-10T13:07:08.4600632Z #6 resolve docker.io/library/gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818 done
+2026-11-10T13:07:08.4603521Z #6 sha256:37927ed901b1b2608b72796c6881bf645480268eca4ac9a37b9219e050bb4d84 0B / 24.02MB 0.1s
+2026-11-10T13:07:08.4604982Z #6 sha256:79b2f47ad4443652b9b5cc81a95ede249fd976310efdbee159f29638783778c0 0B / 64.40MB 0.1s
+2026-11-10T13:07:08.4606222Z #6 sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818 7.64kB / 7.64kB done
+2026-11-10T13:07:08.4608325Z #6 sha256:50e85821c43ea2fd683bf5ae41f5d6981c41bab0641e7640962759291ceb7f78 2.49kB / 2.49kB done
+2026-11-10T13:07:08.4609596Z #6 sha256:a66b79ea0ff14b341e7041232190ac6a641e8ad991609dd6410d724c3225e4f0 7.34kB / 7.34kB done
+2026-11-10T13:07:08.4610811Z #6 sha256:3e6b9d1a95114e19f12262a4e8a59ad1d1a10ca7b82108adcf0605a200294964 26.21MB / 48.49MB 0.1s
+2026-11-10T13:07:08.6044064Z #6 sha256:37927ed901b1b2608b72796c6881bf645480268eca4ac9a37b9219e050bb4d84 24.02MB / 24.02MB 0.2s done
+2026-11-10T13:07:08.6045584Z #6 sha256:79b2f47ad4443652b9b5cc81a95ede249fd976310efdbee159f29638783778c0 19.92MB / 64.40MB 0.2s
+2026-11-10T13:07:08.6046805Z #6 sha256:3e6b9d1a95114e19f12262a4e8a59ad1d1a10ca7b82108adcf0605a200294964 48.49MB / 48.49MB 0.2s done
+2026-11-10T13:07:08.6048059Z #6 sha256:9c7cdde13eb2c100da1fe2078e240175f65e9fab4ba0a7d36950cf76eecc0ee5 0B / 2.81MB 0.2s
+2026-11-10T13:07:08.6049723Z #6 sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab 0B / 211.36MB 0.2s
+2026-11-10T13:07:08.6050363Z #6 extracting sha256:3e6b9d1a95114e19f12262a4e8a59ad1d1a10ca7b82108adcf0605a200294964
+2026-11-10T13:07:08.7117307Z #6 sha256:79b2f47ad4443652b9b5cc81a95ede249fd976310efdbee159f29638783778c0 55.57MB / 64.40MB 0.3s
+2026-11-10T13:07:08.7120471Z #6 sha256:9c7cdde13eb2c100da1fe2078e240175f65e9fab4ba0a7d36950cf76eecc0ee5 2.81MB / 2.81MB 0.3s done
+2026-11-10T13:07:08.7123376Z #6 sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab 33.55MB / 211.36MB 0.3s
+2026-11-10T13:07:08.7125957Z #6 sha256:5f1573972ce28381313fce672679ae6866c54fd53c7a5a156045669b230ab933 1.05MB / 145.47MB 0.3s
+2026-11-10T13:07:08.8156516Z #6 sha256:79b2f47ad4443652b9b5cc81a95ede249fd976310efdbee159f29638783778c0 64.40MB / 64.40MB 0.3s done
+2026-11-10T13:07:08.8161436Z #6 sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab 78.64MB / 211.36MB 0.4s
+2026-11-10T13:07:08.8164987Z #6 sha256:5f1573972ce28381313fce672679ae6866c54fd53c7a5a156045669b230ab933 8.39MB / 145.47MB 0.4s
+2026-11-10T13:07:08.8168394Z #6 sha256:b3ca46212b924b4546f20490367db3f40de4ecddeb8443376d077343a94c660e 8.93kB / 8.93kB 0.4s done
+2026-11-10T13:07:08.8170215Z #6 sha256:3d6d761f627d1be0301a26335d637172b3f63f9afba2b37ec1f19ac7ddb41698 0B / 1.79kB 0.4s
+2026-11-10T13:07:08.9579193Z #6 sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab 147.85MB / 211.36MB 0.6s
+2026-11-10T13:07:08.9581380Z #6 sha256:5f1573972ce28381313fce672679ae6866c54fd53c7a5a156045669b230ab933 61.87MB / 145.47MB 0.6s
+2026-11-10T13:07:08.9584100Z #6 sha256:3d6d761f627d1be0301a26335d637172b3f63f9afba2b37ec1f19ac7ddb41698 1.79kB / 1.79kB 0.4s done
+2026-11-10T13:07:09.0577882Z #6 sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab 185.60MB / 211.36MB 0.7s
+2026-11-10T13:07:09.0579558Z #6 sha256:5f1573972ce28381313fce672679ae6866c54fd53c7a5a156045669b230ab933 106.95MB / 145.47MB 0.7s
+2026-11-10T13:07:09.1576008Z #6 sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab 211.36MB / 211.36MB 0.8s
+2026-11-10T13:07:09.1577837Z #6 sha256:5f1573972ce28381313fce672679ae6866c54fd53c7a5a156045669b230ab933 145.47MB / 145.47MB 0.8s
+2026-11-10T13:07:09.8312874Z #6 sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab 211.36MB / 211.36MB 1.3s done
+2026-11-10T13:07:09.8314009Z #6 sha256:5f1573972ce28381313fce672679ae6866c54fd53c7a5a156045669b230ab933 145.47MB / 145.47MB 1.3s done
+2026-11-10T13:07:10.9073420Z #6 extracting sha256:3e6b9d1a95114e19f12262a4e8a59ad1d1a10ca7b82108adcf0605a200294964 2.3s done
+2026-11-10T13:07:11.0760095Z #6 extracting sha256:37927ed901b1b2608b72796c6881bf645480268eca4ac9a37b9219e050bb4d84 0.1s
+2026-11-10T13:07:11.5990955Z #6 extracting sha256:37927ed901b1b2608b72796c6881bf645480268eca4ac9a37b9219e050bb4d84 0.5s done
+2026-11-10T13:07:11.6896111Z #6 extracting sha256:79b2f47ad4443652b9b5cc81a95ede249fd976310efdbee159f29638783778c0
+2026-11-10T13:07:13.9666428Z #6 extracting sha256:79b2f47ad4443652b9b5cc81a95ede249fd976310efdbee159f29638783778c0 2.1s done
+2026-11-10T13:07:14.0983317Z #6 extracting sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab
+2026-11-10T13:07:19.2461723Z #6 extracting sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab 5.1s
+2026-11-10T13:07:19.4714221Z #6 extracting sha256:e23f099911d692f62b851cf49a1e93294288a115f5cd2d014180e4d3684d34ab 5.2s done
+2026-11-10T13:07:20.6664856Z #6 extracting sha256:9c7cdde13eb2c100da1fe2078e240175f65e9fab4ba0a7d36950cf76eecc0ee5
+2026-11-10T13:07:20.8421375Z #6 extracting sha256:9c7cdde13eb2c100da1fe2078e240175f65e9fab4ba0a7d36950cf76eecc0ee5 0.0s done
+2026-11-10T13:07:20.8422963Z #6 extracting sha256:5f1573972ce28381313fce672679ae6866c54fd53c7a5a156045669b230ab933 0.1s
+2026-11-10T13:07:23.1565121Z #6 extracting sha256:5f1573972ce28381313fce672679ae6866c54fd53c7a5a156045669b230ab933 2.3s done
+2026-11-10T13:07:23.8597936Z #6 extracting sha256:b3ca46212b924b4546f20490367db3f40de4ecddeb8443376d077343a94c660e
+2026-11-10T13:07:24.0980044Z #6 extracting sha256:b3ca46212b924b4546f20490367db3f40de4ecddeb8443376d077343a94c660e done
+2026-11-10T13:07:24.0981024Z #6 extracting sha256:3d6d761f627d1be0301a26335d637172b3f63f9afba2b37ec1f19ac7ddb41698 done
+2026-11-10T13:07:24.0981973Z #6 DONE 15.6s
+2026-11-10T13:07:24.0982122Z 
+2026-11-10T13:07:24.0982228Z #7 [build 2/5] WORKDIR /src
+2026-11-10T13:07:24.0982504Z #7 DONE 0.0s
+2026-11-10T13:07:24.0982637Z 
+2026-11-10T13:07:24.0982760Z #8 [build 3/5] COPY minivec/src ./src
+2026-11-10T13:07:24.0983064Z #8 DONE 0.0s
+2026-11-10T13:07:24.0983201Z 
+2026-11-10T13:07:24.0983358Z #9 [build 4/5] COPY minivec/third_party ./third_party
+2026-11-10T13:07:24.0983712Z #9 DONE 0.0s
+2026-11-10T13:07:24.0983836Z 
+2026-11-10T13:07:24.0985888Z #10 [build 5/5] RUN g++ -O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc src/*.cpp -o /minivec  && strip /minivec  && mkdir /data /smoke  && printf '{"id":1,"op":"shutdown"}\n' | /minivec --data /smoke > /smoke.out  && printf '{"type":"ready"}\n{"id":1,"ok":true}\n' > /smoke.expected  && cmp /smoke.out /smoke.expected
+2026-11-10T13:07:45.3835309Z #10 21.44 minivec ready data=/smoke
+2026-11-10T13:07:45.5449243Z #10 DONE 21.4s
+2026-11-10T13:07:45.9342429Z 
+2026-11-10T13:07:45.9343057Z #11 [stage-1 1/3] COPY --from=build /minivec /minivec
+2026-11-10T13:07:46.0253106Z #11 DONE 0.0s
+2026-11-10T13:07:46.0253310Z 
+2026-11-10T13:07:46.0253518Z #12 [stage-1 2/3] COPY --from=build /data /data
+2026-11-10T13:07:46.0253991Z #12 DONE 0.0s
+2026-11-10T13:07:46.0254120Z 
+2026-11-10T13:07:46.0254229Z #13 [stage-1 3/3] WORKDIR /data
+2026-11-10T13:07:46.0254490Z #13 DONE 0.0s
+2026-11-10T13:07:46.0254855Z 
+2026-11-10T13:07:46.0255006Z #14 exporting to image
+2026-11-10T13:07:46.0255400Z #14 exporting layers 0.0s done
+2026-11-10T13:07:46.0256158Z #14 writing image sha256:c2a6a59921ecc44561286429857feb044fbe4fc09a13b9f6bb52dccfa4cdae3a done
+2026-11-10T13:07:46.0256910Z #14 naming to docker.io/library/minivec:jsonl done
+2026-11-10T13:07:46.0257433Z #14 DONE 0.0s
+2026-11-10T13:07:46.0399372Z ##[group]Run python3 protocol_check/run.py --image minivec:jsonl --handshake-only --output protocol-results/image-handshake
+2026-11-10T13:07:46.0400350Z python3 protocol_check/run.py --image minivec:jsonl --handshake-only --output protocol-results/image-handshake
+2026-11-10T13:07:46.0401103Z python3 protocol_check/run.py --image minivec:jsonl --output protocol-results/image-public
+2026-11-10T13:07:46.0401669Z docker image inspect minivec:jsonl --format '{{.Id}}'
+2026-11-10T13:07:46.0421832Z shell: /usr/bin/bash -e {0}
+2026-11-10T13:07:46.0422115Z ##[endgroup]
+2026-11-10T13:07:46.3703525Z handshake: PASS 
+2026-11-10T13:07:46.3707436Z Report: protocol-results/image-handshake/result.json
+2026-11-10T13:07:46.6810569Z sql_crud: PASS 
+2026-11-10T13:07:46.9150283Z sql_comparisons: PASS 
+2026-11-10T13:07:47.1480866Z sql_ordering: PASS 
+2026-11-10T13:07:47.3807294Z sql_empty: PASS 
+2026-11-10T13:07:47.6275067Z sql_primary_key: PASS 
+2026-11-10T13:07:47.8665315Z sql_unicode: PASS 
+2026-11-10T13:07:48.0981258Z sql_bigint: PASS 
+2026-11-10T13:07:48.3324242Z sql_unsupported: PASS 
+2026-11-10T13:07:48.7540061Z storage_restart: PASS 
+2026-11-10T13:07:48.9955137Z vector_euclidean: PASS 
+2026-11-10T13:07:49.2312506Z transaction_commit: PASS 
+2026-11-10T13:07:49.4652534Z transaction_rollback: PASS 
+2026-11-10T13:07:49.8946758Z storage_mutations: PASS 
+2026-11-10T13:07:50.3478128Z storage_multiple_tables: PASS 
+2026-11-10T13:07:50.5972808Z vector_ties_and_filter: PASS 
+2026-11-10T13:07:50.8332395Z vector_float32: PASS 
+2026-11-10T13:07:51.2800817Z vector_index_maintenance: PASS 
+2026-11-10T13:07:51.7280727Z transaction_failed_insert: PASS 
+2026-11-10T13:07:52.1670100Z transaction_autocommit_atomic: PASS 
+2026-11-10T13:07:52.6180348Z transaction_shutdown_rollback: PASS 
+2026-11-10T13:07:52.6187227Z Report: protocol-results/image-public/result.json
+2026-11-10T13:07:52.6423063Z sha256:c2a6a59921ecc44561286429857feb044fbe4fc09a13b9f6bb52dccfa4cdae3a
+2026-11-10T13:07:52.6481880Z ##[group]Run if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
+2026-11-10T13:07:52.6482718Z if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
+2026-11-10T13:07:52.6483765Z if [ -d protocol-results ]; then find protocol-results -name '*.stderr.log' -exec sh -c 'echo "$1"; tail -30 "$1"' _ {} \;; fi
+2026-11-10T13:07:52.6505263Z shell: /usr/bin/bash -e {0}
+2026-11-10T13:07:52.6505545Z ##[endgroup]
+2026-11-10T13:07:52.6570388Z {
+2026-11-10T13:07:52.6570639Z   "scope": "public-protocol-check",
+2026-11-10T13:07:52.6570948Z   "passed": true,
+2026-11-10T13:07:52.6571162Z   "cases": [
+2026-11-10T13:07:52.6571452Z     {
+2026-11-10T13:07:52.6571885Z       "id": "handshake",
+2026-11-10T13:07:52.6572401Z       "status": "PASS",
+2026-11-10T13:07:52.6572804Z       "message": "",
+2026-11-10T13:07:52.6573240Z       "duration_ms": 285
+2026-11-10T13:07:52.6573595Z     }
+2026-11-10T13:07:52.6573940Z   ],
+2026-11-10T13:07:52.6574851Z   "note": "Local diagnostic only; no performance/Agent scores or platform callbacks."
+2026-11-10T13:07:52.6575355Z }
+2026-11-10T13:07:52.6583463Z {
+2026-11-10T13:07:52.6583816Z   "scope": "public-protocol-check",
+2026-11-10T13:07:52.6584182Z   "passed": true,
+2026-11-10T13:07:52.6584392Z   "cases": [
+2026-11-10T13:07:52.6584996Z     {
+2026-11-10T13:07:52.6585326Z       "id": "sql_crud",
+2026-11-10T13:07:52.6585710Z       "status": "PASS",
+2026-11-10T13:07:52.6586073Z       "message": "",
+2026-11-10T13:07:52.6586442Z       "duration_ms": 8
+2026-11-10T13:07:52.6586783Z     },
+2026-11-10T13:07:52.6587140Z     {
+2026-11-10T13:07:52.6587486Z       "id": "sql_comparisons",
+2026-11-10T13:07:52.6587739Z       "status": "PASS",
+2026-11-10T13:07:52.6587956Z       "message": "",
+2026-11-10T13:07:52.6588158Z       "duration_ms": 5
+2026-11-10T13:07:52.6588355Z     },
+2026-11-10T13:07:52.6588520Z     {
+2026-11-10T13:07:52.6588703Z       "id": "sql_ordering",
+2026-11-10T13:07:52.6588963Z       "status": "PASS",
+2026-11-10T13:07:52.6589173Z       "message": "",
+2026-11-10T13:07:52.6589368Z       "duration_ms": 5
+2026-11-10T13:07:52.6589564Z     },
+2026-11-10T13:07:52.6589779Z     {
+2026-11-10T13:07:52.6589976Z       "id": "sql_empty",
+2026-11-10T13:07:52.6590197Z       "status": "PASS",
+2026-11-10T13:07:52.6590412Z       "message": "",
+2026-11-10T13:07:52.6590616Z       "duration_ms": 5
+2026-11-10T13:07:52.6590808Z     },
+2026-11-10T13:07:52.6590973Z     {
+2026-11-10T13:07:52.6591151Z       "id": "sql_primary_key",
+2026-11-10T13:07:52.6591381Z       "status": "PASS",
+2026-11-10T13:07:52.6591581Z       "message": "",
+2026-11-10T13:07:52.6591784Z       "duration_ms": 5
+2026-11-10T13:07:52.6591983Z     },
+2026-11-10T13:07:52.6592146Z     {
+2026-11-10T13:07:52.6592318Z       "id": "sql_unicode",
+2026-11-10T13:07:52.6592536Z       "status": "PASS",
+2026-11-10T13:07:52.6592736Z       "message": "",
+2026-11-10T13:07:52.6592939Z       "duration_ms": 5
+2026-11-10T13:07:52.6593133Z     },
+2026-11-10T13:07:52.6593305Z     {
+2026-11-10T13:07:52.6593484Z       "id": "sql_bigint",
+2026-11-10T13:07:52.6593701Z       "status": "PASS",
+2026-11-10T13:07:52.6593904Z       "message": "",
+2026-11-10T13:07:52.6594114Z       "duration_ms": 5
+2026-11-10T13:07:52.6594363Z     },
+2026-11-10T13:07:52.6594529Z     {
+2026-11-10T13:07:52.6595059Z       "id": "sql_unsupported",
+2026-11-10T13:07:52.6595349Z       "status": "PASS",
+2026-11-10T13:07:52.6595563Z       "message": "",
+2026-11-10T13:07:52.6595853Z       "duration_ms": 5
+2026-11-10T13:07:52.6596207Z     },
+2026-11-10T13:07:52.6596496Z     {
+2026-11-10T13:07:52.6596684Z       "id": "storage_restart",
+2026-11-10T13:07:52.6596917Z       "status": "PASS",
+2026-11-10T13:07:52.6597120Z       "message": "",
+2026-11-10T13:07:52.6597320Z       "duration_ms": 8
+2026-11-10T13:07:52.6597690Z     },
+2026-11-10T13:07:52.6597985Z     {
+2026-11-10T13:07:52.6598301Z       "id": "vector_euclidean",
+2026-11-10T13:07:52.6598705Z       "status": "PASS",
+2026-11-10T13:07:52.6599469Z       "message": "",
+2026-11-10T13:07:52.6599877Z       "duration_ms": 6
+2026-11-10T13:07:52.6600075Z     },
+2026-11-10T13:07:52.6600244Z     {
+2026-11-10T13:07:52.6600426Z       "id": "transaction_commit",
+2026-11-10T13:07:52.6600849Z       "status": "PASS",
+2026-11-10T13:07:52.6601052Z       "message": "",
+2026-11-10T13:07:52.6601249Z       "duration_ms": 7
+2026-11-10T13:07:52.6601442Z     },
+2026-11-10T13:07:52.6601608Z     {
+2026-11-10T13:07:52.6601793Z       "id": "transaction_rollback",
+2026-11-10T13:07:52.6602048Z       "status": "PASS",
+2026-11-10T13:07:52.6602248Z       "message": "",
+2026-11-10T13:07:52.6602450Z       "duration_ms": 6
+2026-11-10T13:07:52.6602643Z     },
+2026-11-10T13:07:52.6602806Z     {
+2026-11-10T13:07:52.6602986Z       "id": "storage_mutations",
+2026-11-10T13:07:52.6603221Z       "status": "PASS",
+2026-11-10T13:07:52.6603420Z       "message": "",
+2026-11-10T13:07:52.6603616Z       "duration_ms": 9
+2026-11-10T13:07:52.6603807Z     },
+2026-11-10T13:07:52.6603970Z     {
+2026-11-10T13:07:52.6604161Z       "id": "storage_multiple_tables",
+2026-11-10T13:07:52.6604420Z       "status": "PASS",
+2026-11-10T13:07:52.6604973Z       "message": "",
+2026-11-10T13:07:52.6605219Z       "duration_ms": 9
+2026-11-10T13:07:52.6605431Z     },
+2026-11-10T13:07:52.6605604Z     {
+2026-11-10T13:07:52.6605796Z       "id": "vector_ties_and_filter",
+2026-11-10T13:07:52.6606060Z       "status": "PASS",
+2026-11-10T13:07:52.6606275Z       "message": "",
+2026-11-10T13:07:52.6606481Z       "duration_ms": 5
+2026-11-10T13:07:52.6606678Z     },
+2026-11-10T13:07:52.6606846Z     {
+2026-11-10T13:07:52.6607024Z       "id": "vector_float32",
+2026-11-10T13:07:52.6607259Z       "status": "PASS",
+2026-11-10T13:07:52.6607467Z       "message": "",
+2026-11-10T13:07:52.6607675Z       "duration_ms": 5
+2026-11-10T13:07:52.6607929Z     },
+2026-11-10T13:07:52.6608224Z     {
+2026-11-10T13:07:52.6608427Z       "id": "vector_index_maintenance",
+2026-11-10T13:07:52.6608698Z       "status": "PASS",
+2026-11-10T13:07:52.6608909Z       "message": "",
+2026-11-10T13:07:52.6609111Z       "duration_ms": 11
+2026-11-10T13:07:52.6609310Z     },
+2026-11-10T13:07:52.6609578Z     {
+2026-11-10T13:07:52.6609913Z       "id": "transaction_failed_insert",
+2026-11-10T13:07:52.6610443Z       "status": "PASS",
+2026-11-10T13:07:52.6610802Z       "message": "",
+2026-11-10T13:07:52.6611150Z       "duration_ms": 10
+2026-11-10T13:07:52.6611489Z     },
+2026-11-10T13:07:52.6611806Z     {
+2026-11-10T13:07:52.6612127Z       "id": "transaction_autocommit_atomic",
+2026-11-10T13:07:52.6612558Z       "status": "PASS",
+2026-11-10T13:07:52.6612767Z       "message": "",
+2026-11-10T13:07:52.6612965Z       "duration_ms": 9
+2026-11-10T13:07:52.6613162Z     },
+2026-11-10T13:07:52.6613325Z     {
+2026-11-10T13:07:52.6613523Z       "id": "transaction_shutdown_rollback",
+2026-11-10T13:07:52.6613790Z       "status": "PASS",
+2026-11-10T13:07:52.6613991Z       "message": "",
+2026-11-10T13:07:52.6614189Z       "duration_ms": 9
+2026-11-10T13:07:52.6614400Z     }
+2026-11-10T13:07:52.6614565Z   ],
+2026-11-10T13:07:52.6615188Z   "note": "Local diagnostic only; no performance/Agent scores or platform callbacks."
+2026-11-10T13:07:52.6615623Z }
+2026-11-10T13:07:52.6615840Z {
+2026-11-10T13:07:52.6616044Z   "scope": "public-protocol-check",
+2026-11-10T13:07:52.6616315Z   "passed": true,
+2026-11-10T13:07:52.6616522Z   "cases": [
+2026-11-10T13:07:52.6616702Z     {
+2026-11-10T13:07:52.6616876Z       "id": "sql_crud",
+2026-11-10T13:07:52.6617088Z       "status": "PASS",
+2026-11-10T13:07:52.6617297Z       "message": "",
+2026-11-10T13:07:52.6617497Z       "duration_ms": 262
+2026-11-10T13:07:52.6617704Z     },
+2026-11-10T13:07:52.6617865Z     {
+2026-11-10T13:07:52.6618047Z       "id": "sql_comparisons",
+2026-11-10T13:07:52.6618282Z       "status": "PASS",
+2026-11-10T13:07:52.6618481Z       "message": "",
+2026-11-10T13:07:52.6618679Z       "duration_ms": 234
+2026-11-10T13:07:52.6618890Z     },
+2026-11-10T13:07:52.6619050Z     {
+2026-11-10T13:07:52.6619228Z       "id": "sql_ordering",
+2026-11-10T13:07:52.6619671Z       "status": "PASS",
+2026-11-10T13:07:52.6619905Z       "message": "",
+2026-11-10T13:07:52.6620105Z       "duration_ms": 233
+2026-11-10T13:07:52.6620305Z     },
+2026-11-10T13:07:52.6620466Z     {
+2026-11-10T13:07:52.6620767Z       "id": "sql_empty",
+2026-11-10T13:07:52.6620978Z       "status": "PASS",
+2026-11-10T13:07:52.6621179Z       "message": "",
+2026-11-10T13:07:52.6621378Z       "duration_ms": 232
+2026-11-10T13:07:52.6621574Z     },
+2026-11-10T13:07:52.6621745Z     {
+2026-11-10T13:07:52.6621924Z       "id": "sql_primary_key",
+2026-11-10T13:07:52.6622153Z       "status": "PASS",
+2026-11-10T13:07:52.6622365Z       "message": "",
+2026-11-10T13:07:52.6622559Z       "duration_ms": 246
+2026-11-10T13:07:52.6622754Z     },
+2026-11-10T13:07:52.6622917Z     {
+2026-11-10T13:07:52.6623092Z       "id": "sql_unicode",
+2026-11-10T13:07:52.6623308Z       "status": "PASS",
+2026-11-10T13:07:52.6623515Z       "message": "",
+2026-11-10T13:07:52.6623715Z       "duration_ms": 239
+2026-11-10T13:07:52.6623914Z     },
+2026-11-10T13:07:52.6624081Z     {
+2026-11-10T13:07:52.6624258Z       "id": "sql_bigint",
+2026-11-10T13:07:52.6624471Z       "status": "PASS",
+2026-11-10T13:07:52.6625085Z       "message": "",
+2026-11-10T13:07:52.6625318Z       "duration_ms": 231
+2026-11-10T13:07:52.6625527Z     },
+2026-11-10T13:07:52.6625694Z     {
+2026-11-10T13:07:52.6625879Z       "id": "sql_unsupported",
+2026-11-10T13:07:52.6626116Z       "status": "PASS",
+2026-11-10T13:07:52.6626321Z       "message": "",
+2026-11-10T13:07:52.6626516Z       "duration_ms": 234
+2026-11-10T13:07:52.6626712Z     },
+2026-11-10T13:07:52.6626874Z     {
+2026-11-10T13:07:52.6627045Z       "id": "storage_restart",
+2026-11-10T13:07:52.6627265Z       "status": "PASS",
+2026-11-10T13:07:52.6627465Z       "message": "",
+2026-11-10T13:07:52.6627662Z       "duration_ms": 418
+2026-11-10T13:07:52.6627858Z     },
+2026-11-10T13:07:52.6628017Z     {
+2026-11-10T13:07:52.6628193Z       "id": "vector_euclidean",
+2026-11-10T13:07:52.6628420Z       "status": "PASS",
+2026-11-10T13:07:52.6628624Z       "message": "",
+2026-11-10T13:07:52.6628819Z       "duration_ms": 241
+2026-11-10T13:07:52.6629013Z     },
+2026-11-10T13:07:52.6629175Z     {
+2026-11-10T13:07:52.6629357Z       "id": "transaction_commit",
+2026-11-10T13:07:52.6629600Z       "status": "PASS",
+2026-11-10T13:07:52.6629801Z       "message": "",
+2026-11-10T13:07:52.6630013Z       "duration_ms": 233
+2026-11-10T13:07:52.6630216Z     },
+2026-11-10T13:07:52.6630376Z     {
+2026-11-10T13:07:52.6630563Z       "id": "transaction_rollback",
+2026-11-10T13:07:52.6630808Z       "status": "PASS",
+2026-11-10T13:07:52.6631011Z       "message": "",
+2026-11-10T13:07:52.6631205Z       "duration_ms": 234
+2026-11-10T13:07:52.6631403Z     },
+2026-11-10T13:07:52.6631563Z     {
+2026-11-10T13:07:52.6631744Z       "id": "storage_mutations",
+2026-11-10T13:07:52.6631977Z       "status": "PASS",
+2026-11-10T13:07:52.6632175Z       "message": "",
+2026-11-10T13:07:52.6632378Z       "duration_ms": 429
+2026-11-10T13:07:52.6632576Z     },
+2026-11-10T13:07:52.6632737Z     {
+2026-11-10T13:07:52.6632930Z       "id": "storage_multiple_tables",
+2026-11-10T13:07:52.6633189Z       "status": "PASS",
+2026-11-10T13:07:52.6633459Z       "message": "",
+2026-11-10T13:07:52.6633840Z       "duration_ms": 453
+2026-11-10T13:07:52.6634155Z     },
+2026-11-10T13:07:52.6634326Z     {
+2026-11-10T13:07:52.6634876Z       "id": "vector_ties_and_filter",
+2026-11-10T13:07:52.6635373Z       "status": "PASS",
+2026-11-10T13:07:52.6635758Z       "message": "",
+2026-11-10T13:07:52.6636011Z       "duration_ms": 249
+2026-11-10T13:07:52.6636225Z     },
+2026-11-10T13:07:52.6636400Z     {
+2026-11-10T13:07:52.6636584Z       "id": "vector_float32",
+2026-11-10T13:07:52.6636833Z       "status": "PASS",
+2026-11-10T13:07:52.6637051Z       "message": "",
+2026-11-10T13:07:52.6637254Z       "duration_ms": 235
+2026-11-10T13:07:52.6637460Z     },
+2026-11-10T13:07:52.6637627Z     {
+2026-11-10T13:07:52.6637819Z       "id": "vector_index_maintenance",
+2026-11-10T13:07:52.6638086Z       "status": "PASS",
+2026-11-10T13:07:52.6638561Z       "message": "",
+2026-11-10T13:07:52.6638785Z       "duration_ms": 446
+2026-11-10T13:07:52.6638988Z     },
+2026-11-10T13:07:52.6639149Z     {
+2026-11-10T13:07:52.6639356Z       "id": "transaction_failed_insert",
+2026-11-10T13:07:52.6639781Z       "status": "PASS",
+2026-11-10T13:07:52.6640050Z       "message": "",
+2026-11-10T13:07:52.6640251Z       "duration_ms": 448
+2026-11-10T13:07:52.6640457Z     },
+2026-11-10T13:07:52.6640620Z     {
+2026-11-10T13:07:52.6640818Z       "id": "transaction_autocommit_atomic",
+2026-11-10T13:07:52.6641097Z       "status": "PASS",
+2026-11-10T13:07:52.6641463Z       "message": "",
+2026-11-10T13:07:52.6641726Z       "duration_ms": 438
+2026-11-10T13:07:52.6641934Z     },
+2026-11-10T13:07:52.6642097Z     {
+2026-11-10T13:07:52.6642292Z       "id": "transaction_shutdown_rollback",
+2026-11-10T13:07:52.6642566Z       "status": "PASS",
+2026-11-10T13:07:52.6642774Z       "message": "",
+2026-11-10T13:07:52.6642973Z       "duration_ms": 451
+2026-11-10T13:07:52.6643176Z     }
+2026-11-10T13:07:52.6643343Z   ],
+2026-11-10T13:07:52.6643679Z   "note": "Local diagnostic only; no performance/Agent scores or platform callbacks."
+2026-11-10T13:07:52.6644090Z }
+2026-11-10T13:07:52.6644267Z {
+2026-11-10T13:07:52.6644470Z   "scope": "public-protocol-check",
+2026-11-10T13:07:52.6645100Z   "passed": true,
+2026-11-10T13:07:52.6645314Z   "cases": [
+2026-11-10T13:07:52.6645508Z     {
+2026-11-10T13:07:52.6645696Z       "id": "handshake",
+2026-11-10T13:07:52.6645923Z       "status": "PASS",
+2026-11-10T13:07:52.6646134Z       "message": "",
+2026-11-10T13:07:52.6646333Z       "duration_ms": 4
+2026-11-10T13:07:52.6646529Z     }
+2026-11-10T13:07:52.6646689Z   ],
+2026-11-10T13:07:52.6647025Z   "note": "Local diagnostic only; no performance/Agent scores or platform callbacks."
+2026-11-10T13:07:52.6647532Z }
+2026-11-10T13:07:52.6647851Z protocol-results/image-handshake/handshake.stderr.log
+2026-11-10T13:07:52.6654246Z minivec ready data=/data
+2026-11-10T13:07:52.6667015Z protocol-results/source-public/vector_euclidean.stderr.log
+2026-11-10T13:07:52.6674918Z minivec ready data=/tmp/vectordb-c2clany6
+2026-11-10T13:07:52.6686052Z protocol-results/source-public/storage_mutations.stderr.log
+2026-11-10T13:07:52.6693679Z minivec ready data=/tmp/vectordb-lh_r5dlr
+2026-11-10T13:07:52.6694117Z minivec ready data=/tmp/vectordb-lh_r5dlr
+2026-11-10T13:07:52.6705427Z protocol-results/source-public/vector_float32.stderr.log
+2026-11-10T13:07:52.6713195Z minivec ready data=/tmp/vectordb-60uwhyvr
+2026-11-10T13:07:52.6724006Z protocol-results/source-public/storage_multiple_tables.stderr.log
+2026-11-10T13:07:52.6731647Z minivec ready data=/tmp/vectordb-kn4hotu3
+2026-11-10T13:07:52.6732133Z minivec ready data=/tmp/vectordb-kn4hotu3
+2026-11-10T13:07:52.6742521Z protocol-results/source-public/sql_ordering.stderr.log
+2026-11-10T13:07:52.6750892Z minivec ready data=/tmp/vectordb-61dz6suy
+2026-11-10T13:07:52.6761978Z protocol-results/source-public/transaction_shutdown_rollback.stderr.log
+2026-11-10T13:07:52.6770121Z minivec ready data=/tmp/vectordb-7cptbpt5
+2026-11-10T13:07:52.6770690Z minivec ready data=/tmp/vectordb-7cptbpt5
+2026-11-10T13:07:52.6781117Z protocol-results/source-public/transaction_commit.stderr.log
+2026-11-10T13:07:52.6788934Z minivec ready data=/tmp/vectordb-t3ryqauq
+2026-11-10T13:07:52.6799541Z protocol-results/source-public/transaction_failed_insert.stderr.log
+2026-11-10T13:07:52.6807504Z minivec ready data=/tmp/vectordb-z7d1b0vg
+2026-11-10T13:07:52.6808080Z minivec ready data=/tmp/vectordb-z7d1b0vg
+2026-11-10T13:07:52.6818199Z protocol-results/source-public/transaction_autocommit_atomic.stderr.log
+2026-11-10T13:07:52.6825265Z minivec ready data=/tmp/vectordb-t9v6t3c2
+2026-11-10T13:07:52.6825766Z minivec ready data=/tmp/vectordb-t9v6t3c2
+2026-11-10T13:07:52.6836230Z protocol-results/source-public/vector_ties_and_filter.stderr.log
+2026-11-10T13:07:52.6844130Z minivec ready data=/tmp/vectordb-yc1saiht
+2026-11-10T13:07:52.6855720Z protocol-results/source-public/sql_comparisons.stderr.log
+2026-11-10T13:07:52.6863334Z minivec ready data=/tmp/vectordb-44l08mh2
+2026-11-10T13:07:52.6873857Z protocol-results/source-public/sql_bigint.stderr.log
+2026-11-10T13:07:52.6881644Z minivec ready data=/tmp/vectordb-284ync87
+2026-11-10T13:07:52.6892190Z protocol-results/source-public/transaction_rollback.stderr.log
+2026-11-10T13:07:52.6899716Z minivec ready data=/tmp/vectordb-16zicqbs
+2026-11-10T13:07:52.6910468Z protocol-results/source-public/storage_restart.stderr.log
+2026-11-10T13:07:52.6918531Z minivec ready data=/tmp/vectordb-wjq6k1n4
+2026-11-10T13:07:52.6919119Z minivec ready data=/tmp/vectordb-wjq6k1n4
+2026-11-10T13:07:52.6929292Z protocol-results/source-public/sql_unicode.stderr.log
+2026-11-10T13:07:52.6936654Z minivec ready data=/tmp/vectordb-ktlwqnsr
+2026-11-10T13:07:52.6947310Z protocol-results/source-public/sql_primary_key.stderr.log
+2026-11-10T13:07:52.6955111Z minivec ready data=/tmp/vectordb-r49meyz6
+2026-11-10T13:07:52.6965979Z protocol-results/source-public/vector_index_maintenance.stderr.log
+2026-11-10T13:07:52.6972983Z minivec ready data=/tmp/vectordb-g3502idq
+2026-11-10T13:07:52.6973454Z minivec ready data=/tmp/vectordb-g3502idq
+2026-11-10T13:07:52.6983649Z protocol-results/source-public/sql_crud.stderr.log
+2026-11-10T13:07:52.6991147Z minivec ready data=/tmp/vectordb-9r89yhcm
+2026-11-10T13:07:52.7001742Z protocol-results/source-public/sql_empty.stderr.log
+2026-11-10T13:07:52.7009329Z minivec ready data=/tmp/vectordb-kghnsvoc
+2026-11-10T13:07:52.7019628Z protocol-results/source-public/sql_unsupported.stderr.log
+2026-11-10T13:07:52.7027151Z minivec ready data=/tmp/vectordb-7cow1e88
+2026-11-10T13:07:52.7038491Z protocol-results/image-public/vector_euclidean.stderr.log
+2026-11-10T13:07:52.7046037Z minivec ready data=/data
+2026-11-10T13:07:52.7058046Z protocol-results/image-public/storage_mutations.stderr.log
+2026-11-10T13:07:52.7065743Z minivec ready data=/data
+2026-11-10T13:07:52.7066134Z minivec ready data=/data
+2026-11-10T13:07:52.7076482Z protocol-results/image-public/vector_float32.stderr.log
+2026-11-10T13:07:52.7083505Z minivec ready data=/data
+2026-11-10T13:07:52.7094049Z protocol-results/image-public/storage_multiple_tables.stderr.log
+2026-11-10T13:07:52.7101267Z minivec ready data=/data
+2026-11-10T13:07:52.7101717Z minivec ready data=/data
+2026-11-10T13:07:52.7112544Z protocol-results/image-public/sql_ordering.stderr.log
+2026-11-10T13:07:52.7120057Z minivec ready data=/data
+2026-11-10T13:07:52.7130462Z protocol-results/image-public/transaction_shutdown_rollback.stderr.log
+2026-11-10T13:07:52.7137922Z minivec ready data=/data
+2026-11-10T13:07:52.7138329Z minivec ready data=/data
+2026-11-10T13:07:52.7148783Z protocol-results/image-public/transaction_commit.stderr.log
+2026-11-10T13:07:52.7156506Z minivec ready data=/data
+2026-11-10T13:07:52.7167180Z protocol-results/image-public/transaction_failed_insert.stderr.log
+2026-11-10T13:07:52.7175438Z minivec ready data=/data
+2026-11-10T13:07:52.7175924Z minivec ready data=/data
+2026-11-10T13:07:52.7186104Z protocol-results/image-public/transaction_autocommit_atomic.stderr.log
+2026-11-10T13:07:52.7194113Z minivec ready data=/data
+2026-11-10T13:07:52.7194553Z minivec ready data=/data
+2026-11-10T13:07:52.7205436Z protocol-results/image-public/vector_ties_and_filter.stderr.log
+2026-11-10T13:07:52.7212437Z minivec ready data=/data
+2026-11-10T13:07:52.7222991Z protocol-results/image-public/sql_comparisons.stderr.log
+2026-11-10T13:07:52.7230250Z minivec ready data=/data
+2026-11-10T13:07:52.7240894Z protocol-results/image-public/sql_bigint.stderr.log
+2026-11-10T13:07:52.7248157Z minivec ready data=/data
+2026-11-10T13:07:52.7259355Z protocol-results/image-public/transaction_rollback.stderr.log
+2026-11-10T13:07:52.7267260Z minivec ready data=/data
+2026-11-10T13:07:52.7277687Z protocol-results/image-public/storage_restart.stderr.log
+2026-11-10T13:07:52.7284926Z minivec ready data=/data
+2026-11-10T13:07:52.7285317Z minivec ready data=/data
+2026-11-10T13:07:52.7295328Z protocol-results/image-public/sql_unicode.stderr.log
+2026-11-10T13:07:52.7302888Z minivec ready data=/data
+2026-11-10T13:07:52.7313574Z protocol-results/image-public/sql_primary_key.stderr.log
+2026-11-10T13:07:52.7320388Z minivec ready data=/data
+2026-11-10T13:07:52.7331598Z protocol-results/image-public/vector_index_maintenance.stderr.log
+2026-11-10T13:07:52.7338832Z minivec ready data=/data
+2026-11-10T13:07:52.7339234Z minivec ready data=/data
+2026-11-10T13:07:52.7349847Z protocol-results/image-public/sql_crud.stderr.log
+2026-11-10T13:07:52.7357100Z minivec ready data=/data
+2026-11-10T13:07:52.7368110Z protocol-results/image-public/sql_empty.stderr.log
+2026-11-10T13:07:52.7375101Z minivec ready data=/data
+2026-11-10T13:07:52.7385777Z protocol-results/image-public/sql_unsupported.stderr.log
+2026-11-10T13:07:52.7392298Z minivec ready data=/data
+2026-11-10T13:07:52.7402896Z protocol-results/source-handshake/handshake.stderr.log
+2026-11-10T13:07:52.7409993Z minivec ready data=/tmp/vectordb-kazhdi2d
+2026-11-10T13:07:52.7600552Z Post job cleanup.
+2026-11-10T13:07:52.8559034Z [command]/usr/bin/git version
+2026-11-10T13:07:52.8612351Z git version 2.56.0
+2026-11-10T13:07:52.8657185Z Temporarily overriding HOME='/home/runner/work/_temp/ea17efd9-f7cf-4b75-8ef9-b4c0e3abcbb6' before making global git config changes
+2026-11-10T13:07:52.8658523Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-10T13:07:52.8663977Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/seekdb/seekdb
+2026-11-10T13:07:52.8719999Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-10T13:07:52.8768320Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-10T13:07:52.9054092Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-10T13:07:52.9095542Z http.https://github.com/.extraheader
+2026-11-10T13:07:52.9110879Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-10T13:07:52.9181029Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-10T13:07:52.9526012Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-10T13:07:52.9594156Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-10T13:07:53.0063963Z Cleaning up orphan processes
+2026-11-10T13:07:53.0511709Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@11d5960a326750d5838078e36cf38b85af677262. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

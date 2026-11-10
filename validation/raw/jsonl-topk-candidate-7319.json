@@ -1,0 +1,51 @@
+{
+  "kind": "local_synthetic_jsonl_benchmark",
+  "target": {
+    "image": "minivec:jsonl"
+  },
+  "seed": 7319,
+  "rows": 10000,
+  "dimension": 128,
+  "queries_per_mode": 1000,
+  "filtered_queries_per_mode": 500,
+  "k": 10,
+  "batch_size": 100,
+  "ingest_seconds": 0.4257356490000177,
+  "index_build_seconds": 0.0025612510000030397,
+  "query": {
+    "exact": {
+      "count": 1000,
+      "total_seconds": 0.45186637599965707,
+      "p50_ms": 0.5095345000114548,
+      "p95_ms": 0.5717730000185384,
+      "qps": 2213.04361889666
+    },
+    "ann": {
+      "count": 1000,
+      "total_seconds": 0.4521651509996616,
+      "p50_ms": 0.47878750001473236,
+      "p95_ms": 0.5714929999953711,
+      "qps": 2211.5813166697326
+    }
+  },
+  "correctness": {
+    "ann_matches_exact": true,
+    "full_scan_oracle_query_indices": [
+      0,
+      1,
+      179,
+      634,
+      817,
+      838,
+      892,
+      895,
+      961,
+      962
+    ],
+    "primary_key_tie": true,
+    "restart_seconds": 0.10149559999999269,
+    "restart_records_checked": 10000,
+    "restart_vectors_checked": 10
+  },
+  "measurement": "End-to-end JSONL requests with shared index and interleaved modes. Query latency excludes workload generation and validation. Local diagnostic only."
+}

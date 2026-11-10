@@ -73,6 +73,13 @@ or `MVDB_PROTOCOL=sql` for engine regressions and older benchmarks. Its
 Historical TSV validation reports are not evidence of JSONL compatibility.
 `exact` and `ann` requests both use the exact Flat index, which has recall 1.
 
+Bounded ascending TopK uses an outward-rounded lower distance bound to reject
+only candidates proven strictly worse than the heap's exact boundary. Ties and
+uncertain candidates still use the exact float32 squared-distance accumulator;
+descending and unbounded sorts retain the full exact calculation. The error
+argument is documented beside the implementation and independently tested with
+integer/Fraction reference distances.
+
 ## SQL and semantics
 
 - CREATE TABLE with one inline BIGINT PRIMARY KEY, BIGINT, VARCHAR(n), VECTOR(n),

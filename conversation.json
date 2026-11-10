@@ -141,6 +141,24 @@
       "source": "tool stdout, validation/raw/integrated-final.log and integrated-bench.json",
       "status": "executed",
       "output": "Final merged source: complete make test passed, 9 SQL harness cases passed, static build and 10 Python regression groups passed. 10k rows/128d/1000 queries: write_seconds=0.5270600998774171, query_seconds=0.6543118259869516, both recalls=1.0, restart=pass. Cloud and local src SHA256 hashes identical. An initial harness command omitted its required run subcommand, then was corrected and passed. No official score claimed."
+    },
+    {
+      "id": "official_jsonl_and_docker",
+      "source": "GitHub Actions 42821410516 and validation/raw/jsonl-ci-first.log",
+      "status": "executed",
+      "output": "Source build and engine tests passed, all 20 official public cases passed for source and real Docker image, handshake/shutdown passed. Five independent JSONL groups passed. The driver was the unchanged organizer f4d4e266 package."
+    },
+    {
+      "id": "jsonl_exact_bound_final",
+      "source": "GitHub Actions 42824224037 and validation/raw/jsonl-topk-ci.log",
+      "status": "executed",
+      "output": "Candidate a665c323c34ea4b4e593eab62588a58312a2ed6e passed source and image official checks; 7200 distance cases, 63 midpoint cases, 50000 neighbor comparisons and conservative-threshold checks passed. Independent integer/Fraction TopK queries passed. Real image ID sha256:0ef5a2615e17af643aba3b5517426cb1f208feb0fe00665b4f183156a93d93ac."
+    },
+    {
+      "id": "jsonl_paired_benchmark",
+      "source": "validation/raw/jsonl-topk-paired.json and paired per-seed reports",
+      "status": "executed",
+      "output": "Same runner, official 2CPU/2GiB Docker constraints, three seeds, 10000 rows, 128 dimensions, K10, 1000 queries per exact/ann mode, half filtered. Baseline exact seconds=[1.549340629,1.556824065,1.537942564]; candidate=[0.455824874,0.451866376,0.451893902]. Paired speedups=[3.398982191,3.445319563,3.403326660], median=3.403326660. All six runs passed exact/ann agreement, sampled full-scan oracle, tie and restart checks. This is not an official score."
     }
   ],
   "limitations": [

@@ -421,3 +421,6 @@ deps/ios-build/__pycache__/
 /minivec/test_sort
 
 /minivec/test_flat
+/minivec/test_distance_neighbors
+/protocol-results/
+/protocol_check/__pycache__/
