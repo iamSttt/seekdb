@@ -1,7 +1,7 @@
 {
   "schema": "agent-learning-evidence-v3-unbounded",
   "synthetic": false,
-  "material_scope": "Actual excerpts from this Codex conversation and actual tool outputs during the 2026-11-09 MiniVectorDB development session. This is a selected, attributed record, not a complete transcript. Hidden model reasoning and credentials are excluded.",
+  "material_scope": "Actual selected excerpts from this Codex conversation and attributed implementation/tool summaries through 2026-11-10. This is a selected record, not a complete transcript. Hidden reasoning and credentials are excluded.",
   "redactions": "SSH host/login/password and all access tokens omitted. User quotations below are exact selected non-sensitive excerpts; neighboring context is summarized separately and attributed to Agent.",
   "base_commit": "bd69093f0ff2d2d075daaed46759f9a521cbf3ce",
   "sources": {
@@ -60,6 +60,36 @@
       "id": "a6",
       "role": "agent",
       "content": "Implement a real exact Flat vector index, not only a persisted has_index flag. Bound resident index payload, use sequential disk records for larger data, invalidate derived structures on mutations/undo, and rebuild persisted definitions before startup readiness."
+    },
+    {
+      "id": "u_protocol_recheck",
+      "role": "student",
+      "content": "有人有分了，你研究一下有没有给资料"
+    },
+    {
+      "id": "a_protocol_discovery",
+      "role": "agent",
+      "content": "Agent summary: rechecked official sources after the student reported scored submissions. Found organizer commit f4d4e26653af823a7601668802f80e374ad6643c, published 2026-11-10 03:30:03 UTC, with STDIO_PROTOCOL.md and protocol_check. It explicitly specifies JSONL; the prior TSV adapter was incompatible. Public TSV fixture success did not establish formal protocol compatibility."
+    },
+    {
+      "id": "u_protocol_implementation",
+      "role": "student",
+      "content": "那么开始吧，改动你写的，完成这道题，分数尽可能高"
+    },
+    {
+      "id": "a_protocol_implementation",
+      "role": "agent",
+      "content": "Agent summary: implemented startup ready, execute and shutdown JSONL; preserved request IDs, BIGINT integers, VARCHAR strings and vector arrays; buffered typed query responses until success. Independent review found UTF-8 diagnostic truncation could terminate error reporting, so diagnostic serialization was repaired and a regression added. Explicit legacy SQL mode is retained for engine tests."
+    },
+    {
+      "id": "a_official_driver_validation",
+      "role": "agent",
+      "content": "Agent summary: the previously authorized SSH host no longer returned its banner. Used GitHub Actions with actual Docker to run the bundled official driver. Source and image handshake checks and all 20 public cases passed, as did independent transaction, malformed request, shutdown, restart and acknowledged-commit SIGKILL checks. This validates the public interface, not the unpublished formal gate. Formal submissions remain the student responsibility."
+    },
+    {
+      "id": "a_conservative_optimization",
+      "role": "agent",
+      "content": "Agent summary: after protocol checks passed, measured an exact distance implementation change that replaces neighboring-double library calls with IEEE binary64 neighbors. All bitwise reference checks passed; five alternating same-process runs showed a 1.04366x median kernel speedup. Separately investigated a conservative lower-bound TopK rejection with a documented rounding-error proof; ambiguous and equal-distance candidates retain exact evaluation. Only measured and validated candidates are retained."
     }
   ],
   "experiments": [
@@ -114,7 +144,7 @@
     }
   ],
   "limitations": [
-    "No official driver, hidden functional admission, baseline T/B/M or final leaderboard has been observed. No formal score is claimed.",
+    "The official public protocol and driver published in f4d4e266 were observed and run on 2026-11-10. Hidden formal admission, official performance/Agent evaluation and final leaderboard remain unverified. No formal score is claimed.",
     "Student messages mainly delegate implementation and identify the scoring document. Agent technical explanations and tool results do not establish student understanding; no student explanation, disagreement or experiment participation is fabricated.",
     "Two public documents disagree on four versus five learning dimensions and best versus most recent default final version. Preserve authentic evidence and explicitly select a final commit.",
     "Selected transcripts omit repetitive progress messages and source code; this selection is documented rather than represented as a complete record.",

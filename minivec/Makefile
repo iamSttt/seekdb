@@ -35,6 +35,7 @@ test: all test_sql test_db test_recovery test_vector test_query test_sort test_f
 	./test_flat
 	./test_distance_neighbors
 	MVDB_PROTOCOL=sql python3 tests/regressions.py
+	python3 tests/topk_bounds.py --binary ./minivec
 
 clean:
 	rm -f $(BIN)

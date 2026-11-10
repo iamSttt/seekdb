@@ -54,6 +54,7 @@ static void check_neighbor(double value){
   require(bits(n.upper)==bits(std::nextafter(value,std::numeric_limits<double>::infinity())),"upper neighbor");
 }
 static void tests(){
+  size_t safely_rejected=0;
   for(double value:{0.0,-0.0,std::numeric_limits<double>::denorm_min(),
       std::numeric_limits<double>::min(),1.0,2.0,std::numeric_limits<double>::max()})
     check_neighbor(value);
@@ -96,15 +97,38 @@ static void tests(){
     const double exact=distance_exact(a.data(),b.data(),n);
     require(bits(distance_scalar(a.data(),b.data(),n))==bits(exact),"new scalar vs exact");
     require(bits(old_distance_scalar(a.data(),b.data(),n))==bits(exact),"old scalar vs exact");
+    for(double threshold:{exact,std::nextafter(exact,0.0),
+        std::nextafter(exact,std::numeric_limits<double>::infinity()),exact*0.5,exact*2}) {
+      const bool rejected=distance_definitely_greater(a.data(),b.data(),n,threshold);
+      require(!rejected || exact>threshold,"conservative threshold rejection");
+      if(rejected)++safely_rejected;
+    }
+    require(!distance_definitely_greater(a.data(),b.data(),n,exact),"exact tie never rejected");
+    require(!distance_definitely_greater(a.data(),b.data(),n,std::nextafter(exact,0.0)),
+            "one-ulp near tie uses exact fallback");
   }
   // Exactly halfway between binary64 values, then immediately above and below.
   for(int exponent=-100;exponent<=100;exponent+=10){
     std::vector<float> a={std::ldexp(1.0f,exponent),std::ldexp(1.0f,exponent-27),
                          std::ldexp(1.0f,exponent-27),std::ldexp(1.0f,exponent-40)};
     const float zero[4]={};
-    for(size_t n:{size_t(2),size_t(3),size_t(4)})
+    for(size_t n:{size_t(2),size_t(3),size_t(4)}) {
       require(bits(distance_scalar(a.data(),zero,n))==bits(distance_exact(a.data(),zero,n)),"rounding midpoint");
+      const double exact=distance_exact(a.data(),zero,n);
+      require(!distance_definitely_greater(a.data(),zero,n,exact),"midpoint tie never rejected");
+      require(!distance_definitely_greater(a.data(),zero,n,std::nextafter(exact,0.0)),
+              "midpoint adjacent threshold uses exact fallback");
+    }
   }
+  require(safely_rejected>1000,"pruning is active on clearly separated candidates");
+  const float finite[1]={1},zero[1]={0},nonfinite[1]={std::numeric_limits<float>::infinity()};
+  require(!distance_definitely_greater(finite,zero,1,-1),"negative threshold fallback");
+  require(!distance_definitely_greater(finite,zero,1,std::numeric_limits<double>::infinity()),"infinite threshold fallback");
+  require(!distance_definitely_greater(finite,zero,1,std::numeric_limits<double>::quiet_NaN()),"NaN threshold fallback");
+  require(!distance_definitely_greater(nonfinite,zero,1,0),"nonfinite coordinate fallback");
+  if(sizeof(size_t)>4)
+    require(!distance_definitely_greater(nullptr,nullptr,static_cast<size_t>((uint64_t(1)<<32)+1),0),"large dimension fallback");
+  std::cout<<"PASS conservative threshold checks; safely_rejected="<<safely_rejected<<"\n";
   std::cout<<"PASS neighbors: boundaries + 50000 random; distances: 7200 cases + 63 midpoint cases\n";
 }
 #if defined(__GNUC__)

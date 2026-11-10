@@ -159,6 +159,43 @@ inline double distance_scalar(const float* a,const float* b,size_t n) {
   return distance_exact(a,b,n);
 }
 
+// Conservative rejection only: true proves distance_exact(a,b,n) > threshold.
+// Uses the same round-to-nearest IEEE model as distance_scalar; no fast-math.
+inline bool distance_definitely_greater(const float* a,const float* b,size_t n,
+                                        double threshold) {
+  if(!n || n>(uint64_t(1)<<32) || !std::isfinite(threshold) || threshold<0)
+    return false;
+  double s0=0,s1=0,s2=0,s3=0;
+  size_t i=0;
+  for(;i+4<=n;i+=4) {
+    const double d0=static_cast<double>(a[i])-b[i];
+    const double d1=static_cast<double>(a[i+1])-b[i+1];
+    const double d2=static_cast<double>(a[i+2])-b[i+2];
+    const double d3=static_cast<double>(a[i+3])-b[i+3];
+    s0+=d0*d0;s1+=d1*d1;s2+=d2*d2;s3+=d3*d3;
+  }
+  for(;i<n;++i){const double d=static_cast<double>(a[i])-b[i];s0+=d*d;}
+  const double sum=(s0+s1)+(s2+s3);
+  if(!std::isfinite(sum) || !(sum>threshold))return false;
+  // For finite float32 inputs, every nonzero difference is >=2^-149;
+  // squares and sums are normal binary64, and n<=2^32 cannot overflow.
+  // Set u=epsilon/2, k=n+6. Counting subtraction twice through its square,
+  // multiplication, lane accumulation and reduction gives relative error
+  // <=gamma_k<=2*k*u against the exact real sum D. Since k*u<2^-20,
+  // conversion to computed-sum error gives |sum-D|<=4*k*u*sum.
+  // Rounding D once to binary64 adds <=2*u*sum, so the total is bounded
+  // by (4*n+26)*u*sum. We use the larger 16*(n+8)*u*sum instead.
+  // The factor is exact (small integer times a power of two); next-up of
+  // the product and next-down of the subtraction make the bound outward.
+  const double factor=(static_cast<double>(n)+8)*
+                      (8*std::numeric_limits<double>::epsilon());
+  const double error=distance_detail::positive_neighbors(sum*factor).upper;
+  const double lower_candidate=sum-error;
+  if(!(lower_candidate>0) || !std::isfinite(lower_candidate))return false;
+  const double lower=distance_detail::positive_neighbors(lower_candidate).lower;
+  return lower>threshold;
+}
+
 inline double distance_squared(const float* a,const float* b,size_t n) {
   // Exact for all finite float32 coordinates, then rounded once to double.
   // Different exact distances that round to the same double remain tied.

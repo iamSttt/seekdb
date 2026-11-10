@@ -499,6 +499,11 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
       if (!bounded || k != 0) {
         if (ordered && order.is_distance) {
           db.scan_vectors(st.table,st.conds,[&](int64_t pk,const float* v,size_t dim){
+            // Reject only candidates proven strictly farther than the current
+            // exact boundary. Ties and uncertain bounds still use exact keys.
+            if (bounded && !st.order_desc && result.size()==k &&
+                distance_definitely_greater(v,order.qvec->data(),dim,result.front().distance))
+              return true;
             Candidate c;c.pk=pk;c.distance=distance_squared(v,order.qvec->data(),dim);
             return offer(std::move(c));
           });
