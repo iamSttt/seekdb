@@ -1768,27 +1768,35 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
   Pred predicate;
   if (!compile_pred(table, conds, &predicate) || predicate.never) return;
   build_vector_index(table);
+  // Set while walking a posting list whose single equality term already
+  // defines the list: every entry then satisfies the predicate by
+  // construction, so the per-candidate row materialisation is redundant.
+  bool postings_satisfy_predicate = false;
   const FlatIndex::Visitor visit=[&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
     if (slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
       throw std::runtime_error("stale flat vector index slot");
-    if (!conds.empty()) {
+    if (!conds.empty() && !postings_satisfy_predicate) {
       Row scratch;
       if (!row_matches(predicate,table.read_row(static_cast<size_t>(slot),scratch))) return true;
     }
     return cb(pk,vector,dimension);
   };
-  // Use the already-coerced predicate, never reinterpret SQL literals. The
-  // posting list only selects candidates; all conjunction terms are checked
-  // by the same row_matches path above. Its lifetime is the physical index's,
-  // so every mutation/rebuild also invalidates these scalar postings.
+  // Use the already-coerced predicate, never reinterpret SQL literals. A
+  // posting list built from the predicate's only term already enumerates
+  // exactly the matching rows; with further conjunction terms the remaining
+  // ones are still checked through row_matches above. Its lifetime is the
+  // physical index's, so every mutation/rebuild invalidates these postings.
   for(const RCond& term:predicate.c) {
     if(term.op!=static_cast<uint8_t>(Cond::EQ) ||
        term.vt!=static_cast<uint8_t>(Type::BIGINT))continue;
-    if(table.vector_index->scan_integer_equal(term.col,term.lit->i,
+    postings_satisfy_predicate = predicate.c.size()==1;
+    const bool consumed=table.vector_index->scan_integer_equal(term.col,term.lit->i,
         [&](uint64_t slot) {
           Row scratch;
           return table.read_row(static_cast<size_t>(slot),scratch).vals[term.col].i;
-        },visit))return;
+        },visit);
+    postings_satisfy_predicate = false;
+    if(consumed)return;
     break;
   }
   table.vector_index->scan(visit);

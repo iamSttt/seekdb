@@ -528,6 +528,14 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 bounded && !st.order_desc && view.quantized ? view.quantization_step : 0);
             if(quantized.enabled()) {
               for(size_t i=0;i<view.count;++i) {
+#if defined(__GNUC__) || defined(__clang__)
+                // Stream ahead: the per-row arithmetic is short enough that an
+                // unprefetched record load dominates the loop.
+                if(i+8<view.count) {
+                  __builtin_prefetch(view.quantized+(i+8)*view.dimension,0,3);
+                  __builtin_prefetch(view.vectors+(i+4)*view.dimension,0,3);
+                }
+#endif
                 // Integer codes are only a certified rejection filter. Every
                 // uncertain row follows the existing float bound/exact path.
                 if(result.size()==k && quantized.definitely_greater(
@@ -535,8 +543,12 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
               }
             } else {
-              for(size_t i=0;i<view.count;++i)
+              for(size_t i=0;i<view.count;++i) {
+#if defined(__GNUC__) || defined(__clang__)
+                if(i+8<view.count)__builtin_prefetch(view.vectors+(i+8)*view.dimension,0,3);
+#endif
                 if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
+              }
             }
           } else db.scan_vectors(st.table,st.conds,consider);
         } else db.scan(st.table, st.conds, [&](const Row& r) {
