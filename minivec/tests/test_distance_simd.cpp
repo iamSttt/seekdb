@@ -15,10 +15,13 @@ static void require(bool ok,const char* message){
 static size_t rejected=0;
 static void check(const std::vector<float>& a,const std::vector<float>& b){
   const size_t n=a.size();
+  const DistanceBoundContext context(n);
   const double exact=distance_exact(a.data(),b.data(),n);
   for(double threshold:{0.0,exact*0.5,std::nextafter(exact,0.0),exact,
       std::nextafter(exact,std::numeric_limits<double>::infinity()),exact*2}){
     const bool fast=distance_definitely_greater(a.data(),b.data(),n,threshold);
+    require(context.definitely_greater(a.data(),b.data(),threshold)==fast,
+            "query context and per-call wrapper decisions differ");
     require(!fast || exact>threshold,"SIMD rejected exact <= threshold");
     rejected+=fast;
 #if defined(MVDB_SIMD_BOUND_X86)
@@ -113,8 +116,11 @@ static void tests(){
   a[0]=1;const unsigned csr=_mm_getcsr();
   for(unsigned flags:{1u<<6,1u<<15,1u<<13}){
     _mm_setcsr(csr|flags);
+    const DistanceBoundContext disabled_context(128);
     const bool result=distance_definitely_greater(a.data(),b.data(),128,1);
+    const bool cached=disabled_context.definitely_greater(a.data(),b.data(),1);
     _mm_setcsr(csr);require(!result,"non-default FP environment fallback");
+    require(!cached,"context constructed in non-default environment is disabled");
   }
   // DAZ turns the largest subnormal input into zero during float->double
   // conversion. Without a wrapper-wide guard even the old double bound can
@@ -126,9 +132,12 @@ static void tests(){
     const double expected=distance_exact(x.data(),y.data(),n);
     require(expected>0,"DAZ oracle calculated in default environment");
     _mm_setcsr(csr|(1u<<6));
+    const DistanceBoundContext disabled_context(n);
     const bool result=distance_definitely_greater(x.data(),y.data(),n,expected);
+    const bool cached=disabled_context.definitely_greater(x.data(),y.data(),expected);
     _mm_setcsr(csr);
     require(!result,"DAZ guard covers non-SIMD dimensions and canonical tie");
+    require(!cached,"disabled context covers non-SIMD dimensions");
   }
 #endif
   require(rejected>1000,"nontrivial pruning");

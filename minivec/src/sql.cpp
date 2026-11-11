@@ -19,6 +19,7 @@
 #include "sql.h"
 
 #include <cerrno>
+#include <charconv>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -298,10 +299,21 @@ bool parse_float_list(const std::string& body, std::vector<float>* out) {
     while (i < n && is_space((unsigned char)body[i])) ++i;
     if (i >= n) break;
     const char* begin = body.c_str() + i;
-    char* endp = nullptr;
+    const char* endp = nullptr;
     // Parse at storage precision to avoid rounding first to double and then
     // rounding again at a float32 midpoint. Subnormals and zero are finite.
-    const float stored = std::strtof(begin, &endp);
+    float stored = 0;
+    const auto parsed = std::from_chars(begin, body.data() + n, stored, std::chars_format::general);
+    if (parsed.ec == std::errc{} &&
+        (parsed.ptr == body.data() + n || *parsed.ptr == ',' || is_space((unsigned char)*parsed.ptr))) {
+      endp = parsed.ptr;
+    } else {
+      // Keep strtof's leading plus, hexadecimal and underflow-to-zero forms.
+      // In particular, from_chars may successfully consume only the 0 in 0x1.
+      char* compatible_end = nullptr;
+      stored = std::strtof(begin, &compatible_end);
+      endp = compatible_end;
+    }
     if (endp == begin || !std::isfinite(stored)) return false;
     out->push_back(stored);
     i += (size_t)(endp - begin);

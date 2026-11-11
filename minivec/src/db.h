@@ -7,13 +7,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "flat_index.h"
 #include "sql.h"
 #include "value.h"
 
 namespace mvdb {
 
 struct PayloadStore;
-class FlatIndex;
 
 struct TableSchema {
   std::string name;
@@ -100,6 +100,11 @@ class Database {
   bool create_vector_index(const std::string& t, const std::string& col, const std::string& name,
                            std::string* err, int* code);
   bool has_vector_index(const std::string& t) const;
+  // Non-owning, read-only storage held by the table's physical index. Use only
+  // during the current statement without mutations: mutation, rollback,
+  // rebuild, dropping the table or closing the database can invalidate it.
+  // Unindexed and disk-backed tables return false and retain the scan path.
+  bool resident_vector_view(const std::string& t, FlatIndex::ResidentView* view);
   // Pointer lifetime is limited to this callback. Filtering precedes distance
   // computation by the caller; unindexed tables use the ordinary row scan.
   void scan_vectors(const std::string& t, const std::vector<Cond>& conds,

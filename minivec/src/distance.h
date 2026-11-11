@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <cfloat>
+#include <cfenv>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -256,7 +257,8 @@ inline BoundSum choose_bound_sum() {
 }
 #endif
 
-inline bool float_sum_definitely_greater(double sum,size_t n,double threshold) {
+inline bool float_sum_definitely_greater_cached(double sum,double relative,
+                                                double absolute,double threshold) {
   if(!std::isfinite(sum) || !(sum>threshold))return false;
   // u=2^-24, eta=2^-150. A subnormal float32 subtraction is exact;
   // multiplication contributes at most eta absolute rounding error. Positive
@@ -268,40 +270,64 @@ inline bool float_sum_definitely_greater(double sum,size_t n,double threshold) {
   // 4*(n+12)*u*S + 4*n*eta also covers rounding D to binary64. n<=65536,
   // so the relative factor stays below .016. All bound arithmetic is double,
   // and each error operation rounds upward, the final subtraction downward.
-  const double relative=(static_cast<double>(n)+12)*0x1p-22;
-  const double absolute=static_cast<double>(n)*0x1p-148;
   const double product=positive_neighbors(sum*relative).upper;
   const double error=positive_neighbors(product+absolute).upper;
   const double lower=sum-error;
   return lower>0 && positive_neighbors(lower).lower>threshold;
 }
+inline bool float_sum_definitely_greater(double sum,size_t n,double threshold) {
+  return float_sum_definitely_greater_cached(sum,(static_cast<double>(n)+12)*0x1p-22,
+                                            static_cast<double>(n)*0x1p-148,threshold);
+}
 }
 
-inline bool distance_definitely_greater(const float* a,const float* b,size_t n,
-                                        double threshold) {
+// Query-scoped only: the caller must keep the floating-point control state
+// unchanged from construction until the last call. Inputs always have n lanes.
+// The ordinary wrapper below constructs a fresh context and checks every call.
+class DistanceBoundContext {
+ public:
+  explicit DistanceBoundContext(size_t n):n_(n) {
+    if(!n || n>(uint64_t(1)<<32))return;
 #if defined(MVDB_SIMD_BOUND_X86)
-  // The fallback double bound assumes the same floating-point environment.
-  // DAZ can change float inputs even during conversion to double, so guard
-  // every dimension, including paths that never execute the SIMD kernel.
-  if(_mm_getcsr() & ((1u<<6)|(1u<<15)|(3u<<13)))return false;
-#endif
-#if defined(MVDB_DISABLE_SIMD_BOUND)
-  return distance_definitely_greater_double(a,b,n,threshold);
+    if(_mm_getcsr() & ((1u<<6)|(1u<<15)|(3u<<13)))return;
 #else
-#if defined(MVDB_SIMD_BOUND_X86) && !defined(__FAST_MATH__)
-  if(n>=16 && n<=65536 && std::isfinite(threshold) && threshold>=0) {
-    static const auto sum_function=distance_detail::choose_bound_sum();
-    if(sum_function) {
-      const double sum=sum_function(a,b,n);
+    if(std::fegetround()!=FE_TONEAREST)return;
+#endif
+    enabled_=true;
+#if defined(MVDB_SIMD_BOUND_X86) && !defined(__FAST_MATH__) && !defined(MVDB_DISABLE_SIMD_BOUND)
+    if(n>=16 && n<=65536) {
+      static const auto selected=distance_detail::choose_bound_sum();
+      kernel_=selected;
+      relative_=(static_cast<double>(n)+12)*0x1p-22;
+      absolute_=static_cast<double>(n)*0x1p-148;
+    }
+#endif
+  }
+  bool definitely_greater(const float* a,const float* b,double threshold) const {
+    if(!enabled_ || !std::isfinite(threshold) || threshold<0)return false;
+#if defined(MVDB_SIMD_BOUND_X86)
+    if(kernel_) {
+      const double sum=kernel_(a,b,n_);
       if(std::isfinite(sum))
-        return distance_detail::float_sum_definitely_greater(sum,n,threshold);
+        return distance_detail::float_sum_definitely_greater_cached(sum,relative_,absolute_,threshold);
       // Float overflow is common for valid extreme coordinates. The original
       // double bound remains safe over the complete finite float32 domain.
     }
+#endif
+    return distance_definitely_greater_double(a,b,n_,threshold);
   }
+ private:
+  size_t n_;
+  bool enabled_=false;
+  double relative_=0,absolute_=0;
+#if defined(MVDB_SIMD_BOUND_X86)
+  distance_detail::BoundSum kernel_=nullptr;
 #endif
-  return distance_definitely_greater_double(a,b,n,threshold);
-#endif
+};
+
+inline bool distance_definitely_greater(const float* a,const float* b,size_t n,
+                                        double threshold) {
+  return DistanceBoundContext(n).definitely_greater(a,b,threshold);
 }
 
 inline double distance_squared(const float* a,const float* b,size_t n) {

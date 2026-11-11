@@ -13,6 +13,11 @@ namespace mvdb {
 class FlatIndex {
  public:
   using Visitor=std::function<bool(int64_t,uint64_t,const float*,size_t)>;
+  struct ResidentView {
+    const float* vectors=nullptr;
+    const int64_t* keys=nullptr;
+    size_t dimension=0,count=0;
+  };
   FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t memory_budget);
   ~FlatIndex();
   FlatIndex(const FlatIndex&)=delete;
@@ -20,6 +25,9 @@ class FlatIndex {
   void add(int64_t pk,uint64_t slot,const float* values,size_t dimension);
   void finish();
   void scan(const Visitor& visitor) const;
+  // Read-only, non-owning view; available only for a finished resident index.
+  // Storage remains owned by this index and must not outlive it.
+  bool resident_view(ResidentView* view) const;
   // One bounded, lazy BIGINT equality posting list. Returns false when this
   // index cannot cache it; callers then retain the sequential scan path.
   bool scan_integer_equal(size_t column,int64_t value,

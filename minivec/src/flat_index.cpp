@@ -67,6 +67,14 @@ void FlatIndex::finish() {
   if(count_!=expected_)throw std::runtime_error("incomplete flat vector index build");
   ready_=true;
 }
+bool FlatIndex::resident_view(ResidentView* view) const {
+  if(!view)return false;
+  *view=ResidentView{};
+  if(!ready_ || fd_>=0)return false;
+  view->vectors=vectors_.data();view->keys=keys_.data();
+  view->dimension=dimension_;view->count=count_;
+  return true;
+}
 size_t FlatIndex::resident_bytes() const {
   return vectors_.capacity()*sizeof(float)+keys_.capacity()*sizeof(int64_t)+slots_.capacity()*sizeof(uint64_t)+posting_budget_;
 }

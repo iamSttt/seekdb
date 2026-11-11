@@ -13,9 +13,15 @@ python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_di
 python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --output protocol-results/source-public
 python3 minivec/tests/json_protocol.py --binary minivec/minivec
 docker build --platform linux/amd64 -t minivec:jsonl .
+docker run --rm --network none --mount "type=bind,src=$PWD,dst=/project,readonly" --workdir /tmp gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818 sh -c 'g++ -O3 -std=c++17 -I/project/minivec/src /project/minivec/tests/test_sql.cpp /project/minivec/src/sql.cpp /project/minivec/src/value.cpp -o /tmp/test-sql && /tmp/test-sql'
 python3 protocol_check/run.py --image minivec:jsonl --handshake-only --output protocol-results/image-handshake
 python3 protocol_check/run.py --image minivec:jsonl --output protocol-results/image-public
 docker image inspect minivec:jsonl --format '{{.Id}}'
+image_container=$(docker create minivec:jsonl)
+docker cp "$image_container:/minivec" /tmp/minivec-image-binary
+docker rm "$image_container"
+python3 minivec/tests/topk_bounds.py --binary /tmp/minivec-image-binary
+python3 minivec/tests/json_protocol.py --binary /tmp/minivec-image-binary
 g++ -O3 -std=c++17 -Iminivec/src minivec/tests/test_distance_simd.cpp -o /tmp/distance-tree-reduce
 /tmp/distance-tree-reduce --bench
 g++ -O3 -std=c++17 -Iminivec/src minivec/tests/profile_query.cpp minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/profile-query

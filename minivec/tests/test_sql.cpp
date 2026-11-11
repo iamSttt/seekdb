@@ -2,7 +2,11 @@
 // Build:
 //   g++ -std=c++17 -O2 -Isrc tests/test_sql.cpp src/sql.cpp src/value.cpp -o /tmp/test_sql
 // (drop src/value.cpp if that TU is not present yet; the parser does not use it)
+#include <cmath>
+#include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -188,8 +192,115 @@ static void expect_err(const std::string& sql, int want_code) {
   }
 }
 
+static uint32_t float_bits(float value) {
+  uint32_t bits = 0;
+  static_assert(sizeof(bits) == sizeof(value), "tests require float32");
+  std::memcpy(&bits, &value, sizeof(bits));
+  return bits;
+}
+
+static void check_vector_bits(const std::string& body, const std::vector<uint32_t>& expected) {
+  // Both literal forms and both parser callers must retain the same float32 bits.
+  for (bool quoted : {false, true}) {
+    const std::string literal = quoted ? "'[" + body + "]'" : "[" + body + "]";
+    for (bool query : {false, true}) {
+      const std::string sql = query ? "SELECT L2_DISTANCE(v," + literal + ") FROM t"
+                                    : "INSERT INTO t VALUES (" + literal + ")";
+      Statement st;
+      std::string error;
+      int code = 0;
+      const bool ok = parse_sql(sql, &st, &error, &code);
+      const std::vector<float>* actual = nullptr;
+      if (ok && query && st.items.size() == 1 && st.items[0].is_distance)
+        actual = &st.items[0].query;
+      if (ok && !query && st.rows.size() == 1 && st.rows[0].size() == 1 &&
+          st.rows[0][0].type == Type::VECTOR)
+        actual = &st.rows[0][0].v;
+      bool match = actual && actual->size() == expected.size();
+      if (match) {
+        for (size_t i = 0; i < expected.size(); ++i)
+          if (float_bits((*actual)[i]) != expected[i]) match = false;
+      }
+      if (!match) std::printf("   vector bits mismatch: %s (ERROR %d: %s)\n",
+                              sql.c_str(), code, error.c_str());
+      CHECK(match);
+    }
+  }
+}
+
+static void test_float32_literals() {
+  std::printf("\n-- float32 literal rounding and strtof compatibility\n");
+  // Explicit IEEE-754 results, including ties-to-even and values whose decimal
+  // spelling would round differently if first parsed as double and then float.
+  const struct { const char* text; uint32_t bits; } cases[] = {
+      {"0", 0x00000000u}, {"-0", 0x80000000u},
+      {".5", 0x3f000000u}, {"5.", 0x40a00000u}, {"1.25", 0x3fa00000u},
+      {"+1.25", 0x3fa00000u}, {"-2.5E+2", 0xc37a0000u},
+      {"0x1.8p+1", 0x40400000u}, {"0x1", 0x3f800000u},
+      {"+0X1p-149", 0x00000001u}, {"-0x1p-149", 0x80000001u},
+      {"1.401298464324817e-45", 0x00000001u},
+      {"1.1754943508222875e-38", 0x00800000u},
+      {"1e-9999", 0x00000000u}, {"-1e-9999", 0x80000000u},
+      {"0x1p-150", 0x00000000u}, {"0x3p-150", 0x00000002u},
+      {"3.4028234663852886e38", 0x7f7fffffu},
+      {"16777217", 0x4b800000u}, {"16777217.000000001", 0x4b800001u},
+      {"16777219", 0x4b800002u},
+      {"1.000000059604644775390625", 0x3f800000u},
+      {"1.000000059604644775390626", 0x3f800001u},
+  };
+  for (const auto& c : cases) {
+    char* end = nullptr;
+    const float old_value = std::strtof(c.text, &end);
+    CHECK(end && *end == '\0' && float_bits(old_value) == c.bits);
+    check_vector_bits(c.text, {c.bits});
+  }
+  check_vector_bits(" \t-1.25,\n+2.5 , 0x1p-149,\r1e-9999 \f\v",
+                    {0xbfa00000u, 0x40200000u, 0x00000001u, 0x00000000u});
+
+  // Differential coverage over finite float32 bit patterns. Nine significant
+  // decimal digits (fixed or scientific) and exact hex spellings round trip;
+  // the expected bits come from the original value, not either parser.
+  uint32_t state = 0x13579bdfu;
+  for (int i = 0; i < 1024; ++i) {
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    if ((state & 0x7f800000u) == 0x7f800000u) continue;
+    float value = 0;
+    std::memcpy(&value, &state, sizeof(value));
+    char text[96];
+    const char* format = i % 3 == 0 ? "%.9g" : i % 3 == 1 ? "%.8e" : "%a";
+    std::snprintf(text, sizeof(text), format, (double)value);
+    char* end = nullptr;
+    const float old_value = std::strtof(text, &end);
+    CHECK(end && *end == '\0' && std::isfinite(old_value) && float_bits(old_value) == state);
+    check_vector_bits(text, {state});
+  }
+
+  const char* invalid[] = {
+      "", " ", "1e+", "1e-", "1e", "1x", "0x", "0x1p+", "+", "+-1",
+      "++1", "--1", "1 2", "1,,2", "1,", ",1", "NaN", "nan(1)",
+      "Infinity", "-inf", "+INF", "1e9999", "-1e9999", "0x1p128",
+      "3.4028236e38", "-0X1p+128",
+  };
+  for (const char* body : invalid) {
+    // An invalid quoted vector may still be a valid VARCHAR in INSERT. Query
+    // arguments and bare INSERT vectors must instead fail with the old error.
+    expect_err("SELECT L2_DISTANCE(v,'[" + std::string(body) + "]') FROM t", 1064);
+    expect_err("INSERT INTO t VALUES ([" + std::string(body) + "])", 1064);
+    Statement st;
+    std::string error;
+    int code = 0;
+    const std::string text = "[" + std::string(body) + "]";
+    CHECK(parse_sql("INSERT INTO t VALUES ('" + text + "')", &st, &error, &code));
+    CHECK(st.rows.size() == 1 && st.rows[0].size() == 1 &&
+          st.rows[0][0].type == Type::VARCHAR && st.rows[0][0].s == text);
+  }
+}
+
 int main() {
   std::setvbuf(stdout, nullptr, _IONBF, 0);  // keep partial output on any crash
+  test_float32_literals();
 
   // ---------------------------------------------------------------- CREATE --
   {

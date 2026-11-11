@@ -1684,6 +1684,15 @@ bool Database::has_vector_index(const std::string& t) const {
   return it != tables_.end() && it->second.has_index;
 }
 
+bool Database::resident_vector_view(const std::string& t, FlatIndex::ResidentView* view) {
+  if(!view)return false;
+  *view=FlatIndex::ResidentView{};
+  auto it=tables_.find(t);
+  if(it==tables_.end() || !it->second.has_index || it->second.schema.vec_idx<0)return false;
+  build_vector_index(it->second);
+  return it->second.vector_index->resident_view(view);
+}
+
 void Database::build_vector_index(Table& table) {
   if (table.vector_index) return;
   if (table.schema.vec_idx < 0) throw std::runtime_error("table has no vector column");

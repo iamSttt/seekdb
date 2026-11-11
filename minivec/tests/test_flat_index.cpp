@@ -25,7 +25,33 @@ static void insert(Database& db,int64_t id) {
   assert(db.insert("t",{Value::ofInt(id),Value::ofInt(id%3),
       Value::ofVec({float(id),1,2,3,4})},&err,&code));
 }
+static void check_view(Database& db) {
+  const Table* table=db.table("t");assert(table);
+  FlatIndex::ResidentView view;
+  const bool available=db.resident_vector_view("t",&view);
+  if(!table->has_index) {
+    assert(!available && !table->vector_index);
+  } else {
+    assert(table->vector_index);
+    assert(available==!table->vector_index->disk_backed());
+  }
+  if(!available) {
+    assert(!view.vectors && !view.keys && !view.dimension && !view.count);
+    return;
+  }
+  std::map<int64_t,std::vector<float>> expected,actual;
+  db.scan("t",{},[&](const Row& row){expected[row.vals[0].i]=row.vals[2].v;return true;});
+  assert(view.dimension==5 && view.count==expected.size());
+  for(size_t i=0;i<view.count;++i) {
+    const float* values=view.vectors+i*view.dimension;
+    assert(actual.emplace(view.keys[i],std::vector<float>(values,values+view.dimension)).second);
+  }
+  assert(actual==expected);
+}
 static void check(Database& db,const std::vector<Cond>& conds={}) {
+  // Obtain a fresh view after every mutation/rebuild/rollback; no borrowed
+  // pointer is retained across those lifetime boundaries.
+  check_view(db);
   std::map<int64_t,std::vector<float>> expected,actual;
   db.scan("t",conds,[&](const Row& row){expected[row.vals[0].i]=row.vals[2].v;return true;});
   const std::vector<float> query{0,1,2,0,0};
@@ -44,11 +70,17 @@ static void check(Database& db,const std::vector<Cond>& conds={}) {
 int main() {
   char path[]="/tmp/mvdb-flat-index-XXXXXX";assert(::mkdtemp(path));
   Database db;assert(db.open(path,&err));assert(db.create_table("t",schema(),&err,&code));
+  FlatIndex::ResidentView view;
+  assert(!db.resident_vector_view("missing",&view));
+  assert(!db.resident_vector_view("t",nullptr));
   check(db); // non-indexed fallback, including empty tables
   assert(db.begin_statement(&err,&code));
   assert(db.create_vector_index("t","v","idx",&err,&code));
   assert(db.end_statement(true,&err,&code));
   assert(db.table("t")->vector_index && db.table("t")->vector_index->size()==0);
+  assert(db.resident_vector_view("t",&view) && view.count==0 && view.dimension==5);
+  assert(!db.resident_vector_view("missing",&view));
+  assert(!view.vectors && !view.keys && !view.dimension && !view.count);
   assert(db.begin(&err,&code));for(int i=99;i>=0;--i)insert(db,i);assert(db.commit(&err,&code));
   assert(!db.table("t")->vector_index);check(db);assert(db.table("t")->vector_index->size()==100);
   Cond group;group.column="g";group.value=Value::ofInt(1);
@@ -68,8 +100,10 @@ int main() {
   // Changing the indexed scalar itself must discard cached postings, even if
   // the vector values are untouched. Rollback below must restore both.
   assert(db.update_rows("t",{id},{{"g",Value::ofInt(2)}},&err,&code)==1);
+  assert(!db.table("t")->vector_index);
   check(db,{group});check(db,{other_group});
   assert(db.update_rows("t",{id},{{"g",Value::ofInt(1)}},&err,&code)==1);
+  assert(!db.table("t")->vector_index);
   check(db,{group});
   assert(db.begin_statement(&err,&code));
   insert(db,1000);
@@ -93,10 +127,13 @@ int main() {
   assert(db.begin(&err,&code));assert(db.create_vector_index("plain","v","pidx",&err,&code));
   assert(db.table("plain")->vector_index);assert(db.rollback(&err,&code));
   assert(!db.has_vector_index("plain") && !db.table("plain")->vector_index);
+  assert(!db.resident_vector_view("plain",&view));
   // Direct physical disk index test, independent of the build-budget macro.
   FlatIndex disk(path,5,3,0);
   for(int64_t pk:{9,-2,4}) {float v[5]={float(pk),1,2,3,4};disk.add(pk,static_cast<uint64_t>(pk+2),v,5);}
   disk.finish();assert(disk.disk_backed() && disk.resident_bytes()==0);
+  assert(!disk.resident_view(&view));
+  assert(!view.vectors && !view.keys && !view.dimension && !view.count);
   std::vector<int64_t> seen;
   disk.scan([&](int64_t pk,uint64_t slot,const float* values,size_t dim){
     assert(slot==static_cast<uint64_t>(pk+2) && dim==5 && values[0]==float(pk));seen.push_back(pk);return true;
@@ -107,8 +144,21 @@ int main() {
   // A direct resident index proves postings cache one column, retain ordinal
   // order for equal keys, and honor early termination without reading again.
   FlatIndex resident(path,5,3,4096);
+  assert(!resident.resident_view(&view)); // never expose partially built arrays
   for(int64_t pk:{9,-2,4}){float v[5]={float(pk),1,2,3,4};resident.add(pk,uint64_t(pk+2),v,5);}
+  assert(!resident.resident_view(&view));
   resident.finish();size_t reads=0;seen.clear();
+  assert(resident.resident_view(&view) && view.dimension==5 && view.count==3);
+  const int64_t resident_keys[]={9,-2,4};
+  for(size_t i=0;i<view.count;++i) {
+    assert(view.keys[i]==resident_keys[i]);
+    assert(view.vectors[i*view.dimension]==float(view.keys[i]));
+    for(size_t j=1;j<view.dimension;++j)assert(view.vectors[i*view.dimension+j]==float(j));
+  }
+  assert(!resident.resident_view(nullptr));
+  FlatIndex empty(path,5,0,0);
+  assert(!empty.resident_view(&view));empty.finish();
+  assert(empty.resident_view(&view) && view.dimension==5 && view.count==0);
   auto scalar=[&](uint64_t slot){++reads;return slot==0?int64_t(-1):int64_t(7);};
   auto collect=[&](int64_t pk,uint64_t,const float*,size_t){seen.push_back(pk);return true;};
   assert(resident.scan_integer_equal(1,7,scalar,collect));

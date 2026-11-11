@@ -507,15 +507,25 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
       };
       if (!bounded || k != 0) {
         if (ordered && order.is_distance) {
-          db.scan_vectors(st.table,st.conds,[&](int64_t pk,const float* v,size_t dim){
+          // This statement does not change the floating-point control state.
+          // Resolve the CPU kernel and conservative coefficients once per query.
+          const DistanceBoundContext bound_context(order.qvec->size());
+          auto consider=[&](int64_t pk,const float* v,size_t dim){
             // Reject only candidates proven strictly farther than the current
             // exact boundary. Ties and uncertain bounds still use exact keys.
             if (bounded && !st.order_desc && result.size()==k &&
-                distance_definitely_greater(v,order.qvec->data(),dim,result.front().distance))
+                bound_context.definitely_greater(v,order.qvec->data(),result.front().distance))
               return true;
             Candidate c;c.pk=pk;c.distance=distance_squared(v,order.qvec->data(),dim);
             return offer(std::move(c));
-          });
+          };
+          FlatIndex::ResidentView view;
+          if(st.conds.empty() && db.resident_vector_view(st.table,&view)) {
+            // One immutable view for the statement removes two indirect
+            // callbacks per row. Mutations invalidate the owning index.
+            for(size_t i=0;i<view.count;++i)
+              if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
+          } else db.scan_vectors(st.table,st.conds,consider);
         } else db.scan(st.table, st.conds, [&](const Row& r) {
           Candidate c;c.pk=r.vals[sch.pk_idx].i;
           if(ordered) {
