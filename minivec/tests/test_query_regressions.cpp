@@ -2,6 +2,7 @@
 #include "exec.h"
 #include "sql.h"
 #include "distance.h"
+#include "../third_party/json.hpp"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -79,6 +80,55 @@ static void distance_regressions(Database& db) {
   assert(distance_squared(a.data(),b.data(),1)==std::ldexp(1.0,-46));
   assert(distance_squared(nullptr,nullptr,0)==0);
 }
+static void projection_regressions(Database& db) {
+  using Json = nlohmann::json;
+  const std::string prefix =
+      "SELECT id,L2_DISTANCE(v,'[0,0]') AS near,L2_DISTANCE(v,'[4,0]') AS far,title "
+      "FROM projections ";
+  auto check = [&](const std::string& suffix, const Json& expected) {
+    const std::string sql = prefix + suffix;
+    std::string tsv = "id\tnear\tfar\ttitle\n";
+    for (const auto& row : expected) {
+      for (size_t column = 0; column < 3; ++column)
+        tsv += std::to_string(row[column].get<int64_t>()) + "\t";
+      tsv += row[3].get<std::string>() + "\n";
+    }
+    for (bool stream : {false, true}) assert(query(db, sql, stream) == tsv);
+    Statement statement;
+    std::string err, out;
+    int code = 0;
+    assert(parse_sql(sql, &statement, &err, &code));
+    assert(execute_json(db, statement, &out, &err, &code));
+    const Json actual = Json::parse(out);
+    assert(actual.at("columns") == Json({"id", "near", "far", "title"}));
+    assert(actual.at("rows") == expected);
+  };
+  // A non-leading primary key and an ordinary string projection exercise the
+  // direct winner lookup while two different query vectors prevent false reuse.
+  query(db, "CREATE TABLE projections(title VARCHAR(16),v VECTOR(2),id BIGINT PRIMARY KEY)", false);
+  query(db, "INSERT INTO projections VALUES('nine','[3,0]',9),('two','[-1,0]',2),"
+            "('seven','[1,0]',7),('three','[4,0]',3)", false);
+  for (int stage = 0; stage < 3; ++stage) {
+    if (stage == 1)
+      query(db, "CREATE VECTOR INDEX projections_v ON projections(v)", false);
+    if (stage == 2) {
+      query(db, "BEGIN", false);
+      query(db, "UPDATE projections SET title='two' WHERE id=2", false);
+      assert(db.table("projections")->payload_store);
+    }
+    check("ORDER BY near LIMIT 1", {{2, 1, 5, "two"}});
+    check("ORDER BY near DESC LIMIT 4",
+          {{3, 4, 0, "three"}, {9, 3, 1, "nine"}, {2, 1, 5, "two"}, {7, 1, 3, "seven"}});
+    check("ORDER BY L2_DISTANCE(v,'[4,0]') LIMIT 4",
+          {{3, 4, 0, "three"}, {9, 3, 1, "nine"}, {7, 1, 3, "seven"}, {2, 1, 5, "two"}});
+    check("ORDER BY id DESC LIMIT 4",
+          {{9, 3, 1, "nine"}, {7, 1, 3, "seven"}, {3, 4, 0, "three"}, {2, 1, 5, "two"}});
+    check("ORDER BY near LIMIT 4096",
+          {{2, 1, 5, "two"}, {7, 1, 3, "seven"}, {9, 3, 1, "nine"}, {3, 4, 0, "three"}});
+    if (stage == 2) query(db, "ROLLBACK", false);
+  }
+  std::cout << "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows\n";
+}
 static int stress_topk() {
   struct rlimit cap{160ull<<20,160ull<<20};assert(::setrlimit(RLIMIT_AS,&cap)==0);
   char path[]="/tmp/mvdb-query-topk-XXXXXX";assert(::mkdtemp(path));
@@ -107,6 +157,7 @@ int main(int argc,char** argv) {
   char path[]="/tmp/mvdb-query-test-XXXXXX";assert(::mkdtemp(path));
   Database db;std::string err;int code=0;assert(db.open(path,&err));
   distance_regressions(db);
+  projection_regressions(db);
   Column id;id.name="id";id.type=Type::BIGINT;id.is_primary=true;
   Column n;n.name="n";n.type=Type::BIGINT;
   Column s;s.name="s";s.type=Type::VARCHAR;s.len=30000;

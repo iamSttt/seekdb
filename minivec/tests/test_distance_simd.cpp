@@ -38,6 +38,11 @@ static void check(const std::vector<float>& a,const std::vector<float>& b){
   }
 }
 static void tests(){
+#if defined(MVDB_SIMD_DOUBLE_REDUCTION)
+  std::cout<<"reduction=reference_double_serial\n";
+#else
+  std::cout<<"reduction=float_tree\n";
+#endif
   const size_t dims[]={0,1,2,7,15,16,17,31,32,127,128,129,511,1024};
   for(size_t trial=0;trial<7200;++trial){
     const size_t n=dims[(trial/8)%14];std::vector<float>a(n),b(n);
@@ -78,6 +83,21 @@ static void tests(){
   for(size_t n:{size_t(65535),size_t(65536),size_t(65537)}){
     std::vector<float>a(n,0.75f),b(n,0.25f);check(a,b);
     std::fill(a.begin(),a.end(),0x1p-75f);std::fill(b.begin(),b.end(),0);check(a,b);
+  }
+  // Products fit in float, but their full reduction overflows. The wrapper
+  // must safely use the double bound; also cover subnormal reduction sums.
+  for(size_t n:{size_t(16),size_t(17),size_t(32),size_t(128)}){
+    std::vector<float>x(n,0x1p63f),y(n,0);check(x,y);
+    std::fill(x.begin(),x.end(),0x1p-74f);check(x,y);
+    for(size_t i=0;i<n;++i)x[i]=static_cast<float>(i+1);
+    const double expected=distance_exact(x.data(),y.data(),n);
+#if defined(MVDB_SIMD_BOUND_X86)
+    if(__builtin_cpu_supports("sse2"))
+      require(distance_detail::bound_sum_sse2(x.data(),y.data(),n)==expected,"SSE2 reduction retains every lane");
+    if(__builtin_cpu_supports("avx2"))
+      require(distance_detail::bound_sum_avx2(x.data(),y.data(),n)==expected,"AVX2 reduction retains every lane");
+#endif
+    check(x,y);
   }
   std::vector<float>a(128,1),b(128,0);
   require(!distance_definitely_greater(a.data(),b.data(),128,-1),"negative threshold");

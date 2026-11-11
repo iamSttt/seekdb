@@ -226,7 +226,8 @@ static bool json_request(Database& db, const std::string& line, int* exit_code) 
         throw std::runtime_error("search_mode must be exact or ann");
       // Exact Flat search is also a valid recall-1 ANN implementation.
       Statement statement;
-      if (!parse_sql(request.at("sql").get<std::string>(),&statement,&error,&code) ||
+      const std::string& sql=request.at("sql").get_ref<const std::string&>();
+      if (!parse_sql(sql,&statement,&error,&code) ||
           !execute_json(db,statement,&result,&error,&code)) {
         response={{"ok",false},{"error",{{"code",std::to_string(code ? code : 1105)},{"message",error}}}};
       } else {

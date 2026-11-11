@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Reproducible validation entry, invoked by the temporary candidate CI branch.
 set -euo pipefail
+lscpu
 python3 minivec/tools/validate_material.py
 make -C minivec -j2 test
 g++ -O2 -std=c++17 -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_distance_simd.cpp -o /tmp/distance-ubsan
@@ -15,5 +16,11 @@ docker build --platform linux/amd64 -t minivec:jsonl .
 python3 protocol_check/run.py --image minivec:jsonl --handshake-only --output protocol-results/image-handshake
 python3 protocol_check/run.py --image minivec:jsonl --output protocol-results/image-public
 docker image inspect minivec:jsonl --format '{{.Id}}'
-./minivec/test_distance_simd --bench
+g++ -O3 -std=c++17 -Iminivec/src minivec/tests/test_distance_simd.cpp -o /tmp/distance-tree-reduce
+/tmp/distance-tree-reduce --bench
+g++ -O3 -std=c++17 -Iminivec/src minivec/tests/profile_query.cpp minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/profile-query
+/tmp/profile-query
+g++ -O3 -std=c++17 -DMVDB_SIMD_DOUBLE_REDUCTION -Iminivec/src minivec/tests/test_distance_simd.cpp -o /tmp/distance-double-reduce
+/tmp/distance-double-reduce
+/tmp/distance-double-reduce --bench
 bash minivec/tools/compare_jsonl.sh

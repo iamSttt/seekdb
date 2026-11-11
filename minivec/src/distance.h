@@ -211,8 +211,17 @@ inline double bound_sum_sse2(const float* a,const float* b,size_t n) {
     const __m128 d1=_mm_sub_ps(_mm_loadu_ps(a+i+4),_mm_loadu_ps(b+i+4));
     s0=_mm_add_ps(s0,_mm_mul_ps(d0,d0));s1=_mm_add_ps(s1,_mm_mul_ps(d1,d1));
   }
+#if defined(MVDB_SIMD_DOUBLE_REDUCTION)
   float lanes[8];_mm_storeu_ps(lanes,s0);_mm_storeu_ps(lanes+4,s1);
   double sum=0;for(float lane:lanes)sum+=lane;
+#else
+  // Positive-term tree: SSE2 shuffle/add only, no SSE3 horizontal add or
+  // lane spill. If the float sum overflows, the caller uses the double bound.
+  __m128 total=_mm_add_ps(s0,s1);
+  total=_mm_add_ps(total,_mm_movehl_ps(total,total));
+  total=_mm_add_ss(total,_mm_shuffle_ps(total,total,_MM_SHUFFLE(1,1,1,1)));
+  double sum=static_cast<double>(_mm_cvtss_f32(total));
+#endif
   for(;i<n;++i){const float d=a[i]-b[i];const float term=d*d;sum+=term;}
   return sum;
 }
@@ -225,8 +234,17 @@ inline double bound_sum_avx2(const float* a,const float* b,size_t n) {
     const __m256 d1=_mm256_sub_ps(_mm256_loadu_ps(a+i+8),_mm256_loadu_ps(b+i+8));
     s0=_mm256_add_ps(s0,_mm256_mul_ps(d0,d0));s1=_mm256_add_ps(s1,_mm256_mul_ps(d1,d1));
   }
+#if defined(MVDB_SIMD_DOUBLE_REDUCTION)
   float lanes[16];_mm256_storeu_ps(lanes,s0);_mm256_storeu_ps(lanes+8,s1);
   double sum=0;for(float lane:lanes)sum+=lane;
+#else
+  const __m256 combined=_mm256_add_ps(s0,s1);
+  __m128 total=_mm_add_ps(_mm256_castps256_ps128(combined),
+                         _mm256_extractf128_ps(combined,1));
+  total=_mm_add_ps(total,_mm_movehl_ps(total,total));
+  total=_mm_add_ss(total,_mm_shuffle_ps(total,total,_MM_SHUFFLE(1,1,1,1)));
+  double sum=static_cast<double>(_mm_cvtss_f32(total));
+#endif
   for(;i<n;++i){const float d=a[i]-b[i];const float term=d*d;sum+=term;}
   return sum;
 }
@@ -242,8 +260,10 @@ inline bool float_sum_definitely_greater(double sum,size_t n,double threshold) {
   if(!std::isfinite(sum) || !(sum>threshold))return false;
   // u=2^-24, eta=2^-150. A subnormal float32 subtraction is exact;
   // multiplication contributes at most eta absolute rounding error. Positive
-  // float additions that remain subnormal are exact. Including double lane
-  // reduction, the computed S <= (D+n*eta)*(1+u)^(n+12), for exact D.
+  // float additions that remain subnormal are exact. Either lane reduction
+  // (float tree or reference double serial) forms a positive-term addition
+  // tree with at most n-1 nonzero additions on any path. Thus the computed
+  // S <= (D+n*eta)*(1+u)^(n+12), for exact D.
   // Bernoulli gives D >= S*(1-(n+12)*u)-n*eta. The deliberately looser error
   // 4*(n+12)*u*S + 4*n*eta also covers rounding D to binary64. n<=65536,
   // so the relative factor stays below .016. All bound arithmetic is double,

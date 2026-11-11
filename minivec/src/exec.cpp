@@ -406,14 +406,23 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         for (const auto& item : items) columns.push_back(item.header);
         *out += "{\"columns\":" + columns.dump() + ",\"rows\":[";
       };
-      auto encode_json_row = [&](const Row& row) {
+      auto projected_distance = [&](const Row& row, const Item& item, const Candidate* candidate) {
+        // Only an alias resolved to this exact AST expression shares the
+        // ranking key. Other distance projections still evaluate themselves.
+        const bool same_expression = candidate && order.is_distance &&
+            item.col == order.col && item.qvec == order.qvec;
+        const double squared = same_expression ? candidate->distance
+            : distance2(row.vals[item.col].v, *item.qvec);
+        return std::sqrt(squared);
+      };
+      auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
         Json cells = Json::array();
         for (const auto& item : items) {
           const Value& value = row.vals[item.col];
           if (!item.is_distance) {
             cells.push_back(json_value(value));
           } else {
-            const double distance = std::sqrt(distance2(value.v, *item.qvec));
+            const double distance = projected_distance(row, item, candidate);
             if (!std::isfinite(distance)) throw std::runtime_error("non-finite L2 distance result");
             cells.push_back(distance);
           }
@@ -528,25 +537,29 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         *out+='\n';
       } else cells.reserve(result.size());
       for (const auto& c : result) {
-        Cond pk;pk.column=sch.cols[sch.pk_idx].name;pk.value=Value::ofInt(c.pk);
-        db.scan(st.table,{pk},[&](const Row& r){
-          if (json_response) {
-            append_json_row(encode_json_row(r));
-            return false;
-          }
-          std::vector<std::string> row;
-          if(!stream)row.reserve(items.size());
-          for (size_t j=0;j<items.size();++j) {
-            const auto& item=items[j];
-            std::string cell=item.is_distance ? format_double(std::sqrt(distance2(r.vals[item.col].v,*item.qvec)))
-                                              : render_value(r.vals[item.col]);
-            if(stream){if(j)*out+='\t';*out+=cell;}
-            else row.push_back(std::move(cell));
-          }
-          if(stream){*out+='\n';if(out->size()>=65536){sink(*out);out->clear();}}
-          else cells.push_back(std::move(row));
-          return false;
-        });
+        // Selection and projection share one statement and the same table.
+        // Keep spill-aware row reads without compiling another PK predicate.
+        const auto position = t->pk_pos.find(c.pk);
+        if (position == t->pk_pos.end()) continue;
+        const size_t slot = position->second;
+        if (slot >= t->rows.size() || t->dead[slot]) continue;
+        Row scratch;
+        const Row& r = t->read_row(slot, scratch);
+        if (json_response) {
+          append_json_row(encode_json_row(r, &c));
+          continue;
+        }
+        std::vector<std::string> row;
+        if(!stream)row.reserve(items.size());
+        for (size_t j=0;j<items.size();++j) {
+          const auto& item=items[j];
+          std::string cell=item.is_distance ? format_double(projected_distance(r, item, &c))
+                                            : render_value(r.vals[item.col]);
+          if(stream){if(j)*out+='\t';*out+=cell;}
+          else row.push_back(std::move(cell));
+        }
+        if(stream){*out+='\n';if(out->size()>=65536){sink(*out);out->clear();}}
+        else cells.push_back(std::move(row));
       }
       if (json_response) {
         *out += "]}";
