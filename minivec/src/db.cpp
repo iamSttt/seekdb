@@ -795,7 +795,7 @@ void Database::close() {
     wal_ = nullptr;
   }
   tables_.clear();
-  undo_.clear();
+  std::vector<Undo>().swap(undo_);
   txn_active_ = false;
   stmt_active_ = false;
   stmt_implicit_ = false;
@@ -1492,7 +1492,10 @@ bool Database::commit(std::string* err, int* code) {
       return false;
     }
     undo_.clear();
-    undo_.shrink_to_fit();
+    // Reuse a bounded allocation for ordinary batches. clear() destroys every
+    // undo payload; retained storage does not keep old rows/tables alive.
+    // Release large-transaction capacity without allocating after durable commit.
+    if (undo_.capacity() > 65536 / sizeof(Undo)) std::vector<Undo>().swap(undo_);
     txn_active_ = false;
   }
   if (wal_bytes_ > kAutoCheckpointBytes) {
@@ -1578,6 +1581,7 @@ bool Database::rollback(std::string* err, int* code) {
   if (!txn_active_) return true;
   if (!truncate_wal(txn_wal_start_, txn_lsn_start_, err, code)) return false;
   undo_to(0);
+  if (undo_.capacity() > 65536 / sizeof(Undo)) std::vector<Undo>().swap(undo_);
   txn_active_ = false;
   return true;
 }

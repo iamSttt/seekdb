@@ -72,11 +72,14 @@ void emit_affected_rows(int64_t n, std::string* out, bool json_response) {
   *out += "Query OK, " + std::to_string(n) + " row" + (n == 1 ? "" : "s") + " affected\n";
 }
 
+#if defined(MVDB_DISABLE_DIRECT_JSON_ROWS)
 Json json_value(const Value& value) {
   switch (value.type) {
     case Type::BIGINT: return value.i;
     case Type::VARCHAR: return value.s;
     case Type::VECTOR:
+      // The DOM serializer maps non-finite numbers to null by default. Keep
+      // the same rejection behavior as the direct encoder in this A/B path.
       for (const float component : value.v) {
         if (!std::isfinite(component)) throw std::runtime_error("non-finite vector result");
       }
@@ -84,6 +87,49 @@ Json json_value(const Value& value) {
   }
   throw std::runtime_error("invalid result type");
 }
+#else
+void append_json_integer(std::string& out,int64_t value) {
+  char buffer[32];
+  const auto encoded=std::to_chars(buffer,buffer+sizeof(buffer),value);
+  if(encoded.ec!=std::errc{})throw std::runtime_error("cannot encode BIGINT result");
+  out.append(buffer,encoded.ptr);
+}
+
+void append_json_float(std::string& out,double value,const char* nonfinite_error) {
+  if(!std::isfinite(value))throw std::runtime_error(nonfinite_error);
+  if(value==0) {
+    out+=std::signbit(value)?"-0.0":"0.0";
+    return;
+  }
+  // Use double even for stored float32 components: parsing the JSON must
+  // recover the complete promoted double, rather than a shorter float token.
+  char buffer[64];
+  const auto encoded=std::to_chars(buffer,buffer+sizeof(buffer),value);
+  if(encoded.ec!=std::errc{})throw std::runtime_error("cannot encode floating result");
+  out.append(buffer,encoded.ptr);
+  bool floating_token=false;
+  for(const char* p=buffer;p!=encoded.ptr;++p)
+    if(*p=='.' || *p=='e' || *p=='E') {floating_token=true;break;}
+  if(!floating_token)out+=".0"; // Retain JSON number_float for integral values.
+}
+
+void append_json_value(std::string& out,const Value& value) {
+  switch(value.type) {
+    case Type::BIGINT: append_json_integer(out,value.i);return;
+    case Type::VARCHAR:
+      out+=Json(value.s).dump(); // Keep the validated UTF-8/escaping implementation.
+      return;
+    case Type::VECTOR:
+      out+='[';
+      for(size_t i=0;i<value.v.size();++i) {
+        if(i)out+=',';
+        append_json_float(out,static_cast<double>(value.v[i]),"non-finite vector result");
+      }
+      out+=']';return;
+  }
+  throw std::runtime_error("invalid result type");
+}
+#endif
 
 std::string render_value(const Value& v) {
   switch (v.type) {
@@ -416,7 +462,9 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             : distance2(row.vals[item.col].v, *item.qvec);
         return std::sqrt(squared);
       };
-      auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
+      auto encode_json_row = [&](const Row& row, std::string& encoded,
+                                 const Candidate* candidate = nullptr) {
+#if defined(MVDB_DISABLE_DIRECT_JSON_ROWS)
         Json cells = Json::array();
         for (const auto& item : items) {
           const Value& value = row.vals[item.col];
@@ -428,7 +476,19 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             cells.push_back(distance);
           }
         }
-        return cells.dump();
+        encoded+=cells.dump();
+#else
+        encoded+='[';
+        for(size_t i=0;i<items.size();++i) {
+          if(i)encoded+=',';
+          const auto& item=items[i];
+          if(item.is_distance)
+            append_json_float(encoded,projected_distance(row,item,candidate),
+                              "non-finite L2 distance result");
+          else append_json_value(encoded,row.vals[item.col]);
+        }
+        encoded+=']';
+#endif
       };
       bool first_json_row = true;
       auto append_json_row = [&](const std::string& row) {
@@ -464,8 +524,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           }
         };
         auto render = [&](const Row& row) {
-          if (json_response) return encode_json_row(row);
           std::string text;
+          if (json_response) {encode_json_row(row,text);return text;}
           for(size_t j=0;j<items.size();++j) {
             if(j)text+='\t';
             const auto& item=items[j];
@@ -596,7 +656,9 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         Row scratch;
         const Row& r = t->read_row(slot, scratch);
         if (json_response) {
-          append_json_row(encode_json_row(r, &c));
+          if(!first_json_row)*out+=',';
+          first_json_row=false;
+          encode_json_row(r,*out,&c);
           continue;
         }
         std::vector<std::string> row;

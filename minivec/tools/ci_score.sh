@@ -4,6 +4,8 @@ set -euo pipefail
 lscpu
 python3 minivec/tools/validate_material.py
 make -C minivec -j2 test
+g++ -O2 -std=c++17 -pthread -DMVDB_DISABLE_DIRECT_JSON_ROWS -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_query_regressions.cpp minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/query-dom-ubsan
+/tmp/query-dom-ubsan
 minivec/test_crc32 --bench
 minivec/test_crc32_byte --bench
 g++ -O2 -std=c++17 -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_crc32.cpp -o /tmp/crc32-ubsan
@@ -25,7 +27,7 @@ python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_di
 python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --output protocol-results/source-public
 python3 minivec/tests/json_protocol.py --binary minivec/minivec
 docker build --platform linux/amd64 -t minivec:jsonl .
-docker run --rm --network none --mount "type=bind,src=$PWD,dst=/project,readonly" --workdir /tmp gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818 sh -c 'g++ -O3 -std=c++17 -I/project/minivec/src /project/minivec/tests/test_sql.cpp /project/minivec/src/sql.cpp /project/minivec/src/value.cpp -o /tmp/test-sql && /tmp/test-sql && g++ -O3 -std=c++17 -I/project/minivec/src /project/minivec/tests/test_quantized_bound.cpp -o /tmp/test-quantized && /tmp/test-quantized'
+docker run --rm --network none --mount "type=bind,src=$PWD,dst=/project,readonly" --workdir /tmp gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818 sh -c 'g++ -O3 -std=c++17 -I/project/minivec/src /project/minivec/tests/test_sql.cpp /project/minivec/src/sql.cpp /project/minivec/src/value.cpp -o /tmp/test-sql && /tmp/test-sql && g++ -O3 -std=c++17 -I/project/minivec/src /project/minivec/tests/test_quantized_bound.cpp -o /tmp/test-quantized && /tmp/test-quantized && g++ -O3 -std=c++17 -pthread -I/project/minivec/src /project/minivec/tests/test_query_regressions.cpp /project/minivec/src/db.cpp /project/minivec/src/exec.cpp /project/minivec/src/sql.cpp /project/minivec/src/value.cpp /project/minivec/src/flat_index.cpp -o /tmp/test-query && /tmp/test-query'
 python3 protocol_check/run.py --image minivec:jsonl --handshake-only --output protocol-results/image-handshake
 python3 protocol_check/run.py --image minivec:jsonl --output protocol-results/image-public
 docker image inspect minivec:jsonl --format '{{.Id}}'
