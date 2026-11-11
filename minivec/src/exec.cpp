@@ -3,7 +3,6 @@
 #include "result_sort.h"
 #include "distance.h"
 #include "quantized_bound.h"
-#include "resident_topk_worker.h"
 #include "../third_party/json.hpp"
 #include <limits>
 
@@ -585,62 +584,19 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           if(st.conds.empty() && db.resident_vector_view(st.table,&view)) {
             // One immutable view for the statement removes two indirect
             // callbacks per row. Mutations invalidate the owning index.
-            bool parallel=false;
-#if !defined(MVDB_DISABLE_PARALLEL_TOPK) && defined(MVDB_SIMD_BOUND_X86) && !defined(__FAST_MATH__)
-            // The persistent worker inherits these FP controls on creation;
-            // every job keeps them unchanged. Nondefault environments retain
-            // the complete existing single-threaded path.
-            if(bounded && !st.order_desc && k>=1 && k<=64 && view.count>=8192 && view.dimension>=16 &&
-               std::fegetround()==FE_TONEAREST &&
-               !(_mm_getcsr() & ((1u<<6)|(1u<<15)|(3u<<13)))) {
-              std::vector<Candidate> shards[2];
-              auto scan_shard=[&](size_t parity,std::vector<Candidate>& heap) {
-                heap.reserve(k);
-                const DistanceBoundContext local_bound(view.dimension);
-                const QuantizedQueryBound local_quantized(order.qvec->data(),view.dimension,
-                    view.quantized ? view.quantization_step : 0);
-                for(size_t i=parity;i<view.count;i+=2) {
-                  if(heap.size()==k && local_quantized.enabled() && local_quantized.definitely_greater(
-                      view.quantized+i*view.dimension,heap.front().distance))continue;
-                  const float* vector=view.row_vector(i);
-                  if(heap.size()==k && local_bound.definitely_greater(
-                      vector,order.qvec->data(),heap.front().distance))continue;
-                  Candidate candidate;candidate.pk=view.keys[i];
-                  candidate.distance=distance_squared(vector,order.qvec->data(),view.dimension);
-                  if(heap.size()<k) {
-                    heap.push_back(std::move(candidate));std::push_heap(heap.begin(),heap.end(),better);
-                  } else if(better(candidate,heap.front())) {
-                    std::pop_heap(heap.begin(),heap.end(),better);heap.back()=std::move(candidate);
-                    std::push_heap(heap.begin(),heap.end(),better);
-                  }
-                }
-              };
-              if(auto* worker=resident_topk_worker())
-                parallel=worker->run_pair([&]{scan_shard(1,shards[1]);},[&]{scan_shard(0,shards[0]);});
-              if(parallel) {
-                // A row outside its shard's exact K has at least K better
-                // rows globally. Thus the union of both K heaps is sufficient,
-                // including canonical-double ties ordered by ascending PK.
-                result.reserve(k);
-                for(auto& shard:shards)for(auto& candidate:shard)offer(std::move(candidate));
+            const QuantizedQueryBound quantized(order.qvec->data(),view.dimension,
+                bounded && !st.order_desc && view.quantized ? view.quantization_step : 0);
+            if(quantized.enabled()) {
+              for(size_t i=0;i<view.count;++i) {
+                // Integer codes are only a certified rejection filter. Every
+                // uncertain row follows the existing float bound/exact path.
+                if(result.size()==k && quantized.definitely_greater(
+                    view.quantized+i*view.dimension,result.front().distance))continue;
+                if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
               }
-            }
-#endif
-            if(!parallel) {
-              const QuantizedQueryBound quantized(order.qvec->data(),view.dimension,
-                  bounded && !st.order_desc && view.quantized ? view.quantization_step : 0);
-              if(quantized.enabled()) {
-                for(size_t i=0;i<view.count;++i) {
-                  // Integer codes are only a certified rejection filter. Every
-                  // uncertain row follows the existing float bound/exact path.
-                  if(result.size()==k && quantized.definitely_greater(
-                      view.quantized+i*view.dimension,result.front().distance))continue;
-                  if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
-                }
-              } else {
-                for(size_t i=0;i<view.count;++i)
-                  if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
-              }
+            } else {
+              for(size_t i=0;i<view.count;++i)
+                if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
             }
           } else {
             FlatIndex::ResidentSelection selection;

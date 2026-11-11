@@ -4,9 +4,6 @@ set -euo pipefail
 lscpu
 python3 minivec/tools/validate_material.py
 make -C minivec -j2 test
-g++ -O2 -std=c++17 -pthread -fsanitize=address,undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_resident_topk_worker.cpp -o /tmp/topk-worker-sanitized
-/tmp/topk-worker-sanitized
-python3 minivec/tests/parallel_topk.py --binary minivec/minivec
 g++ -O2 -std=c++17 -pthread -DMVDB_DISABLE_DIRECT_JSON_ROWS -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_query_regressions.cpp minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/query-dom-ubsan
 /tmp/query-dom-ubsan
 minivec/test_crc32 --bench
@@ -38,11 +35,10 @@ image_container=$(docker create minivec:jsonl)
 docker cp "$image_container:/minivec" /tmp/minivec-image-binary
 docker rm "$image_container"
 python3 minivec/tests/topk_bounds.py --binary /tmp/minivec-image-binary
-python3 minivec/tests/parallel_topk.py --binary /tmp/minivec-image-binary
 python3 minivec/tests/json_protocol.py --binary /tmp/minivec-image-binary
 g++ -O3 -std=c++17 -Iminivec/src minivec/tests/test_distance_simd.cpp -o /tmp/distance-tree-reduce
 /tmp/distance-tree-reduce --bench
-g++ -O3 -std=c++17 -pthread -Iminivec/src minivec/tests/profile_query.cpp minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/profile-query
+g++ -O3 -std=c++17 -Iminivec/src minivec/tests/profile_query.cpp minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/profile-query
 /tmp/profile-query
 g++ -O3 -std=c++17 -DMVDB_SIMD_DOUBLE_REDUCTION -Iminivec/src minivec/tests/test_distance_simd.cpp -o /tmp/distance-double-reduce
 /tmp/distance-double-reduce
@@ -51,4 +47,3 @@ bash minivec/tools/compare_jsonl.sh
 python3 minivec/tools/profile_jsonl.py --image minivec:jsonl-previous --output protocol-results/path-profile-previous.json
 python3 minivec/tools/profile_jsonl.py --image minivec:jsonl --output protocol-results/path-profile-candidate.json
 bash minivec/tools/compare_resident_memory.sh
-bash minivec/tools/compare_parallel_topk.sh
