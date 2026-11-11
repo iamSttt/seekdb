@@ -2,6 +2,7 @@
 #include "exec.h"
 #include "result_sort.h"
 #include "distance.h"
+#include "quantized_bound.h"
 #include "../third_party/json.hpp"
 #include <limits>
 
@@ -523,8 +524,20 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           if(st.conds.empty() && db.resident_vector_view(st.table,&view)) {
             // One immutable view for the statement removes two indirect
             // callbacks per row. Mutations invalidate the owning index.
-            for(size_t i=0;i<view.count;++i)
-              if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
+            const QuantizedQueryBound quantized(order.qvec->data(),view.dimension,
+                bounded && !st.order_desc && view.quantized ? view.quantization_step : 0);
+            if(quantized.enabled()) {
+              for(size_t i=0;i<view.count;++i) {
+                // Integer codes are only a certified rejection filter. Every
+                // uncertain row follows the existing float bound/exact path.
+                if(result.size()==k && quantized.definitely_greater(
+                    view.quantized+i*view.dimension,result.front().distance))continue;
+                if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
+              }
+            } else {
+              for(size_t i=0;i<view.count;++i)
+                if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
+            }
           } else db.scan_vectors(st.table,st.conds,consider);
         } else db.scan(st.table, st.conds, [&](const Row& r) {
           Candidate c;c.pk=r.vals[sch.pk_idx].i;

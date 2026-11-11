@@ -3,6 +3,7 @@
 #include "db.h"
 #include "flat_index.h"
 #include "distance.h"
+#include "quantized_bound.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -25,6 +26,17 @@ static void insert(Database& db,int64_t id) {
   assert(db.insert("t",{Value::ofInt(id),Value::ofInt(id%3),
       Value::ofVec({float(id),1,2,3,4})},&err,&code));
 }
+static void check_quantized_view(const FlatIndex::ResidentView& view) {
+  if(!view.quantized) {assert(view.quantization_step==0);return;}
+  assert(view.count && view.dimension>=16 && view.dimension<=65536);
+  assert(view.quantization_step>0 && std::isfinite(view.quantization_step));
+  for(size_t i=0;i<view.count*view.dimension;++i) {
+    assert(view.quantized[i]>=-127 && view.quantized[i]<=127);
+    const long double error=std::fabs(static_cast<long double>(view.vectors[i])-
+        static_cast<long double>(view.quantized[i])*static_cast<long double>(view.quantization_step));
+    assert(error<=static_cast<long double>(view.quantization_step)*0.5L);
+  }
+}
 static void check_view(Database& db) {
   const Table* table=db.table("t");assert(table);
   FlatIndex::ResidentView view;
@@ -37,11 +49,13 @@ static void check_view(Database& db) {
   }
   if(!available) {
     assert(!view.vectors && !view.keys && !view.dimension && !view.count);
+    assert(!view.quantized && view.quantization_step==0);
     return;
   }
   std::map<int64_t,std::vector<float>> expected,actual;
   db.scan("t",{},[&](const Row& row){expected[row.vals[0].i]=row.vals[2].v;return true;});
   assert(view.dimension==5 && view.count==expected.size());
+  check_quantized_view(view);assert(!view.quantized); // unsupported dimension
   for(size_t i=0;i<view.count;++i) {
     const float* values=view.vectors+i*view.dimension;
     assert(actual.emplace(view.keys[i],std::vector<float>(values,values+view.dimension)).second);
@@ -114,6 +128,84 @@ static void norm_order_regression() {
   std::map<int64_t,std::vector<float>> restored;
   db.scan("t",{},[&](const Row& row){restored[row.vals[0].i]=row.vals[2].v;return true;});
   for(const auto& row:rows)assert(restored.at(row.first)==row.second);
+}
+static void quantized_index_regression() {
+  char path[]="/tmp/mvdb-quant-index-XXXXXX";assert(::mkdtemp(path));
+  auto verify_physical=[&](size_t dimension,size_t count,size_t budget,bool expect_codes) {
+    FlatIndex index(path,dimension,count,budget);
+    assert(index.resident_bytes()<=budget);
+    std::vector<float> values(dimension);
+    for(size_t i=0;i<count;++i) {
+      for(size_t j=0;j<dimension;++j)values[j]=float(int((i*17+j*5)%127)-63)*0.125f;
+      index.add(int64_t(count-i),i,values.data(),values.size());
+    }
+    index.finish();FlatIndex::ResidentView view;
+    const bool resident=index.resident_view(&view);
+#ifdef MVDB_DISABLE_QUANTIZED_BOUND
+    expect_codes=false;
+#endif
+    if(!resident) {
+      assert(!expect_codes && !view.quantized && view.quantization_step==0);return;
+    }
+    assert(bool(view.quantized)==expect_codes);check_quantized_view(view);
+    assert(index.resident_bytes()<=budget);
+    for(size_t i=0;i<count;++i) {
+      assert(view.keys[i]==int64_t(count-i));
+      for(size_t j=0;j<dimension;++j)
+        assert(view.vectors[i*dimension+j]==float(int((i*17+j*5)%127)-63)*0.125f);
+    }
+  };
+  const size_t dim=16,count=3;
+  const size_t base=count*(dim*sizeof(float)+16);
+  const size_t postings=count*sizeof(std::pair<int64_t,size_t>),codes=count*dim;
+  verify_physical(dim,count,base+postings,false);
+  verify_physical(dim,count,base+postings+codes-1,false);
+  verify_physical(dim,count,base+postings+codes,true);
+  verify_physical(17,3,4096,true);verify_physical(128,3,4096,true);
+  verify_physical(65536,1,1u<<20,true);verify_physical(65537,1,1u<<20,false);
+  verify_physical(16,3,0,false); // disk must never expose code storage
+  verify_physical(16,0,4096,false);
+  // Exactly 4 MiB is eligible; one further row must retain only float storage.
+  verify_physical(65536,64,32u<<20,true);
+  verify_physical(65536,65,32u<<20,false);
+
+  Database db;assert(db.open(path,&err));auto cols=schema();cols[2].len=16;
+  assert(db.create_table("q",cols,&err,&code));
+  auto add=[&](int64_t pk,float scale) {
+    std::vector<float> value(16);
+    for(size_t j=0;j<value.size();++j)value[j]=scale*float(int(j)-8);
+    assert(db.insert("q",{Value::ofInt(pk),Value::ofInt(0),Value::ofVec(value)},&err,&code));
+  };
+  add(9,0.5f);add(-4,-0.25f);add(2,1.0f);
+  assert(db.create_vector_index("q","v","q_idx",&err,&code));
+  auto verify_database=[&] {
+    std::map<int64_t,std::vector<float>> expected,actual;
+    db.scan("q",{},[&](const Row& row){expected[row.vals[0].i]=row.vals[2].v;return true;});
+    FlatIndex::ResidentView view;
+    if(db.resident_vector_view("q",&view)) {
+      check_quantized_view(view);
+      assert(view.count==expected.size());
+      for(size_t i=0;i<view.count;++i)
+        assert(actual.emplace(view.keys[i],std::vector<float>(view.vectors+i*view.dimension,
+               view.vectors+(i+1)*view.dimension)).second);
+      assert(actual==expected);
+    }
+    actual.clear();db.scan_vectors("q",{},[&](int64_t pk,const float* values,size_t n) {
+      actual.emplace(pk,std::vector<float>(values,values+n));return true;
+    });assert(actual==expected);
+    // A failed request must clear every borrowed code pointer as well.
+    assert(!db.resident_vector_view("missing",&view));
+    assert(!view.quantized && !view.quantization_step && !view.vectors && !view.keys);
+  };
+  verify_database();assert(db.begin(&err,&code));add(7,0.75f);
+  assert(!db.table("q")->vector_index);verify_database();
+  assert(db.rollback(&err,&code));assert(!db.table("q")->vector_index);verify_database();
+  Cond id;id.column="id";id.value=Value::ofInt(-4);
+  assert(db.begin(&err,&code));
+  assert(db.update_rows("q",{id},{{"v",Value::ofVec(std::vector<float>(16,-2.0f))}},&err,&code)==1);
+  verify_database();assert(db.rollback(&err,&code));verify_database();
+  assert(db.delete_rows("q",{id},&err,&code)==1);verify_database();
+  assert(db.checkpoint(&err));db.close();assert(db.open(path,&err));verify_database();
 }
 int main() {
   char path[]="/tmp/mvdb-flat-index-XXXXXX";assert(::mkdtemp(path));
@@ -215,5 +307,6 @@ int main() {
   assert(reads==3 && (seen==std::vector<int64_t>{-2}));
   assert(resident.scan_integer_equal(0,7,scalar,collect) && reads==6);
   norm_order_regression();
+  quantized_index_regression();
   std::cout<<"PASS physical flat index, filters, mutation/statement/transaction rollback, eager restart rebuild, disk scan\n";
 }

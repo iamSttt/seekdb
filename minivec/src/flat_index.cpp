@@ -1,9 +1,12 @@
 #include "flat_index.h"
+#include "quantized_bound.h"
 #include <algorithm>
 #include <cerrno>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <unistd.h>
 
@@ -36,6 +39,15 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
     const size_t entry=sizeof(std::pair<int64_t,size_t>);
     if(count<=std::min<size_t>(available,1u<<20)/entry)
       posting_budget_=count*entry;
+#ifndef MVDB_DISABLE_QUANTIZED_BOUND
+    // Reserve accounting room before finish() allocates the optional codes.
+    // The resident stride check above also bounds count*dimension without overflow.
+    if(dimension>=16 && dimension<=65536) {
+      const size_t coordinates=count*dimension;
+      if(coordinates<=(4u<<20) && coordinates<=available-posting_budget_)
+        quantized_budget_=coordinates;
+    }
+#endif
   } else {
     std::string path=dir+"/.flat-XXXXXX";
     std::vector<char> name(path.begin(),path.end());name.push_back(0);
@@ -65,6 +77,33 @@ void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimensio
 }
 void FlatIndex::finish() {
   if(count_!=expected_)throw std::runtime_error("incomplete flat vector index build");
+  if(ready_)return;
+#ifndef MVDB_DISABLE_QUANTIZED_BOUND
+  if(quantized_budget_) {
+    double max_abs=0;
+    for(float value:vectors_) {
+      const double magnitude=std::fabs(static_cast<double>(value));
+      if(!std::isfinite(magnitude)) {max_abs=magnitude;break;}
+      max_abs=std::max(max_abs,magnitude);
+    }
+    const double step=mvdb::quantization_step(max_abs);
+    if(step>0 && std::isfinite(step)) {
+      quantized_.reset(new(std::nothrow) int8_t[quantized_budget_]);
+      if(quantized_) {
+        quantization_step_=step;
+        // Do not reorder: codes have exactly the vectors_/keys_ traversal order.
+        for(size_t i=0;i<vectors_.size();++i) {
+          if(!mvdb::quantize_coordinate(vectors_[i],step,&quantized_[i])) {
+            quantization_step_=0;break;
+          }
+        }
+      }
+    }
+    if(!quantization_step_) {
+      quantized_.reset();quantized_budget_=0;
+    }
+  }
+#endif
   ready_=true;
 }
 bool FlatIndex::resident_view(ResidentView* view) const {
@@ -73,10 +112,11 @@ bool FlatIndex::resident_view(ResidentView* view) const {
   if(!ready_ || fd_>=0)return false;
   view->vectors=vectors_.data();view->keys=keys_.data();
   view->dimension=dimension_;view->count=count_;
+  view->quantized=quantized_.get();view->quantization_step=quantization_step_;
   return true;
 }
 size_t FlatIndex::resident_bytes() const {
-  return vectors_.capacity()*sizeof(float)+keys_.capacity()*sizeof(int64_t)+slots_.capacity()*sizeof(uint64_t)+posting_budget_;
+  return vectors_.capacity()*sizeof(float)+keys_.capacity()*sizeof(int64_t)+slots_.capacity()*sizeof(uint64_t)+posting_budget_+quantized_budget_;
 }
 bool FlatIndex::scan_integer_equal(size_t column,int64_t value,
     const std::function<int64_t(uint64_t)>& read_value,const Visitor& visitor) {

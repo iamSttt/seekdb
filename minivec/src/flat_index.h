@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,6 +18,8 @@ class FlatIndex {
     const float* vectors=nullptr;
     const int64_t* keys=nullptr;
     size_t dimension=0,count=0;
+    const int8_t* quantized=nullptr;
+    double quantization_step=0;
   };
   FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t memory_budget);
   ~FlatIndex();
@@ -42,6 +45,9 @@ class FlatIndex {
   std::vector<float> vectors_;
   std::vector<int64_t> keys_;
   std::vector<uint64_t> slots_;
+  std::unique_ptr<int8_t[]> quantized_;
+  size_t quantized_budget_=0;
+  double quantization_step_=0;
   size_t posting_budget_=0,posting_column_=0;
   bool postings_ready_=false;
   std::vector<std::pair<int64_t,size_t>> postings_;

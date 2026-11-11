@@ -2,7 +2,7 @@
 # Compare immutable, previously validated JSONL source with the candidate image.
 set -euo pipefail
 baseline=fa562be89069a84215a6196c9e24e4c6274f3862
-previous=0b68108a2c85b28d3d5a7b582828a829fb23000a
+previous=f87e8f077cdb8cbfa01c739f0920900d4a5ee462
 root=$(git rev-parse --show-toplevel)
 cd "$root"
 context=$(mktemp -d)
@@ -43,7 +43,7 @@ for seed in (38021, 7319, 19417):
     ratios.append(base['query']['exact']['total_seconds'] / candidate['query']['exact']['total_seconds'])
     previous_ratios.append(previous['query']['exact']['total_seconds'] / candidate['query']['exact']['total_seconds'])
 summary = {'baseline_commit': 'fa562be89069a84215a6196c9e24e4c6274f3862',
-           'previous_commit': '0b68108a2c85b28d3d5a7b582828a829fb23000a',
+           'previous_commit': 'f87e8f077cdb8cbfa01c739f0920900d4a5ee462',
            'exact_query_speedups': ratios, 'median_exact_query_speedup': median(ratios),
            'previous_query_speedups': previous_ratios, 'median_previous_query_speedup': median(previous_ratios),
            'scope': 'Local synthetic, paired on one runner with identical Docker resource limits; not a platform score.'}
