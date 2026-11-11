@@ -128,7 +128,119 @@ static void run_statement(Database& db, const std::string& text) {
 
 using Json = nlohmann::json;
 
+// Fast path for the request envelope. Every official request is a flat object of
+// scalar members, so validating that shape directly avoids building a whole DOM
+// (and a duplicate-key std::set) for each request. Anything outside the shape —
+// nesting, backslash escapes, unknown keys, out-of-range integers — falls back
+// to the nlohmann parse below, which stays the reference implementation.
+static bool scan_simple_json_string(const std::string& t, size_t* p, std::string* out) {
+  size_t i = *p;
+  if (i >= t.size() || t[i] != '"') return false;
+  ++i;
+  const size_t begin = i;
+  while (i < t.size()) {
+    const unsigned char c = static_cast<unsigned char>(t[i]);
+    if (c == '"') {
+      if (out) out->assign(t, begin, i - begin);
+      *p = i + 1;
+      return true;
+    }
+    if (c == '\\' || c < 0x20) return false;
+    ++i;
+  }
+  return false;
+}
+
+static bool fast_envelope(const std::string& t, Json* out) {
+  static const char* const kKeys[4] = {"id", "op", "sql", "search_mode"};
+  size_t p = 0;
+  const size_t n = t.size();
+  auto skip_ws = [&]() {
+    while (p < n && (t[p] == ' ' || t[p] == '\t' || t[p] == '\n' || t[p] == '\r')) ++p;
+  };
+  skip_ws();
+  if (p >= n || t[p] != '{') return false;
+  ++p;
+  Json obj = Json::object();
+  bool seen[4] = {false, false, false, false};
+  bool first = true;
+  for (;;) {
+    skip_ws();
+    if (p < n && t[p] == '}' && first) { ++p; break; }
+    if (p >= n) return false;
+    std::string key;
+    if (!scan_simple_json_string(t, &p, &key)) return false;
+    int slot = -1;
+    for (int k = 0; k < 4; ++k)
+      if (key == kKeys[k]) slot = k;
+    if (slot < 0) return false;
+    if (seen[slot]) throw std::runtime_error("duplicate JSON object key");
+    seen[slot] = true;
+    skip_ws();
+    if (p >= n || t[p] != ':') return false;
+    ++p;
+    skip_ws();
+    if (p >= n) return false;
+    const char c = t[p];
+    if (c == '"') {
+      std::string v;
+      if (!scan_simple_json_string(t, &p, &v)) return false;
+      obj[kKeys[slot]] = std::move(v);
+    } else if (c == 't' || c == 'f' || c == 'n') {
+      if (t.compare(p, 4, "true") == 0) { obj[kKeys[slot]] = true; p += 4; }
+      else if (t.compare(p, 5, "false") == 0) { obj[kKeys[slot]] = false; p += 5; }
+      else if (t.compare(p, 4, "null") == 0) { obj[kKeys[slot]] = nullptr; p += 4; }
+      else return false;
+    } else if (c == '-' || (c >= '0' && c <= '9')) {
+      const size_t b = p;
+      const bool neg = (c == '-');
+      if (neg) ++p;
+      if (p >= n) return false;
+      if (t[p] == '0') { ++p; }
+      else if (t[p] >= '1' && t[p] <= '9') { while (p < n && t[p] >= '0' && t[p] <= '9') ++p; }
+      else return false;
+      if (p < n && t[p] == '.') {
+        ++p;
+        if (p >= n || t[p] < '0' || t[p] > '9') return false;
+        while (p < n && t[p] >= '0' && t[p] <= '9') ++p;
+      }
+      if (p < n && (t[p] == 'e' || t[p] == 'E')) {
+        ++p;
+        if (p < n && (t[p] == '+' || t[p] == '-')) ++p;
+        if (p >= n || t[p] < '0' || t[p] > '9') return false;
+        while (p < n && t[p] >= '0' && t[p] <= '9') ++p;
+      }
+      // The id value is only tested for presence; other members are strings.
+      bool integral = true;
+      uint64_t acc = 0;
+      for (size_t k = (neg ? b + 1 : b); k < p; ++k) {
+        if (t[k] < '0' || t[k] > '9') { integral = false; break; }
+        if (acc > 1844674407370955161ull) { integral = false; break; }
+        acc = acc * 10 + static_cast<uint64_t>(t[k] - '0');
+      }
+      if (!integral) obj[kKeys[slot]] = nullptr;
+      else if (neg) obj[kKeys[slot]] = -static_cast<int64_t>(acc);
+      else obj[kKeys[slot]] = acc;
+    } else {
+      return false;  // arrays/objects/other tokens: let nlohmann handle it
+    }
+    first = false;
+    skip_ws();
+    if (p < n && t[p] == ',') { ++p; continue; }
+    if (p < n && t[p] == '}') { ++p; break; }
+    return false;
+  }
+  skip_ws();
+  if (p != n) return false;
+  *out = std::move(obj);
+  return true;
+}
+
 static Json strict_json(const std::string& text) {
+  {
+    Json fast;
+    if (fast_envelope(text, &fast)) return fast;
+  }
   std::vector<std::set<std::string>> keys;
   return Json::parse(text, [&](int, Json::parse_event_t event, Json& value) {
     if (event == Json::parse_event_t::object_start) keys.emplace_back();
@@ -224,11 +336,13 @@ static bool json_request(Database& db, const std::string& line, int* exit_code) 
       const Json mode=request.value("search_mode",Json("exact"));
       if (!mode.is_string() || (mode!="exact" && mode!="ann"))
         throw std::runtime_error("search_mode must be exact or ann");
-      // Exact Flat search is also a valid recall-1 ANN implementation.
+      // The mode selects the candidate set of an unfiltered vector search: a
+      // recall-bounded coarse partition for "ann", always-exact for "exact".
+      const bool ann_mode = (mode == "ann");
       Statement statement;
       const std::string& sql=request.at("sql").get_ref<const std::string&>();
       if (!parse_sql(sql,&statement,&error,&code) ||
-          !execute_json(db,statement,&result,&error,&code)) {
+          !execute_json(db,statement,&result,&error,&code,ann_mode)) {
         response={{"ok",false},{"error",{{"code",std::to_string(code ? code : 1105)},{"message",error}}}};
       } else {
         if (result.size()<2 || result.front()!='{' || result.back()!='}')
@@ -272,7 +386,7 @@ int main(int argc, char** argv) {
 
   if(mode!="exact" && mode!="ann") {std::fprintf(stderr,"mode must be exact or ann\n");return 2;}
   if(protocol!="jsonl" && protocol!="sql") {std::fprintf(stderr,"protocol must be jsonl or sql\n");return 2;}
-  // Both modes use exact Flat search. JSONL also validates each request's mode.
+  // The default mode is exact; JSONL also validates each request's mode.
   struct sigaction action {};
   action.sa_handler = stop_signal;
   sigemptyset(&action.sa_mask);

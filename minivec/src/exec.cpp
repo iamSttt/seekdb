@@ -72,14 +72,11 @@ void emit_affected_rows(int64_t n, std::string* out, bool json_response) {
   *out += "Query OK, " + std::to_string(n) + " row" + (n == 1 ? "" : "s") + " affected\n";
 }
 
-#if defined(MVDB_DISABLE_DIRECT_JSON_ROWS)
 Json json_value(const Value& value) {
   switch (value.type) {
     case Type::BIGINT: return value.i;
     case Type::VARCHAR: return value.s;
     case Type::VECTOR:
-      // The DOM serializer maps non-finite numbers to null by default. Keep
-      // the same rejection behavior as the direct encoder in this A/B path.
       for (const float component : value.v) {
         if (!std::isfinite(component)) throw std::runtime_error("non-finite vector result");
       }
@@ -87,49 +84,6 @@ Json json_value(const Value& value) {
   }
   throw std::runtime_error("invalid result type");
 }
-#else
-void append_json_integer(std::string& out,int64_t value) {
-  char buffer[32];
-  const auto encoded=std::to_chars(buffer,buffer+sizeof(buffer),value);
-  if(encoded.ec!=std::errc{})throw std::runtime_error("cannot encode BIGINT result");
-  out.append(buffer,encoded.ptr);
-}
-
-void append_json_float(std::string& out,double value,const char* nonfinite_error) {
-  if(!std::isfinite(value))throw std::runtime_error(nonfinite_error);
-  if(value==0) {
-    out+=std::signbit(value)?"-0.0":"0.0";
-    return;
-  }
-  // Use double even for stored float32 components: parsing the JSON must
-  // recover the complete promoted double, rather than a shorter float token.
-  char buffer[64];
-  const auto encoded=std::to_chars(buffer,buffer+sizeof(buffer),value);
-  if(encoded.ec!=std::errc{})throw std::runtime_error("cannot encode floating result");
-  out.append(buffer,encoded.ptr);
-  bool floating_token=false;
-  for(const char* p=buffer;p!=encoded.ptr;++p)
-    if(*p=='.' || *p=='e' || *p=='E') {floating_token=true;break;}
-  if(!floating_token)out+=".0"; // Retain JSON number_float for integral values.
-}
-
-void append_json_value(std::string& out,const Value& value) {
-  switch(value.type) {
-    case Type::BIGINT: append_json_integer(out,value.i);return;
-    case Type::VARCHAR:
-      out+=Json(value.s).dump(); // Keep the validated UTF-8/escaping implementation.
-      return;
-    case Type::VECTOR:
-      out+='[';
-      for(size_t i=0;i<value.v.size();++i) {
-        if(i)out+=',';
-        append_json_float(out,static_cast<double>(value.v[i]),"non-finite vector result");
-      }
-      out+=']';return;
-  }
-  throw std::runtime_error("invalid result type");
-}
-#endif
 
 std::string render_value(const Value& v) {
   switch (v.type) {
@@ -205,7 +159,7 @@ void render_table(const std::vector<std::string>& headers,
 }  // namespace
 
 static bool execute_impl(Database& db, const Statement& st, std::string* out, std::string* err,
-                         int* code, const OutputSink& sink, bool json_response) {
+                         int* code, const OutputSink& sink, bool json_response, bool ann_mode) {
   *code = 0;
   switch (st.kind) {
     case Statement::EMPTY:
@@ -462,9 +416,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             : distance2(row.vals[item.col].v, *item.qvec);
         return std::sqrt(squared);
       };
-      auto encode_json_row = [&](const Row& row, std::string& encoded,
-                                 const Candidate* candidate = nullptr) {
-#if defined(MVDB_DISABLE_DIRECT_JSON_ROWS)
+      auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
         Json cells = Json::array();
         for (const auto& item : items) {
           const Value& value = row.vals[item.col];
@@ -476,19 +428,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             cells.push_back(distance);
           }
         }
-        encoded+=cells.dump();
-#else
-        encoded+='[';
-        for(size_t i=0;i<items.size();++i) {
-          if(i)encoded+=',';
-          const auto& item=items[i];
-          if(item.is_distance)
-            append_json_float(encoded,projected_distance(row,item,candidate),
-                              "non-finite L2 distance result");
-          else append_json_value(encoded,row.vals[item.col]);
-        }
-        encoded+=']';
-#endif
+        return cells.dump();
       };
       bool first_json_row = true;
       auto append_json_row = [&](const std::string& row) {
@@ -524,8 +464,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           }
         };
         auto render = [&](const Row& row) {
+          if (json_response) return encode_json_row(row);
           std::string text;
-          if (json_response) {encode_json_row(row,text);return text;}
           for(size_t j=0;j<items.size();++j) {
             if(j)text+='\t';
             const auto& item=items[j];
@@ -581,50 +521,61 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             return offer(std::move(c));
           };
           FlatIndex::ResidentView view;
+          FlatIndex* index=ann_mode ? db.resident_vector_index(st.table) : nullptr;
           if(st.conds.empty() && db.resident_vector_view(st.table,&view)) {
             // One immutable view for the statement removes two indirect
             // callbacks per row. Mutations invalidate the owning index.
             const QuantizedQueryBound quantized(order.qvec->data(),view.dimension,
                 bounded && !st.order_desc && view.quantized ? view.quantization_step : 0);
-            if(quantized.enabled()) {
-              for(size_t i=0;i<view.count;++i) {
-                // Integer codes are only a certified rejection filter. Every
-                // uncertain row follows the existing float bound/exact path.
-                if(result.size()==k && quantized.definitely_greater(
-                    view.quantized+i*view.dimension,result.front().distance))continue;
-                if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
-              }
+            auto scan_ordinal=[&](size_t i) {
+              // Integer codes are only a certified rejection filter. Every
+              // uncertain row follows the existing float bound/exact path.
+              if(quantized.enabled() && result.size()==k &&
+                 quantized.definitely_greater(view.quantized+i*view.dimension,result.front().distance))
+                return true;
+              return consider(view.keys[i],view.vectors+i*view.dimension,view.dimension);
+            };
+            std::vector<uint32_t> probed;
+            const uint32_t* ordinals=nullptr;
+            size_t ordinal_count=0;
+            // The approximate candidate set only narrows which rows are visited;
+            // ranking inside it is the same exact float path, so the recall
+            // contract is the probe width alone. A probe that cannot beat the
+            // full scan reports failure and leaves the exact scan in place.
+            if(index && index->ann_probe(order.qvec->data(),0,&probed,&ordinals,&ordinal_count)) {
+              for(size_t j=0;j<ordinal_count;++j)
+                if(!scan_ordinal(ordinals[j]))break;
+            } else if(quantized.enabled()) {
+              for(size_t i=0;i<view.count;++i)
+                if(!scan_ordinal(i))break;
             } else {
               for(size_t i=0;i<view.count;++i)
-                if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
+                if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
             }
           } else {
-            FlatIndex::ResidentSelection selection;
-            std::function<bool(uint64_t)> residual;
-            if(!st.conds.empty() &&
-               db.resident_integer_equal_view(st.table,st.conds,&selection,&residual)) {
-              const auto& index=selection.index;
-              const QuantizedQueryBound quantized(order.qvec->data(),index.dimension,
-                  bounded && !st.order_desc && index.quantized ? index.quantization_step : 0);
-              auto visit=[&](size_t position) {
-                const size_t i=selection.matches[position].second;
-                if(quantized.enabled() && result.size()==k && quantized.definitely_greater(
-                    index.quantized+i*index.dimension,result.front().distance))return true;
-                return consider(index.keys[i],index.row_vector(i),index.dimension);
-              };
-              if(residual) {
-                for(size_t position=0;position<selection.count;++position) {
-                  const size_t i=selection.matches[position].second;
-                  if(!residual(selection.slots[i]))continue;
-                  if(!visit(position))break;
-                }
-              } else {
-                // One coerced equality is completely established by postings.
-                // No row decoding, predicate callback or distance callback.
-                for(size_t position=0;position<selection.count;++position)
-                  if(!visit(position))break;
-              }
-            } else db.scan_vectors(st.table,st.conds,consider);
+            // Filtered search: the same certified int8 rejection, with the
+            // threshold kept current from the winning heap. Before the heap is
+            // full the threshold is infinite, so nothing is rejected.
+            FlatIndex::ResidentView filtered_view;
+            const bool resident=db.resident_vector_view(st.table,&filtered_view) &&
+                filtered_view.quantized && bounded && !st.order_desc;
+            std::unique_ptr<QuantizedQueryBound> filtered_bound;
+            if(resident) filtered_bound.reset(new QuantizedQueryBound(order.qvec->data(),
+                filtered_view.dimension,filtered_view.quantization_step));
+            const bool filtered_reject=resident && filtered_bound->enabled();
+            double threshold=std::numeric_limits<double>::infinity();
+            auto consider_filtered=[&](int64_t pk,const float* v,size_t dim) {
+              if(bounded && !st.order_desc && result.size()==k &&
+                 bound_context.definitely_greater(v,order.qvec->data(),result.front().distance))
+                return true;
+              Candidate c;c.pk=pk;c.distance=distance_squared(v,order.qvec->data(),dim);
+              const bool more=offer(std::move(c));
+              if(result.size()==k) threshold=result.front().distance;
+              return more;
+            };
+            db.scan_vectors(st.table,st.conds,consider_filtered,
+                filtered_reject ? filtered_bound.get() : nullptr,
+                filtered_reject ? &threshold : nullptr);
           }
         } else db.scan(st.table, st.conds, [&](const Row& r) {
           Candidate c;c.pk=r.vals[sch.pk_idx].i;
@@ -656,9 +607,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         Row scratch;
         const Row& r = t->read_row(slot, scratch);
         if (json_response) {
-          if(!first_json_row)*out+=',';
-          first_json_row=false;
-          encode_json_row(r,*out,&c);
+          append_json_row(encode_json_row(r, &c));
           continue;
         }
         std::vector<std::string> row;
@@ -711,15 +660,15 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
 
 static bool execute_statement(Database& db, const Statement& st, std::string* out,
                               std::string* err, int* code, const OutputSink& sink,
-                              bool json_response) {
+                              bool json_response, bool ann_mode) {
   const bool mutation = st.kind == Statement::INSERT || st.kind == Statement::UPDATE ||
       st.kind == Statement::DELETE_ROWS || st.kind == Statement::CREATE_TABLE ||
       st.kind == Statement::DROP_TABLE || st.kind == Statement::CREATE_INDEX;
-  if (!mutation) return execute_impl(db, st, out, err, code, sink, json_response);
+  if (!mutation) return execute_impl(db, st, out, err, code, sink, json_response, ann_mode);
   if (!db.begin_statement(err, code)) return false;
   bool ok;
   try {
-    ok = execute_impl(db, st, out, err, code, sink, json_response);
+    ok = execute_impl(db, st, out, err, code, sink, json_response, ann_mode);
   } catch (...) {
     if (json_response) db.end_statement(false, err, code);
     throw;
@@ -731,15 +680,16 @@ static bool execute_statement(Database& db, const Statement& st, std::string* ou
 
 bool execute(Database& db, const Statement& st, std::string* out, std::string* err,
              int* code, const OutputSink& sink) {
-  return execute_statement(db, st, out, err, code, sink, false);
+  return execute_statement(db, st, out, err, code, sink, false, false);
 }
 
-bool execute_json(Database& db, const Statement& st, std::string* out, std::string* err, int* code) {
+bool execute_json(Database& db, const Statement& st, std::string* out, std::string* err, int* code,
+                  bool ann_mode) {
   out->clear();
   err->clear();
   *code = 0;
   try {
-    if (execute_statement(db, st, out, err, code, {}, true)) return true;
+    if (execute_statement(db, st, out, err, code, {}, true, ann_mode)) return true;
   } catch (const std::exception& ex) {
     if (*code == 0) {
       *code = 1105;

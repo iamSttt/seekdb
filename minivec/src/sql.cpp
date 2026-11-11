@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -65,13 +66,6 @@ std::string to_upper(const std::string& s) {
   return r;
 }
 
-std::string trim_copy(const std::string& s) {
-  size_t b = 0, e = s.size();
-  while (b < e && is_space((unsigned char)s[b])) ++b;
-  while (e > b && is_space((unsigned char)s[e - 1])) --e;
-  return s.substr(b, e - b);
-}
-
 // ------------------------------------------------------------------ tokens --
 
 enum TokKind { TK_END, TK_IDENT, TK_INT, TK_NUM, TK_STR, TK_VEC, TK_PUNCT };
@@ -107,6 +101,32 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
       continue;
     }
     const size_t start = i;
+
+    // Fast path: a quoted literal with no escape sequence and no doubled quote
+    // is copied in one pass instead of being rebuilt byte by byte.
+    if (c == '\'' || c == '"') {
+      const char q = (char)c;
+      // memchr hands the scan to the vectorised libc search instead of walking
+      // the literal one byte at a time.
+      const char* hit = static_cast<const char*>(
+          std::memchr(s.data() + i + 1, q, n - i - 1));
+      if (hit != nullptr) {
+        const size_t j = static_cast<size_t>(hit - s.data());
+        bool simple = true;
+        if (std::memchr(s.data() + i + 1, '\\', j - i - 1) != nullptr) simple = false;
+        else if (j + 1 < n && s[j + 1] == q) simple = false;
+        if (simple) {
+          Tok t;
+          t.kind = TK_STR;
+          t.text.assign(s, i + 1, j - i - 1);
+          t.pos = start;
+          out->push_back(std::move(t));
+          i = j + 1;
+          continue;
+        }
+      }
+    }
+
 
     // --- quoted string -----------------------------------------------------
     if (c == '\'' || c == '"') {
@@ -291,14 +311,16 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
 
 // Parses "1, 2.5, -3e2" into floats. Strict: rejects empty elements, trailing
 // commas, garbage tokens and non-finite values.
-bool parse_float_list(const std::string& body, std::vector<float>* out) {
+bool parse_float_list(std::string_view body, std::vector<float>* out) {
   out->clear();
+  // One allocation for the usual 128-coordinate case instead of log2 growth.
+  if (out->capacity() == 0) out->reserve(body.size() / 8 + 4);
   const size_t n = body.size();
   size_t i = 0;
   while (i < n) {
     while (i < n && is_space((unsigned char)body[i])) ++i;
     if (i >= n) break;
-    const char* begin = body.c_str() + i;
+    const char* begin = body.data() + i;
     const char* endp = nullptr;
     // Parse at storage precision to avoid rounding first to double and then
     // rounding again at a float32 midpoint. Subnormals and zero are finite.
@@ -332,10 +354,13 @@ bool parse_float_list(const std::string& body, std::vector<float>* out) {
 // A quoted string that looks like '[1.0, 2, -3.5]' becomes a VECTOR value;
 // anything else stays a VARCHAR.
 Value value_from_string(const std::string& raw) {
-  std::string t = trim_copy(raw);
-  if (t.size() >= 2 && t.front() == '[' && t.back() == ']') {
+  // Trim and bracket stripping stay views: the byte range is examined in place.
+  size_t b = 0, e = raw.size();
+  while (b < e && is_space((unsigned char)raw[b])) ++b;
+  while (e > b && is_space((unsigned char)raw[e - 1])) --e;
+  if (e - b >= 2 && raw[b] == '[' && raw[e - 1] == ']') {
     std::vector<float> v;
-    if (parse_float_list(t.substr(1, t.size() - 2), &v)) {
+    if (parse_float_list(std::string_view(raw.data() + b + 1, e - b - 2), &v)) {
       Value result = Value::ofVec(std::move(v));
       result.s = raw;  // retain quoted spelling for a VARCHAR destination
       return result;
@@ -524,15 +549,15 @@ Value Parser::parse_value(const char* ctx) {
     syntax_error("floating point literal '" + cur().text +
                  "' is not a valid value; use an integer, a quoted string or '[..]'");
   if (cur().kind == TK_STR) {
-    std::string s = cur().text;
+    const std::string& s = cur().text;  // token vector is stable across adv()
     adv();
     return value_from_string(s);
   }
   if (cur().kind == TK_VEC) {
-    std::string body = cur().text;
+    const std::string& body = cur().text;
     adv();
     std::vector<float> v;
-    if (!parse_float_list(body, &v)) syntax_error("invalid vector literal '[" + body + "]'");
+    if (!parse_float_list(std::string_view(body), &v)) syntax_error("invalid vector literal '[" + body + "]'");
     return Value::ofVec(std::move(v));
   }
   if (is_kw("NULL")) syntax_error("NULL is not supported; supply a concrete value");
@@ -546,19 +571,21 @@ Value Parser::parse_value(const char* ctx) {
 
 std::vector<float> Parser::parse_query_vector() {
   if (cur().kind == TK_VEC) {
-    std::string body = cur().text;
+    const std::string& body = cur().text;
     adv();
     std::vector<float> v;
-    if (!parse_float_list(body, &v)) syntax_error("invalid vector literal '[" + body + "]'");
+    if (!parse_float_list(std::string_view(body), &v)) syntax_error("invalid vector literal '[" + body + "]'");
     return v;
   }
   if (cur().kind == TK_STR) {
-    std::string s = cur().text;
+    const std::string& s = cur().text;
     adv();
-    std::string t = trim_copy(s);
-    if (t.size() >= 2 && t.front() == '[' && t.back() == ']') {
+    size_t b = 0, e = s.size();
+    while (b < e && is_space((unsigned char)s[b])) ++b;
+    while (e > b && is_space((unsigned char)s[e - 1])) --e;
+    if (e - b >= 2 && s[b] == '[' && s[e - 1] == ']') {
       std::vector<float> v;
-      if (parse_float_list(t.substr(1, t.size() - 2), &v)) return v;
+      if (parse_float_list(std::string_view(s.data() + b + 1, e - b - 2), &v)) return v;
     }
     syntax_error("invalid vector literal '" + s + "'");
   }

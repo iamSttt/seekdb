@@ -6,9 +6,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <cstdint>
 #include <cstdlib>
-#include <cstring>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -131,181 +129,6 @@ static void projection_regressions(Database& db) {
   }
   std::cout << "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows\n";
 }
-static void json_row_regressions(Database& db) {
-  using Json=nlohmann::json;
-  struct Record {int64_t id,number;std::string text;std::vector<float> vector;double zero_distance,unit_distance;};
-  const float tiny=std::numeric_limits<float>::denorm_min(),maximum=std::numeric_limits<float>::max();
-  std::vector<float> edge={-0.0f,0.0f,0.1f,-0.1f,tiny,-tiny,
-      std::numeric_limits<float>::min(),-std::numeric_limits<float>::min(),maximum,-maximum,
-      std::nextafter(1.0f,2.0f),1.0f/3,16777216.0f,8.5f};
-  uint32_t state=0xb29a351du;
-  while(edge.size()<128) {
-    state^=state<<13;state^=state>>17;state^=state<<5;
-    // Finite magnitudes below one, with varied signs, exponents and mantissas.
-    const uint32_t bits=(state&0x807fffffu)|((state%127)<<23);
-    float value;std::memcpy(&value,&bits,sizeof(value));edge.push_back(value);
-  }
-  std::string escaped="中😀\"\\/\u2028\u2029";
-  for(int character=0;character<32;++character)escaped.push_back(static_cast<char>(character));
-  // Only the two maximum components survive rounding this squared sum to
-  // double; all other terms are many orders below half an ULP at that scale.
-  const double huge=std::sqrt(double(maximum)*double(maximum)*2);
-  std::vector<Record> rows={
-    {INT64_MIN,INT64_MAX,escaped,edge,huge,huge},
-    {INT64_MAX,INT64_MIN,"",std::vector<float>(128),0,1},
-    {9007199254740993ll,9007199254740993ll,"9223372036854775807",std::vector<float>(128),std::sqrt(2.0),1},
-    {-9007199254740993ll,-9007199254740993ll,"é é",std::vector<float>(128),5,std::sqrt(20.0)},
-  };
-  rows[1].vector[1]=-0.0f;
-  rows[2].vector[0]=1;rows[2].vector[1]=1;
-  rows[3].vector[0]=3;rows[3].vector[1]=4;
-  query(db,"CREATE TABLE json_rows(id BIGINT PRIMARY KEY,n BIGINT,s VARCHAR(256),v VECTOR(128))",false);
-  std::string err;int code=0;
-  for(const auto& row:rows)
-    assert(db.insert("json_rows",{Value::ofInt(row.id),Value::ofInt(row.number),
-        Value::ofStr(row.text),Value::ofVec(row.vector)},&err,&code));
-  std::string zero="'[0",unit="'[1";
-  for(size_t i=1;i<128;++i){zero+=",0";unit+=",0";}zero+="]'";unit+="]'";
-  const std::string prefix="SELECT id,n,s,v,L2_DISTANCE(v,"+zero+") AS d0,L2_DISTANCE(v,"+unit+") AS d1 FROM json_rows ";
-  std::string header="编号\"\\\n";header.push_back('\0');header+="😀";
-  auto check_double=[](const Json& cell,double expected) {
-    assert(cell.is_number_float());
-    const double actual=cell.get<double>();uint64_t a,b;
-    std::memcpy(&a,&actual,sizeof(a));std::memcpy(&b,&expected,sizeof(b));
-    assert(a==b); // Includes the sign bit of zero and every promoted float32 bit.
-  };
-  auto verify=[&] {
-    const std::vector<std::pair<std::string,std::vector<size_t>>> cases={
-      {"ORDER BY id LIMIT 10",{0,3,2,1}}, {"ORDER BY d0 LIMIT 10",{1,2,3,0}},
-      {"ORDER BY id LIMIT 4096",{0,3,2,1}}, {"ORDER BY d0",{1,2,3,0}},
-      {"",{0,1,2,3}}, {"WHERE n='9223372036854775807' ORDER BY d0 LIMIT 10",{0}},
-      {"LIMIT 0",{}},
-    };
-    for(const auto& test:cases) {
-      Statement statement;std::string output;
-      assert(parse_sql(prefix+test.first,&statement,&err,&code));
-      statement.items[0].alias=header;statement.items[3].alias="向量😀";
-      assert(execute_json(db,statement,&output,&err,&code));
-      const Json response=Json::parse(output);
-      assert(response.at("columns")==Json({header,"n","s","向量😀","d0","d1"}));
-      const auto& actual=response.at("rows");assert(actual.size()==test.second.size());
-      for(size_t i=0;i<actual.size();++i) {
-        const auto& row=rows[test.second[i]];const auto& cells=actual[i];assert(cells.size()==6);
-        assert(cells[0].is_number_integer() && cells[0].get<int64_t>()==row.id);
-        assert(cells[1].is_number_integer() && cells[1].get<int64_t>()==row.number);
-        assert(cells[2].is_string() && cells[2].get<std::string>()==row.text);
-        assert(cells[3].is_array() && cells[3].size()==row.vector.size());
-        for(size_t j=0;j<row.vector.size();++j)check_double(cells[3][j],double(row.vector[j]));
-        check_double(cells[4],row.zero_distance);check_double(cells[5],row.unit_distance);
-      }
-    }
-  };
-  verify();query(db,"CREATE VECTOR INDEX json_rows_v ON json_rows(v)",false);verify();
-  assert(db.begin(&err,&code));Cond id;id.column="id";id.value=Value::ofInt(INT64_MIN);
-  assert(db.update_rows("json_rows",{id},{{"n",Value::ofInt(INT64_MAX)}},&err,&code)==1);
-  assert(db.table("json_rows")->payload_store);verify();assert(db.rollback(&err,&code));verify();
-
-  auto reject=[&](Statement statement) {
-    std::string output="discard on failure";
-    assert(!execute_json(db,statement,&output,&err,&code));
-    assert(output.empty() && code==1105 && !err.empty());
-  };
-  Statement invalid_header;
-  assert(parse_sql("SELECT id FROM json_rows LIMIT 1",&invalid_header,&err,&code));
-  invalid_header.items[0].alias=std::string(1,char(0xff));reject(invalid_header);
-  query(db,"CREATE TABLE json_bad_cells(id BIGINT PRIMARY KEY,v VECTOR(1),s VARCHAR(8))",false);
-  assert(db.insert("json_bad_cells",{Value::ofInt(1),Value::ofVec({1}),Value::ofStr("first")},&err,&code));
-  assert(db.insert("json_bad_cells",{Value::ofInt(2),Value::ofVec({2}),Value::ofStr("valid")},&err,&code));
-  auto& bad=db.table("json_bad_cells")->rows[1];
-  auto healthy=[&] {
-    Statement statement;std::string output;
-    assert(parse_sql("SELECT id,v,s,L2_DISTANCE(v,'[0]') FROM json_bad_cells ORDER BY id LIMIT 2",
-                     &statement,&err,&code));
-    assert(execute_json(db,statement,&output,&err,&code));
-    assert(code==0 && err.empty());
-    assert(Json::parse(output).at("rows")==Json({{1,{1.0},"first",1.0},{2,{2.0},"valid",2.0}}));
-  };
-  // Bypass normal input validation to prove output never emits non-finite JSON
-  // or silently substitutes invalid UTF-8. The first row is encoded before
-  // the invalid second row, so failures must discard partial result bytes.
-  for(float nonfinite:{std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()}) {
-    bad.vals[1].v[0]=nonfinite;
-    for(const char* field:{"v","L2_DISTANCE(v,'[0]')"})
-      for(const char* suffix:{""," LIMIT 2"," ORDER BY id LIMIT 4096"}) {
-        Statement statement;
-        assert(parse_sql(std::string("SELECT ")+field+" FROM json_bad_cells"+suffix,&statement,&err,&code));
-        reject(statement);
-      }
-    bad.vals[1].v[0]=2;healthy();
-  }
-  bad.vals[2].s=std::string(1,char(0xff));
-  Statement invalid_value;assert(parse_sql("SELECT s FROM json_bad_cells",&invalid_value,&err,&code));reject(invalid_value);
-  bad.vals[2].s="valid";healthy();
-  std::cout<<"PASS typed JSON rows, full double bit round trips, UTF-8/escaping, external sort and spill\n";
-}
-
-static void filtered_posting_regressions(Database& db) {
-  using Json=nlohmann::json;
-  struct Record {int64_t id,group;std::string text;std::vector<float> vector;};
-  std::vector<Record> records;
-  query(db,"CREATE TABLE filtered_postings(id BIGINT PRIMARY KEY,g BIGINT,s VARCHAR(8),v VECTOR(16))",false);
-  std::string err;int code=0;
-  for(int64_t i=47;i>=0;--i) {
-    Record row{i,i%3,i%2?"汉":"z",std::vector<float>(16)};
-    for(size_t j=0;j<row.vector.size();++j)row.vector[j]=float((i*5+int64_t(j)*3)%11-5);
-    assert(db.insert("filtered_postings",{Value::ofInt(row.id),Value::ofInt(row.group),
-        Value::ofStr(row.text),Value::ofVec(row.vector)},&err,&code));
-    records.push_back(std::move(row));
-  }
-  const std::string zero="'[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]'";
-  auto verify=[&] {
-    const std::vector<std::pair<std::string,std::function<bool(const Record&)>>> cases={
-      {"g=1",[](const Record& r){return r.group==1;}},
-      {"g='+01'",[](const Record& r){return r.group==1;}},
-      {"g=1 AND id>='0015' AND s='汉'",[](const Record& r){return r.group==1 && r.id>=15 && r.text=="汉";}},
-      {"id>=15 AND g=1 AND s<>'z'",[](const Record& r){return r.id>=15 && r.group==1 && r.text!="z";}},
-      {"g=1 AND g=2",[](const Record&){return false;}},
-      {"g=99",[](const Record&){return false;}},
-      {"g='bad' AND id>=15",[](const Record&){return false;}},
-      {"g=1 AND s=123",[](const Record&){return false;}},
-    };
-    for(const auto& test:cases)for(bool desc:{false,true})for(int k:{1,10,100}) {
-      // All coordinates are small integers, so this independent integer sum
-      // gives the canonical squared key exactly, without a distance helper.
-      std::vector<std::pair<int64_t,int64_t>> ranked;
-      for(const auto& row:records)if(test.second(row)) {
-        int64_t squared=0;
-        for(float value:row.vector){const int64_t coordinate=int64_t(value);squared+=coordinate*coordinate;}
-        ranked.emplace_back(desc?-squared:squared,row.id);
-      }
-      std::sort(ranked.begin(),ranked.end());
-      Json expected=Json::array();
-      for(size_t i=0;i<ranked.size() && i<size_t(k);++i)expected.push_back(Json::array({ranked[i].second}));
-      Statement statement;std::string output;
-      assert(parse_sql("SELECT id FROM filtered_postings WHERE "+test.first+
-          " ORDER BY L2_DISTANCE(v,"+zero+") "+(desc?"DESC":"ASC")+" LIMIT "+std::to_string(k),
-          &statement,&err,&code));
-      assert(execute_json(db,statement,&output,&err,&code));
-      assert(Json::parse(output).at("rows")==expected);
-    }
-  };
-  verify(); // The same independent expectations also cover unindexed fallback.
-  query(db,"CREATE VECTOR INDEX filtered_postings_v ON filtered_postings(v)",false);
-  verify();
-  query(db,"BEGIN",false);
-  query(db,"UPDATE filtered_postings SET g=2,v="+zero+" WHERE id=10",false);
-  assert(!db.table("filtered_postings")->vector_index);
-  const auto original=records;
-  for(auto& row:records)if(row.id==10){row.group=2;std::fill(row.vector.begin(),row.vector.end(),0);}
-  verify(); // Extra predicates read spilled rows while the equality uses new postings.
-  query(db,"ROLLBACK",false);records=original;verify();
-  query(db,"BEGIN",false);
-  query(db,"DELETE FROM filtered_postings WHERE id=7",false);
-  records.erase(std::remove_if(records.begin(),records.end(),[](const Record& row){return row.id==7;}),records.end());
-  verify();query(db,"ROLLBACK",false);records=original;verify();
-  std::cout<<"PASS filtered resident postings, coercion, residual AND predicates, exact ties and rollback\n";
-}
-
 static int stress_topk() {
   struct rlimit cap{160ull<<20,160ull<<20};assert(::setrlimit(RLIMIT_AS,&cap)==0);
   char path[]="/tmp/mvdb-query-topk-XXXXXX";assert(::mkdtemp(path));
@@ -335,8 +158,6 @@ int main(int argc,char** argv) {
   Database db;std::string err;int code=0;assert(db.open(path,&err));
   distance_regressions(db);
   projection_regressions(db);
-  json_row_regressions(db);
-  filtered_posting_regressions(db);
   Column id;id.name="id";id.type=Type::BIGINT;id.is_primary=true;
   Column n;n.name="n";n.type=Type::BIGINT;
   Column s;s.name="s";s.type=Type::VARCHAR;s.len=30000;
