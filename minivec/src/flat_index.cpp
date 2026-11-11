@@ -140,8 +140,15 @@ bool FlatIndex::scan_integer_equal(size_t column,int64_t value,
 void FlatIndex::scan(const Visitor& visitor) const {
   if(!ready_)throw std::runtime_error("flat vector index is not ready");
   if(fd_<0) {
-    for(size_t i=0;i<count_;++i)
+    // Resident records are visited in storage order; run the hardware stream
+    // ahead so the vector load of a later record overlaps the current one.
+    const size_t ahead=8;
+    for(size_t i=0;i<count_;++i) {
+#if defined(__GNUC__) || defined(__clang__)
+      if(i+ahead<count_)__builtin_prefetch(vectors_.data()+(i+ahead)*dimension_,0,3);
+#endif
       if(!visitor(keys_[i],slots_[i],vectors_.data()+i*dimension_,dimension_))return;
+    }
     return;
   }
   const size_t words=dimension_+4,stride=words*sizeof(float);
