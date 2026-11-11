@@ -23,7 +23,7 @@ void transfer(int fd,void* data,size_t bytes,uint64_t offset,bool write) {
   }
 }
 }
-FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t budget)
+FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t budget,bool borrow_vectors)
     :dimension_(dimension),expected_(count) {
   if(!dimension || dimension>(std::numeric_limits<size_t>::max()-16)/sizeof(float))
     throw std::runtime_error("invalid flat index dimension");
@@ -31,11 +31,20 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
   if(count>static_cast<uint64_t>(std::numeric_limits<int64_t>::max())/stride)
     throw std::runtime_error("flat index exceeds file offset range");
   if(count<=budget/stride) {
-    vectors_.reserve(count*dimension);
+#ifndef MVDB_DISABLE_BORROWED_VECTORS
+    // Keep the original resident/disk admission threshold. Tiny dimensions
+    // cannot benefit from a pointer wider than the copied float payload.
+    borrowed_=borrow_vectors && dimension*sizeof(float)>=sizeof(const float*);
+#else
+    (void)borrow_vectors;
+#endif
+    if(borrowed_)row_vectors_.reserve(count);
+    else vectors_.reserve(count*dimension);
     keys_.reserve(count);slots_.reserve(count);
     // Reserve accounting room up front so lazy construction cannot exceed the
     // database's combined resident-index budget. At most 1 MiB per index.
-    const size_t available=budget-count*stride;
+    const size_t actual_stride=16+(borrowed_ ? sizeof(const float*) : dimension*sizeof(float));
+    const size_t available=budget-count*actual_stride;
     const size_t entry=sizeof(std::pair<int64_t,size_t>);
     if(count<=std::min<size_t>(available,1u<<20)/entry)
       posting_budget_=count*entry;
@@ -62,7 +71,8 @@ void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimensio
     throw std::runtime_error("invalid flat index build row");
   if(fd_<0) {
     keys_.push_back(pk);slots_.push_back(slot);
-    vectors_.insert(vectors_.end(),values,values+dimension_);
+    if(borrowed_)row_vectors_.push_back(values);
+    else vectors_.insert(vectors_.end(),values,values+dimension_);
   } else {
     // Float-aligned storage: the first four float-sized words contain raw key
     // metadata and are accessed only via memcpy, never as floating point values.
@@ -81,10 +91,13 @@ void FlatIndex::finish() {
 #ifndef MVDB_DISABLE_QUANTIZED_BOUND
   if(quantized_budget_) {
     double max_abs=0;
-    for(float value:vectors_) {
-      const double magnitude=std::fabs(static_cast<double>(value));
-      if(!std::isfinite(magnitude)) {max_abs=magnitude;break;}
-      max_abs=std::max(max_abs,magnitude);
+    for(size_t i=0;i<count_ && std::isfinite(max_abs);++i) {
+      const float* values=row_vector(i);
+      for(size_t j=0;j<dimension_;++j) {
+        const double magnitude=std::fabs(static_cast<double>(values[j]));
+        if(!std::isfinite(magnitude)) {max_abs=magnitude;break;}
+        max_abs=std::max(max_abs,magnitude);
+      }
     }
     const double step=mvdb::quantization_step(max_abs);
     if(step>0 && std::isfinite(step)) {
@@ -92,9 +105,12 @@ void FlatIndex::finish() {
       if(quantized_) {
         quantization_step_=step;
         // Do not reorder: codes have exactly the vectors_/keys_ traversal order.
-        for(size_t i=0;i<vectors_.size();++i) {
-          if(!mvdb::quantize_coordinate(vectors_[i],step,&quantized_[i])) {
-            quantization_step_=0;break;
+        for(size_t i=0;i<count_ && quantization_step_;++i) {
+          const float* values=row_vector(i);
+          for(size_t j=0;j<dimension_;++j) {
+            if(!mvdb::quantize_coordinate(values[j],step,&quantized_[i*dimension_+j])) {
+              quantization_step_=0;break;
+            }
           }
         }
       }
@@ -111,12 +127,13 @@ bool FlatIndex::resident_view(ResidentView* view) const {
   *view=ResidentView{};
   if(!ready_ || fd_>=0)return false;
   view->vectors=vectors_.data();view->keys=keys_.data();
+  view->row_vectors=borrowed_ ? row_vectors_.data() : nullptr;
   view->dimension=dimension_;view->count=count_;
   view->quantized=quantized_.get();view->quantization_step=quantization_step_;
   return true;
 }
 size_t FlatIndex::resident_bytes() const {
-  return vectors_.capacity()*sizeof(float)+keys_.capacity()*sizeof(int64_t)+slots_.capacity()*sizeof(uint64_t)+posting_budget_+quantized_budget_;
+  return vectors_.capacity()*sizeof(float)+row_vectors_.capacity()*sizeof(const float*)+keys_.capacity()*sizeof(int64_t)+slots_.capacity()*sizeof(uint64_t)+posting_budget_+quantized_budget_;
 }
 bool FlatIndex::prepare_integer_postings(size_t column,
     const std::function<int64_t(uint64_t)>& read_value) {
@@ -153,7 +170,7 @@ bool FlatIndex::scan_integer_equal(size_t column,int64_t value,
   auto first=std::lower_bound(postings_.begin(),postings_.end(),std::make_pair(value,size_t(0)));
   for(auto it=first;it!=postings_.end() && it->first==value;++it) {
     const size_t i=it->second;
-    if(!visitor(keys_[i],slots_[i],vectors_.data()+i*dimension_,dimension_))break;
+    if(!visitor(keys_[i],slots_[i],row_vector(i),dimension_))break;
   }
   return true;
 }
@@ -161,7 +178,7 @@ void FlatIndex::scan(const Visitor& visitor) const {
   if(!ready_)throw std::runtime_error("flat vector index is not ready");
   if(fd_<0) {
     for(size_t i=0;i<count_;++i)
-      if(!visitor(keys_[i],slots_[i],vectors_.data()+i*dimension_,dimension_))return;
+      if(!visitor(keys_[i],slots_[i],row_vector(i),dimension_))return;
     return;
   }
   const size_t words=dimension_+4,stride=words*sizeof(float);

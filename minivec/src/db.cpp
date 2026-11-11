@@ -27,6 +27,7 @@
 // ---------------------------------------------------------------------------
 #include "db.h"
 #include "flat_index.h"
+#include "crc32.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -92,28 +93,6 @@ enum RecKind : uint8_t {
 };
 
 enum RecFlags : uint8_t { RF_TXN = 1 };  // record belongs to an explicit transaction
-
-// ---------------------------------------------------------------- CRC32 ----
-struct Crc32Table {
-  uint32_t t[256];
-  Crc32Table() {
-    for (uint32_t i = 0; i < 256; ++i) {
-      uint32_t c = i;
-      for (int k = 0; k < 8; ++k) c = (c & 1u) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
-      t[i] = c;
-    }
-  }
-};
-const Crc32Table kCrcTable;
-
-inline uint32_t crc32_upd(uint32_t crc, const void* p, size_t n) {
-  const uint8_t* q = static_cast<const uint8_t*>(p);
-  while (n--) crc = kCrcTable.t[(crc ^ *q++) & 0xFFu] ^ (crc >> 8);
-  return crc;
-}
-inline uint32_t crc32_of(const void* p, size_t n) {
-  return crc32_upd(0xFFFFFFFFu, p, n) ^ 0xFFFFFFFFu;
-}
 
 // ------------------------------------------------------------ byte IO ------
 inline void put_u8(std::string& b, uint8_t v) { b.push_back(static_cast<char>(v)); }
@@ -320,11 +299,17 @@ void spill_payloads(Table& table, bool force = false) {
   for (const Row& row : table.rows) offsets.push_back(store_payload(*store,row));
   table.payload_offsets=std::move(offsets);
   table.payload_store=std::move(store);
+  // A successful spill can be caused by another table's global budget. Drop
+  // any borrowed vector pointers before freeing their resident row payloads.
+  table.vector_index.reset();
   for (Row& row : table.rows) std::vector<Value>().swap(row.vals);
   table.payload_bytes=0;
 }
 
 void enforce_payload_budget(TableMap& tables) {
+#ifndef MVDB_GLOBAL_PAYLOAD_BYTES
+#define MVDB_GLOBAL_PAYLOAD_BYTES (64ull << 20)
+#endif
   for (;;) {
     uint64_t resident=0;
     Table* largest=nullptr;
@@ -334,7 +319,7 @@ void enforce_payload_budget(TableMap& tables) {
       resident+=table.payload_bytes;
       if (!largest || table.payload_bytes > largest->payload_bytes) largest=&table;
     }
-    if (!largest || resident <= (64ull << 20)) return;
+    if (!largest || resident <= MVDB_GLOBAL_PAYLOAD_BYTES) return;
     spill_payloads(*largest, true);
   }
 }
@@ -1748,7 +1733,7 @@ void Database::build_vector_index(Table& table) {
   }
   const size_t dimension=static_cast<size_t>(table.schema.cols[table.schema.vec_idx].len);
   const size_t count=table.live_count();
-  auto index=std::make_shared<FlatIndex>(dir_,dimension,count,budget);
+  auto index=std::make_shared<FlatIndex>(dir_,dimension,count,budget,!table.payload_store);
   auto add_slot=[&](size_t slot) {
     Row scratch;
     const Row& row=table.read_row(slot,scratch);

@@ -108,6 +108,8 @@ def profile(args):
         finally:
             session.close()
     return {"kind": "local_jsonl_path_diagnostic", "seed": args.seed,
+            "target": {"image": args.image} if args.image else {"binary": str(args.binary)},
+            "artifact_output": str(args.output),
             "write_order": [v[0] for v in variants], "write": writes,
             "query_rows": args.query_rows, "query_index_seconds": index_seconds,
             "query": {key: dict(summarize(samples), response_json_characters=response_bytes[key])

@@ -4,6 +4,10 @@ set -euo pipefail
 lscpu
 python3 minivec/tools/validate_material.py
 make -C minivec -j2 test
+minivec/test_crc32 --bench
+minivec/test_crc32_byte --bench
+g++ -O2 -std=c++17 -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_crc32.cpp -o /tmp/crc32-ubsan
+/tmp/crc32-ubsan
 g++ -O2 -std=c++17 -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_distance_simd.cpp -o /tmp/distance-ubsan
 /tmp/distance-ubsan
 g++ -O2 -std=c++17 -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_quantized_bound.cpp -o /tmp/quantized-ubsan
@@ -12,6 +16,10 @@ g++ -O2 -std=c++17 -pthread -DMVDB_FLAT_INDEX_MEMORY_BYTES=1 -DMVDB_SPILL_BYTES=
 /tmp/flat-spill
 g++ -O2 -std=c++17 -pthread -DMVDB_DISABLE_NORM_ORDER -Iminivec/src minivec/tests/test_flat_index.cpp minivec/src/db.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/flat-original-order
 /tmp/flat-original-order
+g++ -O2 -std=c++17 -pthread -DMVDB_DISABLE_BORROWED_VECTORS -Iminivec/src minivec/tests/test_flat_index.cpp minivec/src/db.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/flat-owned
+/tmp/flat-owned
+g++ -O2 -std=c++17 -pthread -DMVDB_GLOBAL_PAYLOAD_BYTES=131072 -DMVDB_SPILL_BYTES=262144 -fsanitize=address,undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_flat_index.cpp minivec/src/db.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/flat-cross-spill
+/tmp/flat-cross-spill
 MVDB_PROTOCOL=sql python3 minivec/tools/harness.py --binary minivec/minivec run minivec/tests/cases
 python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --handshake-only --output protocol-results/source-handshake
 python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --output protocol-results/source-public
@@ -36,3 +44,4 @@ g++ -O3 -std=c++17 -DMVDB_SIMD_DOUBLE_REDUCTION -Iminivec/src minivec/tests/test
 bash minivec/tools/compare_jsonl.sh
 python3 minivec/tools/profile_jsonl.py --image minivec:jsonl-previous --output protocol-results/path-profile-previous.json
 python3 minivec/tools/profile_jsonl.py --image minivec:jsonl --output protocol-results/path-profile-candidate.json
+bash minivec/tools/compare_resident_memory.sh

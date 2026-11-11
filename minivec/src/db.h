@@ -29,6 +29,11 @@ struct TableSchema {
 };
 
 struct Table {
+  Table()=default;
+  Table(const Table&)=delete;
+  Table& operator=(const Table&)=delete;
+  Table(Table&&) noexcept=default;
+  Table& operator=(Table&&) noexcept=default;
   TableSchema schema;
   std::vector<Row> rows;                       // live rows (append-only; deletes are tombstones)
   std::vector<uint8_t> dead;                   // 1 = deleted

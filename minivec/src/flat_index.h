@@ -9,7 +9,7 @@
 
 namespace mvdb {
 // An exact flat index, rebuilt from committed/transaction-visible table rows.
-// Small indexes hold contiguous float32 vectors and PK/slot arrays. Large ones
+// Small indexes hold owned floats or borrowed row vectors and PK/slot arrays. Large ones
 // use a rebuildable fixed-record file and a bounded sequential read buffer.
 class FlatIndex {
  public:
@@ -20,6 +20,10 @@ class FlatIndex {
     size_t dimension=0,count=0;
     const int8_t* quantized=nullptr;
     double quantization_step=0;
+    const float* const* row_vectors=nullptr;
+    const float* row_vector(size_t i) const {
+      return row_vectors ? row_vectors[i] : vectors+i*dimension;
+    }
   };
   struct ResidentSelection {
     ResidentView index;
@@ -27,7 +31,10 @@ class FlatIndex {
     const std::pair<int64_t,size_t>* matches=nullptr;
     size_t count=0;
   };
-  FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t memory_budget);
+  // Borrow only stable resident table payloads; the owner must invalidate this
+  // index before replacing/freeing those payloads. Standalone callers copy.
+  FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t memory_budget,
+            bool borrow_vectors=false);
   ~FlatIndex();
   FlatIndex(const FlatIndex&)=delete;
   FlatIndex& operator=(const FlatIndex&)=delete;
@@ -35,7 +42,7 @@ class FlatIndex {
   void finish();
   void scan(const Visitor& visitor) const;
   // Read-only, non-owning view; available only for a finished resident index.
-  // Storage remains owned by this index and must not outlive it.
+  // The view must not outlive this index or any mutation of its source table.
   bool resident_view(ResidentView* view) const;
   // Borrowed equality range, sorted by physical index position within value.
   // A new posting-column cache, index mutation or destruction invalidates it.
@@ -54,7 +61,12 @@ class FlatIndex {
   size_t dimension_=0,expected_=0,count_=0;
   int fd_=-1;
   bool ready_=false;
+  bool borrowed_=false;
   std::vector<float> vectors_;
+  std::vector<const float*> row_vectors_;
+  const float* row_vector(size_t i) const {
+    return borrowed_ ? row_vectors_[i] : vectors_.data()+i*dimension_;
+  }
   std::vector<int64_t> keys_;
   std::vector<uint64_t> slots_;
   std::unique_ptr<int8_t[]> quantized_;

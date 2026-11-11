@@ -532,11 +532,11 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 // uncertain row follows the existing float bound/exact path.
                 if(result.size()==k && quantized.definitely_greater(
                     view.quantized+i*view.dimension,result.front().distance))continue;
-                if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
+                if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
               }
             } else {
               for(size_t i=0;i<view.count;++i)
-                if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
+                if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
             }
           } else {
             FlatIndex::ResidentSelection selection;
@@ -550,7 +550,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 const size_t i=selection.matches[position].second;
                 if(quantized.enabled() && result.size()==k && quantized.definitely_greater(
                     index.quantized+i*index.dimension,result.front().distance))return true;
-                return consider(index.keys[i],index.vectors+i*index.dimension,index.dimension);
+                return consider(index.keys[i],index.row_vector(i),index.dimension);
               };
               if(residual) {
                 for(size_t position=0;position<selection.count;++position) {
