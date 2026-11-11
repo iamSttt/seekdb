@@ -1,0 +1,83 @@
+{
+  "kind": "parallel_topk_same_source_comparison",
+  "samples": [
+    {
+      "seed": 38021,
+      "serial": {
+        "exact_seconds": 0.3449209669984157,
+        "unfiltered_seconds": 0.18932584199899338,
+        "filtered_seconds": 0.1555951249994223,
+        "ingest_seconds": 0.5275636009999971,
+        "sampled_peak_bytes": 18026496,
+        "query_cpu_usage_usec_both_modes": 270354,
+        "query_cpu_throttled_usec_both_modes": 0
+      },
+      "parallel": {
+        "exact_seconds": 0.34170331899917983,
+        "unfiltered_seconds": 0.18583206999983304,
+        "filtered_seconds": 0.1558712489993468,
+        "ingest_seconds": 0.6900162650001107,
+        "sampled_peak_bytes": 18259968,
+        "query_cpu_usage_usec_both_modes": 337890,
+        "query_cpu_throttled_usec_both_modes": 0
+      },
+      "exact_speedup_serial_over_parallel": 1.009416496183473,
+      "unfiltered_speedup_serial_over_parallel": 1.0188006946226422,
+      "filtered_speedup_serial_over_parallel": 0.9982285123029607
+    },
+    {
+      "seed": 7319,
+      "serial": {
+        "exact_seconds": 0.3433599790010362,
+        "unfiltered_seconds": 0.18897080400080313,
+        "filtered_seconds": 0.15438917500023308,
+        "ingest_seconds": 0.7402771940001571,
+        "sampled_peak_bytes": 18395136,
+        "query_cpu_usage_usec_both_modes": 274250,
+        "query_cpu_throttled_usec_both_modes": 0
+      },
+      "parallel": {
+        "exact_seconds": 0.3384175560007634,
+        "unfiltered_seconds": 0.1835481650009001,
+        "filtered_seconds": 0.1548693909998633,
+        "ingest_seconds": 0.8773513860000435,
+        "sampled_peak_bytes": 18096128,
+        "query_cpu_usage_usec_both_modes": 337565,
+        "query_cpu_throttled_usec_both_modes": 0
+      },
+      "exact_speedup_serial_over_parallel": 1.0146045112395459,
+      "unfiltered_speedup_serial_over_parallel": 1.0295434116700455,
+      "filtered_speedup_serial_over_parallel": 0.9968992194227029
+    },
+    {
+      "seed": 19417,
+      "serial": {
+        "exact_seconds": 0.34073911200005114,
+        "unfiltered_seconds": 0.18714335799990067,
+        "filtered_seconds": 0.15359575400015046,
+        "ingest_seconds": 0.7100567429999955,
+        "sampled_peak_bytes": 18563072,
+        "query_cpu_usage_usec_both_modes": 267360,
+        "query_cpu_throttled_usec_both_modes": 0
+      },
+      "parallel": {
+        "exact_seconds": 0.3399534580008776,
+        "unfiltered_seconds": 0.18453892100052371,
+        "filtered_seconds": 0.1554145370003539,
+        "ingest_seconds": 0.667217628000401,
+        "sampled_peak_bytes": 18841600,
+        "query_cpu_usage_usec_both_modes": 338325,
+        "query_cpu_throttled_usec_both_modes": 0
+      },
+      "exact_speedup_serial_over_parallel": 1.002311063413779,
+      "unfiltered_speedup_serial_over_parallel": 1.014113212460853,
+      "filtered_speedup_serial_over_parallel": 0.9882972144349708
+    }
+  ],
+  "median_exact_query_speedup_serial_over_parallel": 1.009416496183473,
+  "scope": "Only MVDB_DISABLE_PARALLEL_TOPK differs. Both images are built from this working tree and run sequentially on one host under the unchanged official Session Docker limits. Image order alternates across the three seeds; this is a local diagnostic, not a formal score.",
+  "query_time_scope": "exact_seconds covers 1000 exact requests; unfiltered_seconds and filtered_seconds are the 500-request subsets of that exact mode. ANN timings remain in each raw report.",
+  "cpu_window": "after_index to after_queries_before_shutdown, within the same verified container. The window contains BOTH modes: 1000 exact plus 1000 ann requests, mode switches and any other container work between those snapshots. CPU usage/throttling deltas must not be compared directly with the wall time of only the 1000 exact requests.",
+  "missing_metrics": "Unavailable, ambiguous, different-container or decreasing counters are null, never substituted with zero. A measured zero delta remains zero.",
+  "memory_scope": "Maximum available memory.peak snapshot across this report. Each counter is cumulative for its container lifetime; no valid snapshot means null. Samples do not guarantee final writeback coverage and are not official B/M metrics."
+}

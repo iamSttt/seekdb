@@ -1,0 +1,12 @@
+{
+  "consumed_bytes": 2599546,
+  "execute_filtered_seconds": 0.01667426600000002,
+  "execute_unfiltered_seconds": 0.03842391499999995,
+  "json_dump_seconds": 0.002427247,
+  "json_parse_seconds": 0.005941173,
+  "kind": "native_query_profile",
+  "output_bytes": 287912,
+  "queries": 1000,
+  "scope": "Separate in-process passes; JSON DOM parse/dump microbenchmark is not the strict production request parser. Do not subtract from different transport workloads.",
+  "sql_parse_seconds": 0.006565353
+}

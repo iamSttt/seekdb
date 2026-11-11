@@ -1,0 +1,37 @@
+{
+  "kind": "resident_memory_same_source_comparison",
+  "samples": [
+    {
+      "seed": 38021,
+      "query_speedup": 0.9869246371725585,
+      "owned_sampled_peak_bytes": 23531520,
+      "owned_query_seconds": 0.3473710759994333,
+      "owned_ingest_seconds": 0.7705905110001936,
+      "borrowed_sampled_peak_bytes": 18268160,
+      "borrowed_query_seconds": 0.3519732540010523,
+      "borrowed_ingest_seconds": 0.8383622699997204
+    },
+    {
+      "seed": 7319,
+      "query_speedup": 0.9997999264915949,
+      "owned_sampled_peak_bytes": 23109632,
+      "owned_query_seconds": 0.34685308500013434,
+      "owned_ingest_seconds": 0.5721225459998891,
+      "borrowed_sampled_peak_bytes": 18411520,
+      "borrowed_query_seconds": 0.3469224950008538,
+      "borrowed_ingest_seconds": 0.7607270699999731
+    },
+    {
+      "seed": 19417,
+      "query_speedup": 0.9801071380726455,
+      "owned_sampled_peak_bytes": 23351296,
+      "owned_query_seconds": 0.34629342599959045,
+      "owned_ingest_seconds": 1.6204458999997655,
+      "borrowed_sampled_peak_bytes": 18583552,
+      "borrowed_query_seconds": 0.35332201200020563,
+      "borrowed_ingest_seconds": 1.357231038999771
+    }
+  ],
+  "median_query_speedup": 0.9869246371725585,
+  "scope": "Only MVDB_DISABLE_BORROWED_VECTORS differs. Sampled container peaks are not guaranteed final writeback metrics; zero denotes missing data, not zero memory cost."
+}

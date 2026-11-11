@@ -1,0 +1,17 @@
+{
+  "baseline_commit": "ff9c6bfbe89e1045e12ac56652165245c834630c",
+  "previous_commit": "4431a46c081588c14ac5ca4e616800394e78382e",
+  "exact_query_speedups": [
+    1.0809766813764186,
+    1.1256868378045695,
+    1.098730776765025
+  ],
+  "median_exact_query_speedup": 1.098730776765025,
+  "previous_query_speedups": [
+    1.0252642167646824,
+    0.9908281824633065,
+    0.9914888533196494
+  ],
+  "median_previous_query_speedup": 0.9914888533196494,
+  "scope": "Local synthetic, paired on one runner with identical Docker resource limits; not a platform score."
+}

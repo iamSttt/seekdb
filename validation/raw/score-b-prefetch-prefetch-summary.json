@@ -1,0 +1,257 @@
+{
+  "kind": "prefetch_same_source_comparison",
+  "variant_settings": {
+    "off": {
+      "code_prefetch_enabled": false,
+      "row_prefetch_enabled": false
+    },
+    "code": {
+      "code_prefetch_enabled": true,
+      "row_prefetch_enabled": false
+    },
+    "row": {
+      "code_prefetch_enabled": false,
+      "row_prefetch_enabled": true
+    },
+    "both": {
+      "code_prefetch_enabled": true,
+      "row_prefetch_enabled": true
+    }
+  },
+  "samples": [
+    {
+      "seed": 38021,
+      "execution_order": [
+        "off",
+        "code",
+        "row",
+        "both"
+      ],
+      "variants": {
+        "off": {
+          "exact_seconds": 0.3506278279996309,
+          "unfiltered_seconds": 0.19309649899918213,
+          "filtered_seconds": 0.15753132900044875,
+          "ingest_seconds": 0.8101802249996126,
+          "sampled_peak_bytes": 18280448,
+          "query_cpu_usage_usec_both_modes": 285058,
+          "query_cpu_throttled_usec_both_modes": 0
+        },
+        "code": {
+          "exact_seconds": 0.3522203240003705,
+          "unfiltered_seconds": 0.19384684300035815,
+          "filtered_seconds": 0.15837348100001236,
+          "ingest_seconds": 0.5790524150000351,
+          "sampled_peak_bytes": 18055168,
+          "query_cpu_usage_usec_both_modes": 285063,
+          "query_cpu_throttled_usec_both_modes": 0
+        },
+        "row": {
+          "exact_seconds": 0.3454223289998595,
+          "unfiltered_seconds": 0.19095547400019086,
+          "filtered_seconds": 0.1544668549996686,
+          "ingest_seconds": 0.9119852880001531,
+          "sampled_peak_bytes": 18018304,
+          "query_cpu_usage_usec_both_modes": 269985,
+          "query_cpu_throttled_usec_both_modes": 0
+        },
+        "both": {
+          "exact_seconds": 0.34950156899981266,
+          "unfiltered_seconds": 0.19414782299924127,
+          "filtered_seconds": 0.1553537460005714,
+          "ingest_seconds": 0.8855281280000895,
+          "sampled_peak_bytes": 18161664,
+          "query_cpu_usage_usec_both_modes": 275941,
+          "query_cpu_throttled_usec_both_modes": 0
+        }
+      },
+      "speedups_off_over_variant": {
+        "off": {
+          "exact": 1.0,
+          "unfiltered": 1.0,
+          "filtered": 1.0
+        },
+        "code": {
+          "exact": 0.9954786936124165,
+          "unfiltered": 0.9961291915330567,
+          "filtered": 0.994682493595228
+        },
+        "row": {
+          "exact": 1.0150699551324418,
+          "unfiltered": 1.0112121687540057,
+          "filtered": 1.0198390392604726
+        },
+        "both": {
+          "exact": 1.0032224719420897,
+          "unfiltered": 0.9945849302669583,
+          "filtered": 1.014016932683872
+        }
+      }
+    },
+    {
+      "seed": 7319,
+      "execution_order": [
+        "code",
+        "row",
+        "both",
+        "off"
+      ],
+      "variants": {
+        "off": {
+          "exact_seconds": 0.3445355779998067,
+          "unfiltered_seconds": 0.18946049699979994,
+          "filtered_seconds": 0.15507508100000678,
+          "ingest_seconds": 0.5443276079999464,
+          "sampled_peak_bytes": 18182144,
+          "query_cpu_usage_usec_both_modes": 267352,
+          "query_cpu_throttled_usec_both_modes": 0
+        },
+        "code": {
+          "exact_seconds": 0.3447172649981667,
+          "unfiltered_seconds": 0.18981548499880319,
+          "filtered_seconds": 0.1549017799993635,
+          "ingest_seconds": 0.5950006840000128,
+          "sampled_peak_bytes": 18186240,
+          "query_cpu_usage_usec_both_modes": 268522,
+          "query_cpu_throttled_usec_both_modes": 0
+        },
+        "row": {
+          "exact_seconds": 0.35023766199986994,
+          "unfiltered_seconds": 0.1931452940002032,
+          "filtered_seconds": 0.15709236799966675,
+          "ingest_seconds": 1.035859874999801,
+          "sampled_peak_bytes": 18407424,
+          "query_cpu_usage_usec_both_modes": 271126,
+          "query_cpu_throttled_usec_both_modes": 0
+        },
+        "both": {
+          "exact_seconds": 0.3482398219991296,
+          "unfiltered_seconds": 0.19354931299977807,
+          "filtered_seconds": 0.15469050899935155,
+          "ingest_seconds": 0.7932399710003324,
+          "sampled_peak_bytes": 18198528,
+          "query_cpu_usage_usec_both_modes": 273033,
+          "query_cpu_throttled_usec_both_modes": 0
+        }
+      },
+      "speedups_off_over_variant": {
+        "off": {
+          "exact": 1.0,
+          "unfiltered": 1.0,
+          "filtered": 1.0
+        },
+        "code": {
+          "exact": 0.999472939081363,
+          "unfiltered": 0.9981298259253955,
+          "filtered": 1.0011187799174677
+        },
+        "row": {
+          "exact": 0.983719386523128,
+          "unfiltered": 0.9809221497242414,
+          "filtered": 0.987158593219091
+        },
+        "both": {
+          "exact": 0.9893629511465459,
+          "unfiltered": 0.9788745517273791,
+          "filtered": 1.002486073665042
+        }
+      }
+    },
+    {
+      "seed": 19417,
+      "execution_order": [
+        "row",
+        "both",
+        "off",
+        "code"
+      ],
+      "variants": {
+        "off": {
+          "exact_seconds": 0.34359539999860544,
+          "unfiltered_seconds": 0.1888283919990954,
+          "filtered_seconds": 0.15476700799951004,
+          "ingest_seconds": 1.031048793999787,
+          "sampled_peak_bytes": 18259968,
+          "query_cpu_usage_usec_both_modes": 267441,
+          "query_cpu_throttled_usec_both_modes": 0
+        },
+        "code": {
+          "exact_seconds": 0.3450742150005226,
+          "unfiltered_seconds": 0.18982424100028084,
+          "filtered_seconds": 0.15524997400024176,
+          "ingest_seconds": 0.6880800840000916,
+          "sampled_peak_bytes": 18063360,
+          "query_cpu_usage_usec_both_modes": 270920,
+          "query_cpu_throttled_usec_both_modes": 0
+        },
+        "row": {
+          "exact_seconds": 0.346728462000101,
+          "unfiltered_seconds": 0.19155370800035598,
+          "filtered_seconds": 0.155174753999745,
+          "ingest_seconds": 1.386538694999956,
+          "sampled_peak_bytes": 18857984,
+          "query_cpu_usage_usec_both_modes": 268668,
+          "query_cpu_throttled_usec_both_modes": 0
+        },
+        "both": {
+          "exact_seconds": 0.34605047199846695,
+          "unfiltered_seconds": 0.1926096859996278,
+          "filtered_seconds": 0.15344078599883915,
+          "ingest_seconds": 0.9876733730002911,
+          "sampled_peak_bytes": 18829312,
+          "query_cpu_usage_usec_both_modes": 273143,
+          "query_cpu_throttled_usec_both_modes": 0
+        }
+      },
+      "speedups_off_over_variant": {
+        "off": {
+          "exact": 1.0,
+          "unfiltered": 1.0,
+          "filtered": 1.0
+        },
+        "code": {
+          "exact": 0.9957145015836234,
+          "unfiltered": 0.9947538365177293,
+          "filtered": 0.996889107364804
+        },
+        "row": {
+          "exact": 0.9909639318808081,
+          "unfiltered": 0.9857725750667509,
+          "filtered": 0.9973723431826054
+        },
+        "both": {
+          "exact": 0.9929054510872842,
+          "unfiltered": 0.9803681004882605,
+          "filtered": 1.0086432169389494
+        }
+      }
+    }
+  ],
+  "median_speedups_off_over_variant": {
+    "off": {
+      "exact": 1.0,
+      "unfiltered": 1.0,
+      "filtered": 1.0
+    },
+    "code": {
+      "exact": 0.9957145015836234,
+      "unfiltered": 0.9961291915330567,
+      "filtered": 0.996889107364804
+    },
+    "row": {
+      "exact": 0.9909639318808081,
+      "unfiltered": 0.9857725750667509,
+      "filtered": 0.9973723431826054
+    },
+    "both": {
+      "exact": 0.9929054510872842,
+      "unfiltered": 0.9803681004882605,
+      "filtered": 1.0086432169389494
+    }
+  },
+  "scope": "Only MVDB_DISABLE_CODE_PREFETCH and MVDB_DISABLE_ROW_PREFETCH differ. Both hints are enabled by default; off disables both, code disables row only, row disables code only. All four images use the same working-tree source and unchanged official Session Docker limits. Their order rotates across three seeds. Ratios are paired within this run; this local diagnostic is not a formal score.",
+  "query_time_scope": "Each exact_seconds value covers 1000 exact requests; unfiltered_seconds and filtered_seconds cover its 500-request subsets. ANN timings remain in the raw reports. The medians are of three per-seed ratios.",
+  "cpu_window": "after_index to after_queries_before_shutdown in one verified container. This covers BOTH modes (1000 exact plus 1000 ann requests), mode switches and other container work inside the boundaries, not only the exact timing window.",
+  "missing_metrics": "Unavailable, ambiguous, different-container or decreasing CPU counters produce null deltas. All-missing memory samples produce null. Missing metrics are never substituted with zero; a measured zero remains zero.",
+  "memory_scope": "Maximum valid memory.peak snapshot in each report; cumulative per container lifetime, not guaranteed final writeback coverage or an official B/M metric."
+}
