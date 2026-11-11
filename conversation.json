@@ -470,8 +470,8 @@
     {
       "kind": "formal_platform_observation",
       "source": "OceanBase submitted-result page, read in the logged-in browser",
-      "source_url": "https://open.oceanbase.com/train/TestRecord?questionId=600072",
-      "commit": "fa562be",
+      "source_url": "https://open.oceanbase.com/train/TestRecord?questionId=600081",
+      "commit": "fa562be89069a84215a6196c9e24e4c6274f3862",
       "submission_timestamp_display": "2026-11-10 21:33",
       "submission_timezone": "Asia/Shanghai",
       "mysql_gate": "passed",
@@ -598,5 +598,7 @@
       "quote": "the official default-path copy omitted the newer JSONL and benchmark material present at root",
       "attribution": "assistant file comparison; not proof of evaluator failure cause"
     }
-  ]
+  ],
+  "base_commit_note": "This is the earliest historical implementation baseline for the retained evidence, not the performance comparison baseline for the current iteration.",
+  "current_iteration_baseline_commit": "fa562be89069a84215a6196c9e24e4c6274f3862"
 }

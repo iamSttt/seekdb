@@ -6,6 +6,48 @@
 #include <string>
 #include <vector>
 using namespace mvdb;
+// Pre-cutoff query context retained as the same-source performance reference.
+class ReferenceBoundContext {
+ public:
+  explicit ReferenceBoundContext(size_t n):n_(n) {
+    if(!n || n>(uint64_t(1)<<32))return;
+#if defined(MVDB_SIMD_BOUND_X86)
+    if(_mm_getcsr() & ((1u<<6)|(1u<<15)|(3u<<13)))return;
+#else
+    if(std::fegetround()!=FE_TONEAREST)return;
+#endif
+    enabled_=true;
+#if defined(MVDB_SIMD_BOUND_X86) && !defined(__FAST_MATH__) && !defined(MVDB_DISABLE_SIMD_BOUND)
+    if(n>=16 && n<=65536) {
+      static const auto selected=distance_detail::choose_bound_sum();
+      kernel_=selected;
+      relative_=(static_cast<double>(n)+12)*0x1p-22;
+      absolute_=static_cast<double>(n)*0x1p-148;
+    }
+#endif
+  }
+  bool definitely_greater(const float* a,const float* b,double threshold) const {
+    if(!enabled_ || !std::isfinite(threshold) || threshold<0)return false;
+#if defined(MVDB_SIMD_BOUND_X86)
+    if(kernel_) {
+      const double sum=kernel_(a,b,n_);
+      if(std::isfinite(sum))
+        return distance_detail::float_sum_definitely_greater_cached(sum,relative_,absolute_,threshold);
+      // Float overflow is common for valid extreme coordinates. The original
+      // double bound remains safe over the complete finite float32 domain.
+    }
+#endif
+    return distance_definitely_greater_double(a,b,n_,threshold);
+  }
+ private:
+  size_t n_;
+  bool enabled_=false;
+  double relative_=0,absolute_=0;
+#if defined(MVDB_SIMD_BOUND_X86)
+  distance_detail::BoundSum kernel_=nullptr;
+#endif
+};
+
 static uint64_t rng=0xb2c51e876da4930full;
 static uint64_t next(){rng^=rng<<13;rng^=rng>>7;rng^=rng<<17;return rng;}
 static float fbits(uint32_t x){float f;std::memcpy(&f,&x,4);return f;}
@@ -16,6 +58,7 @@ static size_t rejected=0;
 static void check(const std::vector<float>& a,const std::vector<float>& b){
   const size_t n=a.size();
   const DistanceBoundContext context(n);
+  const ReferenceBoundContext reference(n);
   const double exact=distance_exact(a.data(),b.data(),n);
   for(double threshold:{0.0,exact*0.5,std::nextafter(exact,0.0),exact,
       std::nextafter(exact,std::numeric_limits<double>::infinity()),exact*2}){
@@ -23,6 +66,8 @@ static void check(const std::vector<float>& a,const std::vector<float>& b){
     require(context.definitely_greater(a.data(),b.data(),threshold)==fast,
             "query context and per-call wrapper decisions differ");
     require(!fast || exact>threshold,"SIMD rejected exact <= threshold");
+    require(!reference.definitely_greater(a.data(),b.data(),threshold) || exact>threshold,
+            "reference context rejected exact <= threshold");
     rejected+=fast;
 #if defined(MVDB_SIMD_BOUND_X86)
     if(n && n<=65536){
@@ -141,6 +186,27 @@ static void tests(){
   }
 #endif
   require(rejected>1000,"nontrivial pruning");
+  // One context sees many different rows and thresholds. Repeat thresholds,
+  // include signed zero and extremes, and alternate tightening/loosening.
+  DistanceBoundContext changing(128);
+  for(size_t iteration=0;iteration<2000;++iteration){
+    std::vector<float>x(128),y(128);
+    for(size_t j=0;j<x.size();++j){
+      x[j]=float(int(next()%20001)-10000)/10000;
+      y[j]=float(int(next()%20001)-10000)/10000;
+    }
+    const double exact=distance_exact(x.data(),y.data(),x.size());
+    const double threshold=double(next()%20000)/100;
+    for(double t:{threshold,threshold,exact,std::nextafter(exact,0.0),
+        std::nextafter(exact,std::numeric_limits<double>::infinity()),0.0,-0.0,
+        std::numeric_limits<double>::max(),std::numeric_limits<double>::min(),
+        std::numeric_limits<double>::infinity(),std::numeric_limits<double>::quiet_NaN(),-1.0}) {
+      const bool result=changing.definitely_greater(x.data(),y.data(),t);
+      require(!result || exact>t,"cached cutoff threshold-change safety");
+      require(result==distance_definitely_greater(x.data(),y.data(),128,t),
+              "cached cutoff and fresh wrapper disagree");
+    }
+  }
   std::cout<<"PASS 7200 cases + midpoint/extreme dimension cases; safe_rejections="<<rejected<<"\n";
 }
 #if defined(__GNUC__)
@@ -169,6 +235,20 @@ static double timed(Bound fn,const std::vector<float>& a,const std::vector<float
   sink=count;
   return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
 }
+template<class Context>
+static double timed_context(const std::vector<float>& a,const std::vector<float>& b){
+  const Context context(128);
+  const auto start=std::chrono::steady_clock::now();size_t count=0;
+  for(size_t pass=0;pass<128;++pass){
+#if defined(__GNUC__)
+    asm volatile("" : : "r"(a.data()),"r"(b.data()) : "memory");
+#endif
+    for(size_t row=0;row<2048;++row)
+      count+=context.definitely_greater(a.data()+row*128,b.data(),70.0);
+  }
+  sink=count;
+  return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
+}
 static void bench(){
   std::vector<float>a(2048*128),b(128);
   for(float&v:a)v=float(int(next()%20001)-10000)/10000;
@@ -185,6 +265,18 @@ static void bench(){
   std::sort(old_times.begin(),old_times.end());std::sort(new_times.begin(),new_times.end());
   std::cout<<"median_old_ms="<<old_times[2]<<" median_new_ms="<<new_times[2]
            <<" speedup="<<old_times[2]/new_times[2]<<"\n";
+  timed_context<ReferenceBoundContext>(a,b);timed_context<DistanceBoundContext>(a,b);
+  old_times.clear();new_times.clear();
+  for(int i=0;i<5;++i){
+    double old_ms,new_ms;
+    if(i%2){new_ms=timed_context<DistanceBoundContext>(a,b);old_ms=timed_context<ReferenceBoundContext>(a,b);}
+    else{old_ms=timed_context<ReferenceBoundContext>(a,b);new_ms=timed_context<DistanceBoundContext>(a,b);}
+    old_times.push_back(old_ms);new_times.push_back(new_ms);
+    std::cout<<"context_round="<<i+1<<" reference_ms="<<old_ms<<" cutoff_ms="<<new_ms<<" count="<<sink<<"\n";
+  }
+  std::sort(old_times.begin(),old_times.end());std::sort(new_times.begin(),new_times.end());
+  std::cout<<"context_reference_median_ms="<<old_times[2]<<" context_cutoff_median_ms="<<new_times[2]
+           <<" context_speedup="<<old_times[2]/new_times[2]<<"\n";
 }
 int main(int argc,char**argv){
   tests();if(argc==2 && std::string(argv[1])=="--bench")bench();

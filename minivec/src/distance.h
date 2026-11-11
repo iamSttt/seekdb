@@ -283,6 +283,7 @@ inline bool float_sum_definitely_greater(double sum,size_t n,double threshold) {
 
 // Query-scoped only: the caller must keep the floating-point control state
 // unchanged from construction until the last call. Inputs always have n lanes.
+// Threshold caching mutates this object; do not share it between query threads.
 // The ordinary wrapper below constructs a fresh context and checks every call.
 class DistanceBoundContext {
  public:
@@ -300,6 +301,7 @@ class DistanceBoundContext {
       kernel_=selected;
       relative_=(static_cast<double>(n)+12)*0x1p-22;
       absolute_=static_cast<double>(n)*0x1p-148;
+      denominator_=distance_detail::positive_neighbors(1-relative_).lower;
     }
 #endif
   }
@@ -308,8 +310,10 @@ class DistanceBoundContext {
 #if defined(MVDB_SIMD_BOUND_X86)
     if(kernel_) {
       const double sum=kernel_(a,b,n_);
-      if(std::isfinite(sum))
-        return distance_detail::float_sum_definitely_greater_cached(sum,relative_,absolute_,threshold);
+      if(std::isfinite(sum)) {
+        if(!cutoff_valid_ || threshold!=cached_threshold_)update_cutoff(threshold);
+        return sum>cutoff_;
+      }
       // Float overflow is common for valid extreme coordinates. The original
       // double bound remains safe over the complete finite float32 domain.
     }
@@ -317,9 +321,28 @@ class DistanceBoundContext {
     return distance_definitely_greater_double(a,b,n_,threshold);
   }
  private:
+  void update_cutoff(double threshold) const {
+    // The established analytic bound includes canonical binary64 rounding:
+    // R(D) >= S*(1-r)-a. denominator_ <= 1-r and numerator >= threshold+a.
+    // Rounding their quotient up makes S>cutoff imply R(D)>threshold.
+    // Avoid positive_neighbors(infinity), whose next bit pattern is NaN.
+    double numerator=threshold+absolute_;
+    cutoff_=std::numeric_limits<double>::infinity();
+    if(std::isfinite(numerator)) {
+      numerator=distance_detail::positive_neighbors(numerator).upper;
+      const double quotient=numerator/denominator_;
+      if(std::isfinite(quotient))
+        cutoff_=distance_detail::positive_neighbors(quotient).upper;
+    }
+    cached_threshold_=threshold;
+    cutoff_valid_=true;
+  }
   size_t n_;
   bool enabled_=false;
   double relative_=0,absolute_=0;
+  double denominator_=1;
+  mutable double cached_threshold_=0,cutoff_=0;
+  mutable bool cutoff_valid_=false;
 #if defined(MVDB_SIMD_BOUND_X86)
   distance_detail::BoundSum kernel_=nullptr;
 #endif
