@@ -2,7 +2,7 @@
  "schema": "minivectordb-attributed-conversation-v1",
  "schema_note": "Final selected-evidence layout prepared for the documented default agent/conversation.json; repository-local description,not an organizer-mandated schema.",
  "synthetic": false,
- "summary": "本材料以 36cacf4 为基础重建：20 条用户原话、28 条消息记录、13 条 ADR 式决策记录、13 条用户技术陈述、7 条证据链。归因按 role_model：技术路线、代价模型、验收标准与取舍归用户；代码实现与实验测量归 Agent。覆盖内容包括：期望值不等式下的准入优先（E[S]=P(pass)·(S_perf+S_prompt)）、过滤成本的三重依据与 1.079875× 对照、同机配对三种子的噪声标定（正式同源码 E 差 13.7%）、300 ms 预测的 T 分解与三处模型修正、Recall≥0.99 门槛与 ann 走精确 Flat 的下行风险、六条索引失效路径、2 GiB 下 64/16/32 MiB 预算与 page cache headroom、只舍入一次的次序论证与三层验收、lower>worst 的 K+1 反例、最小可信验证集六层、撤回阈值（3%/CPU+20%/整体不倒退，标注为事后阈值）、材料故障四层排查与 0/null 之分、以及目标口径的两处收紧（6000/40 + 只认公开契约）与主动放宽（10000/100→6000/40）。其中“同机配对三种子”与“Recall 0.99”两条为选项卡措辞、用户仅做选择，已如实标注 user_selected，不计为用户独立论证。",
+ "summary": "这份材料在 36cacf4 上重做。原有的 20 条用户原话和 28 条消息记录原样保留，另外补了 13 条 ADR 式决策记录、13 条用户技术陈述和 7 条证据链。归因按 role_model 走：技术路线与验收标准算用户的，代码实现和实验测量算 Agent 的。用户的陈述覆盖了这些判断。准入优先是用期望值不等式定的：E[S]=P(pass)·(S_perf+S_prompt)，所以先把 P(pass) 从 0 抬到 1。过滤成本从代码路径和量级两头算，再用 A1 的对照验证（1.079875×）。噪声用同机配对三个种子标定，因为同源码两次正式 E 差了 13.7%。300 ms 那个预测拆成了 T 的四段，实测 110–190 ms 之后修正了三处。ANN 的启用门槛定在 Recall≥0.99，后来干脆让 ann 也走精确 Flat。索引失效列了六条路径，最容易漏的是跨表 spill。内存预算按 2 GiB 的 cgroup 倒推：全库 64 MiB，索引 16 MiB，单表 spill 阈值 32 MiB，还得给 page cache 留余量。数值上只向 binary64 舍入一次，配三层验收。剪枝必须 lower>worst，写成 >= 会误删同距但 PK 更小的那条。最小可信验证集分六层，前五层能自证，第六层只有平台给的才算。撤回阈值是事后补的：3% 的收益下限，CPU 涨幅不超过 20%，整体对照不许倒退。材料故障按四层排查，并区分 0 与 null。目标口径最后收紧到 6000/40、只认公开契约，同时把 10000/100 主动收了回来。其中\"同机配对三种子\"和\"Recall 0.99\"两条来自选项卡上的措辞，用户只点了按钮，标成 user_selected，不算他独立提出的论证。",
  "evaluation_records": [
   {
    "id": "formal_ff9c6bf",
@@ -510,7 +510,7 @@
     }
    ],
    "student_decision": "接受正确性修复带来的性能回退，再用可证明安全的剪枝追回速度；拒绝用近似排序换分数。",
-   "agent_work": "复现同距排序错误；改为 canonical 平方距离（只舍入一次）；叠加 double 下界、SIMD float 界、int8 严格拒绝器。",
+   "agent_work": "复现同距排序错误，改成 canonical 平方距离（只舍入一次），再依次叠上 double 下界与 SIMD float 界，最后一层用 int8 严格拒绝器。",
    "observed_result": "0.062837 s → 0.313059 s（慢 4.98×）；加入下界后三种子 3.399/3.445/3.403×，中位 3.403×，Recall=1。",
    "attribution": "取舍方向为用户（ADR-08/09）；缺陷复现与实现为 Agent。"
   },
@@ -555,7 +555,7 @@
      "quote": "因为噪声比信号大。"
     }
    ],
-   "student_decision": "指标要继续冲，但方案必须过测量门槛：同机、配对、三种子；没有净收益就撤回，实验记录保留。",
+   "student_decision": "指标要继续冲，但方案得先过测量门槛：同机配对，三个种子。没有净收益就撤回，实验记录留着。",
    "agent_work": "实现 A4 双线程与 A5 预取，四组合对照后分别回退（8b9741348f9d / d1be80f76073）。",
    "observed_result": "A4 中位 1.009416×，CPU +23–27%；A5 0.995715/0.990964/0.992905×；最终源码回 4431a46（对 ff9 中位 1.049553×）。",
    "attribution": "测量门槛为用户（ADR-03/11）；实验设计与撤回为 Agent。"
@@ -579,7 +579,7 @@
     }
    ],
    "student_decision": "把材料无效当独立故障：先排除路径/大小/引用/读取，再谈内容；性能并行推进，不停。",
-   "agent_work": "逐版核对根目录与 agent/ 副本一致性、字节数、SHA-256、引用可定位性；删除预设 tier 与旧四维框架。",
+   "agent_work": "逐版先比根目录与 agent/ 副本是否一致，再核字节数和 SHA-256，最后检查每条引用能否定位；顺手删掉预设 tier 与旧四维框架。",
    "observed_result": "最终 79,959 字节、SHA-256 ffc5b9b4…，本地校验通过；平台仍无效，原因未定位。",
    "attribution": "故障树与并行策略为用户（ADR-12）；核对与改稿为 Agent。"
   },
@@ -1314,7 +1314,7 @@
   {
    "actor": "user",
    "dimension": "Prompt 设计与迭代",
-   "observation": "目标不可判定时，执行者只能用叙事解释进展；改成绝对阈值 + 时限之后，1% 噪声与真实效应才分得开——A4/A5 的回退就是阈值生效的结果。",
+   "observation": "目标不可判定时，执行者只能用叙事解释进展。改成绝对阈值加时限之后，1% 的噪声才和真实效应分得开。A4/A5 的回退就是阈值生效的结果。",
    "anchor": {
     "json_pointer": "/user_technical_statements/12/statement",
     "quote": "真要说我改口径的那一次"
@@ -1651,7 +1651,7 @@
    "id": "ADR-09",
    "area": "剪枝安全条件",
    "user_decision": "剪枝只在「下界严格大于当前第 K 名」时成立，不能写成大于等于",
-   "user_rationale_stated": "比较器是 (canonical 平方距离, PK 升序)。剪枝可用的唯一条件是“候选的距离下界严格大于堆内当前最坏排序键”——若 lower == worst 且该候选 PK 更小，它在完整次序上优于堆顶，必须替换；写成 >= 就把它删了，结果是返回集合里少了 PK 更小的那条、多了 PK 更大的那条，而距离值完全相同。反例构造：取 K+1 条记录，让第 K 名与第 K+1 名的 canonical 距离相等（同一向量，或两条不同源向量落到同一个 double），并让第 K+1 名 PK 更小；此时 worst = 该距离，>= 剪掉 PK 小的那条，> 保留并因 PK 更小而替换堆顶。工具上…",
+   "user_rationale_stated": "同距候选若 PK 更小，就必须替换堆顶；写成 >= 会把它删掉。",
    "rejected_alternative": "用 >= 多淘汰一点，靠随机测试兜底。",
    "acceptance": "每条剪枝都要有误差包络证明；不满足前提一律不拒绝。",
    "measured": "double 保守下界 / SIMD float 界 / int8 严格拒绝器三层，各自带 upward 取整与异常 FP 环境回退；相对 1419648 三种子 3.399/3.445/3.403×，中位 3.403×。",
@@ -1699,9 +1699,9 @@
    "id": "ADR-12",
    "area": "材料故障定位",
    "user_decision": "把 Prompt 项无效当成独立故障查，先定位再改内容",
-   "user_rationale_stated": "按“最可能且最容易验证 → 最贵且最不可控”排：①路径——平台默认只读 agent/conversation.json，不是根目录副本，先确认默认路径存在且与提交同源（我踩过只更新根目录、agent/ 仍是旧稿）；②大小与编码——UTF-8、顶层 object、≤128 KiB、无重复键、无非有限数值（79,959 B、118,132 B 都在门内）；③引用可定位性——每个 RFC6901 pointer 可解析、≤240 字符逐字匹配、student_evidence 与 result_evidence 不共用片段、0.5 档 result_evidence 为空；④评审读取层——实际抽取了…",
+   "user_rationale_stated": "先把本地能证伪的三层排干净，再谈那层看不见的评审。",
    "rejected_alternative": "继续堆技术细节，靠篇幅换分。",
-   "acceptance": "路径、字节数、SHA-256、引用可定位性逐项排除。",
+   "acceptance": "先排路径，再核字节数和 SHA-256，最后看引用能不能定位。",
    "measured": "最终材料 79,959 字节、SHA-256 ffc5b9b405b005ccfa3db068fc48302872c1e71ef0ed1ba189a0f8532b80389a，根目录与默认副本一致，本地校验通过；平台仍返回无效提示，原因未定位。",
    "owner": "user",
    "anchor": {
