@@ -478,7 +478,7 @@
       "performance_e_display": "2180.028190",
       "prompt_status": "invalid_pending_review",
       "prompt_message": "Prompt结果无效、待复核、超出平台0–100范围或缺少材料摘要，本项不参与排名；未截断或换算本地分数。",
-      "interpretation": "The combined diagnostic does not distinguish an out-of-range evaluator result from missing summary extraction. No final Agent rating is inferred. Current scoring text section 3.4 permits an unbounded raw evaluation and describes citation failures as evaluator output anomalies requiring review; the displayed 0-100 validation therefore needs organizer clarification."
+      "interpretation": "The combined diagnostic does not distinguish an out-of-range evaluator result from missing summary extraction. No final Agent rating is inferred. Current task text section 3.4 permits an unbounded raw evaluation and describes citation failures as evaluator output anomalies requiring review; the displayed 0-100 validation therefore needs organizer clarification."
     },
     {
       "kind": "user_report",
