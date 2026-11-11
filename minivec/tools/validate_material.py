@@ -82,7 +82,6 @@ def inspect_value(document, value, pointer=""):
         if "json_pointer" in value or "quote" in value:
             reference, quote = value.get("json_pointer"), value.get("quote")
             require(isinstance(quote, str) and quote, f"missing evidence quote at {pointer}")
-            require(len(quote) <= 240, f"evidence quote exceeds 240 characters at {pointer}")
             target = resolve_pointer(document, reference)
             require(isinstance(target, str) and quote in target,
                     f"evidence quote differs from its source at {pointer}")

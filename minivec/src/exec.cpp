@@ -32,22 +32,6 @@ namespace {
 
 using Json = nlohmann::json;
 
-constexpr size_t resident_prefetch_ahead=8;
-inline void prefetch_resident(const FlatIndex::ResidentView& view,size_t ordinal,bool codes_enabled) {
-  (void)view;(void)ordinal;(void)codes_enabled;
-#if defined(MVDB_SIMD_BOUND_X86)
-  // Read-only hints only: predicate evaluation, candidate order and all exact
-  // distance/tie decisions remain unchanged. Callers prove ordinal<count.
-#if !defined(MVDB_DISABLE_CODE_PREFETCH)
-  if(codes_enabled && view.quantized)
-    __builtin_prefetch(view.quantized+ordinal*view.dimension,0,3);
-#endif
-#if !defined(MVDB_DISABLE_ROW_PREFETCH)
-  __builtin_prefetch(view.row_vector(ordinal),0,3);
-#endif
-#endif
-}
-
 enum class OutputMode { Tsv, TsvStatus, Table };
 
 OutputMode output_mode() {
@@ -604,8 +588,6 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 bounded && !st.order_desc && view.quantized ? view.quantization_step : 0);
             if(quantized.enabled()) {
               for(size_t i=0;i<view.count;++i) {
-                if(view.count-i>resident_prefetch_ahead)
-                  prefetch_resident(view,i+resident_prefetch_ahead,true);
                 // Integer codes are only a certified rejection filter. Every
                 // uncertain row follows the existing float bound/exact path.
                 if(result.size()==k && quantized.definitely_greater(
@@ -613,11 +595,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
               }
             } else {
-              for(size_t i=0;i<view.count;++i) {
-                if(view.count-i>resident_prefetch_ahead)
-                  prefetch_resident(view,i+resident_prefetch_ahead,false);
+              for(size_t i=0;i<view.count;++i)
                 if(!consider(view.keys[i],view.row_vector(i),view.dimension))break;
-              }
             }
           } else {
             FlatIndex::ResidentSelection selection;
@@ -627,12 +606,6 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
               const auto& index=selection.index;
               const QuantizedQueryBound quantized(order.qvec->data(),index.dimension,
                   bounded && !st.order_desc && index.quantized ? index.quantization_step : 0);
-              auto prefetch_selection=[&](size_t position) {
-                if(selection.count-position>resident_prefetch_ahead) {
-                  const size_t next=selection.matches[position+resident_prefetch_ahead].second;
-                  prefetch_resident(index,next,quantized.enabled());
-                }
-              };
               auto visit=[&](size_t position) {
                 const size_t i=selection.matches[position].second;
                 if(quantized.enabled() && result.size()==k && quantized.definitely_greater(
@@ -641,7 +614,6 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
               };
               if(residual) {
                 for(size_t position=0;position<selection.count;++position) {
-                  prefetch_selection(position);
                   const size_t i=selection.matches[position].second;
                   if(!residual(selection.slots[i]))continue;
                   if(!visit(position))break;
@@ -649,10 +621,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
               } else {
                 // One coerced equality is completely established by postings.
                 // No row decoding, predicate callback or distance callback.
-                for(size_t position=0;position<selection.count;++position) {
-                  prefetch_selection(position);
+                for(size_t position=0;position<selection.count;++position)
                   if(!visit(position))break;
-                }
               }
             } else db.scan_vectors(st.table,st.conds,consider);
           }

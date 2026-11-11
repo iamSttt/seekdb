@@ -47,4 +47,3 @@ bash minivec/tools/compare_jsonl.sh
 python3 minivec/tools/profile_jsonl.py --image minivec:jsonl-previous --output protocol-results/path-profile-previous.json
 python3 minivec/tools/profile_jsonl.py --image minivec:jsonl --output protocol-results/path-profile-candidate.json
 bash minivec/tools/compare_resident_memory.sh
-bash minivec/tools/compare_prefetch.sh
