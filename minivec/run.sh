@@ -51,7 +51,7 @@ case "$BUILD" in
     else
       while IFS= read -r src; do
         if [ "$src" -nt ./minivec ]; then need_build=1; break; fi
-      done < <(find src third_party -name '*.cpp' -o -name '*.h' -o -name '*.hpp' 2>/dev/null)
+      done < <(find src -name '*.cpp' -o -name '*.h' 2>/dev/null)
     fi
     ;;
 esac
@@ -66,4 +66,4 @@ if [ ! -x ./minivec ]; then
   exit 3
 fi
 
-exec env MVDB_PROTOCOL=sql python3 tools/harness.py "$MODE" "${ARGS[@]}"
+exec python3 tools/harness.py "$MODE" "${ARGS[@]}"

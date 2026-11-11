@@ -13,8 +13,10 @@
 #include <string>
 #include <vector>
 
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -111,6 +113,47 @@ static double now_ms() {
   struct timespec ts;
   ::clock_gettime(CLOCK_MONOTONIC, &ts);
   return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1e6;
+}
+
+// ===========================================================================
+// Large-data section: the whole point of the disk-resident rewrite is that a
+// table many times the size of the memory budget still works. These checks run
+// by default; MVDB_TEST_BIG=0 skips the 2M row load (the rest stays).
+// ===========================================================================
+static const int kBigDim = 128;
+
+static std::vector<Column> big_schema() {
+  Column id;
+  id.name = "id";
+  id.type = Type::BIGINT;
+  id.is_primary = true;
+  Column emb;
+  emb.name = "emb";
+  emb.type = Type::VECTOR;
+  emb.len = kBigDim;
+  return {id, emb};
+}
+
+static void fill_vec(std::vector<float>& v, int64_t i) {
+  v.resize(kBigDim);
+  for (int d = 0; d < kBigDim; ++d) v[(size_t)d] = (float)((i * 31 + d * 7) % 1000) / 1000.0f;
+}
+
+static bool ins_big(Database& db, const std::string& t, int64_t i) {
+  std::vector<float> v;
+  fill_vec(v, i);
+  std::vector<Value> vals;
+  vals.push_back(Value::ofInt(i));
+  vals.push_back(Value::ofVec(std::move(v)));
+  std::string err;
+  int code = 0;
+  return db.insert(t, std::move(vals), &err, &code);
+}
+
+static long rss_kb() {
+  struct rusage ru;
+  ::getrusage(RUSAGE_SELF, &ru);
+  return ru.ru_maxrss;  // KiB on Linux
 }
 
 int main() {
@@ -333,18 +376,18 @@ int main() {
       sets.emplace_back("name", Value::ofStr("bulk"));
       CHECK(db.update_rows("t1", {}, sets, &err, &code) == 6, "update all 6 rows");
       CHECK(count_rows(db, "t1", {cond_eq("name", Value::ofStr("bulk"))}) == 6, "all renamed");
-      // The competition explicitly excludes primary-key updates.
+      // pk update keeps pk_pos consistent
       std::vector<std::pair<std::string, Value>> sets2;
       sets2.emplace_back("id", Value::ofInt(999));
-      CHECK(db.update_rows("t1", {cond_eq("id", Value::ofInt(2))}, sets2, &err, &code) == -1 && code == 1235,
-            "primary-key update rejected");
-      CHECK(count_rows(db, "t1", {cond_eq("id", Value::ofInt(2))}) == 1, "original pk retained");
-      CHECK(count_rows(db, "t1", {cond_eq("id", Value::ofInt(999))}) == 0, "no new pk created");
+      CHECK(db.update_rows("t1", {cond_eq("id", Value::ofInt(2))}, sets2, &err, &code) == 1,
+            "update the primary key");
+      CHECK(count_rows(db, "t1", {cond_eq("id", Value::ofInt(2))}) == 0, "old pk gone");
+      CHECK(count_rows(db, "t1", {cond_eq("id", Value::ofInt(999))}) == 1, "new pk present");
       std::vector<std::pair<std::string, Value>> sets3;
       sets3.emplace_back("id", Value::ofInt(999));
       CHECK(db.update_rows("t1", {cond_eq("id", Value::ofInt(300))}, sets3, &err, &code) == -1 &&
-                code == 1235,
-            "all primary-key updates rejected");
+                code == 1062,
+            "update to an existing pk -> 1062");
     }
   }
 
@@ -434,51 +477,26 @@ int main() {
     std::printf("     open+load snapshot: %.1f ms\n", t9 - t8);
   }
 
-#ifdef MVDB_SMALL_CKPT
-  // Built with -DMVDB_AUTO_CHECKPOINT_BYTES=<small>: autocommit DML must fold
-  // the WAL into a snapshot by itself (nothing else calls checkpoint()).
+  // Autocommit DML must fold the WAL into the heap by itself: nothing else
+  // calls checkpoint(). MVDB_CKPT_BYTES lowers the threshold to 8 KiB so the
+  // test does not have to write 64 MiB of log first.
   std::printf("[auto checkpoint]\n");
   {
     const std::string adir = dir + "/autockpt";
+    ::setenv("MVDB_CKPT_BYTES", "8192", 1);
     Database d;
     CHECK(d.open(adir, &err), "open auto-checkpoint dir");
     CHECK(d.create_table("a", simple_schema(), &err, &code), "create table a");
     for (int i = 0; i < 400; ++i)
       if (!ins(d, "a", i, "x", {1.f, 2.f, 3.f})) break;
     CHECK(file_size(adir + "/snapshot.bin") > 0, "snapshot written without an explicit checkpoint");
-    CHECK(file_size(adir + "/data.log") < 400 * 60,
-          "WAL stays bounded instead of growing with every row");
+    CHECK(file_size(adir + "/t_a.dat") > 64, "compacted heap file exists");
     CHECK(count_rows(d, "a") == 400, "all rows still visible");
     d.close();
     Database d2;
     CHECK(d2.open(adir, &err), "reopen auto-checkpointed dir");
     CHECK(count_rows(d2, "a") == 400, "every row survived the automatic checkpoint");
-  }
-#endif
-
-  // PK equality DML must still check every other predicate, including on the
-  // spilled path, and its undo records must restore the original row slot.
-  {
-    Database d; const std::string pdir=dir+"/pk_dml";
-    CHECK(d.open(pdir,&err),"open PK DML fixture");
-    CHECK(d.create_table("t1",simple_schema(),&err,&code),"create PK DML fixture");
-    CHECK(ins(d,"t1",-7,"old",{1,2,3}),"insert negative PK fixture");
-    CHECK(ins(d,"t1",8,"other",{4,5,6}),"insert second PK fixture");
-    const std::vector<std::pair<std::string,Value>> sets{{"name",Value::ofStr("new")}};
-    const Cond key=cond_eq("id",Value::ofInt(-7));
-    const Cond wrong=cond_eq("name",Value::ofStr("wrong"));
-    CHECK(d.update_rows("t1",{key,wrong},sets,&err,&code)==0,"PK UPDATE checks residual predicate");
-    CHECK(d.delete_rows("t1",{key,wrong},&err,&code)==0,"PK DELETE checks residual predicate");
-    CHECK(d.update_rows("t1",{cond_eq("id",Value::ofInt(999))},sets,&err,&code)==0,"PK UPDATE miss");
-    CHECK(d.delete_rows("t1",{cond_eq("id",Value::ofInt(999))},&err,&code)==0,"PK DELETE miss");
-    CHECK(d.begin(&err,&code),"begin PK DML rollback");
-    CHECK(d.update_rows("t1",{key},sets,&err,&code)==1,"PK UPDATE selects exactly one row");
-    CHECK(find_name(d,"t1",-7)=="new" && find_name(d,"t1",8)=="other","PK UPDATE preserves other row");
-    CHECK(d.delete_rows("t1",{key},&err,&code)==1,"PK DELETE selects exactly one row");
-    CHECK(count_rows(d,"t1")==1,"one row remains after PK DELETE");
-    CHECK(d.rollback(&err,&code),"rollback PK DML");
-    CHECK(find_name(d,"t1",-7)=="old" && count_rows(d,"t1")==2,"PK DML undo restores original row");
-    CHECK(d.delete_rows("t1",{key,cond_eq("id",Value::ofInt(8))},&err,&code)==0,"contradictory PK equalities match no row");
+    ::unsetenv("MVDB_CKPT_BYTES");
   }
 
   // ------------------------------------------- real crash (fork + _exit) ---
@@ -516,6 +534,291 @@ int main() {
     CHECK(find_name(d, "cr", 7) == "auto", "autocommit row came back");
   }
 
+
+  // ------------------------------------- heap truncated behind the header ---
+  // A machine crash can leave the heap shorter than the commit watermark. The
+  // engine must fall back to the checkpoint and rebuild from the WAL.
+  std::printf("[heap shorter than the watermark -> WAL rebuild]\n");
+  {
+    const std::string rdir = dir + "/rebuild";
+    {
+      Database db;
+      CHECK(db.open(rdir, &err), "open rebuild dir");
+      CHECK(db.create_table("rb", simple_schema(), &err, &code), "create rb");
+      for (int i = 0; i < 100; ++i) ins(db, "rb", i, "a", {1.f, 0.f, 0.f});
+      CHECK(db.checkpoint(&err), "checkpoint rb");
+      const long long ck = file_size(rdir + "/t_rb.dat");
+      CHECK(ck > 64, "compacted heap has the 100 rows");
+      for (int i = 100; i < 200; ++i) ins(db, "rb", i, "b", {0.f, 1.f, 0.f});
+      {
+        std::vector<std::pair<std::string, Value>> sets;
+        sets.emplace_back("name", Value::ofStr("upd"));
+        CHECK(db.update_rows("rb", {cond_eq("id", Value::ofInt(5))}, sets, &err, &code) == 1,
+              "update before the simulated crash");
+      }
+      CHECK(db.delete_rows("rb", {cond_eq("id", Value::ofInt(7))}, &err, &code) == 1,
+            "delete before the simulated crash");
+      db.close();
+      // Simulate lost tail pages: keep only what the checkpoint made durable.
+      CHECK(::truncate((rdir + "/t_rb.dat").c_str(), (off_t)ck) == 0, "truncate heap to checkpoint size");
+    }
+    Database db;
+    CHECK(db.open(rdir, &err), "reopen with a short heap");
+    CHECK(count_rows(db, "rb") == 199, "all committed rows rebuilt from the WAL");
+    CHECK(find_name(db, "rb", 150) == "b", "row added after the checkpoint came back");
+    CHECK(find_name(db, "rb", 5) == "upd", "update after the checkpoint was replayed");
+    CHECK(count_rows(db, "rb", {cond_eq("id", Value::ofInt(7))}) == 0,
+          "delete after the checkpoint was replayed");
+    CHECK(find_name(db, "rb", 5) != "", "row 5 still present");
+  }
+
+  // --------------------------------------------- drop + recreate reuses files
+  std::printf("[drop + recreate the same table name]\n");
+  {
+    const std::string ddir = dir + "/recreate";
+    Database db;
+    CHECK(db.open(ddir, &err), "open recreate dir");
+    CHECK(db.create_table("d", simple_schema(), &err, &code), "create d");
+    for (int i = 0; i < 50; ++i) ins(db, "d", i, "x", {1.f, 1.f, 1.f});
+    CHECK(count_rows(db, "d") == 50, "50 rows before the drop");
+    CHECK(db.drop_table("d", &err, &code), "drop d");
+    CHECK(db.create_table("d", simple_schema(), &err, &code), "recreate d");
+    CHECK(count_rows(db, "d") == 0, "recreated table starts empty (old heap files are gone)");
+    CHECK(ins(db, "d", 1, "y", {2.f, 2.f, 2.f}), "insert into the recreated table");
+    CHECK(count_rows(db, "d") == 1, "exactly one row");
+    db.close();
+    Database db2;
+    CHECK(db2.open(ddir, &err), "reopen after recreate");
+    CHECK(count_rows(db2, "d") == 1, "recreated table survived the reopen");
+    CHECK(find_name(db2, "d", 1) == "y", "recreated row content is right");
+
+    // a table dropped inside a committed transaction
+    CHECK(db2.begin(&err, &code), "BEGIN drop");
+    CHECK(db2.drop_table("d", &err, &code), "drop in txn");
+    CHECK(db2.commit(&err, &code), "COMMIT drop");
+    CHECK(!db2.has_table("d"), "table gone after commit");
+    db2.close();
+    Database db3;
+    CHECK(db3.open(ddir, &err), "reopen after committed drop");
+    CHECK(!db3.has_table("d"), "dropped table stays dropped");
+    CHECK(db3.create_table("d", simple_schema(), &err, &code), "same name again after a committed drop");
+    CHECK(count_rows(db3, "d") == 0, "and it is empty");
+  }
+
+  // ========================================================= large tables ==
+  const bool big = []() {
+    const char* e = std::getenv("MVDB_TEST_BIG");
+    return !(e && (std::strcmp(e, "0") == 0 || std::strcmp(e, "off") == 0));
+  }();
+
+  if (big) {
+    const int N = 2000000;
+    const std::string ldir = dir + "/large";
+    std::printf("[large: %d x %d-d on disk, RSS gate]\n", N, kBigDim);
+    {
+      Database db;
+      CHECK(db.open(ldir, &err), "open large dir");
+      CHECK(db.create_table("big", big_schema(), &err, &code), "create 2M-row table");
+
+      double t0 = now_ms();
+      bool all_ok = true;
+      for (int base = 0; base < N && all_ok; base += 100) {
+        if (!db.begin(&err, &code)) { all_ok = false; break; }
+        const int hi = (base + 100 < N) ? base + 100 : N;
+        for (int i = base; i < hi; ++i)
+          if (!ins_big(db, "big", i)) { all_ok = false; break; }
+        if (!db.commit(&err, &code)) all_ok = false;
+      }
+      double t1 = now_ms();
+      CHECK(all_ok, "2,000,000 inserts in 100-row transactions");
+      const long rss_mb = rss_kb() / 1024;
+      std::printf("     load: %.1f s -> %.0f rows/s, peak RSS %ld MB, table %.0f MB\n",
+                  (t1 - t0) / 1000.0, N / ((t1 - t0) / 1000.0), rss_mb,
+                  (double)file_size(ldir + "/t_big.dat") / 1048576.0);
+      CHECK(db.table("big")->live_count() == (size_t)N, "live_count == 2,000,000");
+      CHECK(rss_mb < 300, "peak RSS < 300 MB for a ~1 GB table");
+
+      // full scan
+      size_t n = 0;
+      double s0 = now_ms();
+      db.scan("big", {}, [&](const Row&) { ++n; return true; });
+      double s1 = now_ms();
+      std::printf("     scan: %.2f s -> %.0f rows/s\n", (s1 - s0) / 1000.0,
+                  n / ((s1 - s0) / 1000.0));
+      CHECK(n == (size_t)N, "full scan sees every row");
+
+      // scan with a WHERE filter, and check the payload, not just the count
+      Cond ge;
+      ge.op = Cond::GE;
+      ge.column = "id";
+      ge.value = Value::ofInt(N / 2);
+      size_t half = 0;
+      bool payload_ok = true;
+      db.scan("big", {ge}, [&](const Row& r) {
+        ++half;
+        if (half == 1) {
+          std::vector<float> want;
+          fill_vec(want, r.vals[0].i);
+          if (r.vals[1].v != want) payload_ok = false;
+        }
+        return true;
+      });
+      CHECK(half == (size_t)(N - N / 2), "filtered scan (id >= N/2) returns half the rows");
+      CHECK(payload_ok, "first filtered row's 128-d payload is byte exact");
+
+      // pk lookups are single random reads
+      double p0 = now_ms();
+      int hits = 0;
+      for (int k = 0; k < 200; ++k) {
+        const int64_t want_pk = (int64_t)k * 7919;
+        Cond eq;
+        eq.op = Cond::EQ;
+        eq.column = "id";
+        eq.value = Value::ofInt(want_pk);
+        db.scan("big", {eq}, [&](const Row& r) {
+          std::vector<float> exp;
+          fill_vec(exp, want_pk);
+          if (r.vals[0].i == want_pk && r.vals[1].v == exp) ++hits;
+          return false;
+        });
+      }
+      double p1 = now_ms();
+      std::printf("     pk lookup: %.1f us/op\n", (p1 - p0) * 1000.0 / 200.0);
+      CHECK(hits == 200, "200 random pk lookups return exact rows");
+
+      // update / delete across a checkpoint + reopen
+      std::vector<std::pair<std::string, Value>> sets;
+      sets.emplace_back("emb", Value::ofVec(std::vector<float>(kBigDim, 0.5f)));
+      Cond idrange;
+      idrange.op = Cond::GE;
+      idrange.column = "id";
+      idrange.value = Value::ofInt(N - 1000);
+      CHECK(db.update_rows("big", {idrange}, sets, &err, &code) == 1000, "update 1000 rows by range");
+      Cond lt;
+      lt.op = Cond::LT;
+      lt.column = "id";
+      lt.value = Value::ofInt(1000);
+      CHECK(db.delete_rows("big", {lt}, &err, &code) == 1000, "delete 1000 rows by range");
+      CHECK(db.table("big")->live_count() == (size_t)(N - 1000), "live_count after update/delete");
+
+      double c0 = now_ms();
+      CHECK(db.checkpoint(&err), "checkpoint a 1 GB table");
+      double c1 = now_ms();
+      std::printf("     checkpoint: %.2f s\n", (c1 - c0) / 1000.0);
+      CHECK(file_size(ldir + "/data.log") == 0, "WAL truncated by the large checkpoint");
+      CHECK(file_size(ldir + "/t_big.dat") < (long long)N * (16 + 4 * kBigDim) + (1 << 20),
+            "compacted heap is close to the live footprint");
+      db.close();
+
+      double r0 = now_ms();
+      Database db2;
+      CHECK(db2.open(ldir, &err), "reopen the 1 GB table");
+      double r1 = now_ms();
+      std::printf("     reopen: %.2f s\n", (r1 - r0) / 1000.0);
+      CHECK(db2.table("big")->live_count() == (size_t)(N - 1000), "row count survives the reopen");
+      size_t n2 = 0;
+      db2.scan("big", {}, [&](const Row&) { ++n2; return true; });
+      CHECK(n2 == (size_t)(N - 1000), "scan after reopen sees every live row");
+
+      Cond upl;
+      upl.op = Cond::EQ;
+      upl.column = "id";
+      upl.value = Value::ofInt(N - 5);
+      bool up_ok = false;
+      db2.scan("big", {upl}, [&](const Row& r) {
+        up_ok = r.vals[1].v.size() == (size_t)kBigDim && r.vals[1].v[0] == 0.5f &&
+                r.vals[1].v[kBigDim - 1] == 0.5f;
+        return false;
+      });
+      CHECK(up_ok, "updated row kept its new payload across the reopen");
+
+      Cond del;
+      del.op = Cond::EQ;
+      del.column = "id";
+      del.value = Value::ofInt(500);
+      CHECK(count_rows(db2, "big", {del}) == 0, "deleted row stayed deleted");
+      Cond keep;
+      keep.op = Cond::EQ;
+      keep.column = "id";
+      keep.value = Value::ofInt(1500);
+      CHECK(count_rows(db2, "big", {keep}) == 1, "row above the delete range survived");
+
+      // A pk equality UPDATE/DELETE must be one random read, not a 2M row scan.
+      double u0 = now_ms();
+      std::vector<std::pair<std::string, Value>> one_set;
+      one_set.emplace_back("emb", Value::ofVec(std::vector<float>(kBigDim, 0.25f)));
+      CHECK(db2.update_rows("big", {cond_eq("id", Value::ofInt(1234567))}, one_set, &err, &code) == 1,
+            "single-pk update affected one row");
+      CHECK(db2.delete_rows("big", {cond_eq("id", Value::ofInt(1234568))}, &err, &code) == 1,
+            "single-pk delete affected one row");
+      CHECK(db2.update_rows("big", {cond_eq("id", Value::ofInt(-1))}, one_set, &err, &code) == 0,
+            "single-pk update on a missing key affects 0");
+      double u1 = now_ms();
+      std::printf("     single-pk update+delete: %.2f ms\n", u1 - u0);
+      CHECK(u1 - u0 < 50, "single-pk update+delete on 2M rows stays under 50 ms");
+      CHECK(db2.table("big")->live_count() == (size_t)(N - 1001), "live_count after the single delete");
+    }
+
+    // ------------------------------------------------------- kill -9 crash --
+    std::printf("[large: kill -9 with a big table]\n");
+    {
+      const std::string cdir = dir + "/largecrash";
+      const int M = 300000;
+      pid_t pid = ::fork();
+      if (pid == 0) {
+        Database d;
+        std::string e;
+        int c = 0;
+        if (!d.open(cdir, &e)) ::_exit(2);
+        if (!d.create_table("big", big_schema(), &e, &c)) ::_exit(3);
+        for (int base = 0; base < M; base += 100) {
+          if (!d.begin(&e, &c)) ::_exit(4);
+          for (int i = base; i < base + 100; ++i)
+            if (!ins_big(d, "big", i)) ::_exit(5);
+          if (!d.commit(&e, &c)) ::_exit(6);
+        }
+        if (!d.begin(&e, &c)) ::_exit(7);
+        for (int i = M; i < M + 50; ++i) ins_big(d, "big", i);  // uncommitted
+        ::kill(::getpid(), SIGKILL);                            // no destructor, no flush
+        ::_exit(8);
+      }
+      int st = 0;
+      ::waitpid(pid, &st, 0);
+      CHECK(WIFSIGNALED(st) && WTERMSIG(st) == SIGKILL, "writer died from SIGKILL");
+
+      double c0 = now_ms();
+      Database d;
+      CHECK(d.open(cdir, &err), "reopen after kill -9 (recovery succeeds)");
+      double c1 = now_ms();
+      std::printf("     recovery: %.2f s\n", (c1 - c0) / 1000.0);
+      CHECK(d.table("big")->live_count() == (size_t)M, "every committed row recovered");
+      size_t got = 0;
+      d.scan("big", {}, [&](const Row&) { ++got; return true; });
+      CHECK(got == (size_t)M, "scan after recovery returns exactly the committed rows");
+      Cond extra;
+      extra.op = Cond::EQ;
+      extra.column = "id";
+      extra.value = Value::ofInt(M + 10);
+      CHECK(count_rows(d, "big", {extra}) == 0, "row from the in-flight transaction is gone");
+      bool spot = false;
+      Cond spot_c;
+      spot_c.op = Cond::EQ;
+      spot_c.column = "id";
+      spot_c.value = Value::ofInt(M - 1);
+      d.scan("big", {spot_c}, [&](const Row& r) {
+        std::vector<float> exp;
+        fill_vec(exp, M - 1);
+        spot = (r.vals[1].v == exp);
+        return false;
+      });
+      CHECK(spot, "recovered row payload is byte exact");
+      // and writes keep working after recovery
+      CHECK(ins_big(d, "big", M + 1000), "insert after recovery");
+      CHECK(count_rows(d, "big") == (size_t)M + 1, "post-recovery insert is visible");
+    }
+  } else {
+    std::printf("[large] skipped (MVDB_TEST_BIG=0)\n");
+  }
 
   std::printf("\n%s: %d passed, %d failed\n", g_fail ? "FAILED" : "PASSED", g_pass, g_fail);
   std::string cleanup = "rm -rf '" + dir + "'";

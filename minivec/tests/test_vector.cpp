@@ -4,15 +4,21 @@
 //   g++ -std=c++17 -O2 -Isrc tests/test_vector.cpp src/vector.cpp -o test_vector
 //   ./test_vector          # full suite + benchmark
 //   ./test_vector quick    # skip the 10k benchmark
+//   ./test_vector perf     # hot path: dims 128/512 x n 1k/10k/100k, GB/s, ISA
 //   ./test_vector sweep    # nlist / replication / nprobe recall table
+//   ./test_vector large    # 100k scale check
+//   MVDB_ISA=scalar|sse2|avx2 ./test_vector   # pin a distance kernel
 //
 // Comparison policy:
 //   * vs the independent reference (double accumulation) -> identical pk SET and
 //     distances within 1e-5 relative, because the reference is more accurate
 //     than the float kernel.
-//   * IVF vs exact_topk (same kernel) and post-persist reload -> BITWISE equal,
-//     including the (dist, pk) order.
+//   * IVF vs exact_topk (same kernel), TopK vs exact_topk, topk_matrix vs
+//     exact_topk and post-persist reload -> BITWISE equal, including the
+//     (dist, pk) order.
 //   * engineered exact ties -> strict pk-order assertion.
+//   * the SIMD kernels vs the scalar reference -> within 1e-5 relative (measured
+//     max 2.1e-07, i.e. ~2 ulp) and bit-identical to themselves.
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -20,6 +26,7 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <random>
 #include <string>
 #include <vector>
@@ -805,6 +812,410 @@ static void sweep() {
   }
 }
 
+// ------------------------------------------------------ [8] SIMD kernels ----
+static void t_simd() {
+  std::printf("[8] SIMD kernels vs the scalar reference\n");
+  const size_t nk = l2_kernel_count();
+  std::printf("    kernels:");
+  for (size_t i = 0; i < nk; ++i)
+    std::printf(" %s%s", l2_kernel_name(i), l2_kernel_available(i) ? "" : "(n/a)");
+  std::printf("   selected: %s\n", l2_isa_name());
+  CHECK(nk >= 1, "no kernel compiled in");
+  CHECK(std::strcmp(l2_kernel_name(0), "scalar") == 0, "kernel 0 must be the scalar reference");
+  CHECK(std::strcmp(l2_kernel_name(l2_kernel_count()), "") == 0, "out-of-range kernel name");
+
+  const size_t dims[] = {1,  2,   3,   4,   5,   7,   8,   15,  16, 17,
+                         31, 32,  33,  63,  64,  65,  127, 128, 129, 255,
+                         256, 257, 512, 1000};
+  std::mt19937 rng(1234);
+  std::uniform_real_distribution<float> uni(-3.f, 3.f);
+  double max_rel = 0.0;
+  for (size_t di = 0; di < sizeof(dims) / sizeof(dims[0]); ++di) {
+    const size_t d = dims[di];
+    std::vector<float> a(d), b(d);
+    for (size_t i = 0; i < d; ++i) {
+      a[i] = uni(rng);
+      b[i] = uni(rng);
+    }
+    const float ref = l2_distance_scalar(a.data(), b.data(), d);
+    for (size_t ki = 0; ki < nk; ++ki) {
+      if (!l2_kernel_available(ki)) continue;
+      const float got = l2_distance_kernel(ki, a.data(), b.data(), d);
+      const double rel = std::fabs((double)got - (double)ref) / (1.0 + std::fabs((double)ref));
+      if (rel > max_rel) max_rel = rel;
+      // Lane count and reduction order differ from the scalar kernel; the
+      // spread is a few ulp and never reorders vectors that differ by >1e-6.
+      CHECK(rel < 1e-5, "%s dim %zu: rel %.3e vs scalar (%.9g vs %.9g)", l2_kernel_name(ki), d,
+            rel, (double)got, (double)ref);
+      CHECK(l2_distance_kernel(ki, a.data(), a.data(), d) == 0.f,
+            "%s: self distance must be exactly 0, dim %zu", l2_kernel_name(ki), d);
+      CHECK(l2_distance_kernel(ki, a.data(), b.data(), d) ==
+                l2_distance_kernel(ki, b.data(), a.data(), d),
+            "%s: symmetry, dim %zu", l2_kernel_name(ki), d);
+      CHECK(got == l2_distance_kernel(ki, a.data(), b.data(), d),
+            "%s: not deterministic, dim %zu", l2_kernel_name(ki), d);
+    }
+    // The dispatched entry point must agree with the named kernel it selected.
+    size_t sel = 0;
+    for (size_t ki = 0; ki < nk; ++ki)
+      if (std::strcmp(l2_kernel_name(ki), l2_isa_name()) == 0) sel = ki;
+    CHECK(l2_distance(a.data(), b.data(), d) == l2_distance_kernel(sel, a.data(), b.data(), d),
+          "l2_distance() diverges from the selected kernel (%s) at dim %zu", l2_isa_name(), d);
+  }
+  std::printf("    max relative deviation from the scalar kernel: %.2e\n", max_rel);
+  // dimension 0 and null operands keep returning exactly 0
+  CHECK(l2_distance(nullptr, nullptr, 8) == 0.f, "null must be 0");
+  CHECK(l2_distance_scalar(nullptr, nullptr, 8) == 0.f, "scalar null must be 0");
+
+  // distance_many is bit-identical to l2_distance (that is what lets the IVF
+  // trainer batch it without moving a single centroid).
+  const size_t mns[] = {0, 1, 3, 4, 5, 7, 8, 16, 33, 64};
+  const size_t mds[] = {4, 8, 15, 16, 17, 128, 129};
+  for (size_t mi = 0; mi < sizeof(mns) / sizeof(mns[0]); ++mi) {
+    for (size_t dj = 0; dj < sizeof(mds) / sizeof(mds[0]); ++dj) {
+      const size_t n = mns[mi], d = mds[dj];
+      std::vector<float> mat(n * d + 1), q(d), out(n + 1), ref(n + 1);
+      for (auto& x : mat) x = uni(rng);
+      for (auto& x : q) x = uni(rng);
+      distance_many(q.data(), mat.data(), n, d, out.data());
+      for (size_t i = 0; i < n; ++i) ref[i] = l2_distance(q.data(), mat.data() + i * d, d);
+      for (size_t i = 0; i < n; ++i)
+        CHECK(out[i] == ref[i], "distance_many n=%zu dim=%zu row %zu: %.9g != %.9g", n, d, i,
+              (double)out[i], (double)ref[i]);
+    }
+  }
+}
+
+// --------------------------------------------------- [9] streaming top-k -----
+static void t_topk() {
+  std::printf("[9] TopK streaming vs exact_topk\n");
+  const size_t dims[] = {4, 128};
+  const size_t ns[] = {0, 1, 7, 300, 2000};
+  std::vector<Hit> a, b;
+  for (size_t di = 0; di < 2; ++di) {
+    const size_t d = dims[di];
+    for (size_t ni = 0; ni < sizeof(ns) / sizeof(ns[0]); ++ni) {
+      const size_t n = ns[ni];
+      Dataset ds = make_dataset(n, d, K_UNIFORM, 61 + (uint32_t)ni);
+      for (size_t i = 0; i < n; i += 6) ds.dead[i] = 1;
+      auto qs = make_queries(3, d, 62);
+      for (size_t qi = 0; qi < qs.size(); ++qi) {
+        const size_t ks[] = {0, 1, 3, 10, 100, n + 3};
+        for (size_t ki = 0; ki < sizeof(ks) / sizeof(ks[0]); ++ki) {
+          const size_t k = ks[ki];
+          exact_topk(ds.rows, ds.dead, 1, 0, qs[qi].data(), d, k, &a);
+          TopK top(qs[qi].data(), d, k);
+          for (size_t i = 0; i < ds.rows.size(); ++i) {
+            if (ds.dead[i]) continue;
+            top.offer(ds.rows[i].vals[0].i, ds.rows[i].vals[1].v.data(), d);
+          }
+          top.finish(&b);
+          CHECK(same_hits(a, b), "TopK n=%zu dim=%zu k=%zu q=%zu: %zu vs %zu hits", n, d, k, qi,
+                b.size(), a.size());
+          CHECK(sorted_by_dist(b), "TopK output not sorted (n=%zu k=%zu)", n, k);
+        }
+      }
+    }
+  }
+
+  // k larger than the input, and the reuse path (reset/clear on one object).
+  Dataset ds = make_dataset(100, 4, K_UNIFORM, 63);
+  TopK reuse;
+  std::vector<float> qv = {0.f, 0.f, 0.f, 0.f};
+  for (int round = 0; round < 20; ++round) {
+    const size_t k = 1 + (size_t)round % 12;  // k changes between rounds: heap is regrown
+    reuse.reset(k);
+    reuse.set_query(qv.data(), 4);
+    std::vector<Hit> want;
+    exact_topk(ds.rows, ds.dead, 1, 0, qv.data(), 4, k, &want);
+    for (size_t i = 0; i < ds.rows.size(); ++i)
+      reuse.offer_dist(ds.rows[i].vals[0].i, l2_distance(qv.data(), ds.rows[i].vals[1].v.data(), 4));
+    std::vector<Hit> got;
+    reuse.finish(&got);
+    CHECK(same_hits(got, want), "reused TopK round %d (k=%zu): %zu vs %zu hits", round, k, got.size(),
+          want.size());
+    CHECK(reuse.k() == k && reuse.size() == want.size(), "reuse bookkeeping round %d", round);
+  }
+  // default-constructed object with k set later
+  TopK late;
+  CHECK(late.k() == 0 && late.full(), "default TopK must be an empty full heap of k=0");
+  CHECK(late.worst_dist() == std::numeric_limits<float>::infinity(), "empty heap worst = inf");
+  late.reset(5);
+  late.set_query(qv.data(), 4);
+  for (size_t i = 0; i < ds.rows.size(); ++i)
+    late.offer(ds.rows[i].vals[0].i, ds.rows[i].vals[1].v.data(), 4);
+  std::vector<Hit> want5;
+  exact_topk(ds.rows, ds.dead, 1, 0, qv.data(), 4, 5, &want5);
+  std::vector<Hit> got5;
+  late.finish(&got5);
+  CHECK(same_hits(got5, want5), "late-init TopK != exact_topk");
+  CHECK(got5.size() == 5 && late.full(), "late-init TopK must be full");
+  // finish() never shrinks the caller's buffer (the executor keeps one vector)
+  std::vector<Hit> reused_out;
+  std::vector<Hit> g2;
+  for (int i = 0; i < 30; ++i) {
+    late.finish(&reused_out);
+    if (i == 1) g2 = reused_out;
+    CHECK(reused_out.size() == 5, "finish: %zu hits", reused_out.size());
+  }
+  CHECK(same_hits(reused_out, g2), "finish() is not repeatable");
+  // An empty offer set yields an empty result.
+  TopK empty_topk(3);
+  empty_topk.set_query(qv.data(), 4);
+  std::vector<Hit> none;
+  empty_topk.finish(&none);
+  CHECK(none.empty(), "no offers must give no hits");
+
+  // Ties: identical vectors must keep pk-ascending order no matter the order in
+  // which they are offered (heap-based selection is order independent).
+  {
+    std::vector<int64_t> pks;
+    for (int64_t p = 0; p < 40; ++p) pks.push_back(p * 2 + 3);
+    std::vector<int64_t> expect = pks;
+    std::sort(expect.begin(), expect.end());
+    expect.resize(7);
+    const std::vector<float> v = {1.5f, -0.25f, 0.5f, 2.f};
+    std::vector<float> q4 = {0.f, 0.f, 0.f, 0.f};
+    for (int order = 0; order < 2; ++order) {
+      if (order) std::reverse(pks.begin(), pks.end());
+      TopK tie_topk(7);
+      tie_topk.set_query(q4.data(), 4);
+      for (int64_t p : pks) tie_topk.offer(p, v.data(), 4);
+      std::vector<Hit> hits;
+      tie_topk.finish(&hits);
+      CHECK(hits.size() == 7, "tie: %zu hits", hits.size());
+      for (size_t i = 0; i < hits.size(); ++i)
+        CHECK(hits[i].pk == expect[i], "tie order %d hit %zu: pk %lld != %lld", order, i,
+              (long long)hits[i].pk, (long long)expect[i]);
+      // without the pk tie-break the distances are still identical
+      TopK notb(7, false);
+      notb.set_query(q4.data(), 4);
+      for (int64_t p : pks) notb.offer(p, v.data(), 4);
+      std::vector<Hit> nh;
+      notb.finish(&nh);
+      CHECK(nh.size() == 7 && sorted_by_dist(nh), "no-tiebreak TopK shape");
+      for (size_t i = 0; i < nh.size(); ++i)
+        CHECK(nh[i].dist == hits[i].dist, "no-tiebreak distances must match");
+    }
+  }
+
+  // topk_matrix over a packed matrix == exact_topk (same kernel, same heap).
+  {
+    const size_t d = 128, n = 777;
+    Dataset pds = make_dataset(n, d, K_UNIFORM, 65);
+    std::vector<float> mat(n * d);
+    std::vector<int64_t> pks(n);
+    for (size_t i = 0; i < n; ++i) {
+      std::memcpy(mat.data() + i * d, pds.rows[i].vals[1].v.data(), d * sizeof(float));
+      pks[i] = pds.rows[i].vals[0].i;
+    }
+    auto qs = make_queries(5, d, 66);
+    for (size_t qi = 0; qi < qs.size(); ++qi) {
+      for (size_t k : {size_t(1), size_t(10), size_t(n + 1)}) {
+        std::vector<Hit> ex, gm;
+        exact_topk(pds.rows, pds.dead, 1, 0, qs[qi].data(), d, k, &ex);
+        topk_matrix(mat.data(), pks.data(), n, qs[qi].data(), d, k, &gm);
+        CHECK(same_hits(gm, ex), "topk_matrix k=%zu q=%zu: %zu vs %zu hits", k, qi, gm.size(),
+              ex.size());
+      }
+    }
+  }
+}
+
+// ------------------------------------------------------- [perf] benchmark ----
+// The pre-SIMD implementation, copied verbatim from the build this one replaces
+// (scalar 4-lane accumulation + the same bounded heap). It is the "before"
+// column: same compiler, same flags, same TU, same data.
+namespace {
+
+bool lg_hit_less(const Hit& a, const Hit& b) {
+  if (a.dist != b.dist) return a.dist < b.dist;
+  return a.pk < b.pk;
+}
+
+void lg_sift_up(std::vector<Hit>& h, size_t i) {
+  while (i > 0) {
+    const size_t p = (i - 1) / 2;
+    if (!lg_hit_less(h[p], h[i])) break;
+    std::swap(h[p], h[i]);
+    i = p;
+  }
+}
+
+void lg_sift_down(std::vector<Hit>& h, size_t i) {
+  const size_t n = h.size();
+  for (;;) {
+    size_t big = i;
+    const size_t l = 2 * i + 1, r = l + 1;
+    if (l < n && lg_hit_less(h[big], h[l])) big = l;
+    if (r < n && lg_hit_less(h[big], h[r])) big = r;
+    if (big == i) break;
+    std::swap(h[i], h[big]);
+    i = big;
+  }
+}
+
+float lg_l2(const float* a, const float* b, size_t dim) {
+  if (a == nullptr || b == nullptr || dim == 0) return 0.0f;
+  float s0 = 0.f, s1 = 0.f, s2 = 0.f, s3 = 0.f;
+  size_t i = 0;
+  for (; i + 4 <= dim; i += 4) {
+    const float d0 = a[i] - b[i];
+    const float d1 = a[i + 1] - b[i + 1];
+    const float d2 = a[i + 2] - b[i + 2];
+    const float d3 = a[i + 3] - b[i + 3];
+    s0 += d0 * d0;
+    s1 += d1 * d1;
+    s2 += d2 * d2;
+    s3 += d3 * d3;
+  }
+  for (; i < dim; ++i) {
+    const float d = a[i] - b[i];
+    s0 += d * d;
+  }
+  return (s0 + s1) + (s2 + s3);
+}
+
+void lg_exact_topk(const std::vector<Row>& rows, const std::vector<uint8_t>& dead, int vec_col,
+                   int pk_col, const float* q, size_t dim, size_t k, std::vector<Hit>* out)
+    __attribute__((noinline));  // the original lived in another TU: keep the call boundary
+
+void lg_exact_topk(const std::vector<Row>& rows, const std::vector<uint8_t>& dead, int vec_col,
+                   int pk_col, const float* q, size_t dim, size_t k, std::vector<Hit>* out) {
+  out->clear();
+  if (k == 0 || q == nullptr || dim == 0) return;
+  std::vector<Hit>& heap = *out;
+  heap.reserve(std::min(k, rows.size()));
+  const size_t nd = dead.size();
+  for (size_t i = 0; i < rows.size(); ++i) {
+    if (i < nd && dead[i]) continue;
+    const Row& r = rows[i];
+    if (vec_col < 0 || static_cast<size_t>(vec_col) >= r.vals.size()) continue;
+    const Value& v = r.vals[vec_col];
+    if (v.type != Type::VECTOR || v.v.size() != dim) continue;
+    const float d = lg_l2(q, v.v.data(), dim);
+    const int64_t pk = r.vals[pk_col].i;
+    if (heap.size() < k) {
+      heap.push_back(Hit{pk, d});
+      lg_sift_up(heap, heap.size() - 1);
+    } else if (lg_hit_less(Hit{pk, d}, heap[0])) {
+      heap[0] = Hit{pk, d};
+      lg_sift_down(heap, 0);
+    }
+  }
+  std::sort(heap.begin(), heap.end(), lg_hit_less);
+}
+
+}  // namespace
+
+// Milliseconds per query for one scan variant over `nq` queries.
+static double time_legacy(const Dataset& ds, const std::vector<std::vector<float>>& qs, size_t k,
+                          std::vector<Hit>& out) {
+  const double t0 = now_ms();
+  for (size_t i = 0; i < qs.size(); ++i)
+    lg_exact_topk(ds.rows, ds.dead, 1, 0, qs[i].data(), ds.dim, k, &out);
+  return (now_ms() - t0) / (double)qs.size();
+}
+
+static double time_exact(const Dataset& ds, const std::vector<std::vector<float>>& qs, size_t k,
+                         std::vector<Hit>& out) {
+  const double t0 = now_ms();
+  for (size_t i = 0; i < qs.size(); ++i)
+    exact_topk(ds.rows, ds.dead, 1, 0, qs[i].data(), ds.dim, k, &out);
+  return (now_ms() - t0) / (double)qs.size();
+}
+
+static double time_topk_matrix(const float* mat, const int64_t* pks, size_t n,
+                               const std::vector<std::vector<float>>& qs, size_t dim, size_t k,
+                               std::vector<Hit>& out) {
+  const double t0 = now_ms();
+  for (size_t i = 0; i < qs.size(); ++i) topk_matrix(mat, pks, n, qs[i].data(), dim, k, &out);
+  return (now_ms() - t0) / (double)qs.size();
+}
+
+// What an executor that materialises every row and then sorts pays (lower bound:
+// no string formatting, no OutRow struct).
+static double time_fullsort(const float* mat, const int64_t* pks, size_t n,
+                            const std::vector<std::vector<float>>& qs, size_t dim, size_t k,
+                            std::vector<Hit>& out) {
+  std::vector<float> dist(n);
+  std::vector<Hit> buf(n);
+  const double t0 = now_ms();
+  for (size_t qi = 0; qi < qs.size(); ++qi) {
+    distance_many(qs[qi].data(), mat, n, dim, dist.data());
+    for (size_t i = 0; i < n; ++i) buf[i] = Hit{pks[i], dist[i]};
+    std::stable_sort(buf.begin(), buf.end(), detail::hit_less);
+    const size_t kk = std::min(k, n);
+    out.assign(buf.begin(), buf.begin() + (long)kk);
+    for (size_t i = 0; i < n; ++i) buf[i] = Hit{0, 0};  // keep the next sort honest
+  }
+  return (now_ms() - t0) / (double)qs.size();
+}
+
+static void perf() {
+  const size_t k = 10;
+  const size_t dims[] = {128, 512};
+  const size_t ns[] = {1000, 10000, 100000};
+  std::printf("MiniVectorDB hot-path benchmark (ORDER BY distance LIMIT %zu)\n", k);
+  std::printf("  ISA selected : %s\n", l2_isa_name());
+  std::printf("  kernels      :");
+  for (size_t i = 0; i < l2_kernel_count(); ++i)
+    std::printf(" %s%s", l2_kernel_name(i), l2_kernel_available(i) ? "" : "(n/a)");
+  std::printf("\n");
+  std::printf("  build        : g++ -O2 -std=c++17, no -march\n");
+  std::printf("  queries      : i.i.d. uniform(-1,1); nq picked for ~2.5e9 element-scans/column\n");
+  std::printf("  legacy       = pre-SIMD scalar kernel + the old heap scan (the baseline)\n");
+  std::printf("  topk-mat     = distance_many + fused TopK over a packed n x dim matrix\n");
+  std::printf("  fullsort     = materialise all n distances, stable_sort, take k (executor shape)\n");
+  std::printf("  GB/s         = n*dim*4 bytes / topk-mat ms (vector payload only, no pks)\n");
+  std::printf("  timing       = best of 3 runs per column\n\n");
+  std::printf("%7s %4s %5s | %9s | %9s %5s | %9s %5s | %9s %5s | %6s | %9s %9s %11s\n", "n", "dim",
+              "nq", "legacy", "exact", "x", "topk-mat", "x", "fullsort", "x", "GB/s",
+              "1000q leg", "1000q topk", "1000q GB/s");
+  double s10_exact = 0, s10_mat = 0, s100_exact = 0, s100_mat = 0;
+  for (size_t di = 0; di < sizeof(dims) / sizeof(dims[0]); ++di) {
+    const size_t d = dims[di];
+    for (size_t ni = 0; ni < sizeof(ns) / sizeof(ns[0]); ++ni) {
+      const size_t n = ns[ni];
+      Dataset ds = make_dataset(n, d, K_UNIFORM, 99 + (uint32_t)ni);
+      size_t nq = (size_t)(2.5e9 / (double)(n * d));
+      if (nq < 20) nq = 20;
+      if (nq > 1000) nq = 1000;
+      auto qs = make_queries(nq, d, 77);
+
+      std::vector<float> mat(n * d);
+      std::vector<int64_t> pks(n);
+      for (size_t i = 0; i < n; ++i) {
+        std::memcpy(mat.data() + i * d, ds.rows[i].vals[1].v.data(), d * sizeof(float));
+        pks[i] = ds.rows[i].vals[0].i;
+      }
+      std::vector<Hit> out;
+      // Best of 3: a laptop under WSL has enough interference that the minimum
+      // is the only number worth publishing (medians move +-15% run to run).
+      double ms_leg = 1e30, ms_ex = 1e30, ms_mat = 1e30, ms_fs = 1e30;
+      for (int rep = 0; rep < 3; ++rep) {
+        ms_leg = std::min(ms_leg, time_legacy(ds, qs, k, out));
+        ms_ex = std::min(ms_ex, time_exact(ds, qs, k, out));
+        ms_mat = std::min(ms_mat, time_topk_matrix(mat.data(), pks.data(), n, qs, d, k, out));
+        ms_fs = std::min(ms_fs, time_fullsort(mat.data(), pks.data(), n, qs, d, k, out));
+      }
+      const double gbs_mat = (double)n * (double)d * 4.0 / (ms_mat * 1e6);
+      const double gbs_leg = (double)n * (double)d * 4.0 / (ms_leg * 1e6);
+      std::printf("%7zu %4zu %5zu | %9.4f | %9.4f %5.2f | %9.4f %5.2f | %9.3f %5.1f | %6.1f | %8.1fms %8.1fms %9.1f\n",
+                  n, d, nq, ms_leg, ms_ex, ms_leg / ms_ex, ms_mat, ms_leg / ms_mat, ms_fs,
+                  ms_leg / ms_fs, gbs_mat, ms_leg * 1000.0, ms_mat * 1000.0, gbs_leg);
+      if (d == 128 && n == 10000) { s10_exact = ms_leg / ms_ex; s10_mat = ms_leg / ms_mat; }
+      if (d == 128 && n == 100000) { s100_exact = ms_leg / ms_ex; s100_mat = ms_leg / ms_mat; }
+    }
+  }
+  std::printf("\n  speedup vs the pre-SIMD baseline (128-d):\n");
+  std::printf("    10k  x 128: scan+TopK %.2fx   packed matrix %.2fx\n", s10_exact, s10_mat);
+  std::printf("   100k  x 128: scan+TopK %.2fx   packed matrix %.2fx\n", s100_exact, s100_mat);
+  std::printf("  (fullsort is what the executor pays today: n distances + a full sort per query;\n");
+  std::printf("   TopK keeps 10 hits and drops the sort, which is the bigger half of the win.)\n");
+  std::printf("\n  hint: MVDB_ISA=scalar|sse2|avx2 re-runs with a fixed kernel.\n");
+}
+
 int main(int argc, char** argv) {
   const std::string mode = argc > 1 ? argv[1] : "";
   if (mode == "sweep") {
@@ -819,13 +1230,20 @@ int main(int argc, char** argv) {
     bench_large();
     return 0;
   }
-  std::printf("MiniVectorDB vector engine tests (%s)\n", mode == "quick" ? "quick" : "full");
+  if (mode == "perf") {
+    perf();
+    return 0;
+  }
+  std::printf("MiniVectorDB vector engine tests (%s, ISA %s)\n",
+              mode == "quick" ? "quick" : "full", l2_isa_name());
   t_distance();
   t_exact_topk();
   t_tiebreak();
   t_ivf_exact();
   t_filtered();
   t_persist();
+  t_simd();
+  t_topk();
   if (mode != "quick") bench_and_recall();
   std::printf("\n%s: %d checks, %d failures\n", g_fail == 0 ? "PASS" : "FAIL", g_checks, g_fail);
   return g_fail == 0 ? 0 : 1;
