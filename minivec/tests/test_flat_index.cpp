@@ -67,6 +67,54 @@ static void check(Database& db,const std::vector<Cond>& conds={}) {
   db.scan_vectors("t",conds,[&](int64_t,const float*,size_t){++visited;return false;});
   assert(visited==(expected.empty()?0:1));
 }
+static void norm_order_regression() {
+  char path[]="/tmp/mvdb-norm-order-XXXXXX";assert(::mkdtemp(path));
+  Database db;assert(db.open(path,&err));assert(db.create_table("t",schema(),&err,&code));
+  const std::vector<std::pair<int64_t,std::vector<float>>> rows={
+    {50,{3,0,0,0,0}},{70,{-1,0,0,0,0}},{10,{0,1,0,0,0}},
+    {20,{0,0,0,0,0}},{30,{0,0,0,0,2}}
+  };
+  assert(db.begin(&err,&code));
+  for(const auto& row:rows)
+    assert(db.insert("t",{Value::ofInt(row.first),Value::ofInt(0),Value::ofVec(row.second)},&err,&code));
+  assert(db.commit(&err,&code));
+  assert(db.create_vector_index("t","v","norm_idx",&err,&code));
+  auto verify=[&](const std::vector<int64_t>& norm_keys) {
+    check(db); // maps and exact distances agree across table/view/index scans
+    const Table* table=db.table("t");assert(table && table->vector_index);
+    std::vector<int64_t> slot_keys,actual;
+    db.scan("t",{},[&](const Row& row){slot_keys.push_back(row.vals[0].i);return true;});
+    db.scan_vectors("t",{},[&](int64_t pk,const float*,size_t){actual.push_back(pk);return true;});
+    bool expect_norm=!table->payload_store && !table->vector_index->disk_backed();
+#ifdef MVDB_DISABLE_NORM_ORDER
+    expect_norm=false;
+#endif
+    assert(actual==(expect_norm?norm_keys:slot_keys));
+    FlatIndex::ResidentView view;
+    if(db.resident_vector_view("t",&view)) {
+      assert(view.count==actual.size());
+      for(size_t i=0;i<view.count;++i)assert(view.keys[i]==actual[i]);
+    }
+  };
+  // The equal-norm rows deliberately have descending PKs: norm ties retain
+  // source slot order, while query ranking still has its own PK tie breaker.
+  verify({20,70,10,30,50});
+  assert(db.begin(&err,&code));
+  assert(db.insert("t",{Value::ofInt(40),Value::ofInt(0),Value::ofVec({0.5f,0,0,0,0})},&err,&code));
+  assert(!db.table("t")->vector_index);verify({20,40,70,10,30,50});
+  assert(db.rollback(&err,&code));verify({20,70,10,30,50});
+  Cond id;id.column="id";id.value=Value::ofInt(20);
+  assert(db.begin(&err,&code));assert(db.delete_rows("t",{id},&err,&code)==1);
+  verify({70,10,30,50});assert(db.rollback(&err,&code));verify({20,70,10,30,50});
+  // UPDATE may force payload spilling for undo. It must retain correct view
+  // data and use source slots rather than sorting or rereading spilled rows.
+  id.value=Value::ofInt(50);assert(db.begin(&err,&code));
+  assert(db.update_rows("t",{id},{{"v",Value::ofVec({0.25f,0,0,0,0})}},&err,&code)==1);
+  verify({20,50,70,10,30});assert(db.rollback(&err,&code));verify({20,70,10,30,50});
+  std::map<int64_t,std::vector<float>> restored;
+  db.scan("t",{},[&](const Row& row){restored[row.vals[0].i]=row.vals[2].v;return true;});
+  for(const auto& row:rows)assert(restored.at(row.first)==row.second);
+}
 int main() {
   char path[]="/tmp/mvdb-flat-index-XXXXXX";assert(::mkdtemp(path));
   Database db;assert(db.open(path,&err));assert(db.create_table("t",schema(),&err,&code));
@@ -166,5 +214,6 @@ int main() {
   assert(resident.scan_integer_equal(1,-1,scalar,collect));
   assert(reads==3 && (seen==std::vector<int64_t>{-2}));
   assert(resident.scan_integer_equal(0,7,scalar,collect) && reads==6);
+  norm_order_regression();
   std::cout<<"PASS physical flat index, filters, mutation/statement/transaction rollback, eager restart rebuild, disk scan\n";
 }

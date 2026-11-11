@@ -35,6 +35,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -1706,13 +1707,47 @@ void Database::build_vector_index(Table& table) {
     budget-=std::min(budget,used);
   }
   const size_t dimension=static_cast<size_t>(table.schema.cols[table.schema.vec_idx].len);
-  auto index=std::make_shared<FlatIndex>(dir_,dimension,table.live_count(),budget);
-  for (size_t slot=0;slot<table.rows.size();++slot) {
-    if (table.dead[slot]) continue;
+  const size_t count=table.live_count();
+  auto index=std::make_shared<FlatIndex>(dir_,dimension,count,budget);
+  auto add_slot=[&](size_t slot) {
     Row scratch;
     const Row& row=table.read_row(slot,scratch);
     const auto& vector=row.vals[table.schema.vec_idx].v;
     index->add(row.vals[table.schema.pk_idx].i,slot,vector.data(),vector.size());
+  };
+#ifndef MVDB_DISABLE_NORM_ORDER
+  struct NormSlot { double norm;size_t slot; };
+  constexpr size_t norm_metadata_budget=1u<<20;
+  // This changes only traversal order. Keep one bounded temporary metadata
+  // array, with no row copies or extra payload reads from spilled tables.
+  std::unique_ptr<NormSlot[]> ordered;
+  if(!index->disk_backed() && !table.payload_store && count>1 &&
+     count<=norm_metadata_budget/sizeof(NormSlot)) {
+    ordered.reset(new(std::nothrow) NormSlot[count]);
+    if(ordered) {
+      size_t used=0;
+      for(size_t slot=0;slot<table.rows.size();++slot) {
+        if(table.dead[slot])continue;
+        double norm=0;
+        for(float value:table.rows[slot].vals[table.schema.vec_idx].v) {
+          const double component=value;norm+=component*component;
+        }
+        if(used==count)throw std::runtime_error("excess flat index norm ordering row");
+        ordered[used++]={norm,slot};
+      }
+      if(used!=count)throw std::runtime_error("incomplete flat index norm ordering");
+      std::sort(ordered.get(),ordered.get()+count,[](const NormSlot& a,const NormSlot& b) {
+        return a.norm<b.norm || (a.norm==b.norm && a.slot<b.slot);
+      });
+    }
+  }
+  if(ordered) {
+    for(size_t i=0;i<count;++i)add_slot(ordered[i].slot);
+  } else
+#endif
+  {
+    for(size_t slot=0;slot<table.rows.size();++slot)
+      if(!table.dead[slot])add_slot(slot);
   }
   index->finish();
   table.vector_index=std::move(index);

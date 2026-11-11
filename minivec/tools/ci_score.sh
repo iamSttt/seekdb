@@ -8,6 +8,8 @@ g++ -O2 -std=c++17 -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src 
 /tmp/distance-ubsan
 g++ -O2 -std=c++17 -pthread -DMVDB_FLAT_INDEX_MEMORY_BYTES=1 -DMVDB_SPILL_BYTES=1 -Iminivec/src minivec/tests/test_flat_index.cpp minivec/src/db.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/flat-spill
 /tmp/flat-spill
+g++ -O2 -std=c++17 -pthread -DMVDB_DISABLE_NORM_ORDER -Iminivec/src minivec/tests/test_flat_index.cpp minivec/src/db.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/flat-original-order
+/tmp/flat-original-order
 MVDB_PROTOCOL=sql python3 minivec/tools/harness.py --binary minivec/minivec run minivec/tests/cases
 python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --handshake-only --output protocol-results/source-handshake
 python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --output protocol-results/source-public
