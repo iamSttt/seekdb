@@ -1,0 +1,593 @@
+{
+  "kind": "local_synthetic_jsonl_benchmark",
+  "target": {
+    "image": "minivec:jsonl-baseline"
+  },
+  "seed": 19417,
+  "rows": 10000,
+  "dimension": 128,
+  "queries_per_mode": 1000,
+  "filtered_queries_per_mode": 500,
+  "k": 10,
+  "batch_size": 100,
+  "ingest_seconds": 0.5218561390000218,
+  "index_build_seconds": 0.0035853719999749956,
+  "query_order": "interleaved",
+  "query": {
+    "exact": {
+      "count": 1000,
+      "total_seconds": 0.5697785089998888,
+      "p50_ms": 0.6226505000199722,
+      "p95_ms": 0.7200079999734044,
+      "qps": 1755.0679504484349,
+      "unfiltered": {
+        "count": 500,
+        "total_seconds": 0.3433861289991569,
+        "p50_ms": 0.6812990000071295,
+        "p95_ms": 0.7379159999914009,
+        "qps": 1456.086771639013
+      },
+      "filtered": {
+        "count": 500,
+        "total_seconds": 0.22639238000073192,
+        "p50_ms": 0.4465889999778483,
+        "p95_ms": 0.5016989999830912,
+        "qps": 2208.55489923461
+      }
+    },
+    "ann": {
+      "count": 1000,
+      "total_seconds": 0.5690348740002378,
+      "p50_ms": 0.6237224999949831,
+      "p95_ms": 0.7170930000484077,
+      "qps": 1757.361535629857,
+      "unfiltered": {
+        "count": 500,
+        "total_seconds": 0.3434206940002582,
+        "p50_ms": 0.6790599999817459,
+        "p95_ms": 0.7472379999740042,
+        "qps": 1455.9402177424522
+      },
+      "filtered": {
+        "count": 500,
+        "total_seconds": 0.22561417999997957,
+        "p50_ms": 0.4463485000201217,
+        "p95_ms": 0.4972399999587651,
+        "qps": 2216.17276006342
+      }
+    }
+  },
+  "phase_seconds": {
+    "startup": 0.11784889300002988,
+    "ingest_wall": 1.0366414329999998,
+    "query_wall_including_validation_and_phase_samples": 1.382791841000028,
+    "shutdown_and_container_removal": 0.08377837099999397,
+    "final_shutdown_and_container_removal": 0.08452535700001818,
+    "cleanup_and_volume_removal": 0.01600556399995412
+  },
+  "container_profile": {
+    "snapshots": [
+      {
+        "phase": "after_startup",
+        "timestamp_utc": "2026-11-11T04:09:31.422466+00:00",
+        "elapsed_seconds": 0.1178537200000278,
+        "container": {
+          "id": "96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47",
+          "pid": 7866,
+          "process_cgroup": "/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": false
+        },
+        "memory_peak_bytes": 4857856,
+        "memory_current_bytes": 843776,
+        "cpu_stat": {
+          "usage_usec": 24475,
+          "user_usec": 12237,
+          "system_usec": 12237,
+          "nice_usec": 0,
+          "core_sched.force_idle_usec": 0,
+          "nr_periods": 1,
+          "nr_throttled": 0,
+          "throttled_usec": 0,
+          "nr_bursts": 0,
+          "burst_usec": 0
+        },
+        "io_stat": {},
+        "read_access": {
+          "memory_peak_bytes": "direct",
+          "memory_current_bytes": "direct",
+          "cpu_stat": "direct",
+          "io_stat": "direct"
+        },
+        "errors": {},
+        "delta_from_previous": null,
+        "sample_seconds": 0.027311581999981627
+      },
+      {
+        "phase": "after_ingest",
+        "timestamp_utc": "2026-11-11T04:09:32.486418+00:00",
+        "elapsed_seconds": 1.1818117320000283,
+        "container": {
+          "id": "96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47",
+          "pid": 7866,
+          "process_cgroup": "/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": false
+        },
+        "memory_peak_bytes": 18616320,
+        "memory_current_bytes": 18616320,
+        "cpu_stat": {
+          "usage_usec": 368238,
+          "user_usec": 309401,
+          "system_usec": 58837,
+          "nice_usec": 0,
+          "core_sched.force_idle_usec": 0,
+          "nr_periods": 11,
+          "nr_throttled": 0,
+          "throttled_usec": 0,
+          "nr_bursts": 0,
+          "burst_usec": 0
+        },
+        "io_stat": {
+          "259:0": {
+            "rbytes": 0,
+            "wbytes": 6066176,
+            "rios": 0,
+            "wios": 207,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "read_access": {
+          "memory_peak_bytes": "direct",
+          "memory_current_bytes": "direct",
+          "cpu_stat": "direct",
+          "io_stat": "direct"
+        },
+        "errors": {},
+        "delta_from_previous": {
+          "phase": "after_startup",
+          "cpu_stat": {
+            "usage_usec": 343763,
+            "user_usec": 297164,
+            "system_usec": 46600,
+            "nice_usec": 0,
+            "core_sched.force_idle_usec": 0,
+            "nr_periods": 10,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "io_stat": {
+            "259:0": null
+          }
+        },
+        "sample_seconds": 0.014889539999956014
+      },
+      {
+        "phase": "after_index",
+        "timestamp_utc": "2026-11-11T04:09:32.504896+00:00",
+        "elapsed_seconds": 1.20029052000001,
+        "container": {
+          "id": "96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47",
+          "pid": 7866,
+          "process_cgroup": "/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": false
+        },
+        "memory_peak_bytes": 23859200,
+        "memory_current_bytes": 23859200,
+        "cpu_stat": {
+          "usage_usec": 371213,
+          "user_usec": 311536,
+          "system_usec": 59677,
+          "nice_usec": 0,
+          "core_sched.force_idle_usec": 0,
+          "nr_periods": 12,
+          "nr_throttled": 0,
+          "throttled_usec": 0,
+          "nr_bursts": 0,
+          "burst_usec": 0
+        },
+        "io_stat": {
+          "259:0": {
+            "rbytes": 0,
+            "wbytes": 6070272,
+            "rios": 0,
+            "wios": 208,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "read_access": {
+          "memory_peak_bytes": "direct",
+          "memory_current_bytes": "direct",
+          "cpu_stat": "direct",
+          "io_stat": "direct"
+        },
+        "errors": {},
+        "delta_from_previous": {
+          "phase": "after_ingest",
+          "cpu_stat": {
+            "usage_usec": 2975,
+            "user_usec": 2135,
+            "system_usec": 840,
+            "nice_usec": 0,
+            "core_sched.force_idle_usec": 0,
+            "nr_periods": 1,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "io_stat": {
+            "259:0": {
+              "rbytes": 0,
+              "wbytes": 4096,
+              "rios": 0,
+              "wios": 1,
+              "dbytes": 0,
+              "dios": 0
+            }
+          }
+        },
+        "sample_seconds": 0.013534413000002132
+      },
+      {
+        "phase": "after_interleaved_queries",
+        "timestamp_utc": "2026-11-11T04:09:33.886611+00:00",
+        "elapsed_seconds": 2.582005945999981,
+        "container": {
+          "id": "96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47",
+          "pid": 7866,
+          "process_cgroup": "/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": false
+        },
+        "memory_peak_bytes": 23859200,
+        "memory_current_bytes": 23859200,
+        "cpu_stat": {
+          "usage_usec": 1142458,
+          "user_usec": 1071434,
+          "system_usec": 71023,
+          "nice_usec": 0,
+          "core_sched.force_idle_usec": 0,
+          "nr_periods": 25,
+          "nr_throttled": 0,
+          "throttled_usec": 0,
+          "nr_bursts": 0,
+          "burst_usec": 0
+        },
+        "io_stat": {
+          "259:0": {
+            "rbytes": 0,
+            "wbytes": 6070272,
+            "rios": 0,
+            "wios": 208,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "read_access": {
+          "memory_peak_bytes": "direct",
+          "memory_current_bytes": "direct",
+          "cpu_stat": "direct",
+          "io_stat": "direct"
+        },
+        "errors": {},
+        "delta_from_previous": {
+          "phase": "after_index",
+          "cpu_stat": {
+            "usage_usec": 771245,
+            "user_usec": 759898,
+            "system_usec": 11346,
+            "nice_usec": 0,
+            "core_sched.force_idle_usec": 0,
+            "nr_periods": 13,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "io_stat": {
+            "259:0": {
+              "rbytes": 0,
+              "wbytes": 0,
+              "rios": 0,
+              "wios": 0,
+              "dbytes": 0,
+              "dios": 0
+            }
+          }
+        },
+        "sample_seconds": 0.014605400000050395
+      },
+      {
+        "phase": "after_queries_before_shutdown",
+        "timestamp_utc": "2026-11-11T04:09:33.901225+00:00",
+        "elapsed_seconds": 2.596619837999981,
+        "container": {
+          "id": "96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47",
+          "pid": 7866,
+          "process_cgroup": "/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": false
+        },
+        "memory_peak_bytes": 23859200,
+        "memory_current_bytes": 23859200,
+        "cpu_stat": {
+          "usage_usec": 1142458,
+          "user_usec": 1071434,
+          "system_usec": 71023,
+          "nice_usec": 0,
+          "core_sched.force_idle_usec": 0,
+          "nr_periods": 26,
+          "nr_throttled": 0,
+          "throttled_usec": 0,
+          "nr_bursts": 0,
+          "burst_usec": 0
+        },
+        "io_stat": {
+          "259:0": {
+            "rbytes": 0,
+            "wbytes": 6070272,
+            "rios": 0,
+            "wios": 208,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "read_access": {
+          "memory_peak_bytes": "direct",
+          "memory_current_bytes": "direct",
+          "cpu_stat": "direct",
+          "io_stat": "direct"
+        },
+        "errors": {},
+        "delta_from_previous": {
+          "phase": "after_interleaved_queries",
+          "cpu_stat": {
+            "usage_usec": 0,
+            "user_usec": 0,
+            "system_usec": 0,
+            "nice_usec": 0,
+            "core_sched.force_idle_usec": 0,
+            "nr_periods": 1,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "io_stat": {
+            "259:0": {
+              "rbytes": 0,
+              "wbytes": 0,
+              "rios": 0,
+              "wios": 0,
+              "dbytes": 0,
+              "dios": 0
+            }
+          }
+        },
+        "sample_seconds": 0.01540698200000179
+      },
+      {
+        "phase": "after_shutdown_removal",
+        "timestamp_utc": "2026-11-11T04:09:34.000415+00:00",
+        "elapsed_seconds": 2.695809046000022,
+        "container": {
+          "id": "96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47",
+          "pid": 7866,
+          "process_cgroup": "/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": true
+        },
+        "memory_peak_bytes": null,
+        "memory_current_bytes": null,
+        "cpu_stat": null,
+        "io_stat": null,
+        "read_access": {},
+        "errors": {
+          "memory_peak_bytes": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope/memory.peak'",
+          "memory_current_bytes": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope/memory.current'",
+          "cpu_stat": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope/cpu.stat'",
+          "io_stat": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-96892fa236737736f50133fabd8026ba1069ae8b471e528e8c1e4a57b7b34d47.scope/io.stat'"
+        },
+        "delta_from_previous": {
+          "phase": "after_queries_before_shutdown",
+          "cpu_stat": null,
+          "io_stat": null
+        },
+        "sample_seconds": 0.00014968599998610443
+      },
+      {
+        "phase": "after_restart",
+        "timestamp_utc": "2026-11-11T04:09:34.121960+00:00",
+        "elapsed_seconds": 2.8173544030000244,
+        "container": {
+          "id": "c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921",
+          "pid": 8013,
+          "process_cgroup": "/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": false
+        },
+        "memory_peak_bytes": 14360576,
+        "memory_current_bytes": 14352384,
+        "cpu_stat": {
+          "usage_usec": 60243,
+          "user_usec": 40162,
+          "system_usec": 20081,
+          "nice_usec": 0,
+          "core_sched.force_idle_usec": 0,
+          "nr_periods": 0,
+          "nr_throttled": 0,
+          "throttled_usec": 0,
+          "nr_bursts": 0,
+          "burst_usec": 0
+        },
+        "io_stat": {},
+        "read_access": {
+          "memory_peak_bytes": "direct",
+          "memory_current_bytes": "direct",
+          "cpu_stat": "direct",
+          "io_stat": "direct"
+        },
+        "errors": {},
+        "delta_from_previous": null,
+        "sample_seconds": 0.014653293999970174
+      },
+      {
+        "phase": "after_restart_verification",
+        "timestamp_utc": "2026-11-11T04:09:34.152603+00:00",
+        "elapsed_seconds": 2.847998087999997,
+        "container": {
+          "id": "c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921",
+          "pid": 8013,
+          "process_cgroup": "/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": false
+        },
+        "memory_peak_bytes": 16084992,
+        "memory_current_bytes": 14667776,
+        "cpu_stat": {
+          "usage_usec": 64604,
+          "user_usec": 43406,
+          "system_usec": 21198,
+          "nice_usec": 0,
+          "core_sched.force_idle_usec": 0,
+          "nr_periods": 1,
+          "nr_throttled": 0,
+          "throttled_usec": 0,
+          "nr_bursts": 0,
+          "burst_usec": 0
+        },
+        "io_stat": {},
+        "read_access": {
+          "memory_peak_bytes": "direct",
+          "memory_current_bytes": "direct",
+          "cpu_stat": "direct",
+          "io_stat": "direct"
+        },
+        "errors": {},
+        "delta_from_previous": {
+          "phase": "after_restart",
+          "cpu_stat": {
+            "usage_usec": 4361,
+            "user_usec": 3244,
+            "system_usec": 1117,
+            "nice_usec": 0,
+            "core_sched.force_idle_usec": 0,
+            "nr_periods": 1,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "io_stat": {}
+        },
+        "sample_seconds": 0.015310174000035204
+      },
+      {
+        "phase": "after_final_shutdown_removal",
+        "timestamp_utc": "2026-11-11T04:09:34.252444+00:00",
+        "elapsed_seconds": 2.9478375759999835,
+        "container": {
+          "id": "c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921",
+          "pid": 8013,
+          "process_cgroup": "/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": true
+        },
+        "memory_peak_bytes": null,
+        "memory_current_bytes": null,
+        "cpu_stat": null,
+        "io_stat": null,
+        "read_access": {},
+        "errors": {
+          "memory_peak_bytes": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope/memory.peak'",
+          "memory_current_bytes": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope/memory.current'",
+          "cpu_stat": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope/cpu.stat'",
+          "io_stat": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope/io.stat'"
+        },
+        "delta_from_previous": {
+          "phase": "after_restart_verification",
+          "cpu_stat": null,
+          "io_stat": null
+        },
+        "sample_seconds": 0.00016847400002006907
+      },
+      {
+        "phase": "after_cleanup",
+        "timestamp_utc": "2026-11-11T04:09:34.268622+00:00",
+        "elapsed_seconds": 2.9640158600000177,
+        "container": {
+          "id": "c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921",
+          "pid": 8013,
+          "process_cgroup": "/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope",
+          "directory": "/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope",
+          "membership_access": "direct",
+          "mountinfo_access": "direct",
+          "removed": true
+        },
+        "memory_peak_bytes": null,
+        "memory_current_bytes": null,
+        "cpu_stat": null,
+        "io_stat": null,
+        "read_access": {},
+        "errors": {
+          "memory_peak_bytes": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope/memory.peak'",
+          "memory_current_bytes": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope/memory.current'",
+          "cpu_stat": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope/cpu.stat'",
+          "io_stat": "[Errno 2] No such file or directory: '/sys/fs/cgroup/system.slice/docker-c4e9e005f4cba6fe71c8480c249c54582fa0eaa8b8033341d297d45b4c7ad921.scope/io.stat'"
+        },
+        "delta_from_previous": {
+          "phase": "after_final_shutdown_removal",
+          "cpu_stat": null,
+          "io_stat": null
+        },
+        "sample_seconds": 0.0001899469999671055
+      }
+    ],
+    "scope": "Read-only snapshots of the official Session's own container cgroup v2.",
+    "limitations": "memory.peak is cumulative for each container lifetime. io.stat retains device keys; stacked devices must not be summed as a physical-I/O score. Missing or unreadable metrics and counter deltas are null. Container exit/removal can destroy its cgroup. Snapshots do not include guaranteed final writeback and are not official B/M metrics."
+  },
+  "correctness": {
+    "ann_matches_exact": true,
+    "full_scan_oracle_query_indices": [
+      0,
+      1,
+      36,
+      182,
+      200,
+      267,
+      391,
+      641,
+      948,
+      959
+    ],
+    "primary_key_tie": true,
+    "restart_seconds": 0.12139188599996942,
+    "restart_records_checked": 10000,
+    "restart_vectors_checked": 10
+  },
+  "measurement": "End-to-end JSONL requests with shared index and alternating mode order. Query latency excludes workload generation and validation. Local diagnostic only."
+}

@@ -12,6 +12,12 @@ docker run --rm -i -v minivec-data:/data minivec
 
 Use the official protocol checks documented below. Latest JSONL validation is
 recorded in [validation/jsonl-admission.md](validation/jsonl-admission.md).
+The 2026-11-11 exact-query optimization and paired Docker measurements are in
+[validation/score-20261111.md](validation/score-20261111.md).
+The final runtime passed checks on two independent runners, with paired median
+query speedups of 1.707x and 1.909x against the formal-admission baseline. These
+are local synthetic results, not platform scores; one seed regressed against
+the immediately preceding candidate.
 
 The Dockerfile pins the GCC 13.3.0 build image by digest and produces a static
 binary in a scratch runtime. There are no runtime network or package-manager
@@ -80,6 +86,14 @@ descending and unbounded sorts retain the full exact calculation. The error
 argument is documented beside the implementation and independently tested with
 integer/Fraction reference distances.
 
+Eligible resident indexes also retain bounded int8 codes at a power-of-two
+scale. Their integer distance is only a rejection filter: an outward-rounded
+triangle-inequality bound must prove a candidate strictly worse before skipping
+its exact calculation. Out-of-range queries, unsuitable dimensions/scales,
+unsupported floating environments and unavailable code storage use the original
+exact path. This is not approximate nearest-neighbor ranking. SIMD dispatch and
+bounded posting/norm-order caches change traversal cost, not result semantics.
+
 ## SQL and semantics
 
 - CREATE TABLE with one inline BIGINT PRIMARY KEY, BIGINT, VARCHAR(n), VECTOR(n),
@@ -117,8 +131,9 @@ keys rather than whole rows; large ordered outputs use bounded runs and bounded
 merge fan-in under the data directory. Output is streamed in chunks.
 
 These are payload budgets, not a claim of a universal fixed process/cgroup memory
-bound. A single enormous SQL statement or enormous field still needs memory;
-formal resource limits have not been supplied. Local RLIMIT_AS tests and process
+bound. A single enormous SQL statement or enormous field still needs memory.
+The published Docker diagnostic driver enforces 2 CPUs and 2 GiB RAM; this is
+the limit used by the current paired checks. Local RLIMIT_AS tests and process
 RSS are not substitutes for cgroup memory.peak including page cache.
 
 ## Example
@@ -153,15 +168,26 @@ The requested branch is `2026-competition-round2`. Formal submission `d10abbc`
 failed the MySQL admission gate despite passing all 20 published v4 examples.
 The result did not identify the failing SQL or provide an execution log.
 The subsequent repairs and their regression evidence are recorded in
-[admission fixes](validation/admission-fixes.md). Official functional admission
-of those repairs remains unverified without a new formal result. Performance
+[admission fixes](validation/admission-fixes.md). Formal submission
+`fa562be89069a84215a6196c9e24e4c6274f3862` passed the MySQL admission gate on
+2026-11-10 at 21:33 (Asia/Shanghai); the platform displayed raw performance
+E `2180.028190`. The newer runtime `3e23e7ce2cb932b514c622d20a25265c8fce9c69`
+has passed the recorded local/public checks, but has no new formal score here.
+The stated bounded E formula and that raw platform display use different
+apparent scales; we do not convert local speedups into a projected platform E.
+The user's 5000+ target remains unverified. Performance
 and evidence each contribute up to 40 rank-based points. No local result proves
 80 points or first place. The two public documents disagree on evidence dimension
 count and the default final-version selection; explicitly select the final commit.
 
 `agent/conversation.json` contains attributed, redacted actual interactions and
 observed evidence. Agent reasoning, implementation and tests are not represented
-as student-authored understanding. The inherited vector.cpp IVF implementation is
+as student-authored understanding. It is the default submission evidence and is
+kept synchronized with the versioned material checked by CI. The formal baseline's
+AgentPrompt result displayed `—`/invalid and did not contribute evidence points.
+The platform's generic message lists several possible causes (invalid or pending
+review result, outside 0–100, or missing summary); it does not establish one cause.
+The inherited vector.cpp IVF implementation is
 experimental, covered separately by unit tests, and not used by the SQL executor.
 
 The follow-up [interactive checks](validation/interactive-gate.md) cover malformed
