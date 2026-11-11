@@ -25,7 +25,9 @@ test_flat: tests/test_flat_index.cpp $(TEST_COMMON)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 test_distance_neighbors: tests/test_distance_neighbors.cpp src/distance.h
 	$(CXX) $(CXXFLAGS) -o $@ tests/test_distance_neighbors.cpp
-test: all test_sql test_db test_recovery test_vector test_query test_sort test_flat test_distance_neighbors
+test_distance_simd: tests/test_distance_simd.cpp src/distance.h
+	$(CXX) $(CXXFLAGS) -o $@ tests/test_distance_simd.cpp
+test: all test_sql test_db test_recovery test_vector test_query test_sort test_flat test_distance_neighbors test_distance_simd
 	./test_sql
 	./test_db
 	./test_recovery
@@ -34,6 +36,7 @@ test: all test_sql test_db test_recovery test_vector test_query test_sort test_f
 	./test_sort
 	./test_flat
 	./test_distance_neighbors
+	./test_distance_simd
 	MVDB_PROTOCOL=sql python3 tests/regressions.py
 	python3 tests/topk_bounds.py --binary ./minivec
 

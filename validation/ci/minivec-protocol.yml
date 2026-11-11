@@ -1,7 +1,7 @@
 name: MiniVectorDB official protocol
 on:
   push:
-    branches: [codex/round2-jsonl-20261110, 2026-competition-round2]
+    branches: [codex/round2-score-20261111, 2026-competition-round2]
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,7 +13,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Build and engine regressions
         run: |
+          python3 minivec/tools/validate_material.py
           make -C minivec -j2 test
+          g++ -O2 -std=c++17 -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/tests/test_distance_simd.cpp -o /tmp/distance-ubsan
+          /tmp/distance-ubsan
+          g++ -O2 -std=c++17 -pthread -DMVDB_FLAT_INDEX_MEMORY_BYTES=1 -DMVDB_SPILL_BYTES=1 -Iminivec/src minivec/tests/test_flat_index.cpp minivec/src/db.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/flat-spill
+          /tmp/flat-spill
           MVDB_PROTOCOL=sql python3 minivec/tools/harness.py --binary minivec/minivec run minivec/tests/cases
       - name: Official source protocol checks
         run: |
@@ -29,7 +34,7 @@ jobs:
           docker image inspect minivec:jsonl --format '{{.Id}}'
       - name: Distance kernel A/B and JSONL workload
         run: |
-          ./minivec/test_distance_neighbors --bench
+          ./minivec/test_distance_simd --bench
           bash minivec/tools/compare_jsonl.sh
       - name: Show diagnostic reports
         if: always()

@@ -53,11 +53,24 @@ int main() {
   assert(!db.table("t")->vector_index);check(db);assert(db.table("t")->vector_index->size()==100);
   Cond group;group.column="g";group.value=Value::ofInt(1);
   check(db,{group});
+  // Coercion, contradictory conjunctions, and column switching must use the
+  // exact same predicate semantics as the ordinary table scan.
+  Cond text_group=group;text_group.value=Value::ofStr("+01");check(db,{text_group});
+  Cond other_group=group;other_group.value=Value::ofInt(2);check(db,{group,other_group});
+  Cond range;range.column="id";range.op=Cond::GE;range.value=Value::ofInt(40);
+  check(db,{range,group});
+  Cond id;id.column="id";id.value=Value::ofInt(52);check(db,{id});check(db,{group});
   Cond missing;missing.column="id";missing.value=Value::ofInt(-100);check(db,{missing});
   assert(db.begin(&err,&code));
   assert(db.begin_statement(&err,&code));
   assert(db.update_rows("t",{group},{{"v",Value::ofVec({7,6,5,4,3})}},&err,&code)==33);
   assert(db.end_statement(true,&err,&code));check(db,{group});
+  // Changing the indexed scalar itself must discard cached postings, even if
+  // the vector values are untouched. Rollback below must restore both.
+  assert(db.update_rows("t",{id},{{"g",Value::ofInt(2)}},&err,&code)==1);
+  check(db,{group});check(db,{other_group});
+  assert(db.update_rows("t",{id},{{"g",Value::ofInt(1)}},&err,&code)==1);
+  check(db,{group});
   assert(db.begin_statement(&err,&code));
   insert(db,1000);
   assert(!db.insert("t",{Value::ofInt(1),Value::ofInt(0),Value::ofVec({0,0,0,0,0})},&err,&code));
@@ -89,5 +102,19 @@ int main() {
     assert(slot==static_cast<uint64_t>(pk+2) && dim==5 && values[0]==float(pk));seen.push_back(pk);return true;
   });
   assert((seen==std::vector<int64_t>{9,-2,4}));
+  assert(!disk.scan_integer_equal(0,9,[](uint64_t){return 9;},
+      [](int64_t,uint64_t,const float*,size_t){assert(false);return true;}));
+  // A direct resident index proves postings cache one column, retain ordinal
+  // order for equal keys, and honor early termination without reading again.
+  FlatIndex resident(path,5,3,4096);
+  for(int64_t pk:{9,-2,4}){float v[5]={float(pk),1,2,3,4};resident.add(pk,uint64_t(pk+2),v,5);}
+  resident.finish();size_t reads=0;seen.clear();
+  auto scalar=[&](uint64_t slot){++reads;return slot==0?int64_t(-1):int64_t(7);};
+  auto collect=[&](int64_t pk,uint64_t,const float*,size_t){seen.push_back(pk);return true;};
+  assert(resident.scan_integer_equal(1,7,scalar,collect));
+  assert(reads==3 && (seen==std::vector<int64_t>{9,4}));seen.clear();
+  assert(resident.scan_integer_equal(1,-1,scalar,collect));
+  assert(reads==3 && (seen==std::vector<int64_t>{-2}));
+  assert(resident.scan_integer_equal(0,7,scalar,collect) && reads==6);
   std::cout<<"PASS physical flat index, filters, mutation/statement/transaction rollback, eager restart rebuild, disk scan\n";
 }

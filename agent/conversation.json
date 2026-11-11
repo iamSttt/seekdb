@@ -1,65 +1,306 @@
 {
-  "schema": "agent-learning-evidence-v3-unbounded",
+  "schema": "minivectordb-attributed-conversation-v1",
+  "schema_note": "Repository-local descriptive layout; the organizer specifies a valid JSON object and recommends fields, not this schema identifier.",
   "synthetic": false,
-  "material_scope": "Actual excerpts from this Codex conversation and actual tool outputs during the 2026-11-09 MiniVectorDB development session. This is a selected, attributed record, not a complete transcript. Hidden model reasoning and credentials are excluded.",
+  "summary": "本材料保存本次 MiniVectorDB 任务的真实用户指令节选、明确归属于 Agent 的实现与测试摘要，以及可追溯的实验输出。用户提出高分目标、要求核验公开资料和镜像，并在正式结果不理想后要求继续迭代；事务修复、JSONL 协议适配、精确 TopK 优化与测试均由 Agent 完成，不作为学生已理解这些技术的证据。2026-11-10 21:33 的 fa562be 正式记录显示 MySQL 通过、性能 E2180.028190；Prompt 显示结果无效待复核。此次统一根目录和官方默认 agent/conversation.json 的真实材料，补充摘要和来源定位，未推断或填写 Agent 评分。",
+  "material_scope": "Selected exact, non-sensitive user excerpts and attributed assistant summaries through 2026-11-11; not a full transcript. No hidden reasoning, credentials, fabricated student explanations, or evaluator instructions are included.",
+  "attribution_policy": "A user role denotes an exact selected user excerpt. An assistant role with source_kind attributed_assistant_summary denotes a retrospective summary of actual Agent work, not a verbatim assistant transcript and not student-authored reasoning. Undated historical entries have no invented timestamps.",
   "redactions": "SSH host/login/password and all access tokens omitted. User quotations below are exact selected non-sensitive excerpts; neighboring context is summarized separately and attributed to Agent.",
   "base_commit": "bd69093f0ff2d2d075daaed46759f9a521cbf3ce",
   "sources": {
     "task": "https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/lg8enxlmwg69unt6",
     "scoring": "https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/dbf6uzmwsuupp7hn"
   },
-  "conversations": [
+  "submission_material_contract": {
+    "source": "https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/lg8enxlmwg69unt6",
+    "source_section": "4.4, current text inspected 2026-11-11",
+    "default_path": "agent/conversation.json",
+    "encoding": "UTF-8",
+    "top_level": "JSON object",
+    "maximum_bytes": 131072,
+    "field_requirement": "Suggested fields are not a mandatory schema.",
+    "synchronization": "The root copy is kept byte-identical for compatibility; the official current default remains agent/conversation.json."
+  },
+  "messages": [
     {
       "id": "u1",
-      "role": "student",
+      "role": "user",
       "content": "开始，奔着满分去",
+      "source_kind": "exact_user_excerpt",
       "context": "User supplied the new task link and authorized use of a cloud host; credentials redacted."
     },
     {
       "id": "u2",
-      "role": "student",
-      "content": "我所有的东西都给你了，你先做这道题"
+      "role": "user",
+      "content": "我所有的东西都给你了，你先做这道题",
+      "source_kind": "exact_user_excerpt"
     },
     {
       "id": "u3",
-      "role": "student",
-      "content": "好，尽量做吧，分数尽可能高"
+      "role": "user",
+      "content": "好，尽量做吧，分数尽可能高",
+      "source_kind": "exact_user_excerpt"
     },
     {
       "id": "u4",
-      "role": "student",
+      "role": "user",
       "content": "新的计分规则，好好研究一下怎么拿高分，然后完成这道题，所有的权限我都批准",
+      "source_kind": "exact_user_excerpt",
       "context": "User supplied the separate scoring URL above."
     },
     {
       "id": "a1",
-      "role": "agent",
-      "content": "The official branch has no published wire protocol/test package. The user fork contains an initial implementation. Use that as the baseline, retain a replaceable adapter, and do not call the independent local harness official functional admission."
+      "role": "assistant",
+      "content": "The official branch has no published wire protocol/test package. The user fork contains an initial implementation. Use that as the baseline, retain a replaceable adapter, and do not call the independent local harness official functional admission.",
+      "source_kind": "attributed_assistant_summary"
     },
     {
       "id": "a2",
-      "role": "agent",
-      "content": "Prioritize all functional gates before rank-based performance. Detect explicit-transaction partial INSERT, non-atomic UPDATE, catalog/snapshot generation mismatches, BIGINT-to-double ordering loss and missing primary-key tie breaking. These findings and the subsequent implementation are Agent contributions, not student-authored explanations."
+      "role": "assistant",
+      "content": "Prioritize all functional gates before rank-based performance. Detect explicit-transaction partial INSERT, non-atomic UPDATE, catalog/snapshot generation mismatches, BIGINT-to-double ordering loss and missing primary-key tie breaking. These findings and the subsequent implementation are Agent contributions, not student-authored explanations.",
+      "source_kind": "attributed_assistant_summary"
     },
     {
       "id": "a3",
-      "role": "agent",
-      "content": "Use statement savepoints inside a transaction; keep prior successful statements when a later statement fails. Commit WAL synchronously before acknowledgement. Recover only committed transaction records, and test interruption during recovery."
+      "role": "assistant",
+      "content": "Use statement savepoints inside a transaction; keep prior successful statements when a later statement fails. Commit WAL synchronously before acknowledgement. Recover only committed transaction records, and test interruption during recovery.",
+      "source_kind": "attributed_assistant_summary"
     },
     {
       "id": "a4",
-      "role": "agent",
-      "content": "TopK must filter before ranking, preserve integer ordering, and break equal distances by ascending primary key. Promote float32 inputs to double before subtraction to avoid overflow. Only winner keys should be retained, then fetch projected data by primary key."
+      "role": "assistant",
+      "content": "TopK must filter before ranking, preserve integer ordering, and break equal distances by ascending primary key. Promote float32 inputs to double before subtraction to avoid overflow. Only winner keys should be retained, then fetch projected data by primary key.",
+      "source_kind": "attributed_assistant_summary"
     },
     {
       "id": "a5",
-      "role": "agent",
-      "content": "Initial sorted-run buffering was insufficient: merging every run at once could exceed memory with wide rows. Add bounded fan-in multi-pass merge and an independent 384MiB/96MiB address-limit test. Similarly, retaining whole TopK rows could consume gigabytes when projection only needs IDs; replace whole-row candidates with keys."
+      "role": "assistant",
+      "content": "Initial sorted-run buffering was insufficient: merging every run at once could exceed memory with wide rows. Add bounded fan-in multi-pass merge and an independent 384MiB/96MiB address-limit test. Similarly, retaining whole TopK rows could consume gigabytes when projection only needs IDs; replace whole-row candidates with keys.",
+      "source_kind": "attributed_assistant_summary"
     },
     {
       "id": "a6",
-      "role": "agent",
-      "content": "Implement a real exact Flat vector index, not only a persisted has_index flag. Bound resident index payload, use sequential disk records for larger data, invalidate derived structures on mutations/undo, and rebuild persisted definitions before startup readiness."
+      "role": "assistant",
+      "content": "Implement a real exact Flat vector index, not only a persisted has_index flag. Bound resident index payload, use sequential disk records for larger data, invalidate derived structures on mutations/undo, and rebuild persisted definitions before startup readiness.",
+      "source_kind": "attributed_assistant_summary"
+    },
+    {
+      "id": "u_validate_commit",
+      "role": "user",
+      "content": "继续验证这个 commit 的 Docker 镜像能不能构建、官方协议能不能跑通。有问题直接修，测完推到同一个分支，给我最新 commit id，正式评测我自己交。",
+      "source_kind": "exact_user_excerpt"
+    },
+    {
+      "id": "u_check_updates",
+      "role": "user",
+      "content": "检查赛事组是否更新",
+      "source_kind": "exact_user_excerpt",
+      "date": "2026-11-10"
+    },
+    {
+      "id": "u_protocol_recheck",
+      "role": "user",
+      "content": "有人有分了，你研究一下有没有给资料",
+      "source_kind": "exact_user_excerpt",
+      "date": "2026-11-10"
+    },
+    {
+      "id": "a_protocol_discovery",
+      "role": "assistant",
+      "content": "Agent summary: rechecked official sources after the student reported scored submissions. Found organizer commit f4d4e26653af823a7601668802f80e374ad6643c, published 2026-11-10 03:30:03 UTC, with STDIO_PROTOCOL.md and protocol_check. It explicitly specifies JSONL; the prior TSV adapter was incompatible. Public TSV fixture success did not establish formal protocol compatibility.",
+      "source_kind": "attributed_assistant_summary",
+      "date": "2026-11-10"
+    },
+    {
+      "id": "u_protocol_implementation",
+      "role": "user",
+      "content": "那么开始吧，改动你写的，完成这道题，分数尽可能高",
+      "source_kind": "exact_user_excerpt",
+      "date": "2026-11-10"
+    },
+    {
+      "id": "a_protocol_implementation",
+      "role": "assistant",
+      "content": "Agent summary: implemented startup ready, execute and shutdown JSONL; preserved request IDs, BIGINT integers, VARCHAR strings and vector arrays; buffered typed query responses until success. Independent review found UTF-8 diagnostic truncation could terminate error reporting, so diagnostic serialization was repaired and a regression added. Explicit legacy SQL mode is retained for engine tests.",
+      "source_kind": "attributed_assistant_summary",
+      "date": "2026-11-10"
+    },
+    {
+      "id": "a_official_driver_validation",
+      "role": "assistant",
+      "content": "Agent summary: the previously authorized SSH host no longer returned its banner. Used GitHub Actions with actual Docker to run the bundled official driver. Source and image handshake checks and all 20 public cases passed, as did independent transaction, malformed request, shutdown, restart and acknowledged-commit SIGKILL checks. This validates the public interface, not the unpublished formal gate. Formal submissions remain the student responsibility.",
+      "source_kind": "attributed_assistant_summary",
+      "date": "2026-11-10"
+    },
+    {
+      "id": "a_conservative_optimization",
+      "role": "assistant",
+      "content": "Agent summary: after protocol checks passed, measured an exact distance implementation change that replaces neighboring-double library calls with IEEE binary64 neighbors. All bitwise reference checks passed; five alternating same-process runs showed a 1.04366x median kernel speedup. Separately investigated a conservative lower-bound TopK rejection with a documented rounding-error proof; ambiguous and equal-distance candidates retain exact evaluation. Only measured and validated candidates are retained.",
+      "source_kind": "attributed_assistant_summary",
+      "date": "2026-11-10"
+    },
+    {
+      "id": "u_result_review",
+      "role": "user",
+      "content": "本轮得分并不够，你先打开界面我登录后自行研究",
+      "source_kind": "exact_user_excerpt",
+      "date": "2026-11-11"
+    },
+    {
+      "id": "u_unsatisfied",
+      "role": "user",
+      "content": "你的分数不尽人意",
+      "source_kind": "exact_user_excerpt",
+      "date": "2026-11-11"
+    },
+    {
+      "id": "u_prompt_zero",
+      "role": "user",
+      "content": "agent prompt 0分",
+      "source_kind": "exact_user_excerpt",
+      "date": "2026-11-11"
+    },
+    {
+      "id": "u_rank_report",
+      "role": "user",
+      "content": "是性能榜60多名，总榜80开外了",
+      "source_kind": "exact_user_excerpt",
+      "date": "2026-11-11"
+    },
+    {
+      "id": "u_iterate",
+      "role": "user",
+      "content": "请自行研究并迭代，目标是更高的分数，目前最高分大概是5000+，想办法超越",
+      "source_kind": "exact_user_excerpt",
+      "date": "2026-11-11"
+    },
+    {
+      "id": "a_material_review",
+      "role": "assistant",
+      "date": "2026-11-11",
+      "source_kind": "attributed_assistant_summary",
+      "content": "Agent summary: read the submitted platform result and current material rules. Commit fa562be passed MySQL, with displayed performance E2180.028190. The Prompt panel reported an invalid result pending review; its combined diagnostic does not identify whether the range check, summary extraction, or another evaluator issue caused failure. The current official material path is agent/conversation.json. The root file had been updated to 12571 bytes while that default-path file remained an older 8443-byte version. Both independently satisfied UTF-8/object/128KiB checks. Synchronize the authentic records, add a concise factual summary and standard user/assistant roles, keep original user excerpts separate from attributed Agent summaries, and validate provenance references locally. This material repair does not establish a formal Agent rating or prove the cause of the earlier invalid result."
+    }
+  ],
+  "user_prompts": [
+    {
+      "message_id": "u1",
+      "prompt": "开始，奔着满分去"
+    },
+    {
+      "message_id": "u2",
+      "prompt": "我所有的东西都给你了，你先做这道题"
+    },
+    {
+      "message_id": "u3",
+      "prompt": "好，尽量做吧，分数尽可能高"
+    },
+    {
+      "message_id": "u4",
+      "prompt": "新的计分规则，好好研究一下怎么拿高分，然后完成这道题，所有的权限我都批准"
+    },
+    {
+      "message_id": "u_validate_commit",
+      "prompt": "继续验证这个 commit 的 Docker 镜像能不能构建、官方协议能不能跑通。有问题直接修，测完推到同一个分支，给我最新 commit id，正式评测我自己交。"
+    },
+    {
+      "message_id": "u_check_updates",
+      "prompt": "检查赛事组是否更新",
+      "date": "2026-11-10"
+    },
+    {
+      "message_id": "u_protocol_recheck",
+      "prompt": "有人有分了，你研究一下有没有给资料",
+      "date": "2026-11-10"
+    },
+    {
+      "message_id": "u_protocol_implementation",
+      "prompt": "那么开始吧，改动你写的，完成这道题，分数尽可能高",
+      "date": "2026-11-10"
+    },
+    {
+      "message_id": "u_result_review",
+      "prompt": "本轮得分并不够，你先打开界面我登录后自行研究",
+      "date": "2026-11-11"
+    },
+    {
+      "message_id": "u_unsatisfied",
+      "prompt": "你的分数不尽人意",
+      "date": "2026-11-11"
+    },
+    {
+      "message_id": "u_prompt_zero",
+      "prompt": "agent prompt 0分",
+      "date": "2026-11-11"
+    },
+    {
+      "message_id": "u_rank_report",
+      "prompt": "是性能榜60多名，总榜80开外了",
+      "date": "2026-11-11"
+    },
+    {
+      "message_id": "u_iterate",
+      "prompt": "请自行研究并迭代，目标是更高的分数，目前最高分大概是5000+，想办法超越",
+      "date": "2026-11-11"
+    }
+  ],
+  "conversations": [
+    {
+      "id": "initial_goal_and_core_work",
+      "user_message_ids": [
+        "u1",
+        "u2",
+        "u3",
+        "u4"
+      ],
+      "assistant_message_ids": [
+        "a1",
+        "a2",
+        "a3",
+        "a4",
+        "a5",
+        "a6"
+      ],
+      "summary": "User delegated the task and supplied the scoring document. Agent examined the existing fork, prioritized functional behavior, repaired transaction/recovery and resource-limit defects, and implemented physical exact Flat indexing. The technical findings are Agent contributions; the user excerpts do not explain those algorithms."
+    },
+    {
+      "id": "independent_validation_request",
+      "user_message_ids": [
+        "u_validate_commit"
+      ],
+      "assistant_message_ids": [
+        "a_official_driver_validation"
+      ],
+      "summary": "User requested actual image construction and protocol verification, with formal submission retained by the user. Agent ran public checks and local regressions; this record distinguishes them from formal admission."
+    },
+    {
+      "id": "published_protocol_and_reimplementation",
+      "user_message_ids": [
+        "u_check_updates",
+        "u_protocol_recheck",
+        "u_protocol_implementation"
+      ],
+      "assistant_message_ids": [
+        "a_protocol_discovery",
+        "a_protocol_implementation",
+        "a_official_driver_validation",
+        "a_conservative_optimization"
+      ],
+      "summary": "After the user requested a source recheck and reported that others had results, Agent found the newly published official JSONL package, replaced the incompatible TSV adapter, tested the actual Docker image, and measured conservative exact-distance/TopK optimizations. No student technical explanation is inferred from the request to proceed."
+    },
+    {
+      "id": "formal_result_and_material_review",
+      "user_message_ids": [
+        "u_result_review",
+        "u_unsatisfied",
+        "u_prompt_zero",
+        "u_rank_report",
+        "u_iterate"
+      ],
+      "assistant_message_ids": [
+        "a_material_review"
+      ],
+      "summary": "User was dissatisfied with the formal result and requested independent iteration. The user described Prompt as zero and reported approximate leaderboard positions; the observed platform instead labelled Prompt invalid pending review. Agent found divergent material copies and corrected the attribution/summary layout without treating that finding as proof of the evaluator failure cause."
     }
   ],
   "experiments": [
@@ -67,57 +308,295 @@
       "id": "baseline",
       "source": "tool stdout",
       "status": "executed",
-      "output": "Initial fork baseline: 9 case(s) passed in the independently written local harness. This was not an official test result."
+      "output": "Initial fork baseline: 9 case(s) passed in the independently written local harness. This was not an official test result.",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output."
     },
     {
       "id": "regression_initial",
       "source": "tool stdout",
       "status": "executed",
-      "output": "PASS failed explicit and implicit INSERT are atomic\nPASS finite float32 endpoints do not overflow distance\nPASS 200-operation independent transaction model\nPASS 45 filtered and unfiltered TopK oracle queries\nRESULT 9 independent regression groups passed"
+      "output": "PASS failed explicit and implicit INSERT are atomic\nPASS finite float32 endpoints do not overflow distance\nPASS 200-operation independent transaction model\nPASS 45 filtered and unfiltered TopK oracle queries\nRESULT 9 independent regression groups passed",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output."
     },
     {
       "id": "initial_ab",
       "source": "tool stdout",
       "status": "executed_exploratory",
-      "output": "seed=7319, rows=10000, dim=128, queries=1000. Baseline query_seconds=3.706768097821623; first candidate query_seconds=1.3723418177105486. Both reported recall_unfiltered=1.0 and recall_filtered=1.0, restart_contents=pass. Baseline overlapped compilation, so this is exploratory and superseded by isolated repeated runs when available. Process RSS and /proc/io are not official cgroup metrics."
+      "output": "seed=7319, rows=10000, dim=128, queries=1000. Baseline query_seconds=3.706768097821623; first candidate query_seconds=1.3723418177105486. Both reported recall_unfiltered=1.0 and recall_filtered=1.0, restart_contents=pass. Baseline overlapped compilation, so this is exploratory and superseded by isolated repeated runs when available. Process RSS and /proc/io are not official cgroup metrics.",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output."
     },
     {
       "id": "large_initial",
       "source": "tool stdout",
       "status": "executed",
       "output": "build_under_address_limit max_rss_kib=35080 payload_bytes=268435456\nrecovery_children_sigkilled=6\nwal_recovery_under_address_limit max_rss_kib=35324 payload_bytes=268435456\ncheckpoint_under_address_limit max_rss_kib=36820 payload_bytes=268435456\nsnapshot_recovery_rss_only max_rss_kib=296644 payload_bytes=268435456\nPASS large payload, WAL restart, repeated recovery SIGKILL, snapshot integrity",
-      "agent_interpretation": "The address limit applies to construction/WAL/checkpoint, not snapshot mmap. Snapshot RSS remained high; add consumed-page MADV_DONTNEED and retest. This test is not cgroup memory.peak proof."
+      "agent_interpretation": "The address limit applies to construction/WAL/checkpoint, not snapshot mmap. Snapshot RSS remained high; add consumed-page MADV_DONTNEED and retest. This test is not cgroup memory.peak proof.",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output."
     },
     {
       "id": "resource_counterexamples",
       "source": "tool stdout",
       "status": "executed",
-      "output": "PASS external run merge, signed BIGINT keys, DESC ties, payload integrity, fan-in under 96MiB address cap\nPASS 256MiB unprojected vector payload TopK under 160MiB address cap"
+      "output": "PASS external run merge, signed BIGINT keys, DESC ties, payload integrity, fan-in under 96MiB address cap\nPASS 256MiB unprojected vector payload TopK under 160MiB address cap",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output.",
+      "artifacts": [
+        {
+          "path": "validation/raw/final-sort.log",
+          "sha256": "61b420362babfa3d24cd68aed5b005de58243a1ebaa4e46bac4b8e05a012da6b"
+        },
+        {
+          "path": "validation/raw/final-topk.log",
+          "sha256": "eb9d8f106992ce0b77394ae9a5fe2d01e9671331b7391a73f9c5c111309f8fdc"
+        }
+      ]
     },
     {
       "id": "sanitizer_initial",
       "source": "tool stdout",
       "status": "executed",
-      "output": "AddressSanitizer/UndefinedBehaviorSanitizer recovery test exit=0. PASS transaction, DDL generation, WAL-tail and checkpoint regressions. This run preceded the physical Flat index addition; final version needs its own checks."
+      "output": "AddressSanitizer/UndefinedBehaviorSanitizer recovery test exit=0. PASS transaction, DDL generation, WAL-tail and checkpoint regressions. This run preceded the physical Flat index addition; final version needs its own checks.",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output."
     },
     {
       "id": "paired_flat_and_resources",
       "source": "tool stdout and validation/raw",
       "status": "executed",
-      "output": "Three independent 10k/128d/1000-query rounds: query speedups [5.132, 5.118, 5.884]; filtered/unfiltered recall=1.0 in every round. 256MiB payload restart and six recovery SIGKILLs passed, snapshot RSS 40004KiB after consumed-page reclamation. Full local suite and forced-disk Flat passed. Performance precedes final parser/cursor integration; no official score inferred."
+      "output": "Three independent 10k/128d/1000-query rounds: query speedups [5.132, 5.118, 5.884]; filtered/unfiltered recall=1.0 in every round. 256MiB payload restart and six recovery SIGKILLs passed, snapshot RSS 40004KiB after consumed-page reclamation. Full local suite and forced-disk Flat passed. Performance precedes final parser/cursor integration; no official score inferred.",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output.",
+      "artifacts": [
+        {
+          "path": "validation/raw/paired.log",
+          "sha256": "fc7dd4d13421e489ebdff3515681af99e615d87c78a4ab78f35d1d24247c6982"
+        },
+        {
+          "path": "validation/raw/final-large.log",
+          "sha256": "4c0ce52429ec93e21757aff56df0511c0c0d3e8758e26cd2a80ed15d628d487c"
+        }
+      ]
     },
     {
       "id": "integrated_final",
       "source": "tool stdout, validation/raw/integrated-final.log and integrated-bench.json",
       "status": "executed",
-      "output": "Final merged source: complete make test passed, 9 SQL harness cases passed, static build and 10 Python regression groups passed. 10k rows/128d/1000 queries: write_seconds=0.5270600998774171, query_seconds=0.6543118259869516, both recalls=1.0, restart=pass. Cloud and local src SHA256 hashes identical. An initial harness command omitted its required run subcommand, then was corrected and passed. No official score claimed."
+      "output": "Final merged source: complete make test passed, 9 SQL harness cases passed, static build and 10 Python regression groups passed. 10k rows/128d/1000 queries: write_seconds=0.5270600998774171, query_seconds=0.6543118259869516, both recalls=1.0, restart=pass. Cloud and local src SHA256 hashes identical. An initial harness command omitted its required run subcommand, then was corrected and passed. No official score claimed.",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output.",
+      "artifacts": [
+        {
+          "path": "validation/raw/integrated-final.log",
+          "sha256": "f3e8cfdf65dcfe1bd3467f3f6be0c3203c0ff6403cb824521405d93bee70d517"
+        },
+        {
+          "path": "validation/raw/integrated-bench.json",
+          "sha256": "1802666625fabce3d72aff1f0dfe8307b05c135ba9d3902428faeb1374649a2c"
+        }
+      ]
+    },
+    {
+      "id": "official_jsonl_and_docker",
+      "source": "GitHub Actions 42821410516 and validation/raw/jsonl-ci-first.log",
+      "status": "executed",
+      "output": "Source build and engine tests passed, all 20 official public cases passed for source and real Docker image, handshake/shutdown passed. Five independent JSONL groups passed. The driver was the unchanged organizer f4d4e266 package.",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output.",
+      "artifacts": [
+        {
+          "path": "validation/raw/jsonl-ci-first.log",
+          "sha256": "1db6ee8083be77e90ad06db852042816af1ab5509020b2a9836bd5306d575676"
+        }
+      ]
+    },
+    {
+      "id": "jsonl_exact_bound_final",
+      "source": "GitHub Actions 42824224037 and validation/raw/jsonl-topk-ci.log",
+      "status": "executed",
+      "output": "Candidate a665c323c34ea4b4e593eab62588a58312a2ed6e passed source and image official checks; 7200 distance cases, 63 midpoint cases, 50000 neighbor comparisons and conservative-threshold checks passed. Independent integer/Fraction TopK queries passed. Real image ID sha256:0ef5a2615e17af643aba3b5517426cb1f208feb0fe00665b4f183156a93d93ac.",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output.",
+      "artifacts": [
+        {
+          "path": "validation/raw/jsonl-topk-ci.log",
+          "sha256": "cf5caa998f18072e638468fa98812e0c90144b404689278bf78efce3dd85e2bc"
+        }
+      ]
+    },
+    {
+      "id": "jsonl_paired_benchmark",
+      "source": "validation/raw/jsonl-topk-paired.json and paired per-seed reports",
+      "status": "executed",
+      "output": "Same runner, official 2CPU/2GiB Docker constraints, three seeds, 10000 rows, 128 dimensions, K10, 1000 queries per exact/ann mode, half filtered. Baseline exact seconds=[1.549340629,1.556824065,1.537942564]; candidate=[0.455824874,0.451866376,0.451893902]. Paired speedups=[3.398982191,3.445319563,3.403326660], median=3.403326660. All six runs passed exact/ann agreement, sampled full-scan oracle, tie and restart checks. This is not an official score.",
+      "actor": "assistant",
+      "scope": "Historical tool result for the implementation stage described; later results do not retroactively change this output.",
+      "artifacts": [
+        {
+          "path": "validation/raw/jsonl-topk-paired.json",
+          "sha256": "45b42353ba6d99a25bd1cdc12b2c8f95779972cc4583f9f9052eb56690c11240"
+        },
+        {
+          "path": "validation/raw/jsonl-topk-baseline-7319.json",
+          "sha256": "29e2d30b24740800ee2b1ea47ef8afce63869697ab1e556cbc98e15eec6c7edf"
+        },
+        {
+          "path": "validation/raw/jsonl-topk-candidate-7319.json",
+          "sha256": "8bfc5515af7570d4f754db60405bea682d8d033b78a6a5de73cd4c8c3d181a6e"
+        },
+        {
+          "path": "validation/raw/jsonl-topk-baseline-19417.json",
+          "sha256": "a812a75ce8de396c06f0ec8f87eb045e4103ff5604006e9c69486fd35f0e9096"
+        },
+        {
+          "path": "validation/raw/jsonl-topk-candidate-19417.json",
+          "sha256": "a3d5668ced2001994e4f5dd462c96cce6cd73d616bde779ea12b9bd583961ecc"
+        },
+        {
+          "path": "validation/raw/jsonl-topk-baseline-38021.json",
+          "sha256": "a6ba5a1457c037285b40b51ef5ff6151d5b3b4d379862a9f688d9bf25e2ce9d1"
+        },
+        {
+          "path": "validation/raw/jsonl-topk-candidate-38021.json",
+          "sha256": "508994d071dd86f686ce28e0b42a963e24d92539df3cfa6187b11c8ad757ded2"
+        }
+      ]
+    }
+  ],
+  "evaluation_records": [
+    {
+      "kind": "formal_platform_observation",
+      "source": "OceanBase submitted-result page, read in the logged-in browser",
+      "source_url": "https://open.oceanbase.com/train/TestRecord?questionId=600072",
+      "commit": "fa562be",
+      "submission_timestamp_display": "2026-11-10 21:33",
+      "submission_timezone": "Asia/Shanghai",
+      "mysql_gate": "passed",
+      "performance_e_display": "2180.028190",
+      "prompt_status": "invalid_pending_review",
+      "prompt_message": "Prompt结果无效、待复核、超出平台0–100范围或缺少材料摘要，本项不参与排名；未截断或换算本地分数。",
+      "interpretation": "The combined diagnostic does not distinguish an out-of-range evaluator result from missing summary extraction. No final Agent rating is inferred. Current scoring text section 3.4 permits an unbounded raw evaluation and describes citation failures as evaluator output anomalies requiring review; the displayed 0-100 validation therefore needs organizer clarification."
+    },
+    {
+      "kind": "user_report",
+      "date": "2026-11-11",
+      "message_ids": [
+        "u_prompt_zero",
+        "u_rank_report",
+        "u_iterate"
+      ],
+      "interpretation": "Zero Prompt, approximate leaderboard positions and the 5000+ target are the user's report or goal, not independently verified raw evaluator output."
+    }
+  ],
+  "material_revision": {
+    "date": "2026-11-11",
+    "actor": "assistant",
+    "previous_root_bytes": 12571,
+    "previous_root_sha256": "a9365c7f8d41f7dd82c3db5f420295cb36ac133442d0c91dfd554911a7e39ba9",
+    "previous_default_path_bytes": 8443,
+    "previous_default_path_sha256": "28526bdd4d14cd7b5539622644014d8f281f93a41ea17f06f1db6ea2bb2ba460",
+    "finding": "The two previously valid JSON objects differed; the official default-path copy omitted the newer JSONL and benchmark material present at root.",
+    "change": "Preserve the root historical experiment outputs, add exact later user feedback and an attributed factual summary, use standard user/assistant role labels, and synchronize the two paths byte-for-byte.",
+    "limit": "This is an independently verifiable material correction, not proof of which condition produced the platform Prompt diagnostic."
+  },
+  "retrospective": [
+    {
+      "actor": "assistant",
+      "observation": "SQL fixture success alone did not establish wire compatibility. The newly published JSONL driver exposed a real interface mismatch; actual image/driver checks were added after that publication.",
+      "evidence_ids": [
+        "official_jsonl_and_docker",
+        "jsonl_exact_bound_final"
+      ]
+    },
+    {
+      "actor": "assistant",
+      "observation": "Performance and resource claims are scoped to the measured stage and method. Early overlapping compilation, RSS-only measurements and later paired Docker tests are explicitly distinguished. Formal E2180.028190 is a separate observation, not a conversion from local speedups.",
+      "evidence_ids": [
+        "initial_ab",
+        "large_initial",
+        "jsonl_paired_benchmark"
+      ]
+    },
+    {
+      "actor": "assistant",
+      "observation": "Material checks must use the current documented default path. Valid JSON and a local performance result do not by themselves validate evaluator extraction, citations or a formal Agent rating.",
+      "evidence_ids": [
+        "material_revision",
+        "formal_platform_observation"
+      ]
     }
   ],
   "limitations": [
-    "No official driver, hidden functional admission, baseline T/B/M or final leaderboard has been observed. No formal score is claimed.",
-    "Student messages mainly delegate implementation and identify the scoring document. Agent technical explanations and tool results do not establish student understanding; no student explanation, disagreement or experiment participation is fabricated.",
-    "Two public documents disagree on four versus five learning dimensions and best versus most recent default final version. Preserve authentic evidence and explicitly select a final commit.",
-    "Selected transcripts omit repetitive progress messages and source code; this selection is documented rather than represented as a complete record.",
-    "Prior repository agent/conversation.json contained a paraphrased English initial prompt whose original source is not available in this chat; it is excluded from current student evidence."
+    "MySQL admission and displayed performance E2180.028190 for fa562be are now observed formal results. Prompt remains invalid pending review; raw evaluator output, component reasons and the precise failed condition are unavailable. No Agent rating or promised leaderboard result is assigned here.",
+    "User excerpts mainly set goals, delegate implementation, request validation and report dissatisfaction. Agent explanations, algorithms and tool output do not establish student understanding. No student reflection, disagreement about an algorithm, code authorship or experiment participation is fabricated.",
+    "This is a selected record. Historical assistant messages are explicitly attributed summaries, not a verbatim transcript; repetitive progress messages and source code are omitted. Dates are provided only where known, without invented message timestamps.",
+    "Old exploratory/resource results remain as historical evidence with their original caveats. Artifact hashes locate retained logs but do not turn local tests into official hidden tests or cgroup measurements.",
+    "The current material specification describes unbounded raw evaluation, while the observed platform diagnostic mentions a 0-100 range or missing summary. This record cannot determine which branch failed and does not rewrite the official rating.",
+    "An older fork material included a paraphrased English initial prompt whose original source was unavailable in this conversation; it is excluded from user evidence. Credentials and hidden reasoning are excluded."
+  ],
+  "evidence_index": [
+    {
+      "json_pointer": "/messages/0/content",
+      "quote": "开始，奔着满分去",
+      "attribution": "exact user goal; not an algorithm explanation"
+    },
+    {
+      "json_pointer": "/messages/10/content",
+      "quote": "正式评测我自己交",
+      "attribution": "exact user responsibility/validation request"
+    },
+    {
+      "json_pointer": "/messages/11/content",
+      "quote": "检查赛事组是否更新",
+      "attribution": "exact user source-check request"
+    },
+    {
+      "json_pointer": "/messages/12/content",
+      "quote": "有人有分了，你研究一下有没有给资料",
+      "attribution": "exact user source-check request"
+    },
+    {
+      "json_pointer": "/messages/14/content",
+      "quote": "那么开始吧，改动你写的，完成这道题，分数尽可能高",
+      "attribution": "exact user delegation"
+    },
+    {
+      "json_pointer": "/messages/20/content",
+      "quote": "agent prompt 0分",
+      "attribution": "exact user wording; separate from platform status"
+    },
+    {
+      "json_pointer": "/messages/21/content",
+      "quote": "是性能榜60多名，总榜80开外了",
+      "attribution": "exact user report; approximate positions not independently verified"
+    },
+    {
+      "json_pointer": "/messages/22/content",
+      "quote": "请自行研究并迭代，目标是更高的分数",
+      "attribution": "exact user iteration request"
+    },
+    {
+      "json_pointer": "/messages/13/content",
+      "quote": "the prior TSV adapter was incompatible",
+      "attribution": "attributed assistant source/protocol finding"
+    },
+    {
+      "json_pointer": "/experiments/10/output",
+      "quote": "median=3.403326660",
+      "attribution": "historical local paired measurement by assistant; not an official score"
+    },
+    {
+      "json_pointer": "/evaluation_records/0/prompt_message",
+      "quote": "Prompt结果无效、待复核、超出平台0–100范围或缺少材料摘要，本项不参与排名；未截断或换算本地分数。",
+      "attribution": "observed platform message, not a student explanation"
+    },
+    {
+      "json_pointer": "/material_revision/finding",
+      "quote": "the official default-path copy omitted the newer JSONL and benchmark material present at root",
+      "attribution": "assistant file comparison; not proof of evaluator failure cause"
+    }
   ]
 }

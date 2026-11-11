@@ -5,6 +5,10 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#if (defined(__x86_64__) || defined(__i386__)) && (defined(__GNUC__) || defined(__clang__))
+#include <immintrin.h>
+#define MVDB_SIMD_BOUND_X86 1
+#endif
 
 namespace mvdb {
 namespace distance_detail {
@@ -161,7 +165,7 @@ inline double distance_scalar(const float* a,const float* b,size_t n) {
 
 // Conservative rejection only: true proves distance_exact(a,b,n) > threshold.
 // Uses the same round-to-nearest IEEE model as distance_scalar; no fast-math.
-inline bool distance_definitely_greater(const float* a,const float* b,size_t n,
+inline bool distance_definitely_greater_double(const float* a,const float* b,size_t n,
                                         double threshold) {
   if(!n || n>(uint64_t(1)<<32) || !std::isfinite(threshold) || threshold<0)
     return false;
@@ -194,6 +198,90 @@ inline bool distance_definitely_greater(const float* a,const float* b,size_t n,
   if(!(lower_candidate>0) || !std::isfinite(lower_candidate))return false;
   const double lower=distance_detail::positive_neighbors(lower_candidate).lower;
   return lower>threshold;
+}
+
+namespace distance_detail {
+#if defined(MVDB_SIMD_BOUND_X86)
+__attribute__((target("sse2,no-avx,no-fma")))
+inline double bound_sum_sse2(const float* a,const float* b,size_t n) {
+  __m128 s0=_mm_setzero_ps(),s1=_mm_setzero_ps();
+  size_t i=0;
+  for(;i+8<=n;i+=8) {
+    const __m128 d0=_mm_sub_ps(_mm_loadu_ps(a+i),_mm_loadu_ps(b+i));
+    const __m128 d1=_mm_sub_ps(_mm_loadu_ps(a+i+4),_mm_loadu_ps(b+i+4));
+    s0=_mm_add_ps(s0,_mm_mul_ps(d0,d0));s1=_mm_add_ps(s1,_mm_mul_ps(d1,d1));
+  }
+  float lanes[8];_mm_storeu_ps(lanes,s0);_mm_storeu_ps(lanes+4,s1);
+  double sum=0;for(float lane:lanes)sum+=lane;
+  for(;i<n;++i){const float d=a[i]-b[i];const float term=d*d;sum+=term;}
+  return sum;
+}
+__attribute__((target("avx2,no-fma")))
+inline double bound_sum_avx2(const float* a,const float* b,size_t n) {
+  __m256 s0=_mm256_setzero_ps(),s1=_mm256_setzero_ps();
+  size_t i=0;
+  for(;i+16<=n;i+=16) {
+    const __m256 d0=_mm256_sub_ps(_mm256_loadu_ps(a+i),_mm256_loadu_ps(b+i));
+    const __m256 d1=_mm256_sub_ps(_mm256_loadu_ps(a+i+8),_mm256_loadu_ps(b+i+8));
+    s0=_mm256_add_ps(s0,_mm256_mul_ps(d0,d0));s1=_mm256_add_ps(s1,_mm256_mul_ps(d1,d1));
+  }
+  float lanes[16];_mm256_storeu_ps(lanes,s0);_mm256_storeu_ps(lanes+8,s1);
+  double sum=0;for(float lane:lanes)sum+=lane;
+  for(;i<n;++i){const float d=a[i]-b[i];const float term=d*d;sum+=term;}
+  return sum;
+}
+using BoundSum = double(*)(const float*,const float*,size_t);
+inline BoundSum choose_bound_sum() {
+  if(__builtin_cpu_supports("avx2"))return bound_sum_avx2;
+  if(__builtin_cpu_supports("sse2"))return bound_sum_sse2;
+  return nullptr;
+}
+#endif
+
+inline bool float_sum_definitely_greater(double sum,size_t n,double threshold) {
+  if(!std::isfinite(sum) || !(sum>threshold))return false;
+  // u=2^-24, eta=2^-150. A subnormal float32 subtraction is exact;
+  // multiplication contributes at most eta absolute rounding error. Positive
+  // float additions that remain subnormal are exact. Including double lane
+  // reduction, the computed S <= (D+n*eta)*(1+u)^(n+12), for exact D.
+  // Bernoulli gives D >= S*(1-(n+12)*u)-n*eta. The deliberately looser error
+  // 4*(n+12)*u*S + 4*n*eta also covers rounding D to binary64. n<=65536,
+  // so the relative factor stays below .016. All bound arithmetic is double,
+  // and each error operation rounds upward, the final subtraction downward.
+  const double relative=(static_cast<double>(n)+12)*0x1p-22;
+  const double absolute=static_cast<double>(n)*0x1p-148;
+  const double product=positive_neighbors(sum*relative).upper;
+  const double error=positive_neighbors(product+absolute).upper;
+  const double lower=sum-error;
+  return lower>0 && positive_neighbors(lower).lower>threshold;
+}
+}
+
+inline bool distance_definitely_greater(const float* a,const float* b,size_t n,
+                                        double threshold) {
+#if defined(MVDB_SIMD_BOUND_X86)
+  // The fallback double bound assumes the same floating-point environment.
+  // DAZ can change float inputs even during conversion to double, so guard
+  // every dimension, including paths that never execute the SIMD kernel.
+  if(_mm_getcsr() & ((1u<<6)|(1u<<15)|(3u<<13)))return false;
+#endif
+#if defined(MVDB_DISABLE_SIMD_BOUND)
+  return distance_definitely_greater_double(a,b,n,threshold);
+#else
+#if defined(MVDB_SIMD_BOUND_X86) && !defined(__FAST_MATH__)
+  if(n>=16 && n<=65536 && std::isfinite(threshold) && threshold>=0) {
+    static const auto sum_function=distance_detail::choose_bound_sum();
+    if(sum_function) {
+      const double sum=sum_function(a,b,n);
+      if(std::isfinite(sum))
+        return distance_detail::float_sum_definitely_greater(sum,n,threshold);
+      // Float overflow is common for valid extreme coordinates. The original
+      // double bound remains safe over the complete finite float32 domain.
+    }
+  }
+#endif
+  return distance_definitely_greater_double(a,b,n,threshold);
+#endif
 }
 
 inline double distance_squared(const float* a,const float* b,size_t n) {

@@ -30,6 +30,12 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
   if(count<=budget/stride) {
     vectors_.reserve(count*dimension);
     keys_.reserve(count);slots_.reserve(count);
+    // Reserve accounting room up front so lazy construction cannot exceed the
+    // database's combined resident-index budget. At most 1 MiB per index.
+    const size_t available=budget-count*stride;
+    const size_t entry=sizeof(std::pair<int64_t,size_t>);
+    if(count<=std::min<size_t>(available,1u<<20)/entry)
+      posting_budget_=count*entry;
   } else {
     std::string path=dir+"/.flat-XXXXXX";
     std::vector<char> name(path.begin(),path.end());name.push_back(0);
@@ -62,7 +68,26 @@ void FlatIndex::finish() {
   ready_=true;
 }
 size_t FlatIndex::resident_bytes() const {
-  return vectors_.capacity()*sizeof(float)+keys_.capacity()*sizeof(int64_t)+slots_.capacity()*sizeof(uint64_t);
+  return vectors_.capacity()*sizeof(float)+keys_.capacity()*sizeof(int64_t)+slots_.capacity()*sizeof(uint64_t)+posting_budget_;
+}
+bool FlatIndex::scan_integer_equal(size_t column,int64_t value,
+    const std::function<int64_t(uint64_t)>& read_value,const Visitor& visitor) {
+  if(!ready_)throw std::runtime_error("flat vector index is not ready");
+  if(fd_>=0 || (count_ && !posting_budget_))return false;
+  if(!postings_ready_ || posting_column_!=column) {
+    // Mark invalid first: an exception in read_value must not leave an older
+    // column's ready flag attached to partially replaced entries.
+    postings_ready_=false;postings_.clear();postings_.reserve(count_);
+    for(size_t i=0;i<count_;++i)postings_.emplace_back(read_value(slots_[i]),i);
+    std::sort(postings_.begin(),postings_.end());
+    posting_column_=column;postings_ready_=true;
+  }
+  auto first=std::lower_bound(postings_.begin(),postings_.end(),std::make_pair(value,size_t(0)));
+  for(auto it=first;it!=postings_.end() && it->first==value;++it) {
+    const size_t i=it->second;
+    if(!visitor(keys_[i],slots_[i],vectors_.data()+i*dimension_,dimension_))break;
+  }
+  return true;
 }
 void FlatIndex::scan(const Visitor& visitor) const {
   if(!ready_)throw std::runtime_error("flat vector index is not ready");

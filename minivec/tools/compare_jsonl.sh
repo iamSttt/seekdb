@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Compare immutable, previously validated JSONL source with the candidate image.
 set -euo pipefail
-baseline=1419648efd4bfb3abc5753403343790d79ef2b76
+baseline=fa562be89069a84215a6196c9e24e4c6274f3862
 root=$(git rev-parse --show-toplevel)
 cd "$root"
 if ! git cat-file -e "$baseline^{commit}" 2>/dev/null; then
@@ -29,7 +29,7 @@ for seed in (38021, 7319, 19417):
     base = json.loads(Path(f'protocol-results/benchmark-baseline-{seed}.json').read_text())
     candidate = json.loads(Path(f'protocol-results/benchmark-candidate-{seed}.json').read_text())
     ratios.append(base['query']['exact']['total_seconds'] / candidate['query']['exact']['total_seconds'])
-summary = {'baseline_commit': '1419648efd4bfb3abc5753403343790d79ef2b76',
+summary = {'baseline_commit': 'fa562be89069a84215a6196c9e24e4c6274f3862',
            'exact_query_speedups': ratios, 'median_exact_query_speedup': median(ratios),
            'scope': 'Local synthetic, paired on one runner with identical Docker resource limits; not a platform score.'}
 Path('protocol-results/paired-summary.json').write_text(json.dumps(summary, indent=2)+'\n')

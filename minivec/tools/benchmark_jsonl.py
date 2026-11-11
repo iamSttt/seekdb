@@ -15,6 +15,8 @@ import sys
 import tempfile
 from time import perf_counter
 
+from profile_container import ContainerProfile
+
 
 PROTOCOL_CHECK = Path(__file__).resolve().parents[2] / "protocol_check"
 sys.path.insert(0, str(PROTOCOL_CHECK))
@@ -124,25 +126,37 @@ def check_query(response, vectors, groups, group, query, count, label):
     return [key for _, key in ranked]
 
 
-def query_both_modes(session, vectors, groups, queries, oracle_indices):
+def query_both_modes(session, vectors, groups, queries, oracle_indices, query_order="interleaved", profile=None):
     sizes = Counter(groups)
     latency = {"exact": [], "ann": []}
     sampled_ids = {}
-    for index, (group, query, sql) in enumerate(queries):
-        count = min(TOP_K, len(vectors) if group is None else sizes[group])
-        ids = {}
-        # Alternate which mode runs first in blocks of two so filter parity
-        # does not determine the mode with a warmed query.
-        modes = ("exact", "ann") if (index // 2) % 2 == 0 else ("ann", "exact")
-        for mode in modes:
-            begin = perf_counter()
-            response = session.request(sql, mode=mode)
-            latency[mode].append(perf_counter() - begin)
-            ids[mode] = check_query(response, vectors, groups, group, query, count, f"{mode} query {index}")
-        require(ids["exact"] == ids["ann"], f"query {index}: exact {ids['exact']} differs from ann {ids['ann']}")
-        if index in oracle_indices:
-            sampled_ids[index] = ids["exact"]
-    return latency, sampled_ids
+    per_query = []
+    phases = [("interleaved", range(len(queries)))]
+    if query_order == "grouped":
+        phases = [("unfiltered", range(0, len(queries), 2)), ("filtered", range(1, len(queries), 2))]
+    for phase, indices in phases:
+        for index in indices:
+            group, query, sql = queries[index]
+            count = min(TOP_K, len(vectors) if group is None else sizes[group])
+            ids = {}
+            # Alternate which mode runs first in blocks of two so filter parity
+            # does not determine the mode with a warmed query.
+            modes = ("exact", "ann") if (index // 2) % 2 == 0 else ("ann", "exact")
+            for position, mode in enumerate(modes):
+                begin = perf_counter()
+                response = session.request(sql, mode=mode)
+                elapsed = perf_counter() - begin
+                latency[mode].append(elapsed)
+                per_query.append({"query_index": index, "phase": phase, "mode": mode,
+                                  "filtered": group is not None, "group": group,
+                                  "position_in_pair": position, "elapsed_seconds": elapsed})
+                ids[mode] = check_query(response, vectors, groups, group, query, count, f"{mode} query {index}")
+            require(ids["exact"] == ids["ann"], f"query {index}: exact {ids['exact']} differs from ann {ids['ann']}")
+            if index in oracle_indices:
+                sampled_ids[index] = ids["exact"]
+        if profile is not None:
+            profile.snapshot(f"after_{phase}_queries")
+    return latency, sampled_ids, per_query
 
 
 def check_oracle(vectors, groups, queries, sampled_ids):
@@ -190,6 +204,17 @@ def summarize(latency):
     }
 
 
+def summarize_queries(latency, per_query):
+    result = {}
+    for mode, samples in latency.items():
+        result[mode] = summarize(samples)
+        for name, filtered in (("unfiltered", False), ("filtered", True)):
+            times = [row["elapsed_seconds"] for row in per_query
+                     if row["mode"] == mode and row["filtered"] is filtered]
+            result[mode][name] = summarize(times)
+    return result
+
+
 def benchmark(args):
     config = json.loads((PROTOCOL_CHECK / "config.json").read_text(encoding="utf-8"))
     vectors, groups, queries, oracle_indices = make_workload(args.rows, args.queries, args.seed)
@@ -197,23 +222,49 @@ def benchmark(args):
     with tempfile.TemporaryDirectory(prefix="minivec-jsonl-bench-") as scratch:
         log = Path(scratch) / "database.stderr.log"
         session = Session(config, log, image=args.image, command=command)
+        profile = ContainerProfile(session, allow_sudo=args.sudo_cgroup)
+        phase_seconds = {}
         try:
             try:
+                begin = perf_counter()
                 session.start()
+                phase_seconds["startup"] = perf_counter() - begin
+                profile.snapshot("after_startup")
+                begin = perf_counter()
                 ingest_seconds = ingest(session, vectors, groups, args.batch_size)
+                phase_seconds["ingest_wall"] = perf_counter() - begin
+                profile.snapshot("after_ingest")
                 begin = perf_counter()
                 execute(session, "CREATE VECTOR INDEX docs_v ON docs(embedding);", "build vector index")
                 index_seconds = perf_counter() - begin
-                latency, sampled_ids = query_both_modes(session, vectors, groups, queries, oracle_indices)
+                profile.snapshot("after_index")
+                begin = perf_counter()
+                latency, sampled_ids, per_query = query_both_modes(
+                    session, vectors, groups, queries, oracle_indices, args.query_order, profile)
+                phase_seconds["query_wall_including_validation_and_phase_samples"] = perf_counter() - begin
+                profile.snapshot("after_queries_before_shutdown")
+                begin = perf_counter()
                 session.shutdown()
+                phase_seconds["shutdown_and_container_removal"] = perf_counter() - begin
+                profile.snapshot("after_shutdown_removal", removed=True)
 
                 begin = perf_counter()
                 session.start()
                 restart_seconds = perf_counter() - begin
+                profile.snapshot("after_restart")
                 vector_samples = check_restart(session, vectors, groups)
+                profile.snapshot("after_restart_verification")
+                begin = perf_counter()
                 session.shutdown()
+                phase_seconds["final_shutdown_and_container_removal"] = perf_counter() - begin
+                profile.snapshot("after_final_shutdown_removal", removed=True)
             finally:
-                session.close()
+                begin = perf_counter()
+                try:
+                    session.close()
+                finally:
+                    phase_seconds["cleanup_and_volume_removal"] = perf_counter() - begin
+                    profile.snapshot("after_cleanup", removed=True)
         except Exception:
             with log.open("rb") as stderr:
                 size = stderr.seek(0, 2)
@@ -234,7 +285,11 @@ def benchmark(args):
         "batch_size": args.batch_size,
         "ingest_seconds": ingest_seconds,
         "index_build_seconds": index_seconds,
-        "query": {mode: summarize(samples) for mode, samples in latency.items()},
+        "query_order": args.query_order,
+        "query": summarize_queries(latency, per_query),
+        "per_query": per_query,
+        "phase_seconds": phase_seconds,
+        "container_profile": profile.report(),
         "correctness": {
             "ann_matches_exact": True,
             "full_scan_oracle_query_indices": sorted(sampled_ids),
@@ -243,7 +298,7 @@ def benchmark(args):
             "restart_records_checked": args.rows,
             "restart_vectors_checked": vector_samples,
         },
-        "measurement": "End-to-end JSONL requests with shared index and interleaved modes. "
+        "measurement": "End-to-end JSONL requests with shared index and alternating mode order. "
                        "Query latency excludes workload generation and validation. Local diagnostic only.",
     }
 
@@ -258,6 +313,10 @@ def main():
     parser.add_argument("--queries", type=int, default=1000, help="queries per mode (at least 10)")
     parser.add_argument("--batch-size", type=int, choices=(100, 500), default=100)
     parser.add_argument("--seed", type=int, default=7319)
+    parser.add_argument("--query-order", choices=("interleaved", "grouped"), default="interleaved",
+                        help="grouped runs all unfiltered queries before filtered queries and samples each phase")
+    parser.add_argument("--sudo-cgroup", action="store_true",
+                        help="retry denied reads of this container's cgroup files with sudo -n cat")
     args = parser.parse_args()
     if args.rows < 2 or args.queries < ORACLE_QUERIES:
         parser.error(f"need at least two rows and {ORACLE_QUERIES} queries for the oracle and tie checks")
@@ -268,11 +327,13 @@ def main():
         if not args.binary.is_file():
             parser.error(f"binary does not exist: {args.binary}")
 
-    report = json.dumps(benchmark(args), indent=2, allow_nan=False)
+    result = benchmark(args)
+    report = json.dumps(result, indent=2, allow_nan=False)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x", encoding="utf-8") as stream:
         stream.write(report + "\n")
-    print(report)
+    print(json.dumps({key: value for key, value in result.items() if key != "per_query"}, indent=2))
+    print(f"Detailed report written to {args.output}")
 
 
 if __name__ == "__main__":
