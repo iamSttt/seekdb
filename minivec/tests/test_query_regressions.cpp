@@ -129,6 +129,68 @@ static void projection_regressions(Database& db) {
   }
   std::cout << "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows\n";
 }
+static void filtered_posting_regressions(Database& db) {
+  using Json=nlohmann::json;
+  struct Record {int64_t id,group;std::string text;std::vector<float> vector;};
+  std::vector<Record> records;
+  query(db,"CREATE TABLE filtered_postings(id BIGINT PRIMARY KEY,g BIGINT,s VARCHAR(8),v VECTOR(16))",false);
+  std::string err;int code=0;
+  for(int64_t i=47;i>=0;--i) {
+    Record row{i,i%3,i%2?"汉":"z",std::vector<float>(16)};
+    for(size_t j=0;j<row.vector.size();++j)row.vector[j]=float((i*5+int64_t(j)*3)%11-5);
+    assert(db.insert("filtered_postings",{Value::ofInt(row.id),Value::ofInt(row.group),
+        Value::ofStr(row.text),Value::ofVec(row.vector)},&err,&code));
+    records.push_back(std::move(row));
+  }
+  const std::string zero="'[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]'";
+  auto verify=[&] {
+    const std::vector<std::pair<std::string,std::function<bool(const Record&)>>> cases={
+      {"g=1",[](const Record& r){return r.group==1;}},
+      {"g='+01'",[](const Record& r){return r.group==1;}},
+      {"g=1 AND id>='0015' AND s='汉'",[](const Record& r){return r.group==1 && r.id>=15 && r.text=="汉";}},
+      {"id>=15 AND g=1 AND s<>'z'",[](const Record& r){return r.id>=15 && r.group==1 && r.text!="z";}},
+      {"g=1 AND g=2",[](const Record&){return false;}},
+      {"g=99",[](const Record&){return false;}},
+      {"g='bad' AND id>=15",[](const Record&){return false;}},
+      {"g=1 AND s=123",[](const Record&){return false;}},
+    };
+    for(const auto& test:cases)for(bool desc:{false,true})for(int k:{1,10,100}) {
+      // All coordinates are small integers, so this independent integer sum
+      // gives the canonical squared key exactly, without a distance helper.
+      std::vector<std::pair<int64_t,int64_t>> ranked;
+      for(const auto& row:records)if(test.second(row)) {
+        int64_t squared=0;
+        for(float value:row.vector){const int64_t coordinate=int64_t(value);squared+=coordinate*coordinate;}
+        ranked.emplace_back(desc?-squared:squared,row.id);
+      }
+      std::sort(ranked.begin(),ranked.end());
+      Json expected=Json::array();
+      for(size_t i=0;i<ranked.size() && i<size_t(k);++i)expected.push_back(Json::array({ranked[i].second}));
+      Statement statement;std::string output;
+      assert(parse_sql("SELECT id FROM filtered_postings WHERE "+test.first+
+          " ORDER BY L2_DISTANCE(v,"+zero+") "+(desc?"DESC":"ASC")+" LIMIT "+std::to_string(k),
+          &statement,&err,&code));
+      assert(execute_json(db,statement,&output,&err,&code));
+      assert(Json::parse(output).at("rows")==expected);
+    }
+  };
+  verify(); // The same independent expectations also cover unindexed fallback.
+  query(db,"CREATE VECTOR INDEX filtered_postings_v ON filtered_postings(v)",false);
+  verify();
+  query(db,"BEGIN",false);
+  query(db,"UPDATE filtered_postings SET g=2,v="+zero+" WHERE id=10",false);
+  assert(!db.table("filtered_postings")->vector_index);
+  const auto original=records;
+  for(auto& row:records)if(row.id==10){row.group=2;std::fill(row.vector.begin(),row.vector.end(),0);}
+  verify(); // Extra predicates read spilled rows while the equality uses new postings.
+  query(db,"ROLLBACK",false);records=original;verify();
+  query(db,"BEGIN",false);
+  query(db,"DELETE FROM filtered_postings WHERE id=7",false);
+  records.erase(std::remove_if(records.begin(),records.end(),[](const Record& row){return row.id==7;}),records.end());
+  verify();query(db,"ROLLBACK",false);records=original;verify();
+  std::cout<<"PASS filtered resident postings, coercion, residual AND predicates, exact ties and rollback\n";
+}
+
 static int stress_topk() {
   struct rlimit cap{160ull<<20,160ull<<20};assert(::setrlimit(RLIMIT_AS,&cap)==0);
   char path[]="/tmp/mvdb-query-topk-XXXXXX";assert(::mkdtemp(path));
@@ -158,6 +220,7 @@ int main(int argc,char** argv) {
   Database db;std::string err;int code=0;assert(db.open(path,&err));
   distance_regressions(db);
   projection_regressions(db);
+  filtered_posting_regressions(db);
   Column id;id.name="id";id.type=Type::BIGINT;id.is_primary=true;
   Column n;n.name="n";n.type=Type::BIGINT;
   Column s;s.name="s";s.type=Type::VARCHAR;s.len=30000;

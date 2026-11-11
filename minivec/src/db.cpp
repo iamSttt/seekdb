@@ -1694,6 +1694,46 @@ bool Database::resident_vector_view(const std::string& t, FlatIndex::ResidentVie
   return it->second.vector_index->resident_view(view);
 }
 
+bool Database::resident_integer_equal_view(const std::string& t,const std::vector<Cond>& conds,
+    FlatIndex::ResidentSelection* selection,std::function<bool(uint64_t)>* residual) {
+  if(!selection || !residual)return false;
+  *selection=FlatIndex::ResidentSelection{};*residual={};
+  auto it=tables_.find(t);
+  if(it==tables_.end() || !it->second.has_index || it->second.schema.vec_idx<0)return false;
+  Table& table=it->second;
+  Pred predicate;
+  if(!compile_pred(table,conds,&predicate))return false;
+  if(predicate.never)return true; // Valid comparisons that cannot match any row.
+  size_t chosen=predicate.c.size();
+  for(size_t i=0;i<predicate.c.size();++i) {
+    if(predicate.c[i].op==static_cast<uint8_t>(Cond::EQ) &&
+       predicate.c[i].vt==static_cast<uint8_t>(Type::BIGINT)) {chosen=i;break;}
+  }
+  if(chosen==predicate.c.size())return false;
+  build_vector_index(table);
+  const RCond& term=predicate.c[chosen];
+  if(!table.vector_index->resident_integer_equal(term.col,term.lit->i,
+      [&](uint64_t slot) {
+        Row scratch;
+        return table.read_row(static_cast<size_t>(slot),scratch).vals[term.col].i;
+      },selection))return false;
+  if(selection->count && predicate.c.size()>1) {
+    // The cached value proves only the selected equality. Preserve every
+    // additional condition, including another equality on the same column.
+    predicate.c.erase(predicate.c.begin()+chosen);
+    // Moving these vectors preserves addresses of the owned coerced literals;
+    // share the owner so copies of the matcher preserve those addresses too.
+    const auto filter=std::make_shared<Pred>(std::move(predicate));
+    *residual=[&table,filter](uint64_t slot) {
+      if(slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
+        throw std::runtime_error("stale flat vector index slot");
+      Row scratch;
+      return row_matches(*filter,table.read_row(static_cast<size_t>(slot),scratch));
+    };
+  }
+  return true;
+}
+
 void Database::build_vector_index(Table& table) {
   if (table.vector_index) return;
   if (table.schema.vec_idx < 0) throw std::runtime_error("table has no vector column");

@@ -105,6 +105,11 @@ class Database {
   // rebuild, dropping the table or closing the database can invalidate it.
   // Unindexed and disk-backed tables return false and retain the scan path.
   bool resident_vector_view(const std::string& t, FlatIndex::ResidentView* view);
+  // Same statement-only lifetime as resident_vector_view. Conditions are fully
+  // coerced/validated first. An empty residual means equality postings prove
+  // the complete predicate; otherwise call it on the selected source slot.
+  bool resident_integer_equal_view(const std::string& t,const std::vector<Cond>& conds,
+      FlatIndex::ResidentSelection* selection,std::function<bool(uint64_t)>* residual);
   // Pointer lifetime is limited to this callback. Filtering precedes distance
   // computation by the caller; unindexed tables use the ordinary row scan.
   void scan_vectors(const std::string& t, const std::vector<Cond>& conds,

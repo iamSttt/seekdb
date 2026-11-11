@@ -34,3 +34,5 @@ g++ -O3 -std=c++17 -DMVDB_SIMD_DOUBLE_REDUCTION -Iminivec/src minivec/tests/test
 /tmp/distance-double-reduce
 /tmp/distance-double-reduce --bench
 bash minivec/tools/compare_jsonl.sh
+python3 minivec/tools/profile_jsonl.py --image minivec:jsonl-previous --output protocol-results/path-profile-previous.json
+python3 minivec/tools/profile_jsonl.py --image minivec:jsonl --output protocol-results/path-profile-candidate.json

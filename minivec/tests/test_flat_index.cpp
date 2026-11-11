@@ -68,6 +68,21 @@ static void check(Database& db,const std::vector<Cond>& conds={}) {
   check_view(db);
   std::map<int64_t,std::vector<float>> expected,actual;
   db.scan("t",conds,[&](const Row& row){expected[row.vals[0].i]=row.vals[2].v;return true;});
+  FlatIndex::ResidentSelection selection;
+  std::function<bool(uint64_t)> residual;
+  if(db.resident_integer_equal_view("t",conds,&selection,&residual)) {
+    std::map<int64_t,std::vector<float>> selected;
+    for(size_t position=0;position<selection.count;++position) {
+      const size_t i=selection.matches[position].second;
+      assert(i<selection.index.count);
+      if(residual && !residual(selection.slots[i]))continue;
+      const float* values=selection.index.vectors+i*selection.index.dimension;
+      assert(selected.emplace(selection.index.keys[i],
+          std::vector<float>(values,values+selection.index.dimension)).second);
+    }
+    assert(selected==expected);
+    if(conds.size()==1)assert(!residual);
+  } else assert(!selection.matches && !selection.count && !selection.index.vectors && !residual);
   const std::vector<float> query{0,1,2,0,0};
   std::vector<std::pair<double,int64_t>> a,b;
   db.scan_vectors("t",conds,[&](int64_t pk,const float* values,size_t size) {
@@ -228,6 +243,7 @@ int main() {
   // Coercion, contradictory conjunctions, and column switching must use the
   // exact same predicate semantics as the ordinary table scan.
   Cond text_group=group;text_group.value=Value::ofStr("+01");check(db,{text_group});
+  Cond never_group=group;never_group.value=Value::ofStr("not-a-number");check(db,{never_group});
   Cond other_group=group;other_group.value=Value::ofInt(2);check(db,{group,other_group});
   Cond range;range.column="id";range.op=Cond::GE;range.value=Value::ofInt(40);
   check(db,{range,group});
@@ -306,6 +322,16 @@ int main() {
   assert(resident.scan_integer_equal(1,-1,scalar,collect));
   assert(reads==3 && (seen==std::vector<int64_t>{-2}));
   assert(resident.scan_integer_equal(0,7,scalar,collect) && reads==6);
+  FlatIndex::ResidentSelection selection;
+  assert(resident.resident_integer_equal(0,7,scalar,&selection) && reads==6);
+  assert(selection.count==2 && selection.matches[0].second==0 && selection.matches[1].second==2);
+  assert(selection.index.keys[selection.matches[1].second]==4 && selection.slots[2]==6);
+  assert(resident.resident_integer_equal(1,-1,scalar,&selection) && reads==9);
+  assert(selection.count==1 && selection.index.keys[selection.matches[0].second]==-2);
+  assert(resident.resident_integer_equal(1,99,scalar,&selection) && reads==9);
+  assert(!selection.matches && selection.count==0);
+  assert(!disk.resident_integer_equal(1,7,scalar,&selection));
+  assert(!selection.matches && !selection.index.vectors && !selection.slots);
   norm_order_regression();
   quantized_index_regression();
   std::cout<<"PASS physical flat index, filters, mutation/statement/transaction rollback, eager restart rebuild, disk scan\n";

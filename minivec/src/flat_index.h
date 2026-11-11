@@ -21,6 +21,12 @@ class FlatIndex {
     const int8_t* quantized=nullptr;
     double quantization_step=0;
   };
+  struct ResidentSelection {
+    ResidentView index;
+    const uint64_t* slots=nullptr;
+    const std::pair<int64_t,size_t>* matches=nullptr;
+    size_t count=0;
+  };
   FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t memory_budget);
   ~FlatIndex();
   FlatIndex(const FlatIndex&)=delete;
@@ -31,6 +37,10 @@ class FlatIndex {
   // Read-only, non-owning view; available only for a finished resident index.
   // Storage remains owned by this index and must not outlive it.
   bool resident_view(ResidentView* view) const;
+  // Borrowed equality range, sorted by physical index position within value.
+  // A new posting-column cache, index mutation or destruction invalidates it.
+  bool resident_integer_equal(size_t column,int64_t value,
+      const std::function<int64_t(uint64_t)>& read_value,ResidentSelection* selection);
   // One bounded, lazy BIGINT equality posting list. Returns false when this
   // index cannot cache it; callers then retain the sequential scan path.
   bool scan_integer_equal(size_t column,int64_t value,
@@ -39,6 +49,8 @@ class FlatIndex {
   bool disk_backed() const {return fd_>=0;}
   size_t size() const {return count_;}
  private:
+  bool prepare_integer_postings(size_t column,
+      const std::function<int64_t(uint64_t)>& read_value);
   size_t dimension_=0,expected_=0,count_=0;
   int fd_=-1;
   bool ready_=false;

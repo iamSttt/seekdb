@@ -118,8 +118,8 @@ bool FlatIndex::resident_view(ResidentView* view) const {
 size_t FlatIndex::resident_bytes() const {
   return vectors_.capacity()*sizeof(float)+keys_.capacity()*sizeof(int64_t)+slots_.capacity()*sizeof(uint64_t)+posting_budget_+quantized_budget_;
 }
-bool FlatIndex::scan_integer_equal(size_t column,int64_t value,
-    const std::function<int64_t(uint64_t)>& read_value,const Visitor& visitor) {
+bool FlatIndex::prepare_integer_postings(size_t column,
+    const std::function<int64_t(uint64_t)>& read_value) {
   if(!ready_)throw std::runtime_error("flat vector index is not ready");
   if(fd_>=0 || (count_ && !posting_budget_))return false;
   if(!postings_ready_ || posting_column_!=column) {
@@ -130,6 +130,26 @@ bool FlatIndex::scan_integer_equal(size_t column,int64_t value,
     std::sort(postings_.begin(),postings_.end());
     posting_column_=column;postings_ready_=true;
   }
+  return true;
+}
+bool FlatIndex::resident_integer_equal(size_t column,int64_t value,
+    const std::function<int64_t(uint64_t)>& read_value,ResidentSelection* selection) {
+  if(!selection)return false;
+  *selection=ResidentSelection{};
+  if(!resident_view(&selection->index) || !prepare_integer_postings(column,read_value)) {
+    *selection=ResidentSelection{};return false;
+  }
+  const auto first=std::lower_bound(postings_.begin(),postings_.end(),std::make_pair(value,size_t(0)));
+  const auto last=std::upper_bound(first,postings_.end(),value,
+      [](int64_t key,const std::pair<int64_t,size_t>& entry){return key<entry.first;});
+  selection->slots=slots_.data();
+  selection->count=static_cast<size_t>(last-first);
+  if(selection->count)selection->matches=&*first;
+  return true;
+}
+bool FlatIndex::scan_integer_equal(size_t column,int64_t value,
+    const std::function<int64_t(uint64_t)>& read_value,const Visitor& visitor) {
+  if(!prepare_integer_postings(column,read_value))return false;
   auto first=std::lower_bound(postings_.begin(),postings_.end(),std::make_pair(value,size_t(0)));
   for(auto it=first;it!=postings_.end() && it->first==value;++it) {
     const size_t i=it->second;

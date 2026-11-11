@@ -538,7 +538,34 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
               for(size_t i=0;i<view.count;++i)
                 if(!consider(view.keys[i],view.vectors+i*view.dimension,view.dimension))break;
             }
-          } else db.scan_vectors(st.table,st.conds,consider);
+          } else {
+            FlatIndex::ResidentSelection selection;
+            std::function<bool(uint64_t)> residual;
+            if(!st.conds.empty() &&
+               db.resident_integer_equal_view(st.table,st.conds,&selection,&residual)) {
+              const auto& index=selection.index;
+              const QuantizedQueryBound quantized(order.qvec->data(),index.dimension,
+                  bounded && !st.order_desc && index.quantized ? index.quantization_step : 0);
+              auto visit=[&](size_t position) {
+                const size_t i=selection.matches[position].second;
+                if(quantized.enabled() && result.size()==k && quantized.definitely_greater(
+                    index.quantized+i*index.dimension,result.front().distance))return true;
+                return consider(index.keys[i],index.vectors+i*index.dimension,index.dimension);
+              };
+              if(residual) {
+                for(size_t position=0;position<selection.count;++position) {
+                  const size_t i=selection.matches[position].second;
+                  if(!residual(selection.slots[i]))continue;
+                  if(!visit(position))break;
+                }
+              } else {
+                // One coerced equality is completely established by postings.
+                // No row decoding, predicate callback or distance callback.
+                for(size_t position=0;position<selection.count;++position)
+                  if(!visit(position))break;
+              }
+            } else db.scan_vectors(st.table,st.conds,consider);
+          }
         } else db.scan(st.table, st.conds, [&](const Row& r) {
           Candidate c;c.pk=r.vals[sch.pk_idx].i;
           if(ordered) {
