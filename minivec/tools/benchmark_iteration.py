@@ -310,7 +310,8 @@ def one_run(binary, workload, args):
                 require(response.get("columns") == ["v"] and response.get("rows") == [[list(expected)]],
                         f"restart changed vector {key}")
             phases["restart_verification_wall"] = perf_counter() - started
-            # Includes lazy index reconstruction in the first measured request.
+            # open() rebuilds registered indexes before ready; that cost belongs
+            # to restart above. Keep the first query in this phase as measured.
             query_phase("query_after_restart", workload["after_oracle"])
             shutdown("final_shutdown")
         except Exception:

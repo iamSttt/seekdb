@@ -420,27 +420,19 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             : distance2(row.vals[item.col].v, *item.qvec);
         return std::sqrt(squared);
       };
-      // Reuse only the array storage within this SELECT. dump() still produces
-      // an independent string before the next row clears the cells, preserving
-      // the reference serializer's floating-point and UTF-8 error semantics.
-      Json row_cells;
-      if (json_response) {
-        row_cells = Json::array();
-        row_cells.get_ref<Json::array_t&>().reserve(items.size());
-      }
       auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
-        row_cells.clear();
+        Json cells = Json::array();
         for (const auto& item : items) {
           const Value& value = row.vals[item.col];
           if (!item.is_distance) {
-            row_cells.push_back(json_value(value));
+            cells.push_back(json_value(value));
           } else {
             const double distance = projected_distance(row, item, candidate);
             if (!std::isfinite(distance)) throw std::runtime_error("non-finite L2 distance result");
-            row_cells.push_back(distance);
+            cells.push_back(distance);
           }
         }
-        return row_cells.dump();
+        return cells.dump();
       };
       bool first_json_row = true;
       auto append_json_row = [&](const std::string& row) {

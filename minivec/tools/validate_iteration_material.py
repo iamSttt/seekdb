@@ -29,7 +29,7 @@ def finite_float(value):
 def validate(root):
     data = (root / 'agent/conversation.json').read_bytes()
     require(data == (root / 'conversation.json').read_bytes(), 'material copies differ')
-    require(len(data) <= 131072, 'material exceeds archived 128 KiB limit')
+    require(len(data) <= 131072, 'material exceeds 128 KiB limit')
     record = json.loads(data.decode('utf-8'), object_pairs_hook=unique_object,
                         parse_float=finite_float,
                         parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))

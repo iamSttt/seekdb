@@ -1,0 +1,40 @@
+{
+  "image-binary-sha256.txt": "2452d9c0f63fdc0e135f0f34b6fa84fad3756f6edefc2bbf9b49fb1c94162d42  /home/runner/work/_temp/minivec-checks-1j9RQG/image-binary\n",
+  "image-id.txt": "sha256:c739fca55920a5b29b4c9c99956c6c0c029ce96d201ecaa860ddc94f653f7483\n",
+  "runtime-commit.txt": "991d10572a974c7384b6a30a9d57acf8ece3394f\n",
+  "verification-summary.json": {
+    "runtime_commit": "991d10572a974c7384b6a30a9d57acf8ece3394f",
+    "image_tag": "minivec:verify-991d10572a97",
+    "image_id": "sha256:c739fca55920a5b29b4c9c99956c6c0c029ce96d201ecaa860ddc94f653f7483",
+    "scope": "current-checkout build and regression verification; not formal scoring",
+    "passed": true,
+    "checks": {
+      "root_docker_build": true,
+      "image_official_handshake_and_public_cases": true,
+      "source_official_handshake_and_public_cases": true,
+      "live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill": true,
+      "make_test": true,
+      "image_binary_json_and_exact_topk_serial_parallel": true,
+      "eight_wal_failure_cases_asan_ubsan": true,
+      "query_pool_both_modes_asan_ubsan": true,
+      "cross_table_spill_asan_ubsan": true,
+      "full_binary_json_ubsan": true,
+      "index_budget_and_resident_update_asan_ubsan": true
+    },
+    "limitations": [
+      "No hidden formal cases or score.",
+      "No new paired performance measurement.",
+      "WAL fixture injects short/failed writes; not fdatasync or allocation failure.",
+      "ASan leak detection disabled; memory-safety and undefined-behavior checks enabled."
+    ]
+  },
+  "source_run": "https://github.com/iamSttt/seekdb/actions/runs/43229668934",
+  "source_job": "https://github.com/iamSttt/seekdb/actions/runs/43229668934/job/131221305420",
+  "new_checks_observed": [
+    "row_encoding_reuse passed in source, extracted image binary and UBSan runs",
+    "invalid UTF-8 on second serialized row clears the entire response",
+    "main() calls check_integer_cap_equivalence before quantized-bound PASS: 16/128/65536 dimensions, extreme scales, uint32 boundaries and cache transitions",
+    "27 Python tool tests passed"
+  ],
+  "context": "Correctness job; performance results are in iteration-hotpath-20261112.json."
+}

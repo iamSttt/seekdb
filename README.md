@@ -10,6 +10,8 @@
 
 本轮从用户指定的 `a90b2b750e40f020793cddefe01d5b66631afc63` 开始，筛选用户报告中的驻留预算、少量 UPDATE、磁盘索引批写与配对测量方向。按用户本轮要求新建 [agent/conversation.json](agent/conversation.json) 及相同根副本：报告与用户原话标为 `user`，实现与实验标为 `assistant`，不导入旧对话历史。`python3 minivec/tools/validate_iteration_material.py` 检查两份字节、大小与来源引用，不代表官方材料评审通过。
 
+[本轮优化实测报告](docs/ITERATION_20261112.md)记录 255 对实验、收益和回退决定：35k/50k 及少量 UPDATE 有明显收益，默认 10k 查询仍基本持平；LTO 和追加微调均未保留。**6000 分尚未验证，没有新的正式提测。**
+
 ## 构建和运行
 
 ```sh
@@ -54,7 +56,7 @@ python3 minivec/tests/image_interactive.py --image minivec --output protocol-res
 
 CI会构建根镜像，测试源码和镜像的公开用例、保持stdin打开的交互、退出/恢复、COMMIT后SIGKILL、精确TopK、线程池/跨表spill/WAL故障及sanitizer。公开用例与本地回归不计算正式E，也不包含隐藏用例。
 
-清理候选已通过[本轮CI](https://github.com/iamSttt/seekdb/actions/runs/43219423574)，源码/镜像公开用例各20/20；镜像内程序SHA256与清理前运行核心相同。详细结果见[复验记录](validation/cleanup-ci-20261112.json)。工作流支持手动dispatch，提交分支push不会自动触发。
+选用的运行核心 `4d8de37` 已通过[完整门禁](https://github.com/iamSttt/seekdb/actions/runs/43226783666)，源码/镜像公开用例各20/20；另有[追加候选的门禁与负结果](https://github.com/iamSttt/seekdb/actions/runs/43229668934)。详细范围及 SHA256 见本轮报告。工作流支持手动 dispatch，并对独立优化分支 push 自动验证；指定提交标记选择配对性能任务。
 
 旧SQL文本适配器仅供引擎回归：`--protocol sql`或`MVDB_PROTOCOL=sql`；`minivec/run.sh`与harness显式选该模式，不能替代JSONL准入。
 

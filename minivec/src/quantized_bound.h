@@ -167,15 +167,10 @@ class QuantizedQueryBound {
   bool enabled() const {return enabled_;}
   const std::vector<int8_t>& coded_query() const {return query_;}
   bool definitely_greater(const int8_t* row,double threshold) const {
-    if(!enabled_ || !row)return false;
-    if(!cached_ || threshold!=cached_threshold_) {
-      // A cached threshold was already checked. The hot scan normally keeps
-      // one TopK boundary for many rows; validate only when that boundary moves.
-      if(!std::isfinite(threshold) || threshold<0)return false;
-      update_cap(threshold);
-    }
+    if(!enabled_ || !row || !std::isfinite(threshold) || threshold<0)return false;
+    if(!cached_ || threshold!=cached_threshold_)update_cap(threshold);
     if(!usable_cap_)return false;
-    return kernel_(row,query_.data(),n_)>cap_;
+    return static_cast<double>(kernel_(row,query_.data(),n_))>cap_;
   }
  private:
   void update_cap(double threshold) const {
@@ -192,14 +187,8 @@ class QuantizedQueryBound {
     const double root=quantized_detail::up(std::sqrt(scaled));
     if(!std::isfinite(root) || root<4*root_n_)return; // performance fallback only
     const double sum=quantized_detail::up(root+root_n_);
-    const double cap=quantized_detail::up(sum*sum);
-    // Every kernel result is an exact uint32_t. Its old double comparison is
-    // therefore equivalent to integer > floor(cap). At/above UINT32_MAX no
-    // result can exceed the cap; reject nothing and avoid an out-of-range cast.
-    if(!std::isfinite(cap) || cap<0 ||
-       cap>=static_cast<double>(std::numeric_limits<uint32_t>::max()))return;
-    cap_=static_cast<uint32_t>(cap);
-    usable_cap_=true;
+    cap_=quantized_detail::up(sum*sum);
+    usable_cap_=std::isfinite(cap_);
   }
   size_t n_=0;
   bool enabled_=false;
@@ -207,8 +196,7 @@ class QuantizedQueryBound {
   quantized_detail::Distance kernel_=nullptr;
   std::vector<int8_t> query_;
   mutable bool cached_=false,usable_cap_=false;
-  mutable double cached_threshold_=0;
-  mutable uint32_t cap_=0;
+  mutable double cached_threshold_=0,cap_=0;
 };
 } // namespace mvdb
 
