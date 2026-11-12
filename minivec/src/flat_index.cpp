@@ -122,6 +122,9 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
     const size_t metadata=blocks+sizeof(quantization_steps_);
     const size_t spare=left-ann_budget_;
     if(quantized_budget_ && blocks>1 && minimum_cache &&
+#ifdef MVDB_BLOCK_SCALE_SELECTIVE
+       dimension>=128 &&
+#endif
        minimum_cache<=QuantizedScaleView::query_cache_limit && metadata<=spare &&
        2*minimum_cache<=spare-metadata)
       quantization_scale_budget_=std::min(spare,metadata+2*QuantizedScaleView::query_cache_limit);
@@ -343,7 +346,24 @@ void FlatIndex::finish() {
     const size_t metadata=blocks+sizeof(quantization_steps_);
     bool finer=false;
     for(size_t s=0;s<quantization_step_count_;++s)finer=finer || quantization_steps_[s]<step;
+#ifdef MVDB_BLOCK_SCALE_SELECTIVE
+    // Experimental performance gate only. Count actual rows, including the
+    // short last block: a tiny unusually fine tail must not enable the whole
+    // local-scale query path. N-floor(N/5) is ceil(80%*N), without overflow.
+    size_t substantially_finer_rows=0;
+    if(local && dimension_>=128 && ok) {
+      for(size_t block=0;block<blocks;++block) {
+        const size_t rows=std::min(QuantizedScaleView::block_rows,count_-block*QuantizedScaleView::block_rows);
+        if(quantization_steps_[quantization_block_ids_[block]]<=step*0.25)
+          substantially_finer_rows+=rows;
+      }
+    }
+    const bool selected=dimension_>=128 && substantially_finer_rows>=count_-count_/5;
+#endif
     if(!local || !ok || !finer || !cache || cache>QuantizedScaleView::query_cache_limit ||
+#ifdef MVDB_BLOCK_SCALE_SELECTIVE
+       !selected ||
+#endif
        metadata>quantization_scale_budget_ || 2*cache>quantization_scale_budget_-metadata)
       abandon_local();
     else {

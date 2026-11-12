@@ -221,9 +221,19 @@ class QuantizedQueryBound {
  public:
   bool enabled() const {return enabled_;}
   const std::vector<int8_t>& coded_query() const {return query_;}
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+  bool local_scales() const {return local_;}
+#endif
   bool definitely_greater(const int8_t* row,double threshold) const {
 #ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
     if(local_)return false; // old callers cannot supply the required ordinal
+#endif
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+    return definitely_greater_global(row,threshold);
+  }
+  // Internal fast path: caller has selected !local_scales() once outside its
+  // scan loop. Arithmetic is exactly the old global implementation below.
+  bool definitely_greater_global(const int8_t* row,double threshold) const {
 #endif
     if(!enabled_ || !row || !std::isfinite(threshold) || threshold<0)return false;
     if(!cached_ || threshold!=cached_threshold_)update_cap(threshold);

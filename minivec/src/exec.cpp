@@ -21,6 +21,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+#include <type_traits>
+#endif
 
 namespace mvdb {
 
@@ -611,6 +614,9 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 }
                 size_t next_pilot=0;
 #endif
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+                const auto scan_rows=[&](auto use_local) {
+#endif
                 for(size_t i=first;i<last;++i) {
 #if defined(MVDB_PILOT_COUNT) && MVDB_PILOT_COUNT > 0
                   if(next_pilot<pilots && i==pilot_at(next_pilot)) {++next_pilot;continue;}
@@ -619,7 +625,13 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   // against this half's own k-th distance. Every uncertain row
                   // follows the existing float bound and exact kernel.
                   if(quantized.enabled() && heap.size()==k &&
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+                     (decltype(use_local)::value ?
+                      quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance,i) :
+                      quantized.definitely_greater_global(view.quantized+i*dimension,heap.front().distance)))
+#else
                      quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance,i))
+#endif
                     continue;
                   const float* row=view.rows[i];
                   if(heap.size()==k && bound.definitely_greater(row,query,heap.front().distance))
@@ -627,6 +639,11 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   Candidate c;c.pk=view.keys[i];c.distance=distance_squared(row,query,dimension);
                   keep(heap,std::move(c));
                 }
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+                };
+                if(quantized.local_scales())scan_rows(std::true_type{});
+                else scan_rows(std::false_type{});
+#endif
               };
               auto run_half=+[](void* ctx,unsigned worker) {
                 (*static_cast<std::function<void(unsigned)>*>(ctx))(worker);
@@ -638,12 +655,21 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
               const QuantizedQueryBound quantized(order.qvec->data(),view.dimension,
                   bounded && !st.order_desc && view.quantized ? view.quantization_step : 0,
                   bounded && !st.order_desc && view.quantized ? view.quantization_scales : QuantizedScaleView{});
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+              const auto scan_rows=[&](auto use_local) {
+#endif
               auto scan_ordinal=[&](size_t i) {
                 MVDB_FILTER_COUNT(vector_visits);
                 // Integer codes are only a certified rejection filter. Every
                 // uncertain row follows the existing float bound/exact path.
                 if(quantized.enabled() && result.size()==k &&
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+                   (decltype(use_local)::value ?
+                    quantized.definitely_greater(view.quantized+i*view.dimension,result.front().distance,i) :
+                    quantized.definitely_greater_global(view.quantized+i*view.dimension,result.front().distance)))
+#else
                    quantized.definitely_greater(view.quantized+i*view.dimension,result.front().distance,i))
+#endif
                   return true;
                 return consider(view.keys[i],view.rows[i],view.dimension);
               };
@@ -677,6 +703,11 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   if(!consider(view.keys[i],view.rows[i],view.dimension))break;
 #endif
               }
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+              };
+              if(quantized.local_scales())scan_rows(std::true_type{});
+              else scan_rows(std::false_type{});
+#endif
             }
             scan_cost.finish();
           } else {

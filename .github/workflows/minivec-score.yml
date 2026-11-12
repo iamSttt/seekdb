@@ -202,3 +202,59 @@ jobs:
           name: report-c-filter
           path: filter-report-results/
           retention-days: 90
+  parser-pgo-confirmation:
+    if: ${{ contains(github.event.head_commit.message, '[feature-confirm]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Owning-token reuse under independent original PGO profiles
+        run: CONFIRM_FEATURE=parser bash minivec/tools/ci_parser_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: parser-pgo-confirmation
+          path: parser-confirmation-results/
+          retention-days: 90
+  typed-pgo-confirmation:
+    if: ${{ contains(github.event.head_commit.message, '[feature-confirm]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Typed JSON output under independent original PGO profiles
+        run: CONFIRM_FEATURE=typed bash minivec/tools/ci_parser_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: typed-pgo-confirmation
+          path: typed-confirmation-results/
+          retention-days: 90
+  selective-quantization:
+    if: ${{ contains(github.event.head_commit.message, '[selective-scale]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Selective block-scale gates and whole-request confirmation
+        run: bash minivec/tools/ci_selective_scale.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: selective-quantization
+          path: selective-scale-results/
+          retention-days: 90
+  spill-pgo-confirmation:
+    if: ${{ contains(github.event.head_commit.message, '[feature-confirm]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Spilled scalar cache PGO whole-request and selective workload confirmation
+        run: CONFIRM_FEATURE=spill bash minivec/tools/ci_parser_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: spill-pgo-confirmation
+          path: spill-confirmation-results/
+          retention-days: 90
