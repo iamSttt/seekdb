@@ -253,7 +253,51 @@ static void database(const std::string& path) {
   assert(db.delete_rows("t",{cond("id",Cond::LT,16)},&err,&code)==16);check(db,filter);
   assert(db.rollback(&err,&code));assert(!db.table("t")->vector_index);check(db,filter);
   assert(db.delete_rows("t",{cond("id",Cond::LT,16)},&err,&code)==16);check(db,filter);
+
+  // Rollback reclaims an appended tail slot. Build a disk index over the
+  // transaction's row, then reuse that exact slot with different scalars and
+  // floats. Test both complete/partial caches and the zero-cache budget path.
+  const size_t tail_slot=db.table("t")->rows.size();
+  const size_t before_insert=db.table("t")->live_count();
+  const std::vector<float> rolled_back_vector={500,6,7,8,9};
+  const std::vector<float> replacement_vector={-500,10,11,12,13};
+  const auto verify_marker=[&](int64_t a_value,int64_t b_value,int64_t key,
+                             const std::vector<float>& vector,bool present) {
+    const std::vector<Cond> conditions={cond("a",Cond::EQ,a_value),cond("b",Cond::EQ,b_value)};
+    size_t found=0;
+    db.scan("t",conditions,[&](const Row& row) {
+      assert(row.vals[0].i==key && row.vals[1].i==a_value && row.vals[2].i==b_value);
+      assert(row.vals[5].v==vector);++found;return true;
+    });
+    assert(found==(present ? 1u : 0u));
+    check(db,conditions); // Exact indexed PK/vector equality against that scan.
+  };
+  assert(db.begin(&err,&code));
+  assert(db.insert("t",{Value::ofInt(2000),Value::ofInt(41),Value::ofInt(43),Value::ofInt(47),
+      Value::ofStr("rolled back"),Value::ofVec(rolled_back_vector)},&err,&code));
+  assert(!db.table("t")->vector_index && db.table("t")->pk_pos.at(2000)==tail_slot);
+  verify_marker(41,43,2000,rolled_back_vector,true);
+  verify_marker(-41,-43,3000,replacement_vector,false);
+  assert(db.table("t")->vector_index->disk_backed());
+  const std::weak_ptr<FlatIndex> rolled_back_index=db.table("t")->vector_index;
+  assert(db.rollback(&err,&code));
+  assert(!db.table("t")->vector_index && rolled_back_index.expired());
+  assert(db.table("t")->rows.size()==tail_slot && db.table("t")->live_count()==before_insert);
+  assert(db.table("t")->payload_offsets.size()==tail_slot && !db.table("t")->pk_pos.count(2000));
+  verify_marker(41,43,2000,rolled_back_vector,false);
+  verify_marker(-41,-43,3000,replacement_vector,false);
+  check(db,filter);
+  assert(db.insert("t",{Value::ofInt(3000),Value::ofInt(-41),Value::ofInt(-43),Value::ofInt(-47),
+      Value::ofStr("replacement"),Value::ofVec(replacement_vector)},&err,&code));
+  assert(!db.table("t")->vector_index && db.table("t")->pk_pos.at(3000)==tail_slot);
+  assert(db.table("t")->rows.size()==tail_slot+1 && db.table("t")->live_count()==before_insert+1);
+  verify_marker(41,43,2000,rolled_back_vector,false);
+  verify_marker(-41,-43,3000,replacement_vector,true);
   assert(db.checkpoint(&err));db.close();assert(db.open(path,&err));check(db,filter);
+  assert(db.table("t")->payload_store && !db.table("t")->pk_pos.count(2000));
+  assert(db.table("t")->live_count()==before_insert+1);
+  verify_marker(41,43,2000,rolled_back_vector,false);
+  verify_marker(-41,-43,3000,replacement_vector,true);
   // Projection already fetches only final K rows. Verify ranked identities;
   // this test does not count that existing behavior as an I07 improvement.
   Statement statement;assert(parse_sql("SELECT id FROM t WHERE a=1 AND b>=2 AND b<9 ORDER BY L2_DISTANCE(v,'[0,0,0,0,0]') LIMIT 7;",
@@ -272,5 +316,5 @@ int main() {
   direct(physical.path);
 #endif
   database(logical.path);
-  std::cout<<"PASS spill scalar budget/compression/failure, payload read avoidance, exact filters and invalidation\n";
+  std::cout<<"PASS spill scalar budget/compression/failure, payload read avoidance, exact filters, invalidation and rollback slot reuse\n";
 }

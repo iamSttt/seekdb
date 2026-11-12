@@ -5,6 +5,7 @@ set -euo pipefail
 unset MVDB_PROTOCOL MVDB_OUT MVDB_SINGLE_THREAD MVDB_QUERY_THREADS MVDB_PARSE_THREADS
 unset MVDB_QUERY_FANOUT_ROWS MVDB_WAKE_US_OVERRIDE MVDB_ANN_PROBE_PERCENT MVDB_ANN_OFF
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+case "${STORAGE_CORRECTNESS_ONLY:-0}" in 0|1) ;; *) echo 'STORAGE_CORRECTNESS_ONLY must be 0 or 1' >&2;exit 2;;esac
 
 run_test() {
   local variant=$1 test_name=$2; shift 2
@@ -95,6 +96,8 @@ for path in sorted(out.glob("*.json")):
     print(path.read_text())
     print("MINIVEC_STORAGE_END")
 PY
+  report_code=$?
+  if [[ "$report_code" != 0 && "$code" == 0 ]]; then code=$report_code;fi
   exit "$code"
 }
 trap finish EXIT
@@ -145,6 +148,7 @@ context={'candidate_commit':subprocess.check_output(['git','rev-parse','HEAD'],t
 (out/'context.json').write_text(json.dumps(context,indent=2)+'\n')
 PY
 printf '%s\n' completed > "$out/current-stage.txt"
+if [[ "${STORAGE_CORRECTNESS_ONLY:-0}" == 1 ]]; then exit 0;fi
 printf '%s\n' paired-screen > "$out/current-stage.txt"
 python3 - <<'PY'
 import hashlib,json,os,subprocess

@@ -258,3 +258,45 @@ jobs:
           name: spill-pgo-confirmation
           path: spill-confirmation-results/
           retention-days: 90
+  storage-lifecycle-gates:
+    if: ${{ contains(github.event.head_commit.message, '[storage-gates]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Spilled cache rollback slot-reuse and existing storage gates
+        run: STORAGE_CORRECTNESS_ONLY=1 bash minivec/tools/ci_storage_report.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: storage-lifecycle-gates
+          path: storage-report-results/
+          retention-days: 90
+  filter-fixed-thread-repeat:
+    if: ${{ contains(github.event.head_commit.message, '[filter-repeat]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Interleaved fixed-thread factorial and identical-binary controls
+        run: bash minivec/tools/ci_filter_repeat.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: filter-fixed-thread-repeat
+          path: filter-repeat-results/
+          retention-days: 90
+  typed-pgo-atomicity:
+    if: ${{ contains(github.event.head_commit.message, '[typed-gates]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: PGO binary UTF8 failure atomicity with source and profile proof
+        run: CONFIRM_FEATURE=typed FEATURE_CORRECTNESS_ONLY=1 bash minivec/tools/ci_parser_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: typed-pgo-atomicity
+          path: typed-confirmation-results/
+          retention-days: 90

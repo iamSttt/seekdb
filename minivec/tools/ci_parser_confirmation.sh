@@ -9,6 +9,8 @@ repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$repo"
 revision=$(git rev-parse HEAD)
 export CONFIRM_FEATURE=${CONFIRM_FEATURE:-parser}
+export FEATURE_CORRECTNESS_ONLY=${FEATURE_CORRECTNESS_ONLY:-0}
+case "$FEATURE_CORRECTNESS_ONLY" in 0|1) ;; *) echo 'FEATURE_CORRECTNESS_ONLY must be 0 or 1' >&2;exit 2;;esac
 case "$CONFIRM_FEATURE" in parser|typed|combined|spill) ;; *) echo 'CONFIRM_FEATURE must be parser, typed, combined, or spill' >&2;exit 2;;esac
 out="$repo/$CONFIRM_FEATURE-confirmation-results"
 test ! -e "$out"
@@ -216,10 +218,14 @@ checks={'status':'running','checks':[]}
 save('correctness.json',checks)
 for variant in variants:
     binary=str(out/variant/'minivec')
-    for name,args,overrides in [
+    gates=[
         ('json_protocol',[sys.executable,'minivec/tests/json_protocol.py','--binary',binary,'--timeout','15'],{}),
         ('topk_serial',[sys.executable,'minivec/tests/topk_bounds.py','--binary',binary],{'MVDB_QUERY_THREADS':'1'}),
-        ('topk_parallel',[sys.executable,'minivec/tests/topk_bounds.py','--binary',binary],{'MVDB_QUERY_THREADS':'2'})]:
+        ('topk_parallel',[sys.executable,'minivec/tests/topk_bounds.py','--binary',binary],{'MVDB_QUERY_THREADS':'2'})]
+    if inputs['feature'] in ('typed','combined'):
+        gates.append(('utf8_atomicity',[sys.executable,'minivec/tests/test_typed_response.py',
+            '--binary',binary,'--output',str(out/variant/'utf8-atomicity.json')],{}))
+    for name,args,overrides in gates:
         (out/'stage.txt').write_text(variant+'/'+name+'\n')
         started=time.monotonic()
         try:
@@ -234,6 +240,15 @@ for variant in variants:
         save('correctness.json',checks)
         if code!=0:raise RuntimeError(variant+'/'+name+' failed; benchmark not started')
 checks['status']='passed';save('correctness.json',checks)
+if os.environ['FEATURE_CORRECTNESS_ONLY']=='1':
+    for variant,item in evidence.items():
+        if sha(out/variant/'minivec')!=item['binary_sha256']:
+            raise RuntimeError(variant+': binary changed during correctness checks')
+    save('summary.json',{'status':'passed','feature':inputs['feature'],
+        'correctness_passed':True,'binary_unchanged':True,'profile_source_verified':True,
+        'performance_measured':False,'database_pairs':0,
+        'automatic_adoption':False,'official_score':None})
+    sys.exit(0)
 
 cpus=sorted(os.sched_getaffinity(0))[:2]
 if len(cpus)!=2:raise RuntimeError('confirmation requires two allowed CPUs')

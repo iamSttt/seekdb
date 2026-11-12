@@ -1,0 +1,762 @@
+{
+  "source_commit": "53afb9479210245f2bdc641358ccb23bd221f626",
+  "run_id": 43325360435,
+  "job_id": 131556338569,
+  "proof": {
+    "source_commit": "53afb9479210245f2bdc641358ccb23bd221f626",
+    "compiler": "pinned GCC13.3 O3 static",
+    "feature": "typed",
+    "candidate_flags": [
+      "-DMVDB_ENABLE_TYPED_JSON"
+    ],
+    "candidate_only_flag": "-DMVDB_ENABLE_TYPED_JSON",
+    "profile_generate_flags": [
+      "-fprofile-generate=/pgo",
+      "-fprofile-update=atomic"
+    ],
+    "profile_use_flags": [
+      "-fprofile-use=/pgo",
+      "-Werror=missing-profile",
+      "-Werror=coverage-mismatch"
+    ],
+    "profile_source_proof": {
+      "baseline-pgo": {
+        "binary_sha256": "402bd3f2af4803a06d04754a74b5fea5db33a7550a72a7c21712cebf3ef4caff",
+        "source_sha256": {
+          "db.cpp": "d47bede87f3e5da68425b2577c319123994bd5e7ed2c3745cda5992e495bcc79",
+          "db.h": "279b8fa7cd7c86297f57de4032d6be9f711bfbd1ba3f95797188e951fc8b6f61",
+          "distance.h": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+          "exec.cpp": "7f537c6750d20b3774945559980033cca5eeb7d79b8c1be879ab669e352ec6cf",
+          "exec.h": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5",
+          "filter_diagnostics.h": "c93f5a5eeb8688ff7c0946c046b00fef031e482a313a7a62f40457baf5241106",
+          "flat_index.cpp": "1511ca269af7e974d2bda2af63ac2e445961a8786582cfa87a5c9ef65b91e58e",
+          "flat_index.h": "bbcf3e6b7683ef88591bc999d0fe3e8326d2009e963e8465e27e493876f38e3f",
+          "json_row_writer.h": "b17e6ccfb54587783b07de61b61eb41223426ffbd8edb7a2381f5116c260004b",
+          "main.cpp": "06a1d4cad89c3cfd89a78a1109f4ff6f21472e480482443ea6ca57fb68d93a41",
+          "parse_pool.h": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e",
+          "quantized_bound.h": "5a7b4a1f533515e13b331c8f59be9222a3b8202346d751dbf17267846bb56cdb",
+          "quantized_scale.h": "e7450de5f5bc217213757b62a80e0e259e3df2ca52b20e4d64cd547e5c2a8321",
+          "query_cost.h": "24ee43837b61d9e6883d4725787c89c3e826da8b2cd80472f0c0e4ee68f01c16",
+          "query_pool.h": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b",
+          "result_sort.h": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361",
+          "sql.cpp": "9aff425726495cfa6ab396d08bf61e3484cde5e2a64356f461291e4e18699cd6",
+          "sql.h": "8493db811bbcfff20aae4c9e6f3e4cf6ae85036f243e26869e38f1e62a89053b",
+          "value.cpp": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8",
+          "value.h": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12"
+        },
+        "dockerfile_sha256": "fc433678b3a0c635c48af69e1a16168f4b3c29b41650879ad91b0175bf6b0f0b",
+        "image_id": "sha256:bf3af33f8b8f306cf166718a0029818a6d7ed7b25c1233cd4595971c8031c6c9",
+        "pgo": true,
+        "instrumented_binary_sha256": "a050b6a061caf78d535f427b2e691202ebd343ef14a59c055b216ae5a8f80ad3",
+        "profile_sha256": {
+          "minivec-db.gcda": "687eeb9bf297f9ab86a576251993f68f99205901d2e59c71b1cc358566a927cd",
+          "minivec-exec.gcda": "e8e6d3fd43f5fd784873f9dbe35e2f2844784cad6c3fee2329bad7889783362b",
+          "minivec-flat_index.gcda": "f8116ef4a2946458b5ed959a6902f28c42553f76864c1dbdbcd433aea7147f00",
+          "minivec-main.gcda": "f736661f125b2fc49454e146add8ae4fabfd85496ca6b78f1038bed8b1c49c6b",
+          "minivec-sql.gcda": "361fe781be787c26b988ef4ebd869cd60eeba51beca2b4f8913c9bddef093166",
+          "minivec-value.gcda": "919d1ee684907e2c361a38889814444b3871ff4a6f6af752136184cba557872c"
+        },
+        "training_corpus_sha256": {
+          "manifest.json": "da55ce487334d869b52a12d864a302c445c7b968a528a9bba3d40a4de251e774",
+          "phase-0.expected.jsonl": "310c11aa556016bce2897c37366d29f2d9374b2da22fcb8a1b156a7947f68e37",
+          "phase-0.jsonl": "1050a6bf765d43b0a78b1ab8c21e8d9eba5637f8331828e4e0ed442e925e84f9",
+          "phase-1.expected.jsonl": "d99e0bfcd58082e9800a373c591925a01cabc61119fb658e23d98d8557808d22",
+          "phase-1.jsonl": "00de9bf85bfbcf4e35ae8edb24353a263995c48e57df387859312dcd47ab7ebe",
+          "phase-2.expected.jsonl": "98cd444dcc6c08bc3fb22c294c3eac62f1893518aec1bd2a18ff34fe9d645fd1",
+          "phase-2.jsonl": "fe235014ed3c24c7c7244c44379d9828ac4b03d3001afe9c07581a43a7a24883"
+        },
+        "training_oracle": [
+          {
+            "actual_file": "responses-1-0.jsonl",
+            "expected_file": "phase-0.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 951,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-1-1.jsonl",
+            "expected_file": "phase-1.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 41,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-1-2.jsonl",
+            "expected_file": "phase-2.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 14,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-2-0.jsonl",
+            "expected_file": "phase-0.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 951,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-2-1.jsonl",
+            "expected_file": "phase-1.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 41,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-2-2.jsonl",
+            "expected_file": "phase-2.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 14,
+            "status": "passed"
+          }
+        ],
+        "training_response_sha256": {
+          "responses-1-0.jsonl": "e876782ab97514a8ee2cbd345d54974923cf5406fec98e331fde1143c4332244",
+          "responses-1-1.jsonl": "478106a1be37d415d397df8b6a1da9f07d6c2e5b432e053d330bb704defab8ce",
+          "responses-1-2.jsonl": "196bf2420a85739bcbba7b448a0536dfd6ed553e33ece112a5400eba67f3bd70",
+          "responses-2-0.jsonl": "e876782ab97514a8ee2cbd345d54974923cf5406fec98e331fde1143c4332244",
+          "responses-2-1.jsonl": "478106a1be37d415d397df8b6a1da9f07d6c2e5b432e053d330bb704defab8ce",
+          "responses-2-2.jsonl": "196bf2420a85739bcbba7b448a0536dfd6ed553e33ece112a5400eba67f3bd70"
+        }
+      },
+      "candidate-pgo": {
+        "binary_sha256": "fb4ef3dfcc1f373aad45093c95426911ff45ff814d227ca1bf77779d22d76f18",
+        "source_sha256": {
+          "db.cpp": "d47bede87f3e5da68425b2577c319123994bd5e7ed2c3745cda5992e495bcc79",
+          "db.h": "279b8fa7cd7c86297f57de4032d6be9f711bfbd1ba3f95797188e951fc8b6f61",
+          "distance.h": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+          "exec.cpp": "7f537c6750d20b3774945559980033cca5eeb7d79b8c1be879ab669e352ec6cf",
+          "exec.h": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5",
+          "filter_diagnostics.h": "c93f5a5eeb8688ff7c0946c046b00fef031e482a313a7a62f40457baf5241106",
+          "flat_index.cpp": "1511ca269af7e974d2bda2af63ac2e445961a8786582cfa87a5c9ef65b91e58e",
+          "flat_index.h": "bbcf3e6b7683ef88591bc999d0fe3e8326d2009e963e8465e27e493876f38e3f",
+          "json_row_writer.h": "b17e6ccfb54587783b07de61b61eb41223426ffbd8edb7a2381f5116c260004b",
+          "main.cpp": "06a1d4cad89c3cfd89a78a1109f4ff6f21472e480482443ea6ca57fb68d93a41",
+          "parse_pool.h": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e",
+          "quantized_bound.h": "5a7b4a1f533515e13b331c8f59be9222a3b8202346d751dbf17267846bb56cdb",
+          "quantized_scale.h": "e7450de5f5bc217213757b62a80e0e259e3df2ca52b20e4d64cd547e5c2a8321",
+          "query_cost.h": "24ee43837b61d9e6883d4725787c89c3e826da8b2cd80472f0c0e4ee68f01c16",
+          "query_pool.h": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b",
+          "result_sort.h": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361",
+          "sql.cpp": "9aff425726495cfa6ab396d08bf61e3484cde5e2a64356f461291e4e18699cd6",
+          "sql.h": "8493db811bbcfff20aae4c9e6f3e4cf6ae85036f243e26869e38f1e62a89053b",
+          "value.cpp": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8",
+          "value.h": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12"
+        },
+        "dockerfile_sha256": "a82c10f840c4d5b7aa2f9782462488ca9697157cb67bc7e3dd4b267d79d382e0",
+        "image_id": "sha256:5b0b46faafb8e2592d89355cffe2e16c742393f876a87a706f5f40fb56d46e5e",
+        "pgo": true,
+        "instrumented_binary_sha256": "02c696c609e613233bb11a62d26312be1be9e399032d628d25814905e590b372",
+        "profile_sha256": {
+          "minivec-db.gcda": "223c92f749ff34c503be36f2362be9d64b0f0ed86276c8916fd545279ba83b63",
+          "minivec-exec.gcda": "088c83b862f596c119dea72e24050b5d1c6d54f9a1c533dd290db8e28b778918",
+          "minivec-flat_index.gcda": "ed8f332bdb06b9adc4c3192bd84a0246d9ac33618e92be6e273304c419c7c502",
+          "minivec-main.gcda": "4ea62c2127b9608b6639ef3fc565e01e365a6acedbf92c7f750e49c96c7ada49",
+          "minivec-sql.gcda": "92c04ec832454bc74c6a39db6c2985cd61f0fb118a45b4c4048532b4c789085e",
+          "minivec-value.gcda": "d350bc10dfbb822a9b85cc1c6350e2764a4b63bdcbb3a8252566bbf0d61c3a47"
+        },
+        "training_corpus_sha256": {
+          "manifest.json": "da55ce487334d869b52a12d864a302c445c7b968a528a9bba3d40a4de251e774",
+          "phase-0.expected.jsonl": "310c11aa556016bce2897c37366d29f2d9374b2da22fcb8a1b156a7947f68e37",
+          "phase-0.jsonl": "1050a6bf765d43b0a78b1ab8c21e8d9eba5637f8331828e4e0ed442e925e84f9",
+          "phase-1.expected.jsonl": "d99e0bfcd58082e9800a373c591925a01cabc61119fb658e23d98d8557808d22",
+          "phase-1.jsonl": "00de9bf85bfbcf4e35ae8edb24353a263995c48e57df387859312dcd47ab7ebe",
+          "phase-2.expected.jsonl": "98cd444dcc6c08bc3fb22c294c3eac62f1893518aec1bd2a18ff34fe9d645fd1",
+          "phase-2.jsonl": "fe235014ed3c24c7c7244c44379d9828ac4b03d3001afe9c07581a43a7a24883"
+        },
+        "training_oracle": [
+          {
+            "actual_file": "responses-1-0.jsonl",
+            "expected_file": "phase-0.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 951,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-1-1.jsonl",
+            "expected_file": "phase-1.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 41,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-1-2.jsonl",
+            "expected_file": "phase-2.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 14,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-2-0.jsonl",
+            "expected_file": "phase-0.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 951,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-2-1.jsonl",
+            "expected_file": "phase-1.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 41,
+            "status": "passed"
+          },
+          {
+            "actual_file": "responses-2-2.jsonl",
+            "expected_file": "phase-2.expected.jsonl",
+            "oracle": "independent exact dyadic distance and complete response comparison",
+            "responses": 14,
+            "status": "passed"
+          }
+        ],
+        "training_response_sha256": {
+          "responses-1-0.jsonl": "e876782ab97514a8ee2cbd345d54974923cf5406fec98e331fde1143c4332244",
+          "responses-1-1.jsonl": "478106a1be37d415d397df8b6a1da9f07d6c2e5b432e053d330bb704defab8ce",
+          "responses-1-2.jsonl": "196bf2420a85739bcbba7b448a0536dfd6ed553e33ece112a5400eba67f3bd70",
+          "responses-2-0.jsonl": "e876782ab97514a8ee2cbd345d54974923cf5406fec98e331fde1143c4332244",
+          "responses-2-1.jsonl": "478106a1be37d415d397df8b6a1da9f07d6c2e5b432e053d330bb704defab8ce",
+          "responses-2-2.jsonl": "196bf2420a85739bcbba7b448a0536dfd6ed553e33ece112a5400eba67f3bd70"
+        }
+      }
+    },
+    "production_dockerfile_unchanged": true,
+    "cpu_info": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           48 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  4\nOn-line CPU(s) list:                     0-3\nVendor ID:                               AuthenticAMD\nModel name:                              AMD EPYC 9V74 80-Core Processor\nCPU family:                              25\nModel:                                   17\nThread(s) per core:                      2\nCore(s) per socket:                      2\nSocket(s):                               1\nStepping:                                1\nBogoMIPS:                                5192.29\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves user_shstk avx512_bf16 clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm\nVirtualization:                          AMD-V\nHypervisor vendor:                       Microsoft\nVirtualization type:                     full\nL1d cache:                               64 KiB (2 instances)\nL1i cache:                               64 KiB (2 instances)\nL2 cache:                                2 MiB (2 instances)\nL3 cache:                                32 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-3\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Vulnerable: Safe RET, no microcode\nVulnerability Spec store bypass:         Vulnerable\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Vulnerable: No microcode\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+    "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+    "training_seed": 2026111201,
+    "evaluation_seeds": [
+      7319,
+      8911,
+      13337
+    ],
+    "limitations": [
+      "Whole JSONL request/lifecycle measurements, not official scoring.",
+      "Each PGO side generated its own profiles with the unchanged production training source/corpus.",
+      "Boundaries have three pairs each and remain screening evidence.",
+      "Shared machine and page cache; process RSS/IO are proxies, not cgroup scores.",
+      "No change is automatically enabled from either microbenchmarks or these results."
+    ],
+    "measurement_affinity": [
+      0,
+      1
+    ]
+  },
+  "correctness": {
+    "status": "passed",
+    "checks": [
+      {
+        "variant": "baseline-pgo",
+        "test": "json_protocol",
+        "returncode": 0,
+        "elapsed_seconds": 0.17210889699998688,
+        "environment": {}
+      },
+      {
+        "variant": "baseline-pgo",
+        "test": "topk_serial",
+        "returncode": 0,
+        "elapsed_seconds": 0.1095092589999922,
+        "environment": {
+          "MVDB_QUERY_THREADS": "1"
+        }
+      },
+      {
+        "variant": "baseline-pgo",
+        "test": "topk_parallel",
+        "returncode": 0,
+        "elapsed_seconds": 0.10774388899997689,
+        "environment": {
+          "MVDB_QUERY_THREADS": "2"
+        }
+      },
+      {
+        "variant": "candidate-pgo",
+        "test": "json_protocol",
+        "returncode": 0,
+        "elapsed_seconds": 0.2095669130000033,
+        "environment": {}
+      },
+      {
+        "variant": "candidate-pgo",
+        "test": "topk_serial",
+        "returncode": 0,
+        "elapsed_seconds": 0.10503499600000055,
+        "environment": {
+          "MVDB_QUERY_THREADS": "1"
+        }
+      },
+      {
+        "variant": "candidate-pgo",
+        "test": "topk_parallel",
+        "returncode": 0,
+        "elapsed_seconds": 0.10801188199999956,
+        "environment": {
+          "MVDB_QUERY_THREADS": "2"
+        }
+      }
+    ]
+  },
+  "summary": {
+    "status": "passed",
+    "feature": "typed",
+    "candidate_flags": [
+      "-DMVDB_ENABLE_TYPED_JSON"
+    ],
+    "pgo_standard_pairs": 15,
+    "pgo_boundary_screen_pairs": 12,
+    "pgo_spill_target_confirmation_pairs": 0,
+    "pgo_projection_screen_pairs": 6,
+    "optional_o3_standard_pairs": 0,
+    "correctness_passed": true,
+    "binary_unchanged": true,
+    "profile_source_verified": true,
+    "automatic_adoption": false,
+    "official_score": null
+  },
+  "results": {
+    "pgo-boundaries.json": {
+      "low16": {
+        "startup": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9056695983481335,
+          "minimum": 0.058936417449208786,
+          "maximum": 1.1656603717767031
+        },
+        "create_table": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9986927624307371,
+          "minimum": 0.994296949590282,
+          "maximum": 1.0788502987778406
+        },
+        "ingest": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.016716474684064,
+          "minimum": 1.0015404986277718,
+          "maximum": 2.480521973468827
+        },
+        "index_build": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9470066373378373,
+          "minimum": 0.9456919693852717,
+          "maximum": 1.0437125669439737
+        },
+        "query_before_update": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0080879333052701,
+          "minimum": 1.0029970313187242,
+          "maximum": 1.0163469722082263
+        },
+        "shutdown": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0430866842552218,
+          "minimum": 0.8683696191772025,
+          "maximum": 1.0453225156688837
+        },
+        "restart": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0099368594295386,
+          "minimum": 0.9904320165539784,
+          "maximum": 1.0105466671460384
+        },
+        "restart_verification_wall": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.1721731588169244,
+          "minimum": 1.0685168814595143,
+          "maximum": 1.3434358763419343
+        },
+        "query_after_restart": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0318653039298091,
+          "minimum": 1.0155701366870262,
+          "maximum": 1.0337233998008262
+        },
+        "final_shutdown": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.038260525232613,
+          "minimum": 1.0176877056361449,
+          "maximum": 1.165781141594149
+        },
+        "measured_lifecycle": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0082640676385168,
+          "minimum": 0.8943693318314213,
+          "maximum": 1.9707298343320396
+        }
+      },
+      "filter60k": {
+        "startup": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.22218143141673,
+          "minimum": 0.9817989856656781,
+          "maximum": 1.501860882280859
+        },
+        "create_table": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9988394380629891,
+          "minimum": 0.9949489792481504,
+          "maximum": 1.0779705482391264
+        },
+        "ingest": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0900855350086363,
+          "minimum": 0.765331336207133,
+          "maximum": 1.8917322045960356
+        },
+        "index_build": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9388612375298058,
+          "minimum": 0.8341868009872915,
+          "maximum": 1.0455946012274295
+        },
+        "query_before_update": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9890031365636047,
+          "minimum": 0.9819196106862437,
+          "maximum": 1.021508047487521
+        },
+        "shutdown": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0243617908467142,
+          "minimum": 0.8762069533062117,
+          "maximum": 1.073334692952565
+        },
+        "restart": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0984232248480188,
+          "minimum": 0.7315780831172269,
+          "maximum": 2.8256726913120054
+        },
+        "restart_verification_wall": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.1257852721717772,
+          "minimum": 1.1167132639307782,
+          "maximum": 1.1456590130101016
+        },
+        "query_after_restart": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0045751032946157,
+          "minimum": 0.997725936967586,
+          "maximum": 1.0188343289164987
+        },
+        "final_shutdown": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.1769376358846997,
+          "minimum": 1.07967498132139,
+          "maximum": 1.2588571707942138
+        },
+        "measured_lifecycle": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0611058613446,
+          "minimum": 1.0230700257285348,
+          "maximum": 1.6751511064501192
+        }
+      },
+      "update10": {
+        "startup": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.1027267432915417,
+          "minimum": 0.8777519751762889,
+          "maximum": 1.1223236345865268
+        },
+        "create_table": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9699780035050323,
+          "minimum": 0.12722156871103682,
+          "maximum": 1.0490787664441483
+        },
+        "ingest": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.099292151786577,
+          "minimum": 0.92959308953891,
+          "maximum": 1.3307993779625893
+        },
+        "index_build": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9983809020106722,
+          "minimum": 0.9813443826610151,
+          "maximum": 1.00569651738821
+        },
+        "query_before_update": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9888372146705481,
+          "minimum": 0.9571586463087164,
+          "maximum": 0.9980184876320346
+        },
+        "update": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.8863266621549049,
+          "minimum": 0.6429961639175816,
+          "maximum": 1.023912080902078
+        },
+        "query_after_update": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9949877103339767,
+          "minimum": 0.9630875184394306,
+          "maximum": 0.9999180298131558
+        },
+        "shutdown": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9473332672745248,
+          "minimum": 0.9371383916518685,
+          "maximum": 1.0498395972484793
+        },
+        "restart": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.6225098918453963,
+          "minimum": 0.552518064232238,
+          "maximum": 1.2573192179096015
+        },
+        "restart_verification_wall": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0865278675174546,
+          "minimum": 1.0456533726050832,
+          "maximum": 1.1053326480752665
+        },
+        "query_after_restart": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9885998320952776,
+          "minimum": 0.973793134655809,
+          "maximum": 0.9950701838345222
+        },
+        "final_shutdown": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9991139199922586,
+          "minimum": 0.9263682680709288,
+          "maximum": 1.0349340786811423
+        },
+        "measured_lifecycle": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.88958487476151,
+          "minimum": 0.8547193514275699,
+          "maximum": 1.238389721297746
+        }
+      },
+      "spill": {
+        "startup": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.9061990089476561,
+          "minimum": 0.8839236401474206,
+          "maximum": 1.150879526793964
+        },
+        "create_table": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0081413807685515,
+          "minimum": 0.9893219647468944,
+          "maximum": 1.3267847039896836
+        },
+        "ingest": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.7424103413880423,
+          "minimum": 0.6197689076786449,
+          "maximum": 1.0133341922821828
+        },
+        "index_build": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0156760277129988,
+          "minimum": 0.9857160249726552,
+          "maximum": 1.0345283363486
+        },
+        "query_before_update": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0044138093423323,
+          "minimum": 0.9394790873489982,
+          "maximum": 1.049255704940836
+        },
+        "shutdown": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.050235065853272,
+          "minimum": 0.9947037270665482,
+          "maximum": 1.262714268583278
+        },
+        "restart": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0006458770002258,
+          "minimum": 0.394676703399127,
+          "maximum": 1.024743167011945
+        },
+        "restart_verification_wall": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0154674665807086,
+          "minimum": 1.0152369499831624,
+          "maximum": 1.0343722138350382
+        },
+        "query_after_restart": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0003425176432743,
+          "minimum": 0.9925269297790026,
+          "maximum": 1.0508876365609228
+        },
+        "final_shutdown": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.969340999419941,
+          "minimum": 0.7653744794234514,
+          "maximum": 1.0111466606210209
+        },
+        "measured_lifecycle": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.8313715563442923,
+          "minimum": 0.577246524493759,
+          "maximum": 1.0047644764336143
+        }
+      }
+    },
+    "pgo-projections.json": {
+      "wide768": {
+        "narrow_top10": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0908808626185282,
+          "min_baseline_over_candidate": 0.9646025175023952,
+          "max_baseline_over_candidate": 1.1201293221944373
+        },
+        "wide_top10": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.3398788051691564,
+          "min_baseline_over_candidate": 1.3044853602400615,
+          "max_baseline_over_candidate": 1.3704364290731454
+        },
+        "narrow_large4096": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.3460654327000101,
+          "min_baseline_over_candidate": 1.3455115445552466,
+          "max_baseline_over_candidate": 1.3707271712049907
+        },
+        "wide_large4096": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.2995654616448669,
+          "min_baseline_over_candidate": 1.2868615303251576,
+          "max_baseline_over_candidate": 1.4092090643506103
+        },
+        "narrow_all": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.2425998629098365,
+          "min_baseline_over_candidate": 1.2263589574851803,
+          "max_baseline_over_candidate": 1.2840202961267655
+        },
+        "wide_all": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.2892820636086657,
+          "min_baseline_over_candidate": 1.2874203818443466,
+          "max_baseline_over_candidate": 1.2944663083039794
+        },
+        "wide_distance10": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.1149338601189074,
+          "min_baseline_over_candidate": 1.0613242996642203,
+          "max_baseline_over_candidate": 1.2724981249420577
+        }
+      },
+      "many16": {
+        "narrow_top10": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0200534481792292,
+          "min_baseline_over_candidate": 0.9744027225957574,
+          "max_baseline_over_candidate": 1.0980248774386796
+        },
+        "wide_top10": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 0.994896931927396,
+          "min_baseline_over_candidate": 0.9854493380489371,
+          "max_baseline_over_candidate": 1.028970949082653
+        },
+        "narrow_large4096": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.3083928460827883,
+          "min_baseline_over_candidate": 1.2301698270053614,
+          "max_baseline_over_candidate": 1.3167855747957913
+        },
+        "wide_large4096": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.1408460753049756,
+          "min_baseline_over_candidate": 1.1402631340574945,
+          "max_baseline_over_candidate": 1.1620681694149317
+        },
+        "narrow_all": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.2701183726276961,
+          "min_baseline_over_candidate": 1.2194421105108784,
+          "max_baseline_over_candidate": 1.308814038376888
+        },
+        "wide_all": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.1217760027484807,
+          "min_baseline_over_candidate": 1.1093536712259704,
+          "max_baseline_over_candidate": 1.1283080829697603
+        },
+        "wide_distance10": {
+          "pairs": 3,
+          "median_baseline_over_candidate": 1.0308704555539958,
+          "min_baseline_over_candidate": 0.9830812528139572,
+          "max_baseline_over_candidate": 1.0592234803888205
+        }
+      }
+    },
+    "pgo-standard.json": {
+      "standard10k": {
+        "startup": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.0196848080730008,
+          "minimum": 0.02189394475400719,
+          "maximum": 6.650957313600207
+        },
+        "create_table": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.0061822976603665,
+          "minimum": 0.3526290670465823,
+          "maximum": 55.38960810327964
+        },
+        "ingest": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.0390389745126558,
+          "minimum": 0.36034217833836973,
+          "maximum": 2.4775209791596366
+        },
+        "index_build": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 0.9954333228268025,
+          "minimum": 0.9454251986784129,
+          "maximum": 8.501513327875397
+        },
+        "query_before_update": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.0004561641931267,
+          "minimum": 0.9936021347688465,
+          "maximum": 1.0624578279227497
+        },
+        "shutdown": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.0253407982394493,
+          "minimum": 0.5888024532790532,
+          "maximum": 1.542669474967981
+        },
+        "restart": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.170244313837537,
+          "minimum": 0.1589437986817986,
+          "maximum": 2.4116390044768274
+        },
+        "restart_verification_wall": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.0876293792943734,
+          "minimum": 0.6803232751344666,
+          "maximum": 1.4813649682220198
+        },
+        "query_after_restart": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.0051751174872408,
+          "minimum": 0.986478614349818,
+          "maximum": 1.0211291042836677
+        },
+        "final_shutdown": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.027699533797963,
+          "minimum": 0.9748195639756977,
+          "maximum": 1.1250428659502667
+        },
+        "measured_lifecycle": {
+          "pairs": 15,
+          "median_baseline_over_candidate": 1.09103187370784,
+          "minimum": 0.6048868393523715,
+          "maximum": 1.4155643353520386
+        }
+      }
+    }
+  },
+  "decision": "I14原PGO确认33对通过。默认15对查询1.000456、重启1.005175基本持平；wide768的top10/large/all为1.339879/1.299565/1.289282，many16的wide_large/all为1.140846/1.121776，wide_top10为0.994897负样本保留。默认生命周期1.091032但range0.604887–1.415564，不能全部归因序列化；update10查询0.988837、spill生命周期0.831372也保留。继续候选待组合，不直接默认开启；本轮PGO门禁仅JSON/TopK，UTF8原子性另补PGO验证，现有通过来自O3/ASan。"
+}
