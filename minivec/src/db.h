@@ -2,6 +2,7 @@
 #pragma once
 #include <cstdio>
 #include <functional>
+#include <list>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -14,6 +15,7 @@
 namespace mvdb {
 
 struct PayloadStore;
+struct RowUndoImage;
 class QuantizedQueryBound;
 
 struct TableSchema {
@@ -43,6 +45,9 @@ struct Table {
   std::shared_ptr<PayloadStore> payload_store;
   std::vector<uint64_t> payload_offsets;
   uint64_t payload_bytes = 0;
+  // Weak registrations let a later spill migrate active in-memory Undo images
+  // before it releases borrowed payloads. Expired registrations are pruned.
+  std::list<std::weak_ptr<RowUndoImage>> resident_undo;
 
   size_t live_count() const;
   const Row& read_row(size_t slot, Row& scratch) const;
@@ -139,6 +144,7 @@ class Database {
   std::string dir_;
   std::unordered_map<std::string, Table> tables_;
   std::vector<Undo> undo_;
+  uint64_t undo_image_bytes_ = 0;
   bool txn_active_ = false;
   uint64_t txn_wal_start_ = 0, txn_lsn_start_ = 0;
   bool stmt_active_ = false, stmt_implicit_ = false;

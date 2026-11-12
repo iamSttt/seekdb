@@ -1,7 +1,7 @@
 name: MiniVectorDB score validation
 on:
   push:
-    branches: [codex/round2-score-20261111]
+    branches: [codex/round2-score-20261111, codex/round2-optimize-20261112]
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,10 +11,19 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Engine, Docker, official protocol and paired benchmark
+      - name: Engine, Docker and official protocol
         run: bash minivec/tools/ci_score.sh
       - name: Show diagnostic reports
         if: always()
         run: |
           if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
           if [ -d protocol-results ]; then find protocol-results -name "*.stderr.log" -exec tail -30 {} \;; fi
+  paired-performance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Fixed compiler baseline and candidate paired measurement
+        run: bash minivec/tools/ci_iteration.sh

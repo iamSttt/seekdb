@@ -31,7 +31,11 @@ test_query_pool: tests/test_query_pool_safety.cpp src/query_pool.h
 	$(CXX) $(CXXFLAGS) -o $@ tests/test_query_pool_safety.cpp -Wl,--wrap=pthread_create
 test_cross_table_spill: tests/test_cross_table_spill.cpp src/db.cpp src/flat_index.cpp src/value.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^
-test: all test_sql test_db test_recovery test_query test_sort test_flat test_distance_neighbors test_distance_simd test_quantized_bound test_query_pool test_cross_table_spill
+test_index_budget: tests/test_index_budget.cpp src/flat_index.cpp
+	$(CXX) $(CXXFLAGS) -DMVDB_TEST_WRAP_PWRITE -o $@ $^ -Wl,--wrap=pwrite
+test_resident_update: tests/test_resident_update.cpp $(TEST_COMMON)
+	$(CXX) $(CXXFLAGS) -DMVDB_TEST_WRAP_PWRITE -o $@ $^ -Wl,--wrap=pwrite
+test: all test_sql test_db test_recovery test_query test_sort test_flat test_distance_neighbors test_distance_simd test_quantized_bound test_query_pool test_cross_table_spill test_index_budget test_resident_update
 	./test_sql
 	./test_db
 	./test_recovery
@@ -44,6 +48,9 @@ test: all test_sql test_db test_recovery test_query test_sort test_flat test_dis
 	./test_query_pool
 	./test_query_pool --create-fails
 	./test_cross_table_spill
+	./test_index_budget
+	./test_index_budget --ann-budget
+	./test_resident_update
 	MVDB_PROTOCOL=sql python3 tests/regressions.py
 	python3 tests/json_protocol.py --binary ./minivec
 	python3 tests/topk_bounds.py --binary ./minivec

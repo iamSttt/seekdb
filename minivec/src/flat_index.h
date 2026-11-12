@@ -72,9 +72,16 @@ class FlatIndex {
  private:
   const float* row_at(size_t i) const {return rows_[i];}
   void build_partition();
+  void flush_build_block();
   size_t dimension_=0,expected_=0,count_=0;
   int fd_=-1;
   bool ready_=false;
+  bool build_failed_=false;
+  // Disk construction scratch, bounded by 256 KiB or one oversized record.
+  // Released before the index becomes ready; excluded from resident retention.
+  std::vector<float> build_block_;
+  size_t build_used_=0;
+  uint64_t build_offset_=0;
   // Borrowed row payload pointers (resident path); never owns the floats.
   std::vector<const float*> rows_;
   std::vector<int64_t> keys_;

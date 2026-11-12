@@ -4,6 +4,8 @@ set -euo pipefail
 unset MVDB_PROTOCOL MVDB_OUT
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$repo"
+python3 minivec/tools/validate_iteration_material.py
+python3 -B minivec/tests/test_iteration_tools.py
 export RUNTIME_COMMIT
 RUNTIME_COMMIT=$(git rev-parse HEAD)
 export IMAGE="${IMAGE:-minivec:verify-${RUNTIME_COMMIT:0:12}}"
@@ -72,6 +74,16 @@ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 tim
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 25 "$scratch/query-pool-san" --create-fails 2>&1 | tee "$reports/query-pool-create-fails-san.log"
 g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_cross_table_spill.cpp minivec/src/db.cpp minivec/src/flat_index.cpp minivec/src/value.cpp -o "$scratch/cross-spill-san"
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/cross-spill-san" 2>&1 | tee "$reports/cross-spill-san.log"
+
+# Budget and transactional before-image changes need their own sanitizer checks.
+for name in index_budget resident_update; do
+  extra=(-DMVDB_TEST_WRAP_PWRITE -Wl,--wrap=pwrite)
+  g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src "minivec/tests/test_${name}.cpp" minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp "${extra[@]}" -o "$scratch/${name}-san"
+  ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 "$scratch/${name}-san" 2>&1 | tee "$reports/${name}-san.log"
+  if [ "$name" = index_budget ]; then
+    ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 "$scratch/${name}-san" --ann-budget 2>&1 | tee "$reports/${name}-ann-san.log"
+  fi
+done
 g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/src/*.cpp -o "$scratch/minivec-ubsan"
 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 minivec/tests/json_protocol.py --binary "$scratch/minivec-ubsan" --timeout 15 2>&1 | tee "$reports/fullbinary-json-ubsan.log"
 
@@ -96,7 +108,8 @@ report = {
         'eight_wal_failure_cases_asan_ubsan': True,
         'query_pool_both_modes_asan_ubsan': True,
         'cross_table_spill_asan_ubsan': True,
-        'full_binary_json_ubsan': True
+        'full_binary_json_ubsan': True,
+        'index_budget_and_resident_update_asan_ubsan': True
     },
     'limitations': ['No hidden formal cases or score.',
                     'No new paired performance measurement.',

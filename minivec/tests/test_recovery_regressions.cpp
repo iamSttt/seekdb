@@ -174,9 +174,18 @@ static void update_undo_payloads(const std::string& dir) {
   assert(!d.table("u")->payload_store);
   ok(d,"BEGIN");
   ok(d,"CREATE TABLE prior (id BIGINT PRIMARY KEY)");
-  // Force mkstemp failure before mutation; the earlier transaction survives.
+  // Force mkstemp failure when one statement exhausts the bounded Undo images;
+  // unwind its earlier rows while retaining the preceding transaction work.
   d.table("u")->storage_dir=dir+"/nonexistent/subdir";
-  assert(!run(d,"UPDATE u SET s='failed' WHERE id=1"));
+  assert(d.begin_statement(&e,&code));
+  bool spill_failed=false;
+  for(int i=0;i<64;++i) {
+    if(d.update_rows("u",{},{{"s",Value::ofStr(std::string(32768,'x'))}},&e,&code)<0) {
+      spill_failed=true;break;
+    }
+  }
+  assert(spill_failed);
+  assert(!d.end_statement(false,&e,&code));
   assert(!d.table("u")->payload_store);
   expect_value("original");
   d.table("u")->storage_dir=dir;
@@ -184,7 +193,11 @@ static void update_undo_payloads(const std::string& dir) {
   assert(d.has_table("prior"));
   ok(d,"BEGIN");
   ok(d,"UPDATE u SET s='kept' WHERE id=1");
+  assert(!d.table("u")->payload_store);
+  for(int i=0;i<64 && !d.table("u")->payload_store;++i)
+    ok(d,"UPDATE u SET s='"+std::string(32768,'x')+"'");
   assert(d.table("u")->payload_store);
+  ok(d,"UPDATE u SET s='kept' WHERE id=1");
   const uint64_t kept_offset=d.table("u")->payload_offsets[0];
   // Exercise the same savepoint unwind used after a later statement error.
   assert(d.begin_statement(&e,&code));

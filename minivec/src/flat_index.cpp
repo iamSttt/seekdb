@@ -64,23 +64,47 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
   const size_t stride=dimension*sizeof(float)+16;
   if(count>static_cast<uint64_t>(std::numeric_limits<int64_t>::max())/stride)
     throw std::runtime_error("flat index exceeds file offset range");
-  if(count<=budget/stride) {
+  // Resident vectors are borrowed: only these three arrays belong to the
+  // index. The float payload remains charged to the table's payload budget.
+  constexpr size_t metadata_stride=sizeof(const float*)+sizeof(int64_t)+sizeof(uint64_t);
+  bool resident=count<=budget/metadata_stride;
+  size_t available=budget;
+  if(resident) {
     rows_.reserve(count);
     keys_.reserve(count);slots_.reserve(count);
+    // Account capacities, not sizes. A standard-library implementation may
+    // reserve more than requested; fall back without retaining those arrays.
+    const auto charge=[&](size_t capacity,size_t width) {
+      if(capacity>available/width)return false;
+      available-=capacity*width;return true;
+    };
+    resident=charge(rows_.capacity(),sizeof(const float*)) &&
+             charge(keys_.capacity(),sizeof(int64_t)) &&
+             charge(slots_.capacity(),sizeof(uint64_t));
+    if(!resident) {
+      std::vector<const float*>().swap(rows_);
+      std::vector<int64_t>().swap(keys_);
+      std::vector<uint64_t>().swap(slots_);
+    }
+  }
+  if(resident) {
     // Reserve accounting room up front so lazy construction cannot exceed the
-    // database's combined resident-index budget. At most 1 MiB per index.
-    const size_t available=budget-count*stride;
-    const size_t entry=sizeof(std::pair<int64_t,size_t>);
-    if(count<=std::min<size_t>(available,1u<<20)/entry)
+    // combined resident-index budget, including the sorted-value scratch array.
+    // Ordinals are uint32_t; larger indexes retain the sequential scan path.
+    constexpr size_t entry=2*sizeof(int64_t)+sizeof(uint32_t);
+    // Preserve the former posting row coverage (1 MiB / 16-byte entry). Its
+    // additional construction scratch is charged to the unchanged global
+    // budget instead of reducing cache eligibility for 52k--65k-row tables.
+    constexpr size_t posting_rows=(1u<<20)/16;
+    if(count<=std::numeric_limits<uint32_t>::max() &&
+       count<=posting_rows && count<=available/entry)
       posting_budget_=count*entry;
 #ifndef MVDB_DISABLE_QUANTIZED_BOUND
     // Reserve accounting room before finish() allocates the optional codes.
-    // The resident stride check above also bounds count*dimension without overflow.
-    if(dimension>=16 && dimension<=65536) {
-      const size_t coordinates=count*dimension;
-      if(coordinates<=(4u<<20) && coordinates<=available-posting_budget_)
-        quantized_budget_=coordinates;
-    }
+    // Metadata admission no longer bounds count*dimension: divide first.
+    if(dimension>=16 && dimension<=65536 &&
+       count<=std::min<size_t>(4u<<20,available-posting_budget_)/dimension)
+      quantized_budget_=count*dimension;
 #endif
     // Room for the coarse partition, capped so one index never claims more than
     // 2 MiB for it whatever the budget says.
@@ -96,28 +120,49 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
 }
 FlatIndex::~FlatIndex(){if(fd_>=0)::close(fd_);}
 void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimension) {
-  if(ready_ || count_>=expected_ || dimension!=dimension_)
+  if(ready_ || build_failed_ || count_>=expected_ || dimension!=dimension_ || !values)
     throw std::runtime_error("invalid flat index build row");
   if(fd_<0) {
-    if(!values)throw std::runtime_error("invalid flat index build row");
     // Borrow, never copy: the table's row storage owns this payload and rebuilds
     // the index whenever that storage changes.
     keys_.push_back(pk);slots_.push_back(slot);rows_.push_back(values);
   } else {
     // Float-aligned storage: the first four float-sized words contain raw key
     // metadata and are accessed only via memcpy, never as floating point values.
-    std::vector<float> record(dimension_+4);
-    std::memcpy(record.data(),&pk,sizeof(pk));
-    std::memcpy(record.data()+2,&slot,sizeof(slot));
-    std::memcpy(record.data()+4,values,dimension_*sizeof(float));
-    const size_t bytes=record.size()*sizeof(float);
-    transfer(fd_,record.data(),bytes,static_cast<uint64_t>(count_)*bytes,true);
+    const size_t words=dimension_+4,stride=words*sizeof(float);
+    if(build_block_.empty()) {
+      const size_t records=std::min(expected_,std::max<size_t>(1,(256u<<10)/stride));
+      build_block_.resize(records*words);
+    }
+    float* record=build_block_.data()+build_used_;
+    std::memcpy(record,&pk,sizeof(pk));
+    std::memcpy(record+2,&slot,sizeof(slot));
+    std::memcpy(record+4,values,dimension_*sizeof(float));
+    build_used_+=words;
+    if(build_used_==build_block_.size())flush_build_block();
   }
   ++count_;
 }
+void FlatIndex::flush_build_block() {
+  if(!build_used_)return;
+  const size_t bytes=build_used_*sizeof(float);
+  try {
+    transfer(fd_,build_block_.data(),bytes,build_offset_,true);
+  } catch(...) {
+    // A partial write may already have reached the file. Never expose or reuse
+    // this failed build; its unlinked file is removed by the destructor.
+    build_failed_=true;throw;
+  }
+  build_offset_+=bytes;build_used_=0;
+}
 void FlatIndex::finish() {
+  if(build_failed_)throw std::runtime_error("flat vector index build failed");
   if(count_!=expected_)throw std::runtime_error("incomplete flat vector index build");
   if(ready_)return;
+  if(fd_>=0) {
+    flush_build_block();
+    std::vector<float>().swap(build_block_);
+  }
 #ifndef MVDB_DISABLE_QUANTIZED_BOUND
   if(quantized_budget_) {
     double max_abs=0;
@@ -165,13 +210,20 @@ void FlatIndex::build_partition() {
   // only built when an operator has opted into approximate search: the default
   // configuration must not pay for a structure the exact scan does not use.
   if(ann_probe_percent()>=100)return;
-  if(fd_>=0 || count_<512 || dimension_<8 || dimension_>4096)return;
+  if(fd_>=0 || count_<512 || count_>std::numeric_limits<uint32_t>::max() ||
+     dimension_<8 || dimension_>4096)return;
   size_t clusters=8;
   while(clusters<256 && clusters*clusters<count_)clusters*=2;
   if(count_<clusters*8)return;
   const size_t floats=clusters*dimension_;
-  const size_t bytes=floats*sizeof(float)+count_*sizeof(uint32_t)+(clusters+1)*sizeof(uint32_t);
-  if(bytes>ann_budget_)return;
+  // Bound both training and grouping peaks, including temporary arrays.
+  // Divide before multiplying count so very large metadata-only indexes are safe.
+  if(count_>ann_budget_/(2*sizeof(uint32_t)))return;
+  const size_t training=floats*(sizeof(float)+sizeof(double))+
+                        count_*sizeof(uint32_t)+clusters*sizeof(uint32_t);
+  const size_t grouping=floats*sizeof(float)+count_*(2*sizeof(uint32_t))+
+                        (2*clusters+1)*sizeof(uint32_t);
+  if(std::max(training,grouping)>ann_budget_)return;
   std::vector<float> centroids(floats);
   for(size_t c=0;c<clusters;++c) {
     const size_t src=(c*count_)/clusters;
@@ -202,6 +254,8 @@ void FlatIndex::build_partition() {
       ++sizes[assignment[i]];
     }
   }
+  std::vector<double>().swap(sums);
+  std::vector<uint32_t>().swap(sizes);
   // Counting sort: members of one partition become contiguous, so a probe is a
   // few block copies.
   std::vector<uint32_t> offsets(clusters+1,0);

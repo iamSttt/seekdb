@@ -59,6 +59,12 @@ struct PayloadStore {
   ~PayloadStore() { if (fd >= 0) ::close(fd); }
 };
 
+struct RowUndoImage {
+  Row row;
+  bool spilled = false;
+  uint64_t offset = 0;
+};
+
 namespace {
 
 using TableMap = std::unordered_map<std::string, Table>;
@@ -82,6 +88,9 @@ constexpr uint64_t kAutoCheckpointBytes = MVDB_AUTO_CHECKPOINT_BYTES;
 #define MVDB_SPILL_BYTES (32ull << 20)
 #endif
 constexpr uint64_t kSpillBytes = MVDB_SPILL_BYTES;
+// Bound additional row images across all tables in one transaction. Metadata
+// for INSERT/DELETE and the transaction itself retain their existing accounting.
+constexpr uint64_t kUndoImageBytes = 1ull << 20;
 
 // WAL record kinds.
 enum RecKind : uint8_t {
@@ -281,6 +290,17 @@ uint64_t row_heap_bytes(const Row& row) {
   return n;
 }
 
+uint64_t undo_image_bytes(const Row& row) {
+  // Include capacities (not just sizes), shared ownership and weak registration
+  // storage. Counting inline string capacity too is deliberately conservative.
+  uint64_t n = sizeof(RowUndoImage) + 2 * sizeof(void*) +
+      sizeof(std::weak_ptr<RowUndoImage>) + 2 * sizeof(void*) +
+      row.vals.capacity() * sizeof(Value);
+  for (const Value& v : row.vals)
+    n += v.s.capacity() + 1 + v.v.capacity() * sizeof(float);
+  return n;
+}
+
 void discard_appended_row(Table& table) {
   if (table.payload_store) table.payload_offsets.pop_back();
   else table.payload_bytes -= row_heap_bytes(table.rows.back());
@@ -321,12 +341,28 @@ void spill_payloads(Table& table, bool force = false) {
   ::unlink(path.data()); // source of truth is snapshot + WAL, never this cache
   std::vector<uint64_t> offsets;
   offsets.reserve(table.rows.size());
+  std::vector<std::pair<std::shared_ptr<RowUndoImage>,uint64_t>> old_images;
+  // Write Undo before current rows: failed INSERT cleanup can rewind the store
+  // to the last inserted row, and must never overwrite any older Undo offset.
+  for (const auto& weak : table.resident_undo) {
+    auto image = weak.lock();
+    if (image && !image->spilled)
+      old_images.emplace_back(image,store_payload(*store,image->row));
+  }
   for (const Row& row : table.rows) offsets.push_back(store_payload(*store,row));
   table.payload_offsets=std::move(offsets);
   table.payload_store=std::move(store);
   // Global budget enforcement may spill another table with a live borrowed index.
   // Invalidate its pointers before releasing any resident payload.
   table.vector_index.reset();
+  // Only publish migrated images after every write succeeded. On failure the
+  // resident table and its Undo remain intact and the temporary file is closed.
+  for (auto& image : old_images) {
+    image.first->offset = image.second;
+    image.first->spilled = true;
+    std::vector<Value>().swap(image.first->row.vals);
+  }
+  table.resident_undo.clear();
   for (Row& row : table.rows) std::vector<Value>().swap(row.vals);
   table.payload_bytes=0;
 }
@@ -796,7 +832,8 @@ struct Database::Undo {
   std::string table;
   int64_t pk = 0;
   size_t slot = 0;
-  std::unique_ptr<Row> old;        // K_UPD: previous row image
+  std::shared_ptr<RowUndoImage> old;  // K_UPD: bounded image, or migrated offset
+  uint64_t image_bytes = 0;
   std::unique_ptr<Table> dropped;  // K_DROP: entire table as it was
   bool old_index = false;
   bool old_spilled = false;
@@ -821,6 +858,7 @@ void Database::close() {
   wal_flushed_ = 0;
   tables_.clear();
   undo_.clear();
+  undo_image_bytes_ = 0;
   txn_active_ = false;
   stmt_active_ = false;
   stmt_implicit_ = false;
@@ -1290,19 +1328,6 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
     first=position->second;last=first+1;
     break;
   }
-  // Store old row images on disk before the first transactional mutation.
-  // Repeated updates of a small resident table must not grow heap Undo images.
-  // Check for a match first so an empty UPDATE does not create a payload file.
-  if (txn_active_ && !tb.payload_store) {
-    while (first < last && (tb.dead[first] || !row_matches(pr, tb.rows[first]))) ++first;
-    if (first == last) return 0;
-    try {
-      spill_payloads(tb, true);
-    } catch (const std::exception& ex) {
-      set_err(err, code, ErrCode::TXN, std::string("cannot prepare update payloads: ") + ex.what());
-      return -1;
-    }
-  }
   for (size_t i = first; i < last; ++i) {
     if (tb.dead[i]) continue;
     Row scratch;
@@ -1326,6 +1351,45 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
         set_err(err, code, ErrCode::DUP_KEY,
                 "Duplicate entry '" + std::to_string(newpk) + "' for key 'PRIMARY'");
         return -1;
+      }
+    }
+
+    // Prepare every potentially allocating Undo operation before logging or
+    // changing the row. Small updates keep the table resident; once the global
+    // image allowance is exhausted, spill migrates all its active old images.
+    Undo pending;
+    std::list<std::weak_ptr<RowUndoImage>> pending_registration;
+    if (txn_active_) {
+      pending.k = Undo::K_UPD;
+      pending.table = t;
+      pending.pk = oldpk;
+      pending.slot = i;
+      if (undo_.size() == undo_.capacity())
+        undo_.reserve(undo_.capacity() ? undo_.capacity() * 2 : 16);
+      if (!tb.payload_store) {
+        try {
+          const uint64_t remaining = kUndoImageBytes - undo_image_bytes_;
+          if (undo_image_bytes(row) <= remaining) {
+            pending.old = std::make_shared<RowUndoImage>();
+            pending.old->row = row;
+            pending.image_bytes = undo_image_bytes(pending.old->row);
+          }
+          if (!pending.old || pending.image_bytes > remaining) {
+            pending.old.reset();
+            pending.image_bytes = 0;
+            spill_payloads(tb,true);
+          } else {
+            pending_registration.push_back(pending.old);
+          }
+        } catch (const std::exception& ex) {
+          set_err(err, code, ErrCode::TXN,
+                  std::string("cannot prepare update payloads: ") + ex.what());
+          return -1;
+        }
+      }
+      if (tb.payload_store) {
+        pending.old_spilled = true;
+        pending.old_offset = tb.payload_offsets[i];
       }
     }
 
@@ -1369,18 +1433,9 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
     }
 
     if (txn_active_) {
-      Undo u;
-      u.k = Undo::K_UPD;
-      u.table = t;
-      u.pk = oldpk;
-      u.slot = i;
-      if (tb.payload_store) {
-        u.old_spilled = true;
-        u.old_offset = tb.payload_offsets[i];
-      } else {
-        u.old.reset(new Row(row));
-      }
-      undo_.push_back(std::move(u));
+      undo_image_bytes_ += pending.image_bytes;
+      undo_.push_back(std::move(pending));
+      tb.resident_undo.splice(tb.resident_undo.end(),pending_registration);
     }
     if (newpk != oldpk) {
       tb.pk_pos.erase(oldpk);
@@ -1521,6 +1576,7 @@ bool Database::begin(std::string* err, int* code) {
   txn_wal_start_ = wal_bytes_;
   txn_lsn_start_ = wal_rows_;
   undo_.clear();
+  undo_image_bytes_ = 0;
   std::string pay;
   const uint64_t lsn = ++wal_rows_;
   put_u8(pay, REC_TXN_BEGIN);
@@ -1563,6 +1619,8 @@ bool Database::commit(std::string* err, int* code) {
       return false;
     }
     undo_.clear();
+    undo_image_bytes_ = 0;
+    for (auto& table : tables_) table.second.resident_undo.clear();
     undo_.shrink_to_fit();
     txn_active_ = false;
   }
@@ -1576,6 +1634,7 @@ bool Database::commit(std::string* err, int* code) {
 void Database::undo_to(size_t mark) {
   for (size_t i = undo_.size(); i-- > mark;) {
     Undo& u = undo_[i];
+    undo_image_bytes_ -= u.image_bytes;
     if (u.k == Undo::K_CREATE) {
       tables_.erase(u.table);
       continue;
@@ -1612,7 +1671,15 @@ void Database::undo_to(size_t mark) {
           break;
         }
         if (u.slot < tb.rows.size() && u.old) {
-          tb.replace_row(u.slot,std::move(*u.old));
+          if (u.old->spilled) {
+            tb.payload_offsets[u.slot] = u.old->offset;
+          } else {
+            // A live memory image is registered with the table: every spill
+            // converts it first, so this branch cannot require rollback I/O.
+            tb.payload_bytes -= row_heap_bytes(tb.rows[u.slot]);
+            tb.payload_bytes += row_heap_bytes(u.old->row);
+            tb.rows[u.slot] = std::move(u.old->row);
+          }
           tb.pk_pos[u.pk] = u.slot;
         }
         break;
@@ -1632,6 +1699,9 @@ void Database::undo_to(size_t mark) {
     }
   }
   undo_.resize(mark);
+  for (auto& table : tables_)
+    table.second.resident_undo.remove_if(
+        [](const std::weak_ptr<RowUndoImage>& image) { return image.expired(); });
 }
 
 bool Database::truncate_wal(uint64_t bytes, uint64_t lsn, std::string* err, int* code) {
@@ -1803,7 +1873,8 @@ void Database::build_vector_index(Table& table) {
   // array, with no row copies or extra payload reads from spilled tables.
   std::unique_ptr<NormSlot[]> ordered;
   if(!index->disk_backed() && !table.payload_store && count>1 &&
-     count<=norm_metadata_budget/sizeof(NormSlot)) {
+     count<=norm_metadata_budget/sizeof(NormSlot) &&
+     count<=(budget-std::min(budget,index->resident_bytes()))/sizeof(NormSlot)) {
     ordered.reset(new(std::nothrow) NormSlot[count]);
     if(ordered) {
       size_t used=0;
@@ -1830,6 +1901,9 @@ void Database::build_vector_index(Table& table) {
     for(size_t slot=0;slot<table.rows.size();++slot)
       if(!table.dead[slot])add_slot(slot);
   }
+#ifndef MVDB_DISABLE_NORM_ORDER
+  ordered.reset();
+#endif
   index->finish();
   table.vector_index=std::move(index);
 }

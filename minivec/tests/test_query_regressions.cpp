@@ -108,13 +108,20 @@ static void projection_regressions(Database& db) {
   query(db, "CREATE TABLE projections(title VARCHAR(16),v VECTOR(2),id BIGINT PRIMARY KEY)", false);
   query(db, "INSERT INTO projections VALUES('nine','[3,0]',9),('two','[-1,0]',2),"
             "('seven','[1,0]',7),('three','[4,0]',3)", false);
-  for (int stage = 0; stage < 3; ++stage) {
+  for (int stage = 0; stage < 4; ++stage) {
     if (stage == 1)
       query(db, "CREATE VECTOR INDEX projections_v ON projections(v)", false);
-    if (stage == 2) {
+    if (stage >= 2) {
       query(db, "BEGIN", false);
       query(db, "UPDATE projections SET title='two' WHERE id=2", false);
-      assert(db.table("projections")->payload_store);
+      assert(!db.table("projections")->payload_store);
+      if(stage == 3) {
+        std::string err;int code=0;
+        Cond id;id.column="id";id.op=Cond::EQ;id.value=Value::ofInt(2);
+        for(int i=0;i<8192 && !db.table("projections")->payload_store;++i)
+          assert(db.update_rows("projections",{id},{{"title",Value::ofStr("two")}},&err,&code)==1);
+        assert(db.table("projections")->payload_store);
+      }
     }
     check("ORDER BY near LIMIT 1", {{2, 1, 5, "two"}});
     check("ORDER BY near DESC LIMIT 4",
@@ -125,7 +132,7 @@ static void projection_regressions(Database& db) {
           {{9, 3, 1, "nine"}, {7, 1, 3, "seven"}, {3, 4, 0, "three"}, {2, 1, 5, "two"}});
     check("ORDER BY near LIMIT 4096",
           {{2, 1, 5, "two"}, {7, 1, 3, "seven"}, {9, 3, 1, "nine"}, {3, 4, 0, "three"}});
-    if (stage == 2) query(db, "ROLLBACK", false);
+    if (stage >= 2) query(db, "ROLLBACK", false);
   }
   std::cout << "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows\n";
 }

@@ -1,0 +1,17 @@
+{
+  "kind": "authenticated_platform_observation",
+  "source_url": "https://open.oceanbase.com/train/TestRecord?questionId=600081",
+  "observed_date_asia_shanghai": "2026-11-12",
+  "implementation_baseline": "a90b2b750e40f020793cddefe01d5b66631afc63",
+  "latest_evaluated_commit": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "submission_time_asia_shanghai": "2026-11-12 19:52",
+  "submission_count": 7,
+  "mysql_admission": "pass",
+  "performance_raw_E": "3014.419039",
+  "agent_prompt_raw_score": null,
+  "agent_prompt_message": "Prompt结果无效、待复核、超出平台0–100范围或缺少材料摘要，本项不参与排名；未截断或换算本地分数。",
+  "unavailable": ["write/query T/B/M", "individual Prompt failure reason", "rank points"],
+  "observation_method": "Read the latest row and success-result dialog in the authenticated in-app browser in this iteration. Credentials in the repository URL were redacted before any record was saved.",
+  "new_submission_made": false,
+  "scope": "Existing platform result only; not a score for this iteration candidate or a90b2b7."
+}

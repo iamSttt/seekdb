@@ -6,7 +6,9 @@
 
 2026-11-12 19:52（北京时间）提交 `ee299adb296a2922d01982aa6c5707d37e767b41`：MySQL准入通过，性能原始指标 **E=3014.419039**，Agent Prompt仍显示无效/待复核等泛化提示，未参与排名。
 
-[技术报告](docs/TECHNICAL_REPORT_20261112.md)记录本次结果、整体架构、正确性边界、性能瓶颈与清理复验；[正式结果记录](validation/formal-ee299adb-20261112.json)保存脱敏字段。该成绩属于已评测的ee299adb，不能视为清理后提交的新正式成绩。两份conversation.json及专属材料工具已按仓库所有者要求移除，当前版本不包含Agent Prompt对话材料。
+[技术报告](docs/TECHNICAL_REPORT_20261112.md)记录本次结果、整体架构、正确性边界、性能瓶颈与清理复验；[正式结果记录](validation/formal-ee299adb-20261112.json)保存脱敏字段。该成绩属于已评测的ee299adb，不能视为本轮候选的新正式成绩。
+
+本轮从用户指定的 `a90b2b750e40f020793cddefe01d5b66631afc63` 开始，筛选用户报告中的驻留预算、少量 UPDATE、磁盘索引批写与配对测量方向。按用户本轮要求新建 [agent/conversation.json](agent/conversation.json) 及相同根副本：报告与用户原话标为 `user`，实现与实验标为 `assistant`，不导入旧对话历史。`python3 minivec/tools/validate_iteration_material.py` 检查两份字节、大小与来源引用，不代表官方材料评审通过。
 
 ## 构建和运行
 
