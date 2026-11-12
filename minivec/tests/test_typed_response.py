@@ -21,8 +21,8 @@ def run(binary, timeout):
         data = Path(directory)
         # The first projected row is longer than 64 KiB. Each failed SELECT
         # reaches serialization of a later row, after a valid output prefix.
-        prefix = b"z" * 70000
-        sql = b"CREATE TABLE bad(id BIGINT PRIMARY KEY,s VARCHAR(80000));\n"
+        prefix = "中".encode("utf-8") * 30000
+        sql = b"CREATE TABLE bad(id BIGINT PRIMARY KEY,s VARCHAR(65535));\n"
         sql += b"INSERT INTO bad VALUES (1,'" + prefix + b"'),(2,'" + malformed[0] + b"'),(3,'after');\n"
         environment = os.environ.copy()
         environment.pop("MVDB_PROTOCOL", None)
@@ -35,7 +35,7 @@ def run(binary, timeout):
         # Other malformed sequences are seeded in separate tables by the same
         # legacy interface, preserving their bytes without invalid JSON input.
         for index, raw in enumerate(malformed[1:], 1):
-            sql = f"CREATE TABLE bad{index}(id BIGINT PRIMARY KEY,s VARCHAR(80000));\n".encode()
+            sql = f"CREATE TABLE bad{index}(id BIGINT PRIMARY KEY,s VARCHAR(65535));\n".encode()
             sql += f"INSERT INTO bad{index} VALUES (1,'".encode() + prefix + b"'),(2,'" + raw + b"'),(3,'after');\n"
             seeded = subprocess.run([str(binary), "--data", directory, "--protocol", "sql"], input=sql,
                                     capture_output=True, timeout=timeout, env=environment)

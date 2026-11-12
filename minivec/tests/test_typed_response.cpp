@@ -21,8 +21,12 @@ int main() {
       Statement statement;assert(parse_sql(text,&statement,&error,&code,false));
       return execute_json(db,statement,&out,&error,&code,false);
     };
-    assert(call("CREATE TABLE bad(id BIGINT PRIMARY KEY,s VARCHAR(80000));"));
-    assert(call("INSERT INTO bad VALUES (1,'"+std::string(70000,'z')+"'),(2,'valid'),(3,'after');"));
+    assert(call("CREATE TABLE bad(id BIGINT PRIMARY KEY,s VARCHAR(65535));"));
+    // 30,000 codepoints fit VARCHAR while their 90,000 UTF-8 bytes ensure the
+    // valid response prefix already exceeds 64 KiB before the later bad row.
+    std::string prefix;prefix.reserve(90000);
+    for(size_t i=0;i<30000;++i)prefix+="\xe4\xb8\xad";
+    assert(call("INSERT INTO bad VALUES (1,'"+prefix+"'),(2,'valid'),(3,'after');"));
     const std::string invalid[]={std::string("\xff",1),std::string("\xc0\x80",2),
       std::string("\xed\xa0\x80",3),std::string("\xe4\xb8",2),std::string("\xf4\x90\x80\x80",4),std::string("\x80",1)};
     for(const auto& bytes:invalid) {
