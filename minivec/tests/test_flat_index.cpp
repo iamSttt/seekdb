@@ -9,7 +9,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
-#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -28,7 +27,7 @@ static void insert(Database& db,int64_t id) {
       Value::ofVec({float(id),1,2,3,4})},&err,&code));
 }
 static void check_quantized_view(const FlatIndex::ResidentView& view) {
-  if(!view.quantized) {assert(view.quantization_step==0 && !view.quantized_norms);return;}
+  if(!view.quantized) {assert(view.quantization_step==0);return;}
   assert(view.count && view.dimension>=16 && view.dimension<=65536);
   assert(view.quantization_step>0 && std::isfinite(view.quantization_step));
   for(size_t i=0;i<view.count*view.dimension;++i) {
@@ -38,19 +37,6 @@ static void check_quantized_view(const FlatIndex::ResidentView& view) {
         static_cast<long double>(view.quantized[i])*static_cast<long double>(view.quantization_step));
     assert(error<=static_cast<long double>(view.quantization_step)*0.5L);
   }
-  if(view.quantized_norms) {
-    assert(quantized_dot_available() && view.dimension>=32);
-    for(size_t row=0;row<view.count;++row) {
-      uint64_t norm=0;
-      for(size_t d=0;d<view.dimension;++d) {
-        const int64_t value=view.quantized[row*view.dimension+d];norm+=uint64_t(value*value);
-      }
-      assert(norm==view.quantized_norms[row]);
-    }
-  }
-#ifdef MVDB_DISABLE_QUANTIZED_DOT
-  assert(!view.quantized_norms);
-#endif
 }
 static void check_view(Database& db) {
   const Table* table=db.table("t");assert(table);
@@ -64,7 +50,7 @@ static void check_view(Database& db) {
   }
   if(!available) {
     assert(!view.rows && !view.keys && !view.dimension && !view.count);
-    assert(!view.quantized && view.quantization_step==0 && !view.quantized_norms);
+    assert(!view.quantized && view.quantization_step==0);
     return;
   }
   std::map<int64_t,std::vector<float>> expected,actual;
@@ -192,18 +178,6 @@ static void quantized_index_regression() {
   // Exactly 4 MiB is eligible; one further row must retain only float storage.
   verify_physical(65536,64,32u<<20,true);
   verify_physical(65536,65,32u<<20,false);
-  // A failed view request clears stale norm pointers. Failed quantization also
-  // releases its optional norm reservation and retains the exact float scan.
-  for(float invalid:{std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()}) {
-    FlatIndex index(path,128,1,4u<<20);
-    FlatIndex::ResidentView view;const uint32_t stale_norm=42;
-    view.quantized_norms=&stale_norm;
-    assert(!index.resident_view(&view) && !view.quantized_norms);
-    std::vector<float> values(128,0.1f);values[127]=invalid;
-    index.add(1,0,values.data(),values.size());index.finish();
-    assert(index.resident_view(&view));check_quantized_view(view);
-    assert(!view.quantized && !view.quantized_norms);
-  }
 
   Database db;assert(db.open(path,&err));auto cols=schema();cols[2].len=16;
   assert(db.create_table("q",cols,&err,&code));
@@ -231,7 +205,7 @@ static void quantized_index_regression() {
     });assert(actual==expected);
     // A failed request must clear every borrowed code pointer as well.
     assert(!db.resident_vector_view("missing",&view));
-    assert(!view.quantized && !view.quantization_step && !view.rows && !view.keys && !view.quantized_norms);
+    assert(!view.quantized && !view.quantization_step && !view.rows && !view.keys);
   };
   verify_database();assert(db.begin(&err,&code));add(7,0.75f);
   assert(!db.table("q")->vector_index);verify_database();

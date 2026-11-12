@@ -33,7 +33,7 @@ PYREPORT
 trap dump_reports EXIT
 
 git rev-parse HEAD > protocol-results/runtime-commit.txt
-git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec/Makefile minivec/tests minivec/tools/ci_score.sh STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > protocol-results/input-sha256.txt
+git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec/Makefile minivec/tests minivec/tools/ci_score.sh minivec/tools/ci_final_performance.sh minivec/tools/pgo/train.cpp minivec/tools/pgo/run-training.sh STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > protocol-results/input-sha256.txt
 lscpu > protocol-results/lscpu.txt
 docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
@@ -53,9 +53,6 @@ python3 minivec/tests/image_interactive.py --image "$IMAGE" --output protocol-re
 make -C minivec -j2 test 2>&1 | tee protocol-results/source-regressions.log
 MVDB_PARSE_THREADS=1 ./minivec/test_sql 2>&1 | tee protocol-results/parser-serial.log
 MVDB_PARSE_THREADS=2 ./minivec/test_sql 2>&1 | tee protocol-results/parser-parallel.log
-g++ -O2 -std=c++17 -pthread -Iminivec/src -DMVDB_DISABLE_QUANTIZED_DOT \
-  minivec/tests/test_quantized_bound.cpp -o "$scratch/test-no-dot"
-"$scratch/test-no-dot" 2>&1 | tee protocol-results/no-dot.log
 g++ -O2 -std=c++17 -pthread -Iminivec/src -DMVDB_DISABLE_QUANTIZED_BOUND \
   minivec/tests/test_quantized_bound.cpp -o "$scratch/test-no-quantization"
 "$scratch/test-no-quantization" 2>&1 | tee protocol-results/no-quantization.log
@@ -81,7 +78,7 @@ g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefi
 for threads in 1 2; do
   MVDB_PARSE_THREADS="$threads" ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/sql-san" 2>&1 | tee "$reports/sql-$threads-san.log"
 done
-# Exercise AVX2 dot dispatch even when this runner also supports AVX512.
+# Exercise the AVX2 quantized fallback even when this runner supports AVX512.
 # Native/release checks above retain normal CPU dispatch.
 g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -DMVDB_DISABLE_AVX512_QUANTIZED -Iminivec/src minivec/tests/test_quantized_bound.cpp -o "$scratch/quantized-san"
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/quantized-san" 2>&1 | tee "$reports/quantized-san.log"
@@ -108,6 +105,10 @@ UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 minivec/tests/json_prot
 
 # Cleanup must not change any official fixtures or source while tests run.
 git diff --exit-code -- STDIO_PROTOCOL.md protocol_check mysqltest minivec/src minivec/third_party Dockerfile .dockerignore
+if [ "${MVDB_FINAL_PERFORMANCE:-0}" = 1 ]; then
+  bash minivec/tools/ci_final_performance.sh "$scratch/image-binary" \
+    "$(cat protocol-results/image-id.txt)"
+fi
 python3 - <<'PYSUMMARY'
 import json, os
 from pathlib import Path
@@ -131,12 +132,21 @@ report = {
         'full_binary_json_ubsan': True,
         'index_budget_and_resident_update_asan_ubsan': True
     },
-    'sanitizer_quantized_dispatch': 'AVX512 quantized disabled for quantized_bound and index_budget, so AVX2-capable runners exercise optional dot/norm paths; native and release tests retain default dispatch.',
+    'sanitizer_quantized_dispatch': 'AVX512 quantized disabled for quantized_bound and index_budget to cover the AVX2 fallback; native and release tests retain default dispatch. Experimental dot/norm runtime was reverted.',
     'limitations': ['No hidden formal cases or score.',
                     'No new paired performance measurement.',
                     'WAL fixture injects short/failed writes; not fdatasync or allocation failure.',
                     'ASan leak detection disabled; memory-safety and undefined-behavior checks enabled.']
 }
+if os.environ.get('MVDB_FINAL_PERFORMANCE') == '1':
+    performance = json.loads(Path('protocol-results/final-performance/summary.json').read_text())
+    if performance.get('status') != 'passed':
+        raise SystemExit('Same-image paired measurements did not pass')
+    report['checks']['same_image_binary_105_paired_measurements'] = True
+    report['performance_evidence'] = 'final-performance/summary.json'
+    report['performance_candidate_binary_sha256'] = performance['binary_sha256_after']['candidate']
+    report['limitations'].remove('No new paired performance measurement.')
+    report['limitations'].append('Local paired measurements bind this image/binary; future PGO rebuilds may differ.')
 Path('protocol-results/verification-summary.json').write_text(json.dumps(report, indent=2)+'\n')
 print(json.dumps(report, indent=2))
 PYSUMMARY

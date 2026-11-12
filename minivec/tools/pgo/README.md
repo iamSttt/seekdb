@@ -1,11 +1,11 @@
-这是 I15 PGO 的独立实验工具。方向来自用户报告，具体实现由 assistant 编写。没有改根 Dockerfile 或运行时代码。默认 `ENABLE_PGO=0`；首次 Linux CI 结果待生成，不能据此宣称性能收益。
+这是 I15 PGO 的独立实验工具。方向来自用户报告，具体实现由 assistant 编写。同源隔离实验已在 `502931da5b1e9804212e25efe029f4b9f253bc96` 完成；工具专用 Dockerfile 仍默认 `ENABLE_PGO=0`。根 Dockerfile 现默认启用 PGO，最终组合恢复上一轮运行源码，直接性能结论见 [第二轮记录](../../../docs/ITERATION2_20261112.md)。历史隔离数据与最终组合不能混用。
 
 依赖仅为 Linux、Docker、Git、Bash、Python 3 和常见 coreutils/findutils。编译与训练在现有固定镜像 `gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818` 中完成，C++ helper 只依赖已有 `json.hpp`。无需下载安装包，Docker RUN 网络禁用。Python 仅用于构建外的已有协议验证与基准。
 
 运行示例（Linux，结果目录必须尚不存在）：
 
 ```bash
-bash /absolute/repo/minivec/tools/pgo/compare.sh /absolute/repo FULL_COMMIT /absolute/pgo-results --build-only
+bash /absolute/repo/minivec/tools/pgo/compare.sh /absolute/repo 502931da5b1e9804212e25efe029f4b9f253bc96 /absolute/pgo-results --build-only
 # 去掉 --build-only 后还会执行 15 对标准测试与 90 对边界测试。
 ```
 
@@ -44,4 +44,4 @@ helper 独立计算所有查询的完整排序，再生成期望响应。坐标�
 
 对照记录源码提交、源文件与草稿哈希、镜像与二进制哈希、CPU 信息、语料/反馈哈希、协议结果和性能 JSON。实际测量固定在同一两个可用 CPU 上，标准场景 3 个评估种子各 5 对；评估种子 `7319/8911/13337` 与训练独立。边界覆盖 resident30k、resident50k、low16、filter60k、update10、spill，每场景 15 对。结果只用于本机对照，不换算正式分数。
 
-下一步先在 Linux 执行 `--build-only`。如反馈检查或任何协议/数值测试失败，保留日志定位并停止；全部通过后才开展性能配对。是否启用由标准场景和边界结果决定，当前主仓库默认构建仍保持原样。
+历史实验按上述门禁先检查构建与正确性，再开展配对。当前最终组合的验证入口为 `MVDB_FINAL_PERFORMANCE=1 bash minivec/tools/ci_score.sh`：使用根 Dockerfile 同一次构建的程序完成正确性与 105 对直接比较。反馈检查或任何协议/数值测试失败都会保留日志并停止，不修正损坏反馈或忽略失败。

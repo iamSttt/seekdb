@@ -75,32 +75,6 @@ inline uint32_t distance_avx2(const int8_t* a,const int8_t* b,size_t n) {
   for(;i<n;++i){const int d=int(a[i])-int(b[i]);result+=static_cast<uint32_t>(d*d);}
   return result;
 }
-#if !defined(MVDB_DISABLE_QUANTIZED_DOT)
-// Preconditions: n<=65536, codes in [-127,127], and an/bn are their exact
-// squared norms. abs(a)*sign(b,a) equals a*b. Each PMADDUBSW pair lies in
-// [-32258,32258], so its signed saturation cannot change a result. Four
-// products fit int32, as does the entire dot (absolute value <=1057030144).
-// The final squared distance can exceed INT32_MAX, so reconstruct in int64.
-__attribute__((target("avx2,no-fma")))
-inline uint32_t distance_dot_avx2(const int8_t* a,const int8_t* b,size_t n,
-                                 uint32_t an,uint32_t bn) {
-  __m256i sums=_mm256_setzero_si256();
-  const __m256i ones=_mm256_set1_epi16(1);
-  size_t i=0;
-  for(;i+32<=n;i+=32) {
-    const __m256i x=_mm256_loadu_si256(reinterpret_cast<const __m256i*>(a+i));
-    const __m256i y=_mm256_loadu_si256(reinterpret_cast<const __m256i*>(b+i));
-    const __m256i pairs=_mm256_maddubs_epi16(_mm256_abs_epi8(x),_mm256_sign_epi8(y,x));
-    sums=_mm256_add_epi32(sums,_mm256_madd_epi16(pairs,ones));
-  }
-  __m128i total=_mm_add_epi32(_mm256_castsi256_si128(sums),_mm256_extracti128_si256(sums,1));
-  total=_mm_add_epi32(total,_mm_srli_si128(total,8));
-  total=_mm_add_epi32(total,_mm_srli_si128(total,4));
-  int64_t dot=_mm_cvtsi128_si32(total);
-  for(;i<n;++i)dot+=int64_t(a[i])*b[i];
-  return static_cast<uint32_t>(int64_t(an)+bn-2*dot);
-}
-#endif
 #if !defined(MVDB_DISABLE_AVX512_QUANTIZED)
 __attribute__((target("avx512f,avx512bw,no-fma")))
 inline uint32_t distance_avx512(const int8_t* a,const int8_t* b,size_t n) {
@@ -141,18 +115,6 @@ inline double up(double x) {
 }
 } // namespace quantized_detail
 
-// Retain the existing AVX512 kernel on CPUs where it is selected. The dot
-// variant is only a candidate for the measured AVX2 path; never allocate its
-// auxiliary norms on an unsupported CPU or in an ablation build.
-inline bool quantized_dot_available() {
-#if defined(MVDB_SIMD_BOUND_X86) && !defined(MVDB_DISABLE_QUANTIZED_DOT) && !defined(MVDB_DISABLE_QUANTIZED_BOUND)
-  static const bool available=quantized_detail::choose_distance()==quantized_detail::distance_avx2;
-  return available;
-#else
-  return false;
-#endif
-}
-
 // Zero signals unavailable/invalid input; zero-valued data uses unit step.
 inline double quantization_step(double max_abs) {
   if(!quantized_detail::normal_fp_environment() ||
@@ -183,63 +145,32 @@ inline uint32_t quantized_distance_squared(const int8_t* a,const int8_t* b,size_
 // is mutable and this object must not be shared between concurrent threads.
 class QuantizedQueryBound {
  public:
-  QuantizedQueryBound(const float* query,size_t n,double step,bool use_dot=false):n_(n) {
+  QuantizedQueryBound(const float* query,size_t n,double step):n_(n) {
 #if !defined(MVDB_DISABLE_QUANTIZED_BOUND)
     if(!query || n<16 || n>65536 || !quantized_detail::normal_fp_environment() ||
        !quantized_detail::power_of_two(step))return;
     step_squared_=step*step;
     if(!(step_squared_>0) || !std::isfinite(step_squared_))return;
     try {query_.resize(n);} catch(const std::bad_alloc&) {return;}
-#ifndef MVDB_DISABLE_QUANTIZED_DOT
-    const bool collect_norm=use_dot && n>=32 && quantized_dot_available();
-#else
-    (void)use_dot;
-#endif
     for(size_t i=0;i<n;++i) {
       if(!quantized_detail::encode(query[i],step,&query_[i])) {
         std::vector<int8_t>().swap(query_);return;
       }
-#ifndef MVDB_DISABLE_QUANTIZED_DOT
-      if(collect_norm) {
-        const int code=query_[i];query_norm_+=static_cast<uint32_t>(code*code);
-      }
-#endif
     }
     root_n_=quantized_detail::up(std::sqrt(static_cast<double>(n)));
     kernel_=quantized_detail::choose_distance();
-#ifndef MVDB_DISABLE_QUANTIZED_DOT
-    dot_enabled_=collect_norm;
-#endif
     enabled_=true;
 #else
-    (void)query;(void)step;(void)use_dot;
+    (void)query;(void)step;
 #endif
   }
   bool enabled() const {return enabled_;}
-  bool dot_enabled() const {return dot_enabled_;}
   const std::vector<int8_t>& coded_query() const {return query_;}
   bool definitely_greater(const int8_t* row,double threshold) const {
     if(!enabled_ || !row || !std::isfinite(threshold) || threshold<0)return false;
     if(!cached_ || threshold!=cached_threshold_)update_cap(threshold);
     if(!usable_cap_)return false;
     return static_cast<double>(kernel_(row,query_.data(),n_))>cap_;
-  }
-  // row_norm must be the exact sum of this encoded row's squared codes, as
-  // supplied by the matching FlatIndex view. The original overload remains
-  // valid without norms and always retains the original distance kernel.
-  bool definitely_greater(const int8_t* row,double threshold,uint32_t row_norm) const {
-#if defined(MVDB_SIMD_BOUND_X86) && !defined(MVDB_DISABLE_QUANTIZED_DOT)
-    if(dot_enabled_) {
-      if(!enabled_ || !row || !std::isfinite(threshold) || threshold<0)return false;
-      if(!cached_ || threshold!=cached_threshold_)update_cap(threshold);
-      if(!usable_cap_)return false;
-      return static_cast<double>(quantized_detail::distance_dot_avx2(
-          row,query_.data(),n_,row_norm,query_norm_))>cap_;
-    }
-#else
-    (void)row_norm;
-#endif
-    return definitely_greater(row,threshold);
   }
  private:
   void update_cap(double threshold) const {
@@ -261,8 +192,6 @@ class QuantizedQueryBound {
   }
   size_t n_=0;
   bool enabled_=false;
-  bool dot_enabled_=false;
-  uint32_t query_norm_=0;
   double step_squared_=0,root_n_=0;
   quantized_detail::Distance kernel_=nullptr;
   std::vector<int8_t> query_;

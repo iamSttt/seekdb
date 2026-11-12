@@ -8,9 +8,13 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 60
+    env:
+      MVDB_FINAL_PERFORMANCE: ${{ contains(github.event.head_commit.message, '[final-perf]') && '1' || '0' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
       - name: Engine, Docker and official protocol
         run: bash minivec/tools/ci_score.sh
       - name: Show diagnostic reports
@@ -19,7 +23,7 @@ jobs:
           if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
           if [ -d protocol-results ]; then find protocol-results -name "*.stderr.log" -exec tail -30 {} \;; fi
   paired-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:

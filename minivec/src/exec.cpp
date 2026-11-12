@@ -570,15 +570,14 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 // One bound object per half: both cache their current threshold.
                 const DistanceBoundContext bound(dimension);
                 const QuantizedQueryBound quantized(query,dimension,
-                    view.quantized ? view.quantization_step : 0,view.quantized_norms!=nullptr);
+                    view.quantized ? view.quantization_step : 0);
                 std::vector<Candidate>& heap=halves[worker];
                 for(size_t i=first;i<last;++i) {
                   // Integer codes are only a certified rejection filter, taken
                   // against this half's own k-th distance. Every uncertain row
                   // follows the existing float bound and exact kernel.
                   if(quantized.enabled() && heap.size()==k &&
-                     quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance,
-                         view.quantized_norms ? view.quantized_norms[i] : 0))
+                     quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance))
                     continue;
                   const float* row=view.rows[i];
                   if(heap.size()==k && bound.definitely_greater(row,query,heap.front().distance))
@@ -595,14 +594,12 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 for(auto& candidate:halves[worker])offer(std::move(candidate));
             } else {
               const QuantizedQueryBound quantized(order.qvec->data(),view.dimension,
-                  bounded && !st.order_desc && view.quantized ? view.quantization_step : 0,
-                  view.quantized_norms!=nullptr);
+                  bounded && !st.order_desc && view.quantized ? view.quantization_step : 0);
               auto scan_ordinal=[&](size_t i) {
                 // Integer codes are only a certified rejection filter. Every
                 // uncertain row follows the existing float bound/exact path.
                 if(quantized.enabled() && result.size()==k &&
-                   quantized.definitely_greater(view.quantized+i*view.dimension,result.front().distance,
-                       view.quantized_norms ? view.quantized_norms[i] : 0))
+                   quantized.definitely_greater(view.quantized+i*view.dimension,result.front().distance))
                   return true;
                 return consider(view.keys[i],view.rows[i],view.dimension);
               };
@@ -626,8 +623,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 filtered_view.quantized && bounded && !st.order_desc;
             std::unique_ptr<QuantizedQueryBound> filtered_bound;
             if(resident) filtered_bound.reset(new QuantizedQueryBound(order.qvec->data(),
-                filtered_view.dimension,filtered_view.quantization_step,
-                filtered_view.quantized_norms!=nullptr));
+                filtered_view.dimension,filtered_view.quantization_step));
             const bool filtered_reject=resident && filtered_bound->enabled();
             double threshold=std::numeric_limits<double>::infinity();
             auto consider_filtered=[&](int64_t pk,const float* v,size_t dim) {
