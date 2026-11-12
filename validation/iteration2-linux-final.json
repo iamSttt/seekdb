@@ -1,0 +1,326 @@
+{
+  "commit": "58354ffb8b019bd6f8fdce2f671780fd9dca1c43",
+  "run_id": 43247796185,
+  "job_id": 131285047133,
+  "job_url": "https://github.com/iamSttt/seekdb/actions/runs/43247796185/job/131285047133",
+  "conclusion": "success",
+  "log_file": "work\\validation-ci-58354ff.log",
+  "log_bytes": 13428341,
+  "log_sha256": "a0b55f524cea7a7b6367690d2607def7d58a5a934396539c0b776b36cb4525da",
+  "image_id": "sha256:88c95f0546b90d0f5c101e5319c7802cc9757818e0274174b3db7b83e356b4a3",
+  "candidate_binary_sha256": "d17b15103110159038b56b7b2b534e9f8b4523784e454afa4019e9d2b92fce00",
+  "baseline_binary_sha256": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753",
+  "same_image_and_binary_gate_performance_binding_verified": true,
+  "all_before_after_binary_hashes_unchanged": true,
+  "paired_measurements": {
+    "standard": 15,
+    "boundaries": 90,
+    "completion": true,
+    "performance_analysis_owner": "benchmark agent"
+  },
+  "verification": {
+    "runtime_commit": "58354ffb8b019bd6f8fdce2f671780fd9dca1c43",
+    "image_tag": "minivec:verify-58354ffb8b01",
+    "image_id": "sha256:88c95f0546b90d0f5c101e5319c7802cc9757818e0274174b3db7b83e356b4a3",
+    "scope": "current-checkout build and regression verification; not formal scoring",
+    "passed": true,
+    "checks": {
+      "root_docker_build": true,
+      "image_official_handshake_and_public_cases": true,
+      "source_official_handshake_and_public_cases": true,
+      "live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill": true,
+      "make_test": true,
+      "parser_ownership_serial_parallel_and_quantized_bound_asan_ubsan": true,
+      "image_binary_json_and_exact_topk_serial_parallel": true,
+      "eight_wal_failure_cases_asan_ubsan": true,
+      "query_pool_both_modes_asan_ubsan": true,
+      "cross_table_spill_asan_ubsan": true,
+      "full_binary_json_ubsan": true,
+      "index_budget_and_resident_update_asan_ubsan": true,
+      "same_image_binary_105_paired_measurements": true
+    },
+    "sanitizer_quantized_dispatch": "AVX512 quantized disabled for quantized_bound and index_budget to cover the AVX2 fallback; native and release tests retain default dispatch. Experimental dot/norm runtime was reverted.",
+    "limitations": [
+      "No hidden formal cases or score.",
+      "WAL fixture injects short/failed writes; not fdatasync or allocation failure.",
+      "ASan leak detection disabled; memory-safety and undefined-behavior checks enabled.",
+      "Local paired measurements bind this image/binary; future PGO rebuilds may differ."
+    ],
+    "performance_evidence": "final-performance/summary.json",
+    "performance_candidate_binary_sha256": "d17b15103110159038b56b7b2b534e9f8b4523784e454afa4019e9d2b92fce00"
+  },
+  "public_protocol_gates": {
+    "image-handshake/result.json": {
+      "passed": true,
+      "cases": 1
+    },
+    "image-public/result.json": {
+      "passed": true,
+      "cases": 20
+    },
+    "source-handshake/result.json": {
+      "passed": true,
+      "cases": 1
+    },
+    "source-public/result.json": {
+      "passed": true,
+      "cases": 20
+    }
+  },
+  "parser_checks": [
+    {
+      "passed": 10251,
+      "failed": 0,
+      "log_line": 904,
+      "stage": "make_test"
+    },
+    {
+      "passed": 10251,
+      "failed": 0,
+      "log_line": 1604,
+      "stage": "native_threads_1"
+    },
+    {
+      "passed": 10251,
+      "failed": 0,
+      "log_line": 2059,
+      "stage": "native_threads_2"
+    },
+    {
+      "passed": 10251,
+      "failed": 0,
+      "log_line": 2550,
+      "stage": "asan_ubsan_threads_1"
+    },
+    {
+      "passed": 10251,
+      "failed": 0,
+      "log_line": 3005,
+      "stage": "asan_ubsan_threads_2"
+    }
+  ],
+  "quantized_checks": [
+    {
+      "pairs": 2490,
+      "safe_rejections": 3686,
+      "log_line": 1108,
+      "stage": "make_test"
+    },
+    {
+      "pairs": 2490,
+      "safe_rejections": 0,
+      "log_line": 2060,
+      "stage": "no_quantized_bound_ablation"
+    },
+    {
+      "pairs": 2490,
+      "safe_rejections": 3686,
+      "log_line": 3006,
+      "stage": "forced_avx2_asan_ubsan"
+    }
+  ],
+  "sanitizer_error_diagnostics": [],
+  "cpu": {
+    "model": "AMD EPYC 9V74 80-Core Processor",
+    "affinity": [
+      0,
+      1
+    ],
+    "avx2": true,
+    "avx512f": true,
+    "avx512bw": true
+  },
+  "pgo": {
+    "training_manifest": {
+      "datasets": [
+        {
+          "dimensions": 16,
+          "main_queries": 100,
+          "rows": 1024,
+          "unindexed_queries": 10
+        },
+        {
+          "dimensions": 128,
+          "main_queries": 500,
+          "rows": 10000,
+          "unindexed_queries": 30
+        },
+        {
+          "dimensions": 512,
+          "main_queries": 100,
+          "rows": 1024,
+          "unindexed_queries": 10
+        }
+      ],
+      "generator": "splitmix64 + sum of twelve 12-bit uniforms / 4096",
+      "kind": "build_only_general_PGO_training",
+      "limitations": "Inputs are deterministic; profile counters may vary with scheduling and startup calibration. No evaluation data is read.",
+      "oracle": "independent exact double squared distances; distance then primary-key order",
+      "phase_requests": [
+        950,
+        40,
+        13
+      ],
+      "seed": 2026111201
+    },
+    "all_six_independent_training_verifications_passed": true,
+    "training_verifications": [
+      {
+        "actual_file": "responses-1-0.jsonl",
+        "expected_file": "phase-0.expected.jsonl",
+        "oracle": "independent exact dyadic distance and complete response comparison",
+        "responses": 951,
+        "status": "passed"
+      },
+      {
+        "actual_file": "responses-1-1.jsonl",
+        "expected_file": "phase-1.expected.jsonl",
+        "oracle": "independent exact dyadic distance and complete response comparison",
+        "responses": 41,
+        "status": "passed"
+      },
+      {
+        "actual_file": "responses-1-2.jsonl",
+        "expected_file": "phase-2.expected.jsonl",
+        "oracle": "independent exact dyadic distance and complete response comparison",
+        "responses": 14,
+        "status": "passed"
+      },
+      {
+        "actual_file": "responses-2-0.jsonl",
+        "expected_file": "phase-0.expected.jsonl",
+        "oracle": "independent exact dyadic distance and complete response comparison",
+        "responses": 951,
+        "status": "passed"
+      },
+      {
+        "actual_file": "responses-2-1.jsonl",
+        "expected_file": "phase-1.expected.jsonl",
+        "oracle": "independent exact dyadic distance and complete response comparison",
+        "responses": 41,
+        "status": "passed"
+      },
+      {
+        "actual_file": "responses-2-2.jsonl",
+        "expected_file": "phase-2.expected.jsonl",
+        "oracle": "independent exact dyadic distance and complete response comparison",
+        "responses": 14,
+        "status": "passed"
+      }
+    ],
+    "responses_verified_total": 2012,
+    "profile_files": [
+      {
+        "sha256": "43cddd0e8a4fc4ff7014396a8a5d7ac0604fbc5013cee41312aac0af9b23a828",
+        "path": "/pgo/minivec-db.gcda",
+        "log_line": 340
+      },
+      {
+        "sha256": "a82210dc46701009324058bed132a1a179509d9ac7cc109b91148b1ae637d4d7",
+        "path": "/pgo/minivec-exec.gcda",
+        "log_line": 341
+      },
+      {
+        "sha256": "04e4b02a3be02747311418528452895568ab3cb7a65db57aada8417402593296",
+        "path": "/pgo/minivec-flat_index.gcda",
+        "log_line": 342
+      },
+      {
+        "sha256": "2bdeff8f511b67c60ef8de990f29f2924878d56caf6b35d4ada0e90d67d7bf6d",
+        "path": "/pgo/minivec-main.gcda",
+        "log_line": 343
+      },
+      {
+        "sha256": "802ab9163d5534fcf7ac96f8e9d708ae5ca4e68d4e5e7e8598a40dbf3c70bbdc",
+        "path": "/pgo/minivec-sql.gcda",
+        "log_line": 344
+      },
+      {
+        "sha256": "dc321165b2cd834059680f64525c428e7b363e4f559f4a5df13a0d7b63ed3298",
+        "path": "/pgo/minivec-value.gcda",
+        "log_line": 345
+      }
+    ],
+    "six_nonempty_profile_files_hashed_by_build_script": true,
+    "default_enabled": true,
+    "atomic_profile_generation": true,
+    "strict_missing_profile_and_coverage_mismatch_errors": true,
+    "root_dockerfile_sha256": "82e80c579c873a9f02d157de39dcc3713dd2faf110a778c17416d300973b7a61",
+    "dockerfile_hash_matches_logged_input_manifest": true,
+    "runtime_source_identical_to_5a67f16": true,
+    "note": "PGO training/profile data is build-stage only; profile hashes are printed build evidence, not downloaded profile-file hashes. No promise of identical future rebuild binary/hash."
+  },
+  "final_performance_run_status": {
+    "exit_code": 0,
+    "stage": "complete",
+    "proof_status": "passed"
+  },
+  "baseline_correctness": {
+    "status": "passed",
+    "checks": [
+      {
+        "test": "json_protocol",
+        "returncode": 0,
+        "failure": null,
+        "elapsed_seconds": 0.1685886639999694,
+        "environment_overrides": {},
+        "stdout_tail": "PASS typed_rows\nPASS row_encoding_reuse\nPASS transactions_and_invalid_input\nPASS crash_recovery\nPASS mode_switch\nPASS fragmented_jsonl\nPASS parallel_insert_errors\nPASS legacy_mode\n",
+        "stderr_tail": ""
+      },
+      {
+        "test": "topk_serial",
+        "returncode": 0,
+        "failure": null,
+        "elapsed_seconds": 0.10243146300001627,
+        "environment_overrides": {
+          "MVDB_QUERY_THREADS": "1"
+        },
+        "stdout_tail": "PASS JSONL TopK against exact float32 oracle, including ties, filters and rollback\n",
+        "stderr_tail": ""
+      },
+      {
+        "test": "topk_two_threads",
+        "returncode": 0,
+        "failure": null,
+        "elapsed_seconds": 0.10581281100002116,
+        "environment_overrides": {
+          "MVDB_QUERY_THREADS": "2"
+        },
+        "stdout_tail": "PASS JSONL TopK against exact float32 oracle, including ties, filters and rollback\n",
+        "stderr_tail": ""
+      }
+    ],
+    "scope": "Three baseline release-binary gates, before timing; candidate already gated by ci_score."
+  },
+  "reported_artifact_names": [
+    "compiler.txt",
+    "docker-version.txt",
+    "final-performance/baseline-binary-sha256.txt",
+    "final-performance/baseline-correctness.json",
+    "final-performance/baseline-image.json",
+    "final-performance/boundaries.json",
+    "final-performance/candidate-path.txt",
+    "final-performance/context.json",
+    "final-performance/hashes.json",
+    "final-performance/run-status.json",
+    "final-performance/stage.txt",
+    "final-performance/standard.json",
+    "final-performance/summary.json",
+    "image-binary-sha256.txt",
+    "image-handshake/cases.json",
+    "image-handshake/result.json",
+    "image-id.txt",
+    "image-inspect.json",
+    "image-interactive/events.json",
+    "image-public/cases.json",
+    "image-public/result.json",
+    "input-sha256.txt",
+    "lscpu.txt",
+    "runtime-commit.txt",
+    "source-handshake/cases.json",
+    "source-handshake/result.json",
+    "source-public/cases.json",
+    "source-public/result.json",
+    "verification-summary.json"
+  ]
+}
