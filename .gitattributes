@@ -10,3 +10,8 @@
 *.i filter=codeformat
 *.ic filter=codeformat
 *.js filter=codeformat
+
+# Material digests use UTF-8 bytes with LF across Linux and Windows checkouts.
+/conversation.json text eol=lf
+/agent/conversation.json text eol=lf
+/agent/raw/01-session-2026-11-09.md -text
