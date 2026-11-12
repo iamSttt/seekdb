@@ -318,18 +318,62 @@ void positional_io(int fd, void* data, size_t size, uint64_t off, bool writing) 
   }
 }
 
-uint64_t store_payload(PayloadStore& store, const Row& row) {
-  std::string b;
+void encode_payload(std::string& b, const Row& row) {
+  b.clear();
   put_u32(b,0);
   put_row(b,row);
   if (b.size()-4 > kMaxRec) throw std::runtime_error("row exceeds storage record limit");
   const uint32_t len=static_cast<uint32_t>(b.size()-4);
   std::memcpy(&b[0],&len,4);
+}
+
+uint64_t store_payload(PayloadStore& store, const Row& row) {
+  std::string b;
+  encode_payload(b,row);
   const uint64_t off=store.end;
   positional_io(store.fd,&b[0],b.size(),off,true);
   store.end+=b.size();
   return off;
 }
+
+#ifndef MVDB_DISABLE_PAYLOAD_BATCH
+// Used only while a new spill store is private. Ordinary INSERT/UPDATE writes
+// must remain immediately readable and continue to use store_payload().
+class PayloadBatchWriter {
+ public:
+  explicit PayloadBatchWriter(PayloadStore& store) : store_(store) {}
+  uint64_t append(const Row& row) {
+    encode_payload(record_,row);
+    if (record_.size() > kBytes) {
+      flush();
+      const uint64_t off=store_.end;
+      positional_io(store_.fd,&record_[0],record_.size(),off,true);
+      store_.end+=record_.size();
+      return off;
+    }
+    if (record_.size() > kBytes-used_) flush();
+    if (!buffer_) buffer_.reset(new char[kBytes]);
+    const uint64_t off=store_.end+used_;
+    std::memcpy(buffer_.get()+used_,record_.data(),record_.size());
+    used_+=record_.size();
+    return off;
+  }
+  void flush() {
+    if (!used_) return;
+    positional_io(store_.fd,buffer_.get(),used_,store_.end,true);
+    store_.end+=used_;
+    used_=0;
+  }
+ private:
+  static constexpr size_t kBytes=256u<<10;
+  PayloadStore& store_;
+  // One reusable encoding buffer (capacity follows its largest row) plus this
+  // fixed aggregation buffer. Oversized rows never enlarge the batch.
+  std::string record_;
+  std::unique_ptr<char[]> buffer_;
+  size_t used_=0;
+};
+#endif
 
 void spill_payloads(Table& table, bool force = false) {
   if (table.payload_store || (!force && table.payload_bytes <= kSpillBytes)) return;
@@ -342,14 +386,25 @@ void spill_payloads(Table& table, bool force = false) {
   std::vector<uint64_t> offsets;
   offsets.reserve(table.rows.size());
   std::vector<std::pair<std::shared_ptr<RowUndoImage>,uint64_t>> old_images;
+#ifndef MVDB_DISABLE_PAYLOAD_BATCH
+  PayloadBatchWriter batch(*store);
+  const auto save=[&](const Row& row) { return batch.append(row); };
+#else
+  const auto save=[&](const Row& row) { return store_payload(*store,row); };
+#endif
   // Write Undo before current rows: failed INSERT cleanup can rewind the store
   // to the last inserted row, and must never overwrite any older Undo offset.
   for (const auto& weak : table.resident_undo) {
     auto image = weak.lock();
     if (image && !image->spilled)
-      old_images.emplace_back(image,store_payload(*store,image->row));
+      old_images.emplace_back(image,save(image->row));
   }
-  for (const Row& row : table.rows) offsets.push_back(store_payload(*store,row));
+  for (const Row& row : table.rows) offsets.push_back(save(row));
+#ifndef MVDB_DISABLE_PAYLOAD_BATCH
+  // A partial write, including the final batch, must fail before publishing any
+  // offsets or migrating Undo ownership. The private store is then discarded.
+  batch.flush();
+#endif
   table.payload_offsets=std::move(offsets);
   table.payload_store=std::move(store);
   // Global budget enforcement may spill another table with a live borrowed index.
@@ -1924,6 +1979,113 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
   Pred predicate;
   if (!compile_pred(table, conds, &predicate) || predicate.never) return;
   build_vector_index(table);
+#ifndef MVDB_DISABLE_MULTI_POSTING
+  FlatIndex::ResidentView filtered_view;
+  if(!predicate.c.empty() && table.vector_index->resident_view(&filtered_view)) {
+    struct Plan {
+      size_t column=0;
+      FlatIndex::IntegerRange range;
+    };
+    const auto extend=[](FlatIndex::IntegerRange& range,const RCond& term) {
+      const auto lower=[&](bool inclusive) {
+        if(!range.has_lower || term.lit->i>range.lower) {
+          range.has_lower=true;range.lower=term.lit->i;range.lower_inclusive=inclusive;
+        } else if(term.lit->i==range.lower)range.lower_inclusive&=inclusive;
+      };
+      const auto upper=[&](bool inclusive) {
+        if(!range.has_upper || term.lit->i<range.upper) {
+          range.has_upper=true;range.upper=term.lit->i;range.upper_inclusive=inclusive;
+        } else if(term.lit->i==range.upper)range.upper_inclusive&=inclusive;
+      };
+      switch(static_cast<Cond::Op>(term.op)) {
+        case Cond::EQ: lower(true);upper(true);break;
+        case Cond::LT: upper(false);break;
+        case Cond::LE: upper(true);break;
+        case Cond::GT: lower(false);break;
+        case Cond::GE: lower(true);break;
+        case Cond::NE: break;
+      }
+    };
+    const auto supported=[](const RCond& term) {
+      return term.vt==static_cast<uint8_t>(Type::BIGINT) &&
+             term.op<=static_cast<uint8_t>(Cond::GE) && term.op!=static_cast<uint8_t>(Cond::NE);
+    };
+    Plan chosen;
+    bool have_plan=false;
+    if(predicate.c.size()==1) {
+      // Keep the common single equality/range path free of plan allocations
+      // and sampling. Its posting already proves the complete predicate.
+      const RCond& term=predicate.c.front();
+      if(supported(term)) {
+        chosen.column=term.col;extend(chosen.range,term);have_plan=true;
+      }
+    } else {
+      std::vector<Plan> plans;
+      for(const RCond& term:predicate.c) {
+        if(!supported(term))continue;
+        auto found=std::find_if(plans.begin(),plans.end(),
+            [&](const Plan& plan){return plan.column==term.col;});
+        if(found==plans.end()) {plans.push_back(Plan{});found=plans.end()-1;found->column=term.col;}
+        extend(found->range,term);
+      }
+      size_t best=std::numeric_limits<size_t>::max();
+      bool best_cached=false;
+      for(const Plan& plan:plans) {
+        const auto& range=plan.range;
+        if(range.has_lower && range.has_upper &&
+           (range.lower>range.upper || (range.lower==range.upper &&
+            (!range.lower_inclusive || !range.upper_inclusive))))return;
+        size_t estimate=0;
+        const bool cached=table.vector_index->cached_integer_count(plan.column,range,&estimate);
+        if(cached && !estimate)return; // Exact empty interval, not an estimate.
+        if(!cached) {
+          // No full-column build just to choose a plan. The sample only ranks
+          // paths; even zero hits MUST NOT prove that the result is empty.
+          const size_t samples=std::min<size_t>(64,filtered_view.count);
+          size_t matches=0;
+          for(size_t j=0;j<samples;++j) {
+            const size_t ordinal=(filtered_view.count/samples)*j+
+                                 (filtered_view.count%samples)*j/samples;
+            Row scratch;
+            const Row& row=table.read_row(static_cast<size_t>(filtered_view.slots[ordinal]),scratch);
+            if(range.contains(row.vals[plan.column].i))++matches;
+          }
+          estimate=samples ? (filtered_view.count/samples)*matches+
+              ((filtered_view.count%samples)*matches+samples-1)/samples : 0;
+        }
+        if(!have_plan || estimate<best || (estimate==best && cached && !best_cached)) {
+          chosen=plan;best=estimate;best_cached=cached;have_plan=true;
+        }
+      }
+    }
+    if(have_plan) {
+      const uint32_t* ordinals=nullptr;
+      size_t count=0;
+      if(table.vector_index->integer_ordinals(chosen.column,chosen.range,
+          [&](uint64_t slot) {
+            Row scratch;
+            return table.read_row(static_cast<size_t>(slot),scratch).vals[chosen.column].i;
+          },&ordinals,&count)) {
+        const size_t dimension=filtered_view.dimension;
+        const int8_t* codes=filtered_view.quantized;
+        const bool reject=codes && threshold && quantized && quantized->enabled();
+        for(size_t j=0;j<count;++j) {
+          const size_t ordinal=ordinals[j];
+          const size_t slot=static_cast<size_t>(filtered_view.slots[ordinal]);
+          if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[slot]))
+            throw std::runtime_error("stale flat vector index slot");
+          if(predicate.c.size()!=1) {
+            Row scratch;
+            if(!row_matches(predicate,table.read_row(slot,scratch)))continue;
+          }
+          if(reject && quantized->definitely_greater(codes+ordinal*dimension,*threshold))continue;
+          if(!cb(filtered_view.keys[ordinal],filtered_view.rows[ordinal],dimension))return;
+        }
+        return;
+      }
+    }
+  }
+#else
   // Exact equality subset. When the whole predicate is a single BIGINT equality
   // the posting list is already the complete filter, so the candidate walk
   // needs neither a row materialisation nor a second predicate evaluation: the
@@ -1961,6 +2123,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
       }
     }
   }
+#endif
   const FlatIndex::Visitor visit=[&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
     if (slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
       throw std::runtime_error("stale flat vector index slot");
@@ -1974,6 +2137,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
   // posting list only selects candidates; all conjunction terms are checked
   // by the same row_matches path above. Its lifetime is the physical index's,
   // so every mutation/rebuild also invalidates these scalar postings.
+#ifdef MVDB_DISABLE_MULTI_POSTING
   for(const RCond& term:predicate.c) {
     if(term.op!=static_cast<uint8_t>(Cond::EQ) ||
        term.vt!=static_cast<uint8_t>(Type::BIGINT))continue;
@@ -1984,6 +2148,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
         },visit))return;
     break;
   }
+#endif
   table.vector_index->scan(visit);
 }
 

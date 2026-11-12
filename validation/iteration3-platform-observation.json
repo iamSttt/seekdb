@@ -1,0 +1,26 @@
+{
+  "observed_date_local": "2026-11-13",
+  "timezone": "Asia/Shanghai",
+  "source": "https://open.oceanbase.com/train/TestRecord?questionId=600081",
+  "method": "authenticated browser visible results dialog; repository credentials redacted and not archived",
+  "latest_record_time": "2026-11-12 19:52",
+  "commit": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "branch": "2026-competition-round2",
+  "mysql_gate": "passed",
+  "performance_raw_E": 3014.419039,
+  "agent_prompt_score": null,
+  "prompt_message": "Prompt结果无效、待复核、超出平台0–100范围或缺少材料摘要，本项不参与排名；未截断或换算本地分数。",
+  "T": null,
+  "B": null,
+  "M": null,
+  "submission_count": 7,
+  "new_candidate_submitted": false,
+  "limitations": [
+    "The visible result does not distinguish the Prompt failure branches.",
+    "This score belongs to the old commit, not the current optimization branch.",
+    "The current published specification describes an unbounded Prompt score and bounded performance E; the platform display does not establish the scale mapping or root cause."
+  ],
+  "rules_source": "https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/lg8enxlmwg69unt6",
+  "rules_page_displayed_update": "11-11 18:25",
+  "rules_version": "agent-learning-evidence-v3-unbounded"
+}

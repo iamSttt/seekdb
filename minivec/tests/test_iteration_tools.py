@@ -218,8 +218,11 @@ class MaterialTests(unittest.TestCase):
             "messages": [{"id": "u", "role": "user", "content": "Proposed a test."},
                          {"id": "a", "role": "assistant", "content": "Ran a test."}],
             "adopted_directions": [{"source_message": "u", "origin_role": "user",
-                                    "implementation_role": "assistant"}],
-            "experiments": [{"executed_by": "assistant", "artifacts": [
+                                    "implementation_role": "assistant",
+                                    "source_pointer": "/messages/0/content", "quote": "a test"}],
+            "provenance": {"user_content_sha256": {
+                "u": hashlib.sha256(b"Proposed a test.").hexdigest()}},
+            "experiments": [{"id": "experiment", "executed_by": "assistant", "artifacts": [
                 {"path": "evidence.txt", "sha256": hashlib.sha256(self.payload).hexdigest()}]}],
         }
 
@@ -288,6 +291,100 @@ class MaterialTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             material.validate(self.root)
 
+    def test_user_content_change_without_manifest_update_rejected(self):
+        self.record["messages"][0]["content"] = "Proposed a different test."
+        self.rejected()
+
+    def test_attachment_content_hash_mismatch_rejected(self):
+        self.record["messages"][0]["sha256"] = hashlib.sha256(b"different attachment").hexdigest()
+        self.rejected()
+
+    def test_wrong_quote_or_pointer_cannot_be_made_valid_by_matching_text_elsewhere(self):
+        direction = self.record["adopted_directions"][0]
+        # Both messages contain this text; only the declared user's own message
+        # can support the source attribution.
+        direction["source_pointer"] = "/messages/1/content"
+        self.rejected()
+        direction["source_pointer"] = "/messages/0/content"
+        direction["quote"] = "a Test"
+        self.rejected()
+
+    def test_quote_requires_string_target_and_bounded_exact_text(self):
+        direction = self.record["adopted_directions"][0]
+        for pointer, quote in (("/messages/0", "a test"), ("/messages/9/content", "a test"),
+                               ("/messages/0/content", ""), ("/messages/0/content", "a" * 241)):
+            with self.subTest(pointer=pointer, quote=quote):
+                direction.update(source_pointer=pointer, quote=quote)
+                self.rejected()
+
+    def test_rfc6901_escaped_keys_work_but_ambiguous_array_indices_do_not(self):
+        fixture = {"a/b": {"~key": ["quoted / text"]}}
+        self.assertEqual(material.resolve_pointer(fixture, "/a~1b/~0key/0"), "quoted / text")
+        for pointer in ("a~1b/~0key/0", "/a~1b/~0key/00", "/a~1b/~0key/-",
+                        "/a~1b/~0key/-1", "/a~2b", "/a~1b/~0key/1"):
+            with self.subTest(pointer=pointer), self.assertRaises(ValueError):
+                material.resolve_pointer(fixture, pointer)
+
+    def test_dangling_generic_pointer_rejected(self):
+        self.record["experiments"][0]["full_evidence_pointer"] = "/experiments/9"
+        self.rejected()
+
+    def test_generic_quote_is_checked_even_outside_direction_index(self):
+        self.record["extra_reference"] = {"pointer": "/messages/0/content", "quote": "invented quote"}
+        self.rejected()
+
+    def evidence_unit(self):
+        return {"id": "one-correction-chain", "dimension": material.DIMENSIONS[3],
+                "student_evidence": {"message_id": "u", "pointer": "/messages/0/content", "quote": "a test"},
+                "result_evidence": {"message_id": "a", "pointer": "/messages/1/content", "quote": "Ran a test."}}
+
+    def test_optional_evidence_index_accepts_assistant_result_without_claiming_user_authorship(self):
+        self.record["evidence_units"] = [self.evidence_unit()]
+        self.save()
+        material.validate(self.root)
+
+    def test_student_quote_cannot_omit_identity_to_hide_assistant_source(self):
+        unit = self.evidence_unit()
+        unit["student_evidence"] = {"pointer": "/messages/1/content", "quote": "a test"}
+        self.record["evidence_units"] = [unit]
+        self.rejected()
+
+    def test_same_evidence_unit_cannot_be_counted_again_under_another_dimension(self):
+        first = self.evidence_unit()
+        second = copy.deepcopy(first)
+        second["dimension"] = material.DIMENSIONS[0]
+        self.record["evidence_units"] = [first, second]
+        self.rejected()
+
+    def test_self_scoring_and_legacy_score_hint_rejected(self):
+        self.record["evidence_units"] = [dict(self.evidence_unit(), score=10)]
+        self.rejected()
+        self.record.pop("evidence_units")
+        self.record["old_generator"] = {"score_hint": 5}
+        self.rejected()
+
+    def test_compact_table_missing_cell_rejected(self):
+        self.record["experiments"][0]["observed_result"] = {
+            "cases": {"columns": ["query", "lifecycle"], "rows": {"case": [1.1]}}}
+        self.rejected()
+
+    def test_top_level_array_rejected(self):
+        self.rejected(raw=b"[]")
+
+    def test_validator_cannot_rewrite_material_on_success_failure_or_write_flag(self):
+        data = self.save()
+        material.validate(self.root)
+        self.assertEqual((self.root / "conversation.json").read_bytes(), data)
+        self.record["adopted_directions"][0]["quote"] = "not in source"
+        data = self.save()
+        with self.assertRaises(ValueError):
+            material.validate(self.root)
+        run = subprocess.run([sys.executable, "-B", str(TOOLS / "validate_iteration_material.py"),
+                              "--root", str(self.root), "--write"], capture_output=True, timeout=15)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertEqual((self.root / "conversation.json").read_bytes(), data)
+        self.assertEqual((self.root / "agent/conversation.json").read_bytes(), data)
+
     def test_parent_escape_rejected_even_with_matching_hash(self):
         (self.root.parent / "outside.txt").write_bytes(self.payload)
         self.record["experiments"][0]["artifacts"][0]["path"] = "../outside.txt"
@@ -296,6 +393,13 @@ class MaterialTests(unittest.TestCase):
     def test_limit_counts_utf8_bytes_not_characters(self):
         self.record["messages"][0]["content"] = "中" * 50000
         self.rejected()
+
+    def test_exact_byte_limit_passes_but_one_extra_byte_fails(self):
+        raw = self.save()
+        boundary = raw + b" " * (131072 - len(raw))
+        self.save(raw=boundary)
+        self.assertEqual(material.validate(self.root)["remaining_bytes"], 0)
+        self.rejected(raw=boundary + b" ")
 
     def test_nonfinite_json_tokens_and_exponent_overflow_rejected(self):
         base = self.save()

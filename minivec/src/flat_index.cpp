@@ -314,6 +314,7 @@ size_t FlatIndex::resident_bytes() const {
 bool FlatIndex::equal_ordinals(size_t column,int64_t value,
     const std::function<int64_t(uint64_t)>& read_value,
     const uint32_t** ordinals,size_t* count) {
+#ifdef MVDB_DISABLE_MULTI_POSTING
   if(!ready_)throw std::runtime_error("flat vector index is not ready");
   if(!ordinals||!count)return false;
   if(fd_>=0 || (count_ && !posting_budget_))return false;
@@ -345,6 +346,136 @@ bool FlatIndex::equal_ordinals(size_t column,int64_t value,
   *ordinals=posting_ordinals_.data()+offset;
   *count=length;
   return true;
+#else
+  IntegerRange range;
+  range.has_lower=range.has_upper=true;range.lower=range.upper=value;
+  return integer_ordinals(column,range,read_value,ordinals,count);
+#endif
+}
+
+#ifndef MVDB_DISABLE_MULTI_POSTING
+FlatIndex::IntegerPosting* FlatIndex::integer_posting(size_t column,
+    const std::function<int64_t(uint64_t)>& read_value) {
+  // This counter only orders two cache entries; wrap loses recency, not data.
+  if(++posting_clock_==0) {
+    for(auto& posting:postings_)posting.last_used=0;
+    posting_clock_=1;
+  }
+  for(auto& posting:postings_)if(posting.ready && posting.column==column) {
+    posting.last_used=posting_clock_;return &posting;
+  }
+  const auto evict_oldest=[&]() {
+    IntegerPosting* victim=nullptr;
+    for(auto& posting:postings_)if(posting.ready &&
+        (!victim || posting.last_used<victim->last_used))victim=&posting;
+    if(!victim)return false;
+    *victim=IntegerPosting{};return true;
+  };
+  const auto make_room=[&](size_t extra) {
+    if(extra>posting_budget_)return false;
+    for(;;) {
+      size_t used=0;
+      for(const auto& posting:postings_)used+=posting.bytes;
+      if(used<=posting_budget_-extra)return true;
+      if(!evict_oldest())return false;
+    }
+  };
+  bool full=true;
+  for(const auto& posting:postings_)if(!posting.ready)full=false;
+  if(full)evict_oldest();
+  // 8N unsorted values + 4N ordinals, followed by at most 8N output.
+  // The existing 20N reservation covers retained columns AND construction.
+  // Exact-length arrays avoid implementation-dependent vector overcapacity.
+  const size_t scratch=count_*(sizeof(int64_t)+sizeof(uint32_t));
+  if(!make_room(scratch))return nullptr;
+  std::unique_ptr<int64_t[]> unsorted(new(std::nothrow) int64_t[count_]);
+  std::unique_ptr<uint32_t[]> ordinals(new(std::nothrow) uint32_t[count_]);
+  if(!unsorted || !ordinals)return nullptr;
+  for(size_t i=0;i<count_;++i) {
+    unsorted[i]=read_value(slots_[i]);ordinals[i]=static_cast<uint32_t>(i);
+  }
+  std::sort(ordinals.get(),ordinals.get()+count_,[&](uint32_t a,uint32_t b) {
+    return unsorted[a]<unsorted[b] || (unsorted[a]==unsorted[b] && a<b);
+  });
+  size_t groups=1;
+  for(size_t i=1;i<count_;++i)
+    if(unsorted[ordinals[i]]!=unsorted[ordinals[i-1]])++groups;
+  const bool compressed=groups*(sizeof(int64_t)+sizeof(uint32_t))<count_*sizeof(int64_t);
+  const size_t values=compressed ? groups : count_;
+  const size_t output=values*sizeof(int64_t)+(compressed ? groups*sizeof(uint32_t) : 0);
+  if(!make_room(scratch+output))return nullptr;
+  IntegerPosting built;
+  built.values.reset(new(std::nothrow) int64_t[values]);
+  if(compressed)built.starts.reset(new(std::nothrow) uint32_t[groups]);
+  if(!built.values || (compressed && !built.starts))return nullptr;
+  size_t group=0;
+  for(size_t i=0;i<count_;++i) {
+    const int64_t value=unsorted[ordinals[i]];
+    if(!compressed)built.values[i]=value;
+    else if(i==0 || value!=unsorted[ordinals[i-1]]) {
+      built.values[group]=value;built.starts[group++]=static_cast<uint32_t>(i);
+    }
+  }
+  built.ordinals=std::move(ordinals);built.value_count=values;
+  built.bytes=count_*sizeof(uint32_t)+output;
+  built.column=column;built.last_used=posting_clock_;built.ready=true;
+  for(auto& posting:postings_)if(!posting.ready) {
+    posting=std::move(built);return &posting;
+  }
+  return nullptr; // Defensive: a free slot was reserved before construction.
+}
+
+std::pair<size_t,size_t> FlatIndex::posting_span(const IntegerPosting& posting,
+    const IntegerRange& range) const {
+  const int64_t* begin=posting.values.get();
+  const int64_t* end=begin+posting.value_count;
+  const int64_t* first=range.has_lower ?
+      (range.lower_inclusive ? std::lower_bound(begin,end,range.lower) :
+                               std::upper_bound(begin,end,range.lower)) : begin;
+  const int64_t* last=range.has_upper ?
+      (range.upper_inclusive ? std::upper_bound(begin,end,range.upper) :
+                               std::lower_bound(begin,end,range.upper)) : end;
+  const auto offset=[&](const int64_t* value) {
+    const size_t i=static_cast<size_t>(value-begin);
+    return posting.starts ? (i==posting.value_count ? count_ : size_t(posting.starts[i])) : i;
+  };
+  const size_t left=offset(first),right=offset(last);
+  return {left,std::max(left,right)};
+}
+#endif
+
+bool FlatIndex::integer_ordinals(size_t column,const IntegerRange& range,
+    const std::function<int64_t(uint64_t)>& read_value,
+    const uint32_t** ordinals,size_t* count) {
+#ifdef MVDB_DISABLE_MULTI_POSTING
+  (void)column;(void)range;(void)read_value;(void)ordinals;(void)count;
+  return false;
+#else
+  if(!ready_)throw std::runtime_error("flat vector index is not ready");
+  if(!ordinals || !count)return false;
+  *ordinals=nullptr;*count=0;
+  if(fd_>=0 || (count_ && !posting_budget_))return false;
+  if(!count_)return true;
+  IntegerPosting* posting=integer_posting(column,read_value);
+  if(!posting)return false; // Optional allocation failure retains exact scan.
+  const auto span=posting_span(*posting,range);
+  *ordinals=posting->ordinals.get()+span.first;*count=span.second-span.first;
+  return true;
+#endif
+}
+
+bool FlatIndex::cached_integer_count(size_t column,const IntegerRange& range,size_t* count) const {
+#ifdef MVDB_DISABLE_MULTI_POSTING
+  (void)column;(void)range;(void)count;return false;
+#else
+  if(!count || !ready_ || fd_>=0)return false;
+  if(!count_) {*count=0;return true;}
+  for(const auto& posting:postings_)if(posting.ready && posting.column==column) {
+    const auto span=posting_span(posting,range);
+    *count=span.second-span.first;return true;
+  }
+  return false;
+#endif
 }
 
 bool FlatIndex::scan_integer_equal(size_t column,int64_t value,

@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -48,8 +49,8 @@ class FlatIndex {
   // Read-only, non-owning view; available only for a finished resident index.
   // Storage remains owned by this index and must not outlive it.
   bool resident_view(ResidentView* view) const;
-  // One bounded, lazy BIGINT equality posting list. Returns false when this
-  // index cannot cache it; callers then retain the sequential scan path.
+  // Bounded lazy BIGINT postings. Low-cardinality columns share the original
+  // single-column construction allowance; no additional budget is reserved.
   bool scan_integer_equal(size_t column,int64_t value,
       const std::function<int64_t(uint64_t)>& read_value,const Visitor& visitor);
   // Same posting list, returned as row ordinals into a ResidentView instead of
@@ -59,6 +60,22 @@ class FlatIndex {
   bool equal_ordinals(size_t column,int64_t value,
       const std::function<int64_t(uint64_t)>& read_value,
       const uint32_t** ordinals,size_t* count);
+  struct IntegerRange {
+    int64_t lower=0,upper=0;
+    bool has_lower=false,has_upper=false;
+    bool lower_inclusive=true,upper_inclusive=true;
+    bool contains(int64_t value) const {
+      return (!has_lower || value>lower || (lower_inclusive && value==lower)) &&
+             (!has_upper || value<upper || (upper_inclusive && value==upper));
+    }
+  };
+  // Ranges never adjust an endpoint by +/-1, including INT64_MIN/MAX.
+  // Any posting lookup may evict a previous span. Consume it before the next
+  // lookup; cached_integer_count only inspects the cache and cannot evict.
+  bool integer_ordinals(size_t column,const IntegerRange& range,
+      const std::function<int64_t(uint64_t)>& read_value,
+      const uint32_t** ordinals,size_t* count);
+  bool cached_integer_count(size_t column,const IntegerRange& range,size_t* count) const;
   // Coarse partition used by approximate search. `probes` is the number of
   // nearest partitions to scan; 0 asks for the index's own adaptive width.
   // Returns false when this index has no usable partition (small, spilled or
@@ -89,10 +106,29 @@ class FlatIndex {
   std::unique_ptr<int8_t[]> quantized_;
   size_t quantized_budget_=0;
   double quantization_step_=0;
-  size_t posting_budget_=0,posting_column_=0;
+  size_t posting_budget_=0;
+#ifdef MVDB_DISABLE_MULTI_POSTING
+  size_t posting_column_=0;
   bool postings_ready_=false;
   std::vector<int64_t> posting_values_;
   std::vector<uint32_t> posting_ordinals_;
+#else
+  struct IntegerPosting {
+    size_t column=0,value_count=0,bytes=0;
+    uint64_t last_used=0;
+    bool ready=false;
+    std::unique_ptr<int64_t[]> values;
+    std::unique_ptr<uint32_t[]> ordinals;
+    // Null for dense sorted values; otherwise starts of distinct-value runs.
+    std::unique_ptr<uint32_t[]> starts;
+  };
+  std::array<IntegerPosting,2> postings_;
+  uint64_t posting_clock_=0;
+  IntegerPosting* integer_posting(size_t column,
+      const std::function<int64_t(uint64_t)>& read_value);
+  std::pair<size_t,size_t> posting_span(const IntegerPosting& posting,
+      const IntegerRange& range) const;
+#endif
   // One-level coarse partition: centroid table, member ordinals grouped by
   // partition, and the partition boundaries into that array.
   size_t ann_budget_=0;

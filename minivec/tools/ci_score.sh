@@ -6,6 +6,7 @@ repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$repo"
 python3 minivec/tools/validate_iteration_material.py
 python3 -B minivec/tests/test_iteration_tools.py
+python3 -B minivec/tests/test_report_matrix.py
 export RUNTIME_COMMIT
 RUNTIME_COMMIT=$(git rev-parse HEAD)
 export IMAGE="${IMAGE:-minivec:verify-${RUNTIME_COMMIT:0:12}}"
@@ -91,8 +92,9 @@ g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefi
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/cross-spill-san" 2>&1 | tee "$reports/cross-spill-san.log"
 
 # Budget and transactional before-image changes need their own sanitizer checks.
-for name in index_budget resident_update; do
-  extra=(-DMVDB_TEST_WRAP_PWRITE -Wl,--wrap=pwrite)
+for name in index_budget resident_update payload_batch filter_paths; do
+  extra=()
+  if [ "$name" != filter_paths ]; then extra=(-DMVDB_TEST_WRAP_PWRITE -Wl,--wrap=pwrite); fi
   if [ "$name" = index_budget ]; then extra+=(-DMVDB_DISABLE_AVX512_QUANTIZED); fi
   g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src "minivec/tests/test_${name}.cpp" minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp "${extra[@]}" -o "$scratch/${name}-san"
   ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 "$scratch/${name}-san" 2>&1 | tee "$reports/${name}-san.log"
