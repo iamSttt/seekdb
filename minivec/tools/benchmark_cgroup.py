@@ -60,8 +60,11 @@ def main():
     args=parser.parse_args()
     if args.output.exists():parser.error('refusing to overwrite report')
     if args.pairs<1 or args.queries<2 or len(set(args.seeds))!=len(args.seeds):parser.error('invalid repetitions')
+    cpus_allowed=sorted(os.sched_getaffinity(0))[:2]
+    if len(cpus_allowed)!=2:parser.error('two allowed CPUs required for comparable 1/2 CPU quotas')
+    os.sched_setaffinity(0,cpus_allowed)
     args.output.parent.mkdir(parents=True,exist_ok=True)
-    report={'status':'running','pairs':[], 'official_score':None,
+    report={'status':'running','pairs':[], 'official_score':None,'cpu_affinity':cpus_allowed,
         'scope':'isolated cgroup-v2 CPU/memory/io diagnostics; not official M/B or score',
         'limitations':['No dedicated data device, cold-cache or IO bandwidth parity with official evaluation.',
             'Memory includes page cache and a tiny static exec launcher, but excludes workload driver.',

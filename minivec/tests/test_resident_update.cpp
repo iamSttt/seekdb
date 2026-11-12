@@ -69,8 +69,16 @@ int main() {
   assert(db.table("t")->vector_index);
   statement("t",1,"committed",true);
   assert(!db.table("t")->payload_store);
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  assert(db.table("t")->vector_index && db.table("t")->index_delta);
+  FlatIndex::ResidentView view;assert(!db.resident_vector_view("t",&view));
+  verify_vectors("t",2);
+  assert(db.resident_vector_index("t")); // Explicit ANN accessor requires a rebuild.
+  assert(!db.table("t")->index_delta && db.resident_vector_view("t",&view));
+#else
   assert(!db.table("t")->vector_index);
   FlatIndex::ResidentView view;assert(db.resident_vector_view("t",&view));
+#endif
   verify_vectors("t",2);
   statement("t",1,"aborted implicit",false);
   assert(read("t",1)=="committed");assert(!db.table("t")->payload_store);
@@ -92,9 +100,18 @@ int main() {
   // migrates prior images before the table switches to its payload file.
   const std::string large(28000,'x');
   create("bounded");assert(insert("bounded",1,large));
+  assert(db.create_vector_index("bounded","v","bounded_vector",&error,&code));
   assert(db.begin(&error,&code));
-  for(int i=0;i<80;++i)statement("bounded",1,std::to_string(i)+large,true);
+  for(int i=0;i<80;++i) {
+    statement("bounded",1,std::to_string(i)+large,true);
+#ifdef MVDB_ENABLE_INDEX_DELTA
+    if(!db.table("bounded")->payload_store)assert(db.table("bounded")->index_delta);
+#endif
+  }
   assert(db.table("bounded")->payload_store);
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  assert(!db.table("bounded")->index_delta && !db.table("bounded")->vector_index);
+#endif
   assert(db.rollback(&error,&code));assert(read("bounded",1)==large);
   verify_vectors("bounded",1);
 
@@ -102,12 +119,20 @@ int main() {
   // Fail while migrating already active old images, after one successful write.
   // The failed spill must leave the resident table and all prior Undo intact.
   create("failed");assert(insert("failed",1,large));
+  assert(db.create_vector_index("failed","v","failed_vector",&error,&code));
   assert(db.begin(&error,&code));bool saw_failure=false;
   for(int i=0;i<80;++i) {
+#ifdef MVDB_ENABLE_INDEX_DELTA
+    if(i)assert(db.table("failed")->index_delta && db.table("failed")->vector_index);
+#endif
     assert(db.begin_statement(&error,&code));fail_payload_writes=2;
     const int64_t n=update("failed",1,std::to_string(i)+large);
     fail_payload_writes=0;
     if(n<0) {
+#ifdef MVDB_ENABLE_INDEX_DELTA
+      // Failed migration has not published the spill or discarded the base.
+      assert(db.table("failed")->index_delta && db.table("failed")->vector_index);
+#endif
       assert(!db.end_statement(false,&error,&code));saw_failure=true;break;
     }
     assert(n==1);assert(db.end_statement(true,&error,&code));
@@ -127,11 +152,17 @@ int main() {
   assert(!db.table("a")->payload_store);
   assert(db.create_vector_index("a","v","av",&error,&code));
   assert(db.begin(&error,&code));statement("a",1,"before cross-table spill",true);
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  assert(db.table("a")->index_delta);
+#endif
   assert(db.begin_statement(&error,&code));
   int inserted=0;
   while(!db.table("a")->payload_store && inserted<850)
     assert(insert("c",inserted++,large));
   assert(db.table("a")->payload_store);
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  assert(!db.table("a")->index_delta && !db.table("a")->vector_index);
+#endif
   assert(!db.end_statement(false,&error,&code));
   assert(read("a",1)=="before cross-table spill");
   assert(db.rollback(&error,&code));assert(read("a",1)==large);

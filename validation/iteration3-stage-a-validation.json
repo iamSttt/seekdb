@@ -1,0 +1,35 @@
+{
+  "runtime_commit": "e47cb44695b8e547d2d91cb099c03c030c6f9717",
+  "image_tag": "minivec:verify-e47cb44695b8",
+  "image_id": "sha256:143229606f7b556ee0c525b92b23fa12c3a2b07021493102e574f7815e000599",
+  "scope": "current-checkout build and regression verification; not formal scoring",
+  "passed": true,
+  "checks": {
+    "root_docker_build": true,
+    "image_official_handshake_and_public_cases": true,
+    "source_official_handshake_and_public_cases": true,
+    "live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill": true,
+    "make_test": true,
+    "parser_ownership_serial_parallel_and_quantized_bound_asan_ubsan": true,
+    "image_binary_json_and_exact_topk_serial_parallel": true,
+    "eight_wal_failure_cases_asan_ubsan": true,
+    "query_pool_both_modes_asan_ubsan": true,
+    "cross_table_spill_asan_ubsan": true,
+    "full_binary_json_ubsan": true,
+    "index_budget_and_resident_update_asan_ubsan": true
+  },
+  "sanitizer_quantized_dispatch": "AVX512 quantized disabled for quantized_bound and index_budget to cover the AVX2 fallback; native and release tests retain default dispatch. Experimental dot/norm runtime was reverted.",
+  "limitations": [
+    "No hidden formal cases or score.",
+    "No new paired performance measurement.",
+    "WAL fixture injects short/failed writes; not fdatasync or allocation failure.",
+    "ASan leak detection disabled; memory-safety and undefined-behavior checks enabled."
+  ],
+  "run_url": "https://github.com/iamSttt/seekdb/actions/runs/43258067056",
+  "job_id": 131321595590,
+  "raw_log_sha256": "fc7c3a05f92acd9d39d28387e4b82bf1ef824eea05f3690c4186519c4a55070d",
+  "raw_evidence": {
+    "path": "validation/iteration3-stage-a-raw.zip",
+    "sha256": "2a1ad40c51146363fc3e952a4903b43a314932f659368abf2fe471ead02949d2"
+  }
+}

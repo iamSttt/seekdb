@@ -110,6 +110,18 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
     // 2 MiB for it whatever the budget says.
     const size_t left=available-posting_budget_-quantized_budget_;
     ann_budget_=std::min<size_t>(2u<<20,left);
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && !defined(MVDB_DISABLE_QUANTIZED_BOUND)
+    // Preserve posting, codes and ANN allowances. Local scale metadata/cache
+    // may claim only the original remaining budget, never an extra quota.
+    const size_t blocks=count ? (count-1)/QuantizedScaleView::block_rows+1 : 0;
+    const size_t minimum_cache=QuantizedQueryBound::scale_cache_bytes(dimension,2);
+    const size_t metadata=blocks+sizeof(quantization_steps_);
+    const size_t spare=left-ann_budget_;
+    if(quantized_budget_ && blocks>1 && minimum_cache &&
+       minimum_cache<=QuantizedScaleView::query_cache_limit && metadata<=spare &&
+       2*minimum_cache<=spare-metadata)
+      quantization_scale_budget_=std::min(spare,metadata+2*QuantizedScaleView::query_cache_limit);
+#endif
   } else {
     std::string path=dir+"/.flat-XXXXXX";
     std::vector<char> name(path.begin(),path.end());name.push_back(0);
@@ -119,9 +131,122 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
   }
 }
 FlatIndex::~FlatIndex(){if(fd_>=0)::close(fd_);}
-void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimension) {
+#ifdef MVDB_ENABLE_SPILL_FILTER
+size_t FlatIndex::configure_spill_integers(const size_t* columns,size_t count,size_t budget) {
+  if(ready_ || build_failed_ || count_ || spill_integer_count_)
+    throw std::runtime_error("flat scalar cache must precede index construction");
+  if(fd_<0 || !expected_ || !count || !columns)return 0;
+  count=std::min(count,spill_integers_.size());
+  if(count==2 && columns[0]==columns[1])
+    throw std::runtime_error("duplicate flat scalar cache column");
+  spill_integer_budget_=std::min<size_t>(budget,2u<<20);
+  size_t available=spill_integer_budget_;
+  for(size_t i=0;i<count;++i) {
+    if(expected_>available/sizeof(int64_t))break;
+    const size_t bytes=expected_*sizeof(int64_t);
+    std::unique_ptr<uint8_t[]> values(new(std::nothrow) uint8_t[bytes]);
+    if(!values)break;
+    auto& column=spill_integers_[i];
+    column.column=columns[i];column.bytes=bytes;column.values=std::move(values);
+    available-=bytes;++spill_integer_count_;
+  }
+  return spill_integer_count_;
+}
+
+void FlatIndex::compress_spill_integers() {
+  for(size_t i=0;i<spill_integer_count_;++i) {
+    SpillInteger& column=spill_integers_[i];
+    // Unsigned subtraction is the exact nonnegative difference even across
+    // INT64_MIN/MAX. No signed subtraction, negation, or endpoint increment.
+    const uint64_t span=uint64_t(column.maximum)-uint64_t(column.minimum);
+    const size_t width=span==0 ? 0 : span<=UINT8_MAX ? 1 : span<=UINT16_MAX ? 2 :
+                       span<=UINT32_MAX ? 4 : 8;
+    if(width==8)continue;
+    const size_t bytes=count_*width,retained=resident_bytes();
+    if(retained>spill_integer_budget_ || bytes>spill_integer_budget_-retained)continue;
+    std::unique_ptr<uint8_t[]> packed;
+    if(bytes) {
+      packed.reset(new(std::nothrow) uint8_t[bytes]);
+      if(!packed)continue; // The already complete raw column remains usable.
+      for(size_t ordinal=0;ordinal<count_;++ordinal) {
+        int64_t value;
+        std::memcpy(&value,column.values.get()+ordinal*sizeof(value),sizeof(value));
+        const uint64_t delta=uint64_t(value)-uint64_t(column.minimum);
+        uint8_t* dest=packed.get()+ordinal*width;
+        if(width==1)*dest=static_cast<uint8_t>(delta);
+        else if(width==2) {const uint16_t v=static_cast<uint16_t>(delta);std::memcpy(dest,&v,sizeof(v));}
+        else {const uint32_t v=static_cast<uint32_t>(delta);std::memcpy(dest,&v,sizeof(v));}
+      }
+    }
+    column.values=std::move(packed);column.width=width;column.bytes=bytes;
+  }
+}
+
+bool FlatIndex::has_spill_integer(size_t column) const {
+  if(!ready_ || fd_<0)return false;
+  for(size_t i=0;i<spill_integer_count_;++i)if(spill_integers_[i].column==column)return true;
+  return false;
+}
+
+bool FlatIndex::spill_integer_value(size_t ordinal,size_t column,int64_t* value) const {
+  if(!value || !ready_ || fd_<0 || ordinal>=count_)return false;
+  for(size_t i=0;i<spill_integer_count_;++i) {
+    const SpillInteger& stored=spill_integers_[i];
+    if(stored.column!=column)continue;
+    if(stored.width==0) {*value=stored.minimum;return true;}
+    const uint8_t* source=stored.values.get()+ordinal*stored.width;
+    if(stored.width==8) {std::memcpy(value,source,sizeof(*value));return true;}
+    uint64_t delta=0;
+    if(stored.width==1)delta=*source;
+    else if(stored.width==2) {uint16_t v;std::memcpy(&v,source,sizeof(v));delta=v;}
+    else {uint32_t v;std::memcpy(&v,source,sizeof(v));delta=v;}
+    const uint64_t bits=uint64_t(stored.minimum)+delta;
+    std::memcpy(value,&bits,sizeof(*value));return true;
+  }
+  return false;
+}
+
+void FlatIndex::scan_filtered(const MetadataPredicate& predicate,const Visitor& visitor) const {
+  if(!ready_)throw std::runtime_error("flat vector index is not ready");
+  if(fd_<0) {
+    for(size_t i=0;i<count_;++i)
+      if(predicate(i,keys_[i],slots_[i]) && !visitor(keys_[i],slots_[i],row_at(i),dimension_))return;
+    return;
+  }
+  const size_t words=dimension_+4,stride=words*sizeof(float);
+  const size_t per_block=std::max<size_t>(1,(1u<<20)/stride);
+  std::vector<float> block(std::min(count_,per_block)*words);
+  for(size_t first=0;first<count_;) {
+    const size_t count=std::min(per_block,count_-first);
+    transfer(fd_,block.data(),count*stride,static_cast<uint64_t>(first)*stride,false);
+    for(size_t i=0;i<count;++i) {
+      const float* record=block.data()+i*words;
+      int64_t pk;uint64_t slot;
+      std::memcpy(&pk,record,sizeof(pk));std::memcpy(&slot,record+2,sizeof(slot));
+      if(predicate(first+i,pk,slot) && !visitor(pk,slot,record+4,dimension_))return;
+    }
+    first+=count;
+  }
+}
+#endif
+void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimension
+#ifdef MVDB_ENABLE_SPILL_FILTER
+    ,const int64_t* integer_values,size_t integer_count
+#endif
+    ) {
   if(ready_ || build_failed_ || count_>=expected_ || dimension!=dimension_ || !values)
     throw std::runtime_error("invalid flat index build row");
+#ifdef MVDB_ENABLE_SPILL_FILTER
+  if(integer_count!=spill_integer_count_ || (integer_count && !integer_values))
+    throw std::runtime_error("invalid flat index scalar build row");
+  for(size_t i=0;i<integer_count;++i) {
+    SpillInteger& column=spill_integers_[i];
+    const int64_t value=integer_values[i];
+    std::memcpy(column.values.get()+count_*sizeof(value),&value,sizeof(value));
+    if(!count_)column.minimum=column.maximum=value;
+    else {column.minimum=std::min(column.minimum,value);column.maximum=std::max(column.maximum,value);}
+  }
+#endif
   if(fd_<0) {
     // Borrow, never copy: the table's row storage owns this payload and rebuilds
     // the index whenever that storage changes.
@@ -162,40 +287,103 @@ void FlatIndex::finish() {
   if(fd_>=0) {
     flush_build_block();
     std::vector<float>().swap(build_block_);
+#ifdef MVDB_ENABLE_SPILL_FILTER
+    compress_spill_integers();
+#endif
   }
 #ifndef MVDB_DISABLE_QUANTIZED_BOUND
   if(quantized_budget_) {
     double max_abs=0;
     bool ok=true;
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+    const size_t blocks=count_ ? (count_-1)/QuantizedScaleView::block_rows+1 : 0;
+    if(quantization_scale_budget_)
+      quantization_block_ids_.reset(new(std::nothrow) uint8_t[blocks]);
+    bool local=bool(quantization_block_ids_);
+    double block_max=0;
+    quantization_step_count_=0;
+    const auto abandon_local=[&] {
+      quantization_block_ids_.reset();quantization_step_count_=0;
+      quantization_scale_budget_=0;quantization_query_cache_bytes_=0;local=false;
+    };
+#endif
     for(size_t i=0;i<count_;++i) {
       const float* row=row_at(i);
       for(size_t d=0;d<dimension_;++d) {
         const double magnitude=std::fabs(static_cast<double>(row[d]));
         if(!std::isfinite(magnitude)) {max_abs=magnitude;ok=false;break;}
         max_abs=std::max(max_abs,magnitude);
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+        if(local)block_max=std::max(block_max,magnitude);
+#endif
       }
       if(!ok)break;
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+      if(local && ((i+1)%QuantizedScaleView::block_rows==0 || i+1==count_)) {
+        const double step=mvdb::quantization_step(block_max);
+        size_t id=0;
+        while(id<quantization_step_count_ && quantization_steps_[id]!=step)++id;
+        if(!step || id>=QuantizedScaleView::max_steps)abandon_local();
+        else {
+          if(id==quantization_step_count_)quantization_steps_[quantization_step_count_++]=step;
+          quantization_block_ids_[i/QuantizedScaleView::block_rows]=static_cast<uint8_t>(id);
+        }
+        block_max=0;
+      }
+#endif
     }
     const double step=mvdb::quantization_step(max_abs);
-    if(step>0 && std::isfinite(step)) {
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+    const size_t cache=QuantizedQueryBound::scale_cache_bytes(dimension_,quantization_step_count_);
+    const size_t metadata=blocks+sizeof(quantization_steps_);
+    bool finer=false;
+    for(size_t s=0;s<quantization_step_count_;++s)finer=finer || quantization_steps_[s]<step;
+    if(!local || !ok || !finer || !cache || cache>QuantizedScaleView::query_cache_limit ||
+       metadata>quantization_scale_budget_ || 2*cache>quantization_scale_budget_-metadata)
+      abandon_local();
+    else {
+      quantization_query_cache_bytes_=cache;
+      quantization_scale_budget_=metadata+2*cache;
+    }
+#endif
+    if(ok && step>0 && std::isfinite(step)) {
       quantized_.reset(new(std::nothrow) int8_t[quantized_budget_]);
       if(quantized_) {
-        quantization_step_=step;
         // Do not reorder: codes have exactly the rows_/keys_ traversal order.
-        size_t code=0;
-        for(size_t i=0;i<count_ && quantization_step_;++i) {
-          const float* row=row_at(i);
-          for(size_t d=0;d<dimension_;++d) {
-            if(!mvdb::quantize_coordinate(row[d],step,&quantized_[code++])) {
-              quantization_step_=0;break;
-            }
+        const auto encode_rows=[&](bool use_local) {
+          size_t code=0;
+          for(size_t i=0;i<count_;++i) {
+            double row_step=step;
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+            if(use_local)row_step=quantization_steps_[quantization_block_ids_[i/QuantizedScaleView::block_rows]];
+#else
+            (void)use_local;
+#endif
+            const float* row=row_at(i);
+            for(size_t d=0;d<dimension_;++d)
+              if(!mvdb::quantize_coordinate(row[d],row_step,&quantized_[code++]))return false;
           }
-        }
+          return true;
+        };
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+        if(local && !encode_rows(true))abandon_local();
+        if(!local && !encode_rows(false))ok=false;
+        // Zero deliberately disables any old consumer that ignores scale IDs.
+        if(ok)quantization_step_=local ? 0 : step;
+#else
+        if(encode_rows(false))quantization_step_=step;
+#endif
       }
     }
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+    if(!ok || !quantized_ || (!local && !quantization_step_)) {
+      abandon_local();quantized_.reset();quantized_budget_=0;quantization_step_=0;
+    }
+#else
     if(!quantization_step_) {
       quantized_.reset();quantized_budget_=0;
     }
+#endif
   }
 #endif
   build_partition();
@@ -303,13 +491,30 @@ bool FlatIndex::resident_view(ResidentView* view) const {
   view->rows=rows_.data();view->keys=keys_.data();view->slots=slots_.data();
   view->dimension=dimension_;view->count=count_;
   view->quantized=quantized_.get();view->quantization_step=quantization_step_;
+  view->quantization_scales={};
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+  if(quantization_block_ids_ && quantized_) {
+    auto& scales=view->quantization_scales;
+    scales.block_ids=quantization_block_ids_.get();scales.steps=quantization_steps_.data();
+    scales.block_count=(count_-1)/QuantizedScaleView::block_rows+1;
+    scales.row_count=count_;scales.step_count=quantization_step_count_;
+    scales.query_cache_bytes=quantization_query_cache_bytes_;
+  }
+#endif
   return true;
 }
 size_t FlatIndex::resident_bytes() const {
-  return rows_.capacity()*sizeof(const float*)+keys_.capacity()*sizeof(int64_t)+
+  size_t bytes=rows_.capacity()*sizeof(const float*)+keys_.capacity()*sizeof(int64_t)+
          slots_.capacity()*sizeof(uint64_t)+posting_budget_+quantized_budget_+
          ann_centroids_.capacity()*sizeof(float)+ann_members_.capacity()*sizeof(uint32_t)+
          ann_offsets_.capacity()*sizeof(uint32_t);
+#ifdef MVDB_ENABLE_SPILL_FILTER
+  for(size_t i=0;i<spill_integer_count_;++i)bytes+=spill_integers_[i].bytes;
+#endif
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+  bytes+=quantization_scale_budget_;
+#endif
+  return bytes;
 }
 bool FlatIndex::equal_ordinals(size_t column,int64_t value,
     const std::function<int64_t(uint64_t)>& read_value,

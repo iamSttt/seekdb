@@ -30,6 +30,10 @@
 #include "quantized_bound.h"
 
 #include <algorithm>
+#ifdef MVDB_ENABLE_INDEX_DELTA
+#include <array>
+#include <type_traits>
+#endif
 #include <fcntl.h>
 #include <malloc.h>
 #include <unistd.h>
@@ -64,6 +68,20 @@ struct RowUndoImage {
   bool spilled = false;
   uint64_t offset = 0;
 };
+
+#ifdef MVDB_ENABLE_INDEX_DELTA
+struct IndexDelta {
+  static constexpr size_t kMaxSlots=64;
+  std::array<size_t,kMaxSlots> slots{};
+  std::array<std::shared_ptr<Row>,kMaxSlots> owners;
+  std::vector<uint64_t> suppressed;
+  size_t count=0,limit=0,bytes=0;
+  bool excludes(size_t slot) const {
+    return slot/64<suppressed.size() &&
+           (suppressed[slot/64] & (uint64_t(1)<<(slot%64)));
+  }
+};
+#endif
 
 namespace {
 
@@ -409,7 +427,7 @@ void spill_payloads(Table& table, bool force = false) {
   table.payload_store=std::move(store);
   // Global budget enforcement may spill another table with a live borrowed index.
   // Invalidate its pointers before releasing any resident payload.
-  table.vector_index.reset();
+  table.invalidate_vector_index();
   // Only publish migrated images after every write succeeded. On failure the
   // resident table and its Undo remain intact and the temporary file is closed.
   for (auto& image : old_images) {
@@ -421,6 +439,52 @@ void spill_payloads(Table& table, bool force = false) {
   for (Row& row : table.rows) std::vector<Value>().swap(row.vals);
   table.payload_bytes=0;
 }
+
+#ifdef MVDB_ENABLE_INDEX_DELTA
+// All optional allocations and admission checks precede the first move from
+// the live Row. After that point only noexcept operations remain; bad_alloc
+// before it simply asks the caller to use its ordinary rebuild path.
+bool preserve_index_for_update(Table& table,size_t slot) {
+  if(!table.vector_index || table.vector_index->disk_backed() ||
+     table.payload_store || !table.index_delta_budget)return false;
+  auto delta=table.index_delta;
+  if(delta && delta->excludes(slot))return true;
+  if(delta && delta->count==delta->limit)return false;
+  const Row& old=table.rows[slot];
+  size_t retained=sizeof(Row)+2*sizeof(void*)+old.vals.capacity()*sizeof(Value);
+  for(const Value& value:old.vals)
+    retained+=value.s.capacity()+1+value.v.capacity()*sizeof(float);
+  if(retained>table.index_delta_budget)return false;
+  try {
+    if(!delta) {
+      delta=std::make_shared<IndexDelta>();
+      const size_t words=table.rows.size()/64+(table.rows.size()%64!=0);
+      const size_t fixed=sizeof(IndexDelta)+2*sizeof(void*);
+      if(fixed>table.index_delta_budget || words>(table.index_delta_budget-fixed)/sizeof(uint64_t))
+        return false;
+      delta->suppressed.assign(words,0);
+      delta->bytes=fixed+delta->suppressed.capacity()*sizeof(uint64_t);
+      delta->limit=std::min<size_t>(IndexDelta::kMaxSlots,
+          std::max<size_t>(1,table.vector_index->size()/100));
+    }
+    if(delta->bytes>table.index_delta_budget ||
+       retained>table.index_delta_budget-delta->bytes)return false;
+    auto owner=std::make_shared<Row>();
+    static_assert(std::is_nothrow_move_assignable<Row>::value,"Row ownership transfer must not throw");
+    // The original vector allocation moves intact: base index pointers keep
+    // exactly the same addresses. Repeated updates retain only this first Row.
+    *owner=std::move(table.rows[slot]);
+    delta->owners[delta->count]=std::move(owner);
+    delta->slots[delta->count++]=slot;
+    delta->suppressed[slot/64]|=uint64_t(1)<<(slot%64);
+    delta->bytes+=retained;
+    table.index_delta=std::move(delta);
+    return true;
+  } catch(const std::bad_alloc&) {
+    return false;
+  }
+}
+#endif
 
 void enforce_payload_budget(TableMap& tables) {
   for (;;) {
@@ -863,16 +927,22 @@ void Table::append_row(Row row) {
       throw;
     }
   }
-  vector_index.reset();
+  invalidate_vector_index();
 }
 
 void Table::replace_row(size_t slot, Row row) {
-  vector_index.reset();
   if (payload_store) {
+    invalidate_vector_index();
     payload_offsets[slot]=store_payload(*payload_store,row);
     rows[slot].rid=row.rid;
   } else {
-    payload_bytes-=std::min(payload_bytes,row_heap_bytes(rows[slot]));
+    const uint64_t old_bytes=row_heap_bytes(rows[slot]);
+#ifdef MVDB_ENABLE_INDEX_DELTA
+    if(!preserve_index_for_update(*this,slot))invalidate_vector_index();
+#else
+    invalidate_vector_index();
+#endif
+    payload_bytes-=std::min(payload_bytes,old_bytes);
     payload_bytes+=row_heap_bytes(row);
     rows[slot]=std::move(row);
     spill_payloads(*this);
@@ -1112,7 +1182,7 @@ bool Database::drop_table(const std::string& name, std::string* err, int* code) 
     set_err(err, code, ErrCode::NO_SUCH_TABLE, "table '" + name + "' does not exist");
     return false;
   }
-  it->second.vector_index.reset();
+  it->second.invalidate_vector_index();
   if (txn_active_) {
     Undo u;
     u.k = Undo::K_DROP;
@@ -1498,7 +1568,7 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
     }
     if (tb.payload_store) {
       tb.payload_offsets[i] = replacement_offset;
-      tb.vector_index.reset();
+      tb.invalidate_vector_index();
     } else {
       tb.replace_row(i, std::move(replacement));
     }
@@ -1522,7 +1592,7 @@ int64_t Database::delete_rows(const std::string& t, const std::vector<Cond>& con
   Pred pr;
   if (!compile_pred(tb, conds, &pr, err, code)) return -1;
   if (pr.never) return 0;
-  tb.vector_index.reset();
+  tb.invalidate_vector_index();
 
   int64_t affected = 0;
   size_t first=0,last=tb.rows.size();
@@ -1705,7 +1775,7 @@ void Database::undo_to(size_t mark) {
     auto it = tables_.find(u.table);
     if (it == tables_.end()) continue;  // table dropped later in the txn
     Table& tb = it->second;
-    tb.vector_index.reset();
+    tb.invalidate_vector_index();
     switch (u.k) {
       case Undo::K_INS: {
         auto pos = tb.pk_pos.find(u.pk);
@@ -1860,7 +1930,7 @@ bool Database::create_vector_index(const std::string& t, const std::string& col,
   put_u32(rec, crc32_of(pay.data(), pay.size()));
   rec.append(pay);
   if (!append_wal(rec) || (!txn_active_ && !fsync_wal())) {
-    it->second.vector_index.reset();
+    it->second.invalidate_vector_index();
     set_err(err, code, ErrCode::TXN, "cannot persist index metadata");
     return false;
   }
@@ -1885,6 +1955,10 @@ bool Database::resident_vector_view(const std::string& t, FlatIndex::ResidentVie
   *view=FlatIndex::ResidentView{};
   auto it=tables_.find(t);
   if(it==tables_.end() || !it->second.has_index || it->second.schema.vec_idx<0)return false;
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  // Raw views contain the immutable base and must never bypass suppression.
+  if(it->second.index_delta)return false;
+#endif
   build_vector_index(it->second);
   return it->second.vector_index->resident_view(view);
 }
@@ -1892,6 +1966,10 @@ bool Database::resident_vector_view(const std::string& t, FlatIndex::ResidentVie
 FlatIndex* Database::resident_vector_index(const std::string& t) {
   auto it=tables_.find(t);
   if(it==tables_.end() || !it->second.has_index || it->second.schema.vec_idx<0)return nullptr;
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  // The ANN caller needs current partitions. Keep its established rebuild path.
+  if(it->second.index_delta)it->second.invalidate_vector_index();
+#endif
   build_vector_index(it->second);
   return it->second.vector_index.get();
 }
@@ -1905,7 +1983,10 @@ void Database::build_vector_index(Table& table) {
   size_t budget=MVDB_FLAT_INDEX_MEMORY_BYTES;
   for (const auto& kv : tables_) {
     if (!kv.second.vector_index) continue;
-    const size_t used=kv.second.vector_index->resident_bytes();
+    size_t used=kv.second.vector_index->resident_bytes();
+#ifdef MVDB_ENABLE_INDEX_DELTA
+    used+=kv.second.index_delta_budget;
+#endif
     budget-=std::min(budget,used);
   }
   const size_t dimension=static_cast<size_t>(table.schema.cols[table.schema.vec_idx].len);
@@ -1915,11 +1996,27 @@ void Database::build_vector_index(Table& table) {
   // payloads in the rebuildable file and gets the disk-backed index, whose
   // records are copies in its own file, exactly as before.
   auto index=std::make_shared<FlatIndex>(dir_,dimension,count,table.payload_store?0:budget);
+#ifdef MVDB_ENABLE_SPILL_FILTER
+  size_t scalar_columns[2]={},scalar_count=0;
+  if(index->disk_backed()) {
+    // Cache a deterministic bounded prefix; the PK is already in index records.
+    for(size_t column=0;column<table.schema.cols.size() && scalar_count<2;++column)
+      if(static_cast<int>(column)!=table.schema.pk_idx && table.schema.cols[column].type==Type::BIGINT)
+        scalar_columns[scalar_count++]=column;
+    scalar_count=index->configure_spill_integers(scalar_columns,scalar_count,budget);
+  }
+#endif
   auto add_slot=[&](size_t slot) {
     Row scratch;
     const Row& row=table.read_row(slot,scratch);
     const auto& vector=row.vals[table.schema.vec_idx].v;
+#ifdef MVDB_ENABLE_SPILL_FILTER
+    int64_t integers[2]={};
+    for(size_t i=0;i<scalar_count;++i)integers[i]=row.vals[scalar_columns[i]].i;
+    index->add(row.vals[table.schema.pk_idx].i,slot,vector.data(),vector.size(),integers,scalar_count);
+#else
     index->add(row.vals[table.schema.pk_idx].i,slot,vector.data(),vector.size());
+#endif
   };
 #ifndef MVDB_DISABLE_NORM_ORDER
   struct NormSlot { double norm;size_t slot; };
@@ -1961,6 +2058,12 @@ void Database::build_vector_index(Table& table) {
 #endif
   index->finish();
   table.vector_index=std::move(index);
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  if(!table.vector_index->disk_backed() && count) {
+    const size_t unused=budget-std::min(budget,table.vector_index->resident_bytes());
+    table.index_delta_budget=std::min<size_t>(256u<<10,unused);
+  }
+#endif
 }
 
 void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
@@ -1978,7 +2081,71 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
   }
   Pred predicate;
   if (!compile_pred(table, conds, &predicate) || predicate.never) return;
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  if(table.index_delta && !conds.empty())table.invalidate_vector_index();
+  if(table.index_delta) {
+    const auto& delta=*table.index_delta;
+    bool more=true;
+    table.vector_index->scan([&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
+      if(slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
+        throw std::runtime_error("stale delta base slot");
+      if(delta.excludes(static_cast<size_t>(slot)))return true;
+      more=cb(pk,vector,dimension);return more;
+    });
+    if(!more)return;
+    for(size_t j=0;j<delta.count;++j) {
+      const Row& row=table.rows[delta.slots[j]];
+      const auto& vector=row.vals[table.schema.vec_idx].v;
+      if(!cb(row.vals[table.schema.pk_idx].i,vector.data(),vector.size()))return;
+    }
+    return;
+  }
+#endif
   build_vector_index(table);
+#ifdef MVDB_ENABLE_SPILL_FILTER
+  if(table.vector_index->disk_backed() && !predicate.c.empty()) {
+    std::vector<RCond> cached;
+    Pred remaining;
+    for(const RCond& term:predicate.c) {
+      if(term.vt==static_cast<uint8_t>(Type::BIGINT) && term.op<=static_cast<uint8_t>(Cond::GE) &&
+         (static_cast<int>(term.col)==table.schema.pk_idx || table.vector_index->has_spill_integer(term.col)))
+        cached.push_back(term);
+      else remaining.c.push_back(term);
+    }
+    if(!cached.empty()) {
+      const auto matches=[&](size_t ordinal,int64_t pk,uint64_t slot) {
+        if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[static_cast<size_t>(slot)]))
+          throw std::runtime_error("stale flat vector index slot");
+        for(const RCond& term:cached) {
+          int64_t value=pk;
+          if(static_cast<int>(term.col)!=table.schema.pk_idx &&
+             !table.vector_index->spill_integer_value(ordinal,term.col,&value))
+            throw std::runtime_error("stale flat scalar cache");
+          const int64_t literal=term.lit->i;
+          bool match=false;
+          switch(static_cast<Cond::Op>(term.op)) {
+            case Cond::EQ: match=value==literal;break;
+            case Cond::NE: match=value!=literal;break;
+            case Cond::LT: match=value<literal;break;
+            case Cond::LE: match=value<=literal;break;
+            case Cond::GT: match=value>literal;break;
+            case Cond::GE: match=value>=literal;break;
+          }
+          if(!match)return false;
+        }
+        if(!remaining.c.empty()) {
+          Row scratch;
+          if(!row_matches(remaining,table.read_row(static_cast<size_t>(slot),scratch)))return false;
+        }
+        return true;
+      };
+      table.vector_index->scan_filtered(matches,[&](int64_t pk,uint64_t,const float* vector,size_t dimension) {
+        return cb(pk,vector,dimension);
+      });
+      return;
+    }
+  }
+#endif
 #ifndef MVDB_DISABLE_MULTI_POSTING
   FlatIndex::ResidentView filtered_view;
   if(!predicate.c.empty() && table.vector_index->resident_view(&filtered_view)) {
@@ -2078,7 +2245,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
             Row scratch;
             if(!row_matches(predicate,table.read_row(slot,scratch)))continue;
           }
-          if(reject && quantized->definitely_greater(codes+ordinal*dimension,*threshold))continue;
+          if(reject && quantized->definitely_greater(codes+ordinal*dimension,*threshold,ordinal))continue;
           if(!cb(filtered_view.keys[ordinal],filtered_view.rows[ordinal],dimension))return;
         }
         return;
@@ -2115,7 +2282,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
             const uint64_t slot=view.slots[i];
             if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[slot]))
               throw std::runtime_error("stale flat vector index slot");
-            if(reject && quantized->definitely_greater(codes+i*dimension,*threshold))continue;
+            if(reject && quantized->definitely_greater(codes+i*dimension,*threshold,i))continue;
             if(!cb(view.keys[i],view.rows[i],dimension))return;
           }
           return;
@@ -2406,7 +2573,7 @@ bool Database::replay_wal(std::string* err) {
       case REC_DELETE: {
         if (it == tables_.end()) break;
         Table& tb = it->second;
-        tb.vector_index.reset();
+        tb.invalidate_vector_index();
         auto pos = tb.pk_pos.find(rec.pk);
         if (pos == tb.pk_pos.end()) break;
         const size_t s = pos->second;

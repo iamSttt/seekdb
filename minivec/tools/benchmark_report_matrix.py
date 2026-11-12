@@ -22,12 +22,14 @@ CASES = {
     'zero_hit': (10000, 128, 10, 0, 'zero'),
     'small_compound': (256, 16, 10, 0, 'compound'),
     'spill_compound': (5000, 128, 10, 8192, 'compound'),
+    'spill_high': (5000, 128, 10, 8192, 'high'),
     'filter1pct': (10000, 128, 10, 0, 'one_percent'),
     'filter10pct': (10000, 128, 10, 0, 'ten_percent'),
     'high768_k1': (10000, 768, 1, 0, None),
     'high768_k100': (10000, 768, 100, 0, None),
     'large100k': (100000, 16, 10, 0, None),
 }
+DEFAULT_CASES = tuple(name for name in CASES if name != 'spill_high')
 
 
 def predicate(kind, index):
@@ -137,7 +139,7 @@ def main():
     base.write_report(args.output, report)
     pair = None
     try:
-        for case_index, name in enumerate(args.scenario or CASES):
+        for case_index, name in enumerate(args.scenario or DEFAULT_CASES):
             for seed_index, seed in enumerate(args.seeds):
                 started = perf_counter()
                 workload = make_workload(CASES[name], seed, args.queries, args.batch_size)

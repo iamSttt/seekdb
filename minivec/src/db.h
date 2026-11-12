@@ -16,6 +16,9 @@ namespace mvdb {
 
 struct PayloadStore;
 struct RowUndoImage;
+#ifdef MVDB_ENABLE_INDEX_DELTA
+struct IndexDelta;
+#endif
 class QuantizedQueryBound;
 
 struct TableSchema {
@@ -39,6 +42,20 @@ struct Table {
   int64_t next_rid = 1;
   bool has_index = false;
   std::shared_ptr<FlatIndex> vector_index;
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  // Experimental UPDATE-only delta. Its reserved allowance is charged to the
+  // same global index budget; no state is persisted to snapshot or WAL.
+  std::shared_ptr<IndexDelta> index_delta;
+  size_t index_delta_budget = 0;
+#endif
+  void invalidate_vector_index() {
+    vector_index.reset();
+#ifdef MVDB_ENABLE_INDEX_DELTA
+    // The index borrows floats retained by these owners: discard it first.
+    index_delta.reset();
+    index_delta_budget = 0;
+#endif
+  }
   // Large row payloads spill to a rebuildable, unlinked file in /data. The
   // primary-key and row-slot metadata remain resident.
   std::string storage_dir;

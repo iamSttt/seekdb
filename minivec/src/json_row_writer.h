@@ -8,7 +8,8 @@
 
 namespace mvdb {
 // Typed row serialization, using the pinned JSON library's exact floating-point
-// formatting and strict UTF-8 escaping. No per-row/cell JSON array is built.
+// formatting and strict UTF-8 escaping. No per-row JSON array is built; string
+// cells use the public serializer API and retain a temporary JSON string.
 class JsonRowWriter {
  public:
   explicit JsonRowWriter(std::string& output):output_(output) {}
@@ -26,7 +27,7 @@ class JsonRowWriter {
   }
   void text(const std::string& value) {
     if(!escaping_)escaping_.reset(new Serializer(nlohmann::detail::output_adapter<char>(output_),' '));
-    output_+='"';escaping_->dump_escaped(value,false);output_+='"';
+    escaping_->dump(nlohmann::json(value),false,false,0);
   }
   void value(const Value& item) {
     switch(item.type) {

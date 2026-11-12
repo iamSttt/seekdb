@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include "quantized_scale.h"
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -16,8 +17,9 @@ namespace mvdb {
 //
 // Lifetime: a resident index never copies vector payloads. It borrows the row
 // storage owned by the table, so every borrowed payload must outlive the index.
-// The table enforces that by rebuilding (resetting) the index on any mutation,
-// and by only building a resident index for rows held in memory -- a table whose
+// The table enforces that by invalidating on mutation, or by retaining original
+// UPDATE payloads in the opt-in delta until invalidation. Resident indexes are
+// only built for rows held in memory -- a table whose
 // payloads live in the rebuildable payload file gets a disk-backed index, which
 // copies each record into its own file exactly as before.
 //
@@ -36,6 +38,7 @@ class FlatIndex {
     size_t dimension=0,count=0;
     const int8_t* quantized=nullptr;
     double quantization_step=0;
+    QuantizedScaleView quantization_scales;
   };
   FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t memory_budget);
   ~FlatIndex();
@@ -43,9 +46,25 @@ class FlatIndex {
   FlatIndex& operator=(const FlatIndex&)=delete;
   // `values` is borrowed, not copied, when this index is resident: it must stay
   // alive and unmoved until the index is destroyed. A disk-backed index copies it.
-  void add(int64_t pk,uint64_t slot,const float* values,size_t dimension);
+  void add(int64_t pk,uint64_t slot,const float* values,size_t dimension
+#ifdef MVDB_ENABLE_SPILL_FILTER
+      ,const int64_t* integer_values=nullptr,size_t integer_count=0
+#endif
+      );
   void finish();
   void scan(const Visitor& visitor) const;
+#ifdef MVDB_ENABLE_SPILL_FILTER
+  // Configure before add(), only for a disk index. Takes up to two columns in
+  // the supplied order and returns the admitted prefix length. Arrays and
+  // compression scratch share this budget, capped at 2 MiB. No PK copy needed.
+  size_t configure_spill_integers(const size_t* columns,size_t count,size_t budget);
+  bool spill_integer_value(size_t ordinal,size_t column,int64_t* value) const;
+  bool has_spill_integer(size_t column) const;
+  // Predicate sees the physical ordinal and existing key/slot metadata before
+  // any row payload is materialised. It must not mutate this physical index.
+  using MetadataPredicate=std::function<bool(size_t,int64_t,uint64_t)>;
+  void scan_filtered(const MetadataPredicate& predicate,const Visitor& visitor) const;
+#endif
   // Read-only, non-owning view; available only for a finished resident index.
   // Storage remains owned by this index and must not outlive it.
   bool resident_view(ResidentView* view) const;
@@ -90,6 +109,16 @@ class FlatIndex {
   const float* row_at(size_t i) const {return rows_[i];}
   void build_partition();
   void flush_build_block();
+#ifdef MVDB_ENABLE_SPILL_FILTER
+  void compress_spill_integers();
+  struct SpillInteger {
+    size_t column=0,width=8,bytes=0;
+    int64_t minimum=0,maximum=0;
+    std::unique_ptr<uint8_t[]> values;
+  };
+  std::array<SpillInteger,2> spill_integers_;
+  size_t spill_integer_count_=0,spill_integer_budget_=0;
+#endif
   size_t dimension_=0,expected_=0,count_=0;
   int fd_=-1;
   bool ready_=false;
@@ -106,6 +135,12 @@ class FlatIndex {
   std::unique_ptr<int8_t[]> quantized_;
   size_t quantized_budget_=0;
   double quantization_step_=0;
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+  std::unique_ptr<uint8_t[]> quantization_block_ids_;
+  std::array<double,QuantizedScaleView::max_steps> quantization_steps_{};
+  size_t quantization_step_count_=0,quantization_scale_budget_=0;
+  size_t quantization_query_cache_bytes_=0;
+#endif
   size_t posting_budget_=0;
 #ifdef MVDB_DISABLE_MULTI_POSTING
   size_t posting_column_=0;

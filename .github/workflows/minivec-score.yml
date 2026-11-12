@@ -23,7 +23,7 @@ jobs:
           if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
           if [ -d protocol-results ]; then find protocol-results -name "*.stderr.log" -exec tail -30 {} \;; fi
   paired-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -102,3 +102,59 @@ jobs:
           fetch-depth: 0
       - name: Report I05 I08 isolated comparisons and expanded matrix
         run: bash minivec/tools/ci_report_stage_a.sh
+  report-b-hotpaths:
+    if: ${{ contains(github.event.head_commit.message, '[report-b]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Independent query candidates and cgroup resources
+        run: bash minivec/tools/ci_report_stage_b.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-b-hotpaths
+          path: report-b-results/
+          retention-days: 90
+  report-b-storage:
+    if: ${{ contains(github.event.head_commit.message, '[report-b]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Delta and spilled-filter budgets and failure boundaries
+        run: bash minivec/tools/ci_storage_report.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-b-storage
+          path: storage-report-results/
+          retention-days: 90
+  pgo-matrix:
+    if: ${{ contains(github.event.head_commit.message, '[pgo-matrix]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Same-source O3 LTO PGO and actual spill training
+        run: bash minivec/tools/ci_pgo_matrix.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: pgo-matrix
+          path: pgo-matrix-results/
+          retention-days: 90
+  report-b-quantization:
+    if: ${{ contains(github.event.head_commit.message, '[report-b]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Block scales numeric and budget gates and paired diagnostics
+        run: bash minivec/tools/ci_quant_scale.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-b-quantization
+          path: quant-scale-results/
+          retention-days: 90
