@@ -275,7 +275,6 @@ def benchmark(args):
     check_oracle(vectors, groups, queries, sampled_ids)
     return {
         "kind": "local_synthetic_jsonl_benchmark",
-        "artifact_output": str(args.output),
         "target": {"image": args.image} if args.image else {"binary": str(args.binary)},
         "seed": args.seed,
         "rows": args.rows,

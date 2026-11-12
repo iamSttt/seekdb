@@ -27,9 +27,12 @@
 // ---------------------------------------------------------------------------
 #include "db.h"
 #include "flat_index.h"
-#include "crc32.h"
+#include "quantized_bound.h"
 
 #include <algorithm>
+#include <fcntl.h>
+#include <malloc.h>
+#include <unistd.h>
 #include <cerrno>
 #include <cmath>
 #include <cstdint>
@@ -93,6 +96,28 @@ enum RecKind : uint8_t {
 };
 
 enum RecFlags : uint8_t { RF_TXN = 1 };  // record belongs to an explicit transaction
+
+// ---------------------------------------------------------------- CRC32 ----
+struct Crc32Table {
+  uint32_t t[256];
+  Crc32Table() {
+    for (uint32_t i = 0; i < 256; ++i) {
+      uint32_t c = i;
+      for (int k = 0; k < 8; ++k) c = (c & 1u) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
+      t[i] = c;
+    }
+  }
+};
+const Crc32Table kCrcTable;
+
+inline uint32_t crc32_upd(uint32_t crc, const void* p, size_t n) {
+  const uint8_t* q = static_cast<const uint8_t*>(p);
+  while (n--) crc = kCrcTable.t[(crc ^ *q++) & 0xFFu] ^ (crc >> 8);
+  return crc;
+}
+inline uint32_t crc32_of(const void* p, size_t n) {
+  return crc32_upd(0xFFFFFFFFu, p, n) ^ 0xFFFFFFFFu;
+}
 
 // ------------------------------------------------------------ byte IO ------
 inline void put_u8(std::string& b, uint8_t v) { b.push_back(static_cast<char>(v)); }
@@ -299,17 +324,11 @@ void spill_payloads(Table& table, bool force = false) {
   for (const Row& row : table.rows) offsets.push_back(store_payload(*store,row));
   table.payload_offsets=std::move(offsets);
   table.payload_store=std::move(store);
-  // A successful spill can be caused by another table's global budget. Drop
-  // any borrowed vector pointers before freeing their resident row payloads.
-  table.vector_index.reset();
   for (Row& row : table.rows) std::vector<Value>().swap(row.vals);
   table.payload_bytes=0;
 }
 
 void enforce_payload_budget(TableMap& tables) {
-#ifndef MVDB_GLOBAL_PAYLOAD_BYTES
-#define MVDB_GLOBAL_PAYLOAD_BYTES (64ull << 20)
-#endif
   for (;;) {
     uint64_t resident=0;
     Table* largest=nullptr;
@@ -319,7 +338,7 @@ void enforce_payload_budget(TableMap& tables) {
       resident+=table.payload_bytes;
       if (!largest || table.payload_bytes > largest->payload_bytes) largest=&table;
     }
-    if (!largest || resident <= MVDB_GLOBAL_PAYLOAD_BYTES) return;
+    if (!largest || resident <= (64ull << 20)) return;
     spill_payloads(*largest, true);
   }
 }
@@ -790,12 +809,15 @@ Database::~Database() { close(); }
 
 void Database::close() {
   if (wal_) {
+    (void)flush_wal();
     std::fflush(wal_);
     std::fclose(wal_);
     wal_ = nullptr;
   }
+  wal_buf_.clear();
+  wal_flushed_ = 0;
   tables_.clear();
-  std::vector<Undo>().swap(undo_);
+  undo_.clear();
   txn_active_ = false;
   stmt_active_ = false;
   stmt_implicit_ = false;
@@ -826,6 +848,12 @@ bool Database::open(const std::string& data_dir, std::string* err) {
   }
   std::string log = dir_ + "/data.log";
   wal_ = std::fopen(log.c_str(), "ab");  // O_APPEND: every write lands at EOF
+  if (wal_) {
+    // Reserve blocks past the end without moving it, so appends reuse allocated
+    // space and each commit fdatasync stops paying for block allocation. Best
+    // effort: st_size - and therefore replay - is unchanged.
+    (void)::fallocate(::fileno(wal_), FALLOC_FL_KEEP_SIZE, 0, static_cast<off_t>(8u << 20));
+  }
   if (!wal_) {
     if (err) *err = "cannot open " + log + ": " + std::strerror(errno);
     close();
@@ -833,6 +861,8 @@ bool Database::open(const std::string& data_dir, std::string* err) {
   }
   struct stat st;
   wal_bytes_ = (::stat(log.c_str(), &st) == 0) ? static_cast<uint64_t>(st.st_size) : 0;
+  wal_flushed_ = wal_bytes_;
+  wal_advised_ = 0;  // page-cache watermark restarts with the file
   if (!fsync_dir(dir_)) {
     if (err) *err = "cannot sync data directory";
     close();
@@ -1070,16 +1100,55 @@ void Database::apply_insert(const std::string& t, std::vector<Value> vals, int64
 
 bool Database::append_wal(const std::string& rec) {
   if (!wal_) return false;
+  wal_bytes_ += rec.size();  // logical end: a boundary may still be staged
+  wal_buf_.append(rec);
+  // Bound the staging buffer so one huge autocommit statement cannot pin memory.
+  if (wal_buf_.size() >= (1u << 20)) return flush_wal();
+  return true;
+}
+
+// Hands staged records to the kernel in a single write. wal_bytes_ is the
+// logical end of the log and wal_flushed_ the physical one; the difference is
+// exactly what wal_buf_ still holds.
+bool Database::flush_wal() {
+  if (!wal_) return false;
+  if (wal_buf_.empty()) return true;
   size_t done = 0;
-  write_all_fd(::fileno(wal_), rec.data(), rec.size(), &done);
-  wal_bytes_ += done;
-  return done == rec.size();
+  write_all_fd(::fileno(wal_), wal_buf_.data(), wal_buf_.size(), &done);
+  wal_flushed_ += done;
+  const bool all = done == wal_buf_.size();
+  wal_write_failed_ = !all;
+  if (all) wal_buf_.clear();
+  else wal_buf_.erase(0, done);
+  return all;
 }
 
 bool Database::fsync_wal() {
   if (!wal_) return false;
+  if (!flush_wal()) return false;
   if (std::fflush(wal_) != 0) return false;
-  return ::fdatasync(::fileno(wal_)) == 0;
+  if (::fdatasync(::fileno(wal_)) != 0) return false;
+#if !defined(MVDB_DISABLE_PAGE_ADVICE)
+  // Durability is already complete: every byte of this log reached the medium.
+  // The cached pages therefore hold nothing this session will read again, while
+  // the platform memory metric samples the cgroup those pages are charged to.
+  // Dropping them keeps the resident charge at the durable material instead of
+  // at log bytes already persisted.
+  // Only the bytes appended since the previous advice are still cached, so the
+  // range walk stays proportional to new log traffic, never to log length.
+  // The upper bound is the physical end of the log, never the logical one:
+  // wal_bytes_ counts records still staged in wal_buf_, and those bytes are not
+  // in the file yet, so advising them away would target the wrong range.
+  // wal_flushed_ is exactly what the file holds after the sync above.
+  const int fd=::fileno(wal_);
+  const uint64_t end=wal_flushed_;
+  if(end>wal_advised_) {
+    ::posix_fadvise(fd,static_cast<off_t>(wal_advised_),static_cast<off_t>(end-wal_advised_),
+                    POSIX_FADV_DONTNEED);
+    wal_advised_=end;
+  }
+#endif
+  return true;
 }
 
 bool Database::insert(const std::string& t, std::vector<Value> vals, std::string* err,
@@ -1117,20 +1186,20 @@ bool Database::insert(const std::string& t, std::vector<Value> vals, std::string
   const uint64_t lsn = wal_rows_ + 1;
   std::string rec;
   {
-    std::string pay;
-    pay.reserve(64 + vals.size() * 16);
-    put_u8(pay, REC_INSERT);
-    put_u8(pay, txn_active_ ? RF_TXN : 0);
-    put_u64(pay, lsn);
-    put_str(pay, t);
-    put_u32(pay, static_cast<uint32_t>(vals.size()));
-    for (const Value& v : vals) put_value(pay, v);
-    uint32_t len = static_cast<uint32_t>(pay.size());
-    uint32_t crc = crc32_of(pay.data(), pay.size());
-    rec.reserve(pay.size() + 8);
-    rec.append(reinterpret_cast<const char*>(&len), 4);
-    rec.append(reinterpret_cast<const char*>(&crc), 4);
-    rec.append(pay);
+    // Serialise straight into the framed record: the payload is written once
+    // and the length/CRC header is patched in place afterwards.
+    rec.reserve(64 + vals.size() * 24 + 8);
+    rec.append(8, '\0');
+    put_u8(rec, REC_INSERT);
+    put_u8(rec, txn_active_ ? RF_TXN : 0);
+    put_u64(rec, lsn);
+    put_str(rec, t);
+    put_u32(rec, static_cast<uint32_t>(vals.size()));
+    for (const Value& v : vals) put_value(rec, v);
+    const uint32_t len = static_cast<uint32_t>(rec.size() - 8);
+    const uint32_t crc = crc32_of(rec.data() + 8, len);
+    std::memcpy(&rec[0], &len, 4);
+    std::memcpy(&rec[4], &crc, 4);
   }
   // Prepare the rebuildable payload before logging the insert. A cache write
   // can fail even when the authoritative WAL still has space.
@@ -1159,7 +1228,8 @@ bool Database::insert(const std::string& t, std::vector<Value> vals, std::string
     // callers need the failed insert's own WAL suffix removed here.
     if (!stmt_active_ && wal_bytes_ != before && !truncate_wal(before, wal_rows_, err, code))
       return false;
-    set_err(err, code, ErrCode::TXN, wrote ? "WAL fdatasync failed" : "WAL write failed");
+    set_err(err, code, ErrCode::TXN,
+            (wrote && !wal_write_failed_) ? "WAL fdatasync failed" : "WAL write failed");
     return false;
   }
   wal_rows_ = lsn;
@@ -1292,7 +1362,8 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
       return -1;
     }
     if (!txn_active_ && !fsync_wal()) {
-      set_err(err, code, ErrCode::TXN, "WAL fdatasync failed");
+      set_err(err, code, ErrCode::TXN,
+              wal_write_failed_ ? "WAL write failed" : "WAL fdatasync failed");
       return -1;
     }
 
@@ -1380,7 +1451,8 @@ int64_t Database::delete_rows(const std::string& t, const std::vector<Cond>& con
       return -1;
     }
     if (!txn_active_ && !fsync_wal()) {
-      set_err(err, code, ErrCode::TXN, "WAL fdatasync failed");
+      set_err(err, code, ErrCode::TXN,
+              wal_write_failed_ ? "WAL write failed" : "WAL fdatasync failed");
       return -1;
     }
 
@@ -1492,10 +1564,7 @@ bool Database::commit(std::string* err, int* code) {
       return false;
     }
     undo_.clear();
-    // Reuse a bounded allocation for ordinary batches. clear() destroys every
-    // undo payload; retained storage does not keep old rows/tables alive.
-    // Release large-transaction capacity without allocating after durable commit.
-    if (undo_.capacity() > 65536 / sizeof(Undo)) std::vector<Undo>().swap(undo_);
+    undo_.shrink_to_fit();
     txn_active_ = false;
   }
   if (wal_bytes_ > kAutoCheckpointBytes) {
@@ -1567,11 +1636,25 @@ void Database::undo_to(size_t mark) {
 }
 
 bool Database::truncate_wal(uint64_t bytes, uint64_t lsn, std::string* err, int* code) {
-  if (!wal_ || ::ftruncate(::fileno(wal_), static_cast<off_t>(bytes)) != 0 ||
-      ::fdatasync(::fileno(wal_)) != 0) {
+  if (!wal_) {
     set_err(err, code, ErrCode::TXN, "cannot restore WAL boundary");
     return false;
   }
+  if (bytes >= wal_flushed_) {
+    // The boundary is at or past the end of the file: only the staged suffix has
+    // to go, and the file is left untouched so a boundary that never reached
+    // disk stays invisible to the filesystem.
+    wal_buf_.resize(static_cast<size_t>(bytes - wal_flushed_));
+  } else {
+    wal_buf_.clear();
+    if (::ftruncate(::fileno(wal_), static_cast<off_t>(bytes)) != 0 ||
+        ::fdatasync(::fileno(wal_)) != 0) {
+      set_err(err, code, ErrCode::TXN, "cannot restore WAL boundary");
+      return false;
+    }
+    wal_flushed_ = bytes;
+  }
+  if (wal_advised_ > wal_flushed_) wal_advised_ = wal_flushed_;
   wal_bytes_ = bytes;
   wal_rows_ = lsn;
   return true;
@@ -1581,7 +1664,6 @@ bool Database::rollback(std::string* err, int* code) {
   if (!txn_active_) return true;
   if (!truncate_wal(txn_wal_start_, txn_lsn_start_, err, code)) return false;
   undo_to(0);
-  if (undo_.capacity() > 65536 / sizeof(Undo)) std::vector<Undo>().swap(undo_);
   txn_active_ = false;
   return true;
 }
@@ -1683,44 +1765,11 @@ bool Database::resident_vector_view(const std::string& t, FlatIndex::ResidentVie
   return it->second.vector_index->resident_view(view);
 }
 
-bool Database::resident_integer_equal_view(const std::string& t,const std::vector<Cond>& conds,
-    FlatIndex::ResidentSelection* selection,std::function<bool(uint64_t)>* residual) {
-  if(!selection || !residual)return false;
-  *selection=FlatIndex::ResidentSelection{};*residual={};
+FlatIndex* Database::resident_vector_index(const std::string& t) {
   auto it=tables_.find(t);
-  if(it==tables_.end() || !it->second.has_index || it->second.schema.vec_idx<0)return false;
-  Table& table=it->second;
-  Pred predicate;
-  if(!compile_pred(table,conds,&predicate))return false;
-  if(predicate.never)return true; // Valid comparisons that cannot match any row.
-  size_t chosen=predicate.c.size();
-  for(size_t i=0;i<predicate.c.size();++i) {
-    if(predicate.c[i].op==static_cast<uint8_t>(Cond::EQ) &&
-       predicate.c[i].vt==static_cast<uint8_t>(Type::BIGINT)) {chosen=i;break;}
-  }
-  if(chosen==predicate.c.size())return false;
-  build_vector_index(table);
-  const RCond& term=predicate.c[chosen];
-  if(!table.vector_index->resident_integer_equal(term.col,term.lit->i,
-      [&](uint64_t slot) {
-        Row scratch;
-        return table.read_row(static_cast<size_t>(slot),scratch).vals[term.col].i;
-      },selection))return false;
-  if(selection->count && predicate.c.size()>1) {
-    // The cached value proves only the selected equality. Preserve every
-    // additional condition, including another equality on the same column.
-    predicate.c.erase(predicate.c.begin()+chosen);
-    // Moving these vectors preserves addresses of the owned coerced literals;
-    // share the owner so copies of the matcher preserve those addresses too.
-    const auto filter=std::make_shared<Pred>(std::move(predicate));
-    *residual=[&table,filter](uint64_t slot) {
-      if(slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
-        throw std::runtime_error("stale flat vector index slot");
-      Row scratch;
-      return row_matches(*filter,table.read_row(static_cast<size_t>(slot),scratch));
-    };
-  }
-  return true;
+  if(it==tables_.end() || !it->second.has_index || it->second.schema.vec_idx<0)return nullptr;
+  build_vector_index(it->second);
+  return it->second.vector_index.get();
 }
 
 void Database::build_vector_index(Table& table) {
@@ -1737,7 +1786,11 @@ void Database::build_vector_index(Table& table) {
   }
   const size_t dimension=static_cast<size_t>(table.schema.cols[table.schema.vec_idx].len);
   const size_t count=table.live_count();
-  auto index=std::make_shared<FlatIndex>(dir_,dimension,count,budget,!table.payload_store);
+  // A resident index borrows the row payloads instead of copying them, so it can
+  // only be built over rows this table holds in memory. A spilled table keeps its
+  // payloads in the rebuildable file and gets the disk-backed index, whose
+  // records are copies in its own file, exactly as before.
+  auto index=std::make_shared<FlatIndex>(dir_,dimension,count,table.payload_store?0:budget);
   auto add_slot=[&](size_t slot) {
     Row scratch;
     const Row& row=table.read_row(slot,scratch);
@@ -1783,7 +1836,8 @@ void Database::build_vector_index(Table& table) {
 }
 
 void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
-                           const std::function<bool(int64_t,const float*,size_t)>& cb) {
+                           const std::function<bool(int64_t,const float*,size_t)>& cb,
+                           const QuantizedQueryBound* quantized,const double* threshold) {
   auto it=tables_.find(t);
   if (it==tables_.end() || it->second.schema.vec_idx<0) return;
   Table& table=it->second;
@@ -1797,6 +1851,43 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
   Pred predicate;
   if (!compile_pred(table, conds, &predicate) || predicate.never) return;
   build_vector_index(table);
+  // Exact equality subset. When the whole predicate is a single BIGINT equality
+  // the posting list is already the complete filter, so the candidate walk
+  // needs neither a row materialisation nor a second predicate evaluation: the
+  // already-quantised vector storage is read in place. Every candidate still
+  // takes the caller's exact distance path, so results are unchanged.
+  if(predicate.c.size()==1) {
+    const RCond& term=predicate.c.front();
+    if(term.op==static_cast<uint8_t>(Cond::EQ) &&
+       term.vt==static_cast<uint8_t>(Type::BIGINT)) {
+      FlatIndex::ResidentView view;
+      if(table.vector_index->resident_view(&view)) {
+        const uint32_t* ordinals=nullptr;
+        size_t count=0;
+        if(table.vector_index->equal_ordinals(term.col,term.lit->i,
+            [&](uint64_t slot) {
+              Row scratch;
+              return table.read_row(static_cast<size_t>(slot),scratch).vals[term.col].i;
+            },&ordinals,&count)) {
+          // The same certified int8 rejection the unfiltered scan uses: a row
+          // proven farther than the current k-th distance never reaches the
+          // float bound or the exact kernel.
+          const int8_t* codes=view.quantized;
+          const size_t dimension=view.dimension;
+          const bool reject=codes && threshold && quantized && quantized->enabled();
+          for(size_t j=0;j<count;++j) {
+            const size_t i=ordinals[j];
+            const uint64_t slot=view.slots[i];
+            if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[slot]))
+              throw std::runtime_error("stale flat vector index slot");
+            if(reject && quantized->definitely_greater(codes+i*dimension,*threshold))continue;
+            if(!cb(view.keys[i],view.rows[i],dimension))return;
+          }
+          return;
+        }
+      }
+    }
+  }
   const FlatIndex::Visitor visit=[&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
     if (slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
       throw std::runtime_error("stale flat vector index slot");
@@ -2344,7 +2435,7 @@ bool Database::checkpoint(std::string* err) {
   }
 
   // The snapshot is durable: truncating the WAL cannot lose anything.
-  if (std::fflush(wal_) != 0 || ::ftruncate(::fileno(wal_), 0) != 0) {
+  if (!flush_wal() || std::fflush(wal_) != 0 || ::ftruncate(::fileno(wal_), 0) != 0) {
     if (err) *err = "cannot truncate data.log";
     return false;
   }
@@ -2353,6 +2444,8 @@ bool Database::checkpoint(std::string* err) {
     return false;
   }
   wal_bytes_ = 0;
+  wal_flushed_ = 0;
+  wal_advised_ = 0;  // the log was truncated: no persisted bytes remain
   return true;
 }
 

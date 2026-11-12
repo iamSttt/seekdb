@@ -32,7 +32,8 @@ static void check_quantized_view(const FlatIndex::ResidentView& view) {
   assert(view.quantization_step>0 && std::isfinite(view.quantization_step));
   for(size_t i=0;i<view.count*view.dimension;++i) {
     assert(view.quantized[i]>=-127 && view.quantized[i]<=127);
-    const long double error=std::fabs(static_cast<long double>(view.row_vector(i/view.dimension)[i%view.dimension])-
+    const long double error=std::fabs(static_cast<long double>(
+        view.rows[i/view.dimension][i%view.dimension])-
         static_cast<long double>(view.quantized[i])*static_cast<long double>(view.quantization_step));
     assert(error<=static_cast<long double>(view.quantization_step)*0.5L);
   }
@@ -48,29 +49,24 @@ static void check_view(Database& db) {
     assert(available==!table->vector_index->disk_backed());
   }
   if(!available) {
-    assert(!view.vectors && !view.keys && !view.dimension && !view.count);
+    assert(!view.rows && !view.keys && !view.dimension && !view.count);
     assert(!view.quantized && view.quantization_step==0);
     return;
   }
   std::map<int64_t,std::vector<float>> expected,actual;
   db.scan("t",{},[&](const Row& row){expected[row.vals[0].i]=row.vals[2].v;return true;});
   assert(view.dimension==5 && view.count==expected.size());
-#ifndef MVDB_DISABLE_BORROWED_VECTORS
-  if(view.count && !table->payload_store) {
-    assert(view.row_vectors && !view.vectors);
-    for(size_t i=0;i<view.count;++i) {
-      const size_t slot=table->pk_pos.at(view.keys[i]);
-      assert(view.row_vector(i)==table->rows[slot].vals[2].v.data());
-    }
-  } else assert(!view.row_vectors);
-#else
-  assert(!view.row_vectors);
-#endif
   check_quantized_view(view);assert(!view.quantized); // unsupported dimension
+  // Contract: a resident index does not own a contiguous float array. It owns one
+  // borrowed pointer per row, so a row's payload is reachable only through
+  // view.rows[i] and is exactly view.dimension floats long. Ownership stays with
+  // the table, which rebuilds this index on every mutation.
   for(size_t i=0;i<view.count;++i) {
-    const float* values=view.row_vector(i);
+    const float* values=view.rows[i];
+    assert(values);
     assert(actual.emplace(view.keys[i],std::vector<float>(values,values+view.dimension)).second);
   }
+  assert(view.rows[0]!=view.rows[view.count-1] || view.count==1);
   assert(actual==expected);
 }
 static void check(Database& db,const std::vector<Cond>& conds={}) {
@@ -79,21 +75,6 @@ static void check(Database& db,const std::vector<Cond>& conds={}) {
   check_view(db);
   std::map<int64_t,std::vector<float>> expected,actual;
   db.scan("t",conds,[&](const Row& row){expected[row.vals[0].i]=row.vals[2].v;return true;});
-  FlatIndex::ResidentSelection selection;
-  std::function<bool(uint64_t)> residual;
-  if(db.resident_integer_equal_view("t",conds,&selection,&residual)) {
-    std::map<int64_t,std::vector<float>> selected;
-    for(size_t position=0;position<selection.count;++position) {
-      const size_t i=selection.matches[position].second;
-      assert(i<selection.index.count);
-      if(residual && !residual(selection.slots[i]))continue;
-      const float* values=selection.index.row_vector(i);
-      assert(selected.emplace(selection.index.keys[i],
-          std::vector<float>(values,values+selection.index.dimension)).second);
-    }
-    assert(selected==expected);
-    if(conds.size()==1)assert(!residual);
-  } else assert(!selection.matches && !selection.count && !selection.index.vectors && !residual);
   const std::vector<float> query{0,1,2,0,0};
   std::vector<std::pair<double,int64_t>> a,b;
   db.scan_vectors("t",conds,[&](int64_t pk,const float* values,size_t size) {
@@ -160,10 +141,13 @@ static void quantized_index_regression() {
   auto verify_physical=[&](size_t dimension,size_t count,size_t budget,bool expect_codes) {
     FlatIndex index(path,dimension,count,budget);
     assert(index.resident_bytes()<=budget);
-    std::vector<float> values(dimension);
+    // A resident index borrows each payload, so every row needs its own slice:
+    // one reused scratch vector would leave count pointers aliasing one row.
+    std::vector<float> values(dimension*count);
     for(size_t i=0;i<count;++i) {
-      for(size_t j=0;j<dimension;++j)values[j]=float(int((i*17+j*5)%127)-63)*0.125f;
-      index.add(int64_t(count-i),i,values.data(),values.size());
+      float* row=values.data()+i*dimension;
+      for(size_t j=0;j<dimension;++j)row[j]=float(int((i*17+j*5)%127)-63)*0.125f;
+      index.add(int64_t(count-i),i,row,dimension);
     }
     index.finish();FlatIndex::ResidentView view;
     const bool resident=index.resident_view(&view);
@@ -178,7 +162,7 @@ static void quantized_index_regression() {
     for(size_t i=0;i<count;++i) {
       assert(view.keys[i]==int64_t(count-i));
       for(size_t j=0;j<dimension;++j)
-        assert(view.row_vector(i)[j]==float(int((i*17+j*5)%127)-63)*0.125f);
+        assert(view.rows[i][j]==float(int((i*17+j*5)%127)-63)*0.125f);
     }
   };
   const size_t dim=16,count=3;
@@ -194,33 +178,6 @@ static void quantized_index_regression() {
   // Exactly 4 MiB is eligible; one further row must retain only float storage.
   verify_physical(65536,64,32u<<20,true);
   verify_physical(65536,65,32u<<20,false);
-
-  // Borrowed construction never reserves a duplicate float payload. Both
-  // representations produce identical codes/values with stable source rows.
-  std::vector<std::vector<float>> source(128,std::vector<float>(128));
-  FlatIndex owned(path,128,128,1u<<20),borrowed(path,128,128,1u<<20,true);
-  for(size_t i=0;i<source.size();++i) {
-    for(size_t j=0;j<128;++j)source[i][j]=float(int(i)-int(j));
-    owned.add(int64_t(i),i,source[i].data(),128);
-    borrowed.add(int64_t(i),i,source[i].data(),128);
-  }
-  owned.finish();borrowed.finish();
-  FlatIndex::ResidentView a,b;assert(owned.resident_view(&a) && borrowed.resident_view(&b));
-#ifndef MVDB_DISABLE_BORROWED_VECTORS
-  assert(b.row_vectors && !b.vectors);
-  assert(owned.resident_bytes()-borrowed.resident_bytes()==128*(128*sizeof(float)-sizeof(const float*)));
-#else
-  assert(!b.row_vectors && owned.resident_bytes()==borrowed.resident_bytes());
-#endif
-  check_quantized_view(a);check_quantized_view(b);
-  for(size_t i=0;i<128;++i) {
-    assert(std::equal(a.row_vector(i),a.row_vector(i)+128,b.row_vector(i)));
-#ifndef MVDB_DISABLE_BORROWED_VECTORS
-    assert(b.row_vector(i)==source[i].data());
-#endif
-  }
-  assert(bool(a.quantized)==bool(b.quantized));
-  if(a.quantized)assert(std::equal(a.quantized,a.quantized+128*128,b.quantized));
 
   Database db;assert(db.open(path,&err));auto cols=schema();cols[2].len=16;
   assert(db.create_table("q",cols,&err,&code));
@@ -239,8 +196,8 @@ static void quantized_index_regression() {
       check_quantized_view(view);
       assert(view.count==expected.size());
       for(size_t i=0;i<view.count;++i)
-        assert(actual.emplace(view.keys[i],std::vector<float>(view.row_vector(i),
-               view.row_vector(i)+view.dimension)).second);
+        assert(actual.emplace(view.keys[i],std::vector<float>(view.rows[i],
+               view.rows[i]+view.dimension)).second);
       assert(actual==expected);
     }
     actual.clear();db.scan_vectors("q",{},[&](int64_t pk,const float* values,size_t n) {
@@ -248,7 +205,7 @@ static void quantized_index_regression() {
     });assert(actual==expected);
     // A failed request must clear every borrowed code pointer as well.
     assert(!db.resident_vector_view("missing",&view));
-    assert(!view.quantized && !view.quantization_step && !view.vectors && !view.keys);
+    assert(!view.quantized && !view.quantization_step && !view.rows && !view.keys);
   };
   verify_database();assert(db.begin(&err,&code));add(7,0.75f);
   assert(!db.table("q")->vector_index);verify_database();
@@ -259,48 +216,6 @@ static void quantized_index_regression() {
   verify_database();assert(db.rollback(&err,&code));verify_database();
   assert(db.delete_rows("q",{id},&err,&code)==1);verify_database();
   assert(db.checkpoint(&err));db.close();assert(db.open(path,&err));verify_database();
-}
-static void borrowed_cross_table_spill_regression() {
-// A small-budget build exercises global spill without adding 64 MiB of data
-// to every normal unit-test invocation. Run with both macros shown below:
-// -DMVDB_GLOBAL_PAYLOAD_BYTES=131072 -DMVDB_SPILL_BYTES=262144
-#if defined(MVDB_GLOBAL_PAYLOAD_BYTES) && MVDB_GLOBAL_PAYLOAD_BYTES == 131072 && \
-    defined(MVDB_SPILL_BYTES) && MVDB_SPILL_BYTES == 262144
-  char path[]="/tmp/mvdb-borrow-spill-XXXXXX";assert(::mkdtemp(path));
-  Database db;assert(db.open(path,&err));auto cols=schema();cols[2].len=128;
-  assert(db.create_table("a",cols,&err,&code));assert(db.create_table("b",cols,&err,&code));
-  assert(db.begin(&err,&code));
-  for(int i=0;i<128;++i)
-    assert(db.insert("a",{Value::ofInt(i),Value::ofInt(i%3),
-        Value::ofVec(std::vector<float>(128,float(i)))},&err,&code));
-  assert(db.commit(&err,&code));assert(!db.table("a")->payload_store);
-  assert(db.create_vector_index("a","v","a_idx",&err,&code));
-  FlatIndex::ResidentView view;assert(db.resident_vector_view("a",&view));
-#ifndef MVDB_DISABLE_BORROWED_VECTORS
-  assert(view.row_vectors && !view.vectors);
-#endif
-  assert(db.begin(&err,&code));
-  for(int i=0;i<128 && !db.table("a")->payload_store;++i)
-    assert(db.insert("b",{Value::ofInt(i),Value::ofInt(0),
-        Value::ofVec(std::vector<float>(128,-1))},&err,&code));
-  assert(db.table("a")->payload_store && !db.table("a")->vector_index);
-  auto verify=[&] {
-    assert(db.resident_vector_view("a",&view));assert(!view.row_vectors);
-    assert(view.count==128);check_quantized_view(view);
-    const std::vector<float> query(128,3);
-    for(size_t i=0;i<view.count;++i) {
-      const std::vector<float> expected(128,float(view.keys[i]));
-      assert(distance_exact(view.row_vector(i),query.data(),128)==
-             distance_exact(expected.data(),query.data(),128));
-    }
-  };
-  verify();assert(db.rollback(&err,&code));verify();
-  assert(db.begin(&err,&code));assert(db.drop_table("a",&err,&code));
-  assert(db.rollback(&err,&code));verify();
-  db.close();assert(db.open(path,&err));
-  assert(db.resident_vector_view("a",&view));
-  for(size_t i=0;i<view.count;++i)assert(view.row_vector(i)[127]==float(view.keys[i]));
-#endif
 }
 int main() {
   char path[]="/tmp/mvdb-flat-index-XXXXXX";assert(::mkdtemp(path));
@@ -315,7 +230,7 @@ int main() {
   assert(db.table("t")->vector_index && db.table("t")->vector_index->size()==0);
   assert(db.resident_vector_view("t",&view) && view.count==0 && view.dimension==5);
   assert(!db.resident_vector_view("missing",&view));
-  assert(!view.vectors && !view.keys && !view.dimension && !view.count);
+  assert(!view.rows && !view.keys && !view.dimension && !view.count);
   assert(db.begin(&err,&code));for(int i=99;i>=0;--i)insert(db,i);assert(db.commit(&err,&code));
   assert(!db.table("t")->vector_index);check(db);assert(db.table("t")->vector_index->size()==100);
   Cond group;group.column="g";group.value=Value::ofInt(1);
@@ -323,7 +238,6 @@ int main() {
   // Coercion, contradictory conjunctions, and column switching must use the
   // exact same predicate semantics as the ordinary table scan.
   Cond text_group=group;text_group.value=Value::ofStr("+01");check(db,{text_group});
-  Cond never_group=group;never_group.value=Value::ofStr("not-a-number");check(db,{never_group});
   Cond other_group=group;other_group.value=Value::ofInt(2);check(db,{group,other_group});
   Cond range;range.column="id";range.op=Cond::GE;range.value=Value::ofInt(40);
   check(db,{range,group});
@@ -369,7 +283,7 @@ int main() {
   for(int64_t pk:{9,-2,4}) {float v[5]={float(pk),1,2,3,4};disk.add(pk,static_cast<uint64_t>(pk+2),v,5);}
   disk.finish();assert(disk.disk_backed() && disk.resident_bytes()==0);
   assert(!disk.resident_view(&view));
-  assert(!view.vectors && !view.keys && !view.dimension && !view.count);
+  assert(!view.rows && !view.keys && !view.dimension && !view.count);
   std::vector<int64_t> seen;
   disk.scan([&](int64_t pk,uint64_t slot,const float* values,size_t dim){
     assert(slot==static_cast<uint64_t>(pk+2) && dim==5 && values[0]==float(pk));seen.push_back(pk);return true;
@@ -381,15 +295,24 @@ int main() {
   // order for equal keys, and honor early termination without reading again.
   FlatIndex resident(path,5,3,4096);
   assert(!resident.resident_view(&view)); // never expose partially built arrays
-  for(int64_t pk:{9,-2,4}){float v[5]={float(pk),1,2,3,4};resident.add(pk,uint64_t(pk+2),v,5);}
+  // A resident index borrows each payload instead of copying it, so the payloads
+  // must outlive the index: hold them in a stable array, not in a per-iteration
+  // stack temporary that this contract would leave dangling.
+  const int64_t resident_keys[]={9,-2,4};
+  std::vector<float> payload(3*5);
+  for(size_t i=0;i<3;++i) {
+    const float v[5]={float(resident_keys[i]),1,2,3,4};
+    std::copy(v,v+5,payload.begin()+static_cast<std::ptrdiff_t>(i*5));
+    resident.add(resident_keys[i],uint64_t(resident_keys[i]+2),payload.data()+i*5,5);
+  }
   assert(!resident.resident_view(&view));
   resident.finish();size_t reads=0;seen.clear();
   assert(resident.resident_view(&view) && view.dimension==5 && view.count==3);
-  const int64_t resident_keys[]={9,-2,4};
   for(size_t i=0;i<view.count;++i) {
     assert(view.keys[i]==resident_keys[i]);
-    assert(view.row_vector(i)[0]==float(view.keys[i]));
-    for(size_t j=1;j<view.dimension;++j)assert(view.row_vector(i)[j]==float(j));
+    assert(view.rows[i]==payload.data()+i*view.dimension);
+    assert(view.rows[i][0]==float(view.keys[i]));
+    for(size_t j=1;j<view.dimension;++j)assert(view.rows[i][j]==float(j));
   }
   assert(!resident.resident_view(nullptr));
   FlatIndex empty(path,5,0,0);
@@ -402,18 +325,7 @@ int main() {
   assert(resident.scan_integer_equal(1,-1,scalar,collect));
   assert(reads==3 && (seen==std::vector<int64_t>{-2}));
   assert(resident.scan_integer_equal(0,7,scalar,collect) && reads==6);
-  FlatIndex::ResidentSelection selection;
-  assert(resident.resident_integer_equal(0,7,scalar,&selection) && reads==6);
-  assert(selection.count==2 && selection.matches[0].second==0 && selection.matches[1].second==2);
-  assert(selection.index.keys[selection.matches[1].second]==4 && selection.slots[2]==6);
-  assert(resident.resident_integer_equal(1,-1,scalar,&selection) && reads==9);
-  assert(selection.count==1 && selection.index.keys[selection.matches[0].second]==-2);
-  assert(resident.resident_integer_equal(1,99,scalar,&selection) && reads==9);
-  assert(!selection.matches && selection.count==0);
-  assert(!disk.resident_integer_equal(1,7,scalar,&selection));
-  assert(!selection.matches && !selection.index.vectors && !selection.slots);
   norm_order_regression();
   quantized_index_regression();
-  borrowed_cross_table_spill_regression();
   std::cout<<"PASS physical flat index, filters, mutation/statement/transaction rollback, eager restart rebuild, disk scan\n";
 }

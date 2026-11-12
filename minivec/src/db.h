@@ -14,6 +14,7 @@
 namespace mvdb {
 
 struct PayloadStore;
+class QuantizedQueryBound;
 
 struct TableSchema {
   std::string name;
@@ -29,11 +30,6 @@ struct TableSchema {
 };
 
 struct Table {
-  Table()=default;
-  Table(const Table&)=delete;
-  Table& operator=(const Table&)=delete;
-  Table(Table&&) noexcept=default;
-  Table& operator=(Table&&) noexcept=default;
   TableSchema schema;
   std::vector<Row> rows;                       // live rows (append-only; deletes are tombstones)
   std::vector<uint8_t> dead;                   // 1 = deleted
@@ -110,15 +106,19 @@ class Database {
   // rebuild, dropping the table or closing the database can invalidate it.
   // Unindexed and disk-backed tables return false and retain the scan path.
   bool resident_vector_view(const std::string& t, FlatIndex::ResidentView* view);
-  // Same statement-only lifetime as resident_vector_view. Conditions are fully
-  // coerced/validated first. An empty residual means equality postings prove
-  // the complete predicate; otherwise call it on the selected source slot.
-  bool resident_integer_equal_view(const std::string& t,const std::vector<Cond>& conds,
-      FlatIndex::ResidentSelection* selection,std::function<bool(uint64_t)>* residual);
+  // Non-owning handle to the same physical index, for callers that need its
+  // coarse partition. Same lifetime rules as resident_vector_view.
+  FlatIndex* resident_vector_index(const std::string& t);
   // Pointer lifetime is limited to this callback. Filtering precedes distance
   // computation by the caller; unindexed tables use the ordinary row scan.
+  // `quantized`/`threshold` optionally supply the caller's certified int8
+  // rejection filter and its current k-th exact distance, so the equality fast
+  // path can drop a candidate without running the float bound at all. The
+  // caller owns both and must keep the threshold current.
   void scan_vectors(const std::string& t, const std::vector<Cond>& conds,
-                    const std::function<bool(int64_t,const float*,size_t)>& cb);
+                    const std::function<bool(int64_t,const float*,size_t)>& cb,
+                    const QuantizedQueryBound* quantized = nullptr,
+                    const double* threshold = nullptr);
 
   // durability
   bool checkpoint(std::string* err);
@@ -128,6 +128,7 @@ class Database {
   struct Undo;
   void apply_insert(const std::string& t, std::vector<Value> vals, int64_t* pk);
   bool append_wal(const std::string& rec);
+  bool flush_wal();
   void undo_to(size_t mark);
   bool truncate_wal(uint64_t bytes, uint64_t lsn, std::string* err, int* code);
   bool fsync_wal();
@@ -144,8 +145,17 @@ class Database {
   size_t stmt_undo_start_ = 0;
   uint64_t stmt_wal_start_ = 0, stmt_lsn_start_ = 0;
   FILE* wal_ = nullptr;
+  // Log records are staged here and handed to the kernel in one write per
+  // commit; nothing is durable until fsync_wal() flushes and fdatasync()s.
+  std::string wal_buf_;
+  // Set when the staging flush itself failed, so a statement can still report
+  // "WAL write failed" even though the write now happens at sync time.
+  bool wal_write_failed_ = false;
   uint64_t wal_rows_ = 0;
-  uint64_t wal_bytes_ = 0;
+  uint64_t wal_bytes_ = 0;    // logical log end (flushed + staged)
+  uint64_t wal_flushed_ = 0;  // bytes the file actually holds
+  // Byte offset of this log already dropped from the page cache.
+  uint64_t wal_advised_ = 0;
 };
 
 bool validate_conditions(const Table& t, const std::vector<Cond>& conds,

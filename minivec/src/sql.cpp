@@ -17,6 +17,7 @@
 // savepoints, ...). Nothing in here ever crashes: every failure path throws a
 // ParseError that parse_sql converts into (false, message, code).
 #include "sql.h"
+#include "parse_pool.h"
 
 #include <cerrno>
 #include <charconv>
@@ -24,6 +25,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -65,13 +67,6 @@ std::string to_upper(const std::string& s) {
   return r;
 }
 
-std::string trim_copy(const std::string& s) {
-  size_t b = 0, e = s.size();
-  while (b < e && is_space((unsigned char)s[b])) ++b;
-  while (e > b && is_space((unsigned char)s[e - 1])) --e;
-  return s.substr(b, e - b);
-}
-
 // ------------------------------------------------------------------ tokens --
 
 enum TokKind { TK_END, TK_IDENT, TK_INT, TK_NUM, TK_STR, TK_VEC, TK_PUNCT };
@@ -107,6 +102,32 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
       continue;
     }
     const size_t start = i;
+
+    // Fast path: a quoted literal with no escape sequence and no doubled quote
+    // is copied in one pass instead of being rebuilt byte by byte.
+    if (c == '\'' || c == '"') {
+      const char q = (char)c;
+      // memchr hands the scan to the vectorised libc search instead of walking
+      // the literal one byte at a time.
+      const char* hit = static_cast<const char*>(
+          std::memchr(s.data() + i + 1, q, n - i - 1));
+      if (hit != nullptr) {
+        const size_t j = static_cast<size_t>(hit - s.data());
+        bool simple = true;
+        if (std::memchr(s.data() + i + 1, '\\', j - i - 1) != nullptr) simple = false;
+        else if (j + 1 < n && s[j + 1] == q) simple = false;
+        if (simple) {
+          Tok t;
+          t.kind = TK_STR;
+          t.text.assign(s, i + 1, j - i - 1);
+          t.pos = start;
+          out->push_back(std::move(t));
+          i = j + 1;
+          continue;
+        }
+      }
+    }
+
 
     // --- quoted string -----------------------------------------------------
     if (c == '\'' || c == '"') {
@@ -291,14 +312,16 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
 
 // Parses "1, 2.5, -3e2" into floats. Strict: rejects empty elements, trailing
 // commas, garbage tokens and non-finite values.
-bool parse_float_list(const std::string& body, std::vector<float>* out) {
+bool parse_float_list(std::string_view body, std::vector<float>* out) {
   out->clear();
+  // One allocation for the usual 128-coordinate case instead of log2 growth.
+  if (out->capacity() == 0) out->reserve(body.size() / 8 + 4);
   const size_t n = body.size();
   size_t i = 0;
   while (i < n) {
     while (i < n && is_space((unsigned char)body[i])) ++i;
     if (i >= n) break;
-    const char* begin = body.c_str() + i;
+    const char* begin = body.data() + i;
     const char* endp = nullptr;
     // Parse at storage precision to avoid rounding first to double and then
     // rounding again at a float32 midpoint. Subnormals and zero are finite.
@@ -332,10 +355,13 @@ bool parse_float_list(const std::string& body, std::vector<float>* out) {
 // A quoted string that looks like '[1.0, 2, -3.5]' becomes a VECTOR value;
 // anything else stays a VARCHAR.
 Value value_from_string(const std::string& raw) {
-  std::string t = trim_copy(raw);
-  if (t.size() >= 2 && t.front() == '[' && t.back() == ']') {
+  // Trim and bracket stripping stay views: the byte range is examined in place.
+  size_t b = 0, e = raw.size();
+  while (b < e && is_space((unsigned char)raw[b])) ++b;
+  while (e > b && is_space((unsigned char)raw[e - 1])) --e;
+  if (e - b >= 2 && raw[b] == '[' && raw[e - 1] == ']') {
     std::vector<float> v;
-    if (parse_float_list(t.substr(1, t.size() - 2), &v)) {
+    if (parse_float_list(std::string_view(raw.data() + b + 1, e - b - 2), &v)) {
       Value result = Value::ofVec(std::move(v));
       result.s = raw;  // retain quoted spelling for a VARCHAR destination
       return result;
@@ -376,6 +402,21 @@ bool is_clause_word(const std::string& up) {
 
 // ------------------------------------------------------------------ parser --
 
+// Rows below this count are parsed inline: the pool hand-off costs more than it
+// saves (one wake-up plus one join is ~10 us, a literal is ~5 us).
+constexpr size_t kParallelRowThreshold = 16;
+
+// One deferred literal conversion. `tok` points into the token vector (immutable
+// during a parse) and `dest` at its slot in the destination row, so a worker
+// needs no parser state; `near_tok` is the token index syntax_error() must quote
+// if the conversion fails, which is exactly what the sequential parser used.
+struct LiteralJob {
+  const Tok* tok = nullptr;
+  Value* dest = nullptr;
+  size_t near_tok = 0;
+  bool neg = false;
+};
+
 class Parser {
  public:
   Parser(const std::string& sql, std::vector<Tok> toks)
@@ -406,6 +447,7 @@ class Parser {
   }
   // errors
   [[noreturn]] void syntax_error(const std::string& what);
+  [[noreturn]] void syntax_error_at(size_t at, const std::string& what) const;
   [[noreturn]] void not_supported(const std::string& feature);
   void expect_kw(const char* kw, const char* ctx);
   void expect_punct(const char* p, const char* ctx);
@@ -413,7 +455,9 @@ class Parser {
   // primitives
   std::string ident(const char* ctx);
   int64_t int_literal(const char* ctx);
-  int64_t decode_int(const std::string& digits, bool neg);
+  int64_t decode_int(const std::string& digits, bool neg, size_t near_tok) const;
+  LiteralJob scan_value(const char* ctx);
+  void materialize_into(const LiteralJob& job, Value* dest) const;
   Value parse_value(const char* ctx);
   std::vector<float> parse_query_vector();
 
@@ -442,14 +486,17 @@ class Parser {
 
 // --- error helpers ---------------------------------------------------------
 
-void Parser::syntax_error(const std::string& what) {
+void Parser::syntax_error(const std::string& what) { syntax_error_at(i_, what); }
+
+void Parser::syntax_error_at(size_t at, const std::string& what) const {
+  const Tok& tok = t_[at < t_.size() ? at : t_.size() - 1];
   std::string near;
-  if (cur().kind == TK_END) {
+  if (tok.kind == TK_END) {
     near = "end of the statement";
   } else {
     size_t len = 32;
-    if (cur().pos + len > sql_.size()) len = sql_.size() - cur().pos;
-    near = "'" + sql_.substr(cur().pos, len) + "'";
+    if (tok.pos + len > sql_.size()) len = sql_.size() - tok.pos;
+    near = "'" + sql_.substr(tok.pos, len) + "'";
   }
   std::string msg = "You have an error in your SQL syntax";
   if (!what.empty()) msg += ": " + what;
@@ -482,18 +529,18 @@ std::string Parser::ident(const char* ctx) {
   return r;
 }
 
-int64_t Parser::decode_int(const std::string& digits, bool neg) {
+int64_t Parser::decode_int(const std::string& digits, bool neg, size_t near_tok) const {
   errno = 0;
   char* endp = nullptr;
   const unsigned long long u = std::strtoull(digits.c_str(), &endp, 10);
   if (endp == digits.c_str() || (endp && *endp != '\0') || errno == ERANGE)
-    syntax_error("invalid integer literal '" + digits + "'");
+    syntax_error_at(near_tok, "invalid integer literal '" + digits + "'");
   const unsigned long long kMax = 9223372036854775807ULL;
   if (!neg) {
-    if (u > kMax) syntax_error("integer literal '" + digits + "' is out of range");
+    if (u > kMax) syntax_error_at(near_tok, "integer literal '" + digits + "' is out of range");
     return (int64_t)u;
   }
-  if (u > kMax + 1ULL) syntax_error("integer literal '-" + digits + "' is out of range");
+  if (u > kMax + 1ULL) syntax_error_at(near_tok, "integer literal '-" + digits + "' is out of range");
   if (u == kMax + 1ULL) return (-9223372036854775807LL - 1);
   return -(int64_t)u;
 }
@@ -503,38 +550,35 @@ int64_t Parser::int_literal(const char* ctx) {
   // strtoull needs a stable string; copy before advancing.
   std::string digits = cur().text;
   adv();
-  return decode_int(digits, false);
+  return decode_int(digits, false, i_);
 }
 
-Value Parser::parse_value(const char* ctx) {
-  bool neg = false;
+// Half one of parse_value: consumes the sign and classifies the literal, keeping
+// every error branch and its order exactly where it was. The conversion itself is
+// left to materialize_into(), which may run on another thread.
+LiteralJob Parser::scan_value(const char* ctx) {
+  LiteralJob job;
   if (is_punct("-")) {
     adv();
-    neg = true;
+    job.neg = true;
   } else if (is_punct("+")) {
     adv();
   }
-  if (cur().kind == TK_INT) {
-    std::string digits = cur().text;
+  // Token order mirrors the sequential parser: a pending sign only allows an
+  // integer, so it must fail before a quoted string or a bare vector is accepted.
+  if (cur().kind == TK_INT ||
+      (!job.neg && (cur().kind == TK_STR || cur().kind == TK_VEC))) {
+    job.tok = &cur();
     adv();
-    return Value::ofInt(decode_int(digits, neg));
+    // Errors raised by the conversion quote this token, as syntax_error() would
+    // have done after adv() in the sequential parser.
+    job.near_tok = i_;
+    return job;
   }
-  if (neg) syntax_error("expected a number after '-'");
+  if (job.neg) syntax_error("expected a number after '-'");
   if (cur().kind == TK_NUM)
     syntax_error("floating point literal '" + cur().text +
                  "' is not a valid value; use an integer, a quoted string or '[..]'");
-  if (cur().kind == TK_STR) {
-    std::string s = cur().text;
-    adv();
-    return value_from_string(s);
-  }
-  if (cur().kind == TK_VEC) {
-    std::string body = cur().text;
-    adv();
-    std::vector<float> v;
-    if (!parse_float_list(body, &v)) syntax_error("invalid vector literal '[" + body + "]'");
-    return Value::ofVec(std::move(v));
-  }
   if (is_kw("NULL")) syntax_error("NULL is not supported; supply a concrete value");
   if (is_kw("TRUE") || is_kw("FALSE")) syntax_error("boolean literals are not supported");
   if (is_kw("DEFAULT")) not_supported("DEFAULT in a value list");
@@ -544,21 +588,45 @@ Value Parser::parse_value(const char* ctx) {
   syntax_error(std::string("expected a literal value in ") + ctx);
 }
 
+// Half two of parse_value: pure literal -> Value conversion. Const, so it can run
+// on a worker thread against the shared parser as long as `dest` is not shared.
+void Parser::materialize_into(const LiteralJob& job, Value* dest) const {
+  const Tok& tok = *job.tok;
+  if (tok.kind == TK_INT) {
+    *dest = Value::ofInt(decode_int(tok.text, job.neg, job.near_tok));
+  } else if (tok.kind == TK_STR) {
+    *dest = value_from_string(tok.text);
+  } else {
+    std::vector<float> v;
+    if (!parse_float_list(std::string_view(tok.text), &v))
+      syntax_error_at(job.near_tok, "invalid vector literal '[" + tok.text + "]'");
+    *dest = Value::ofVec(std::move(v));
+  }
+}
+
+Value Parser::parse_value(const char* ctx) {
+  Value value;
+  materialize_into(scan_value(ctx), &value);
+  return value;
+}
+
 std::vector<float> Parser::parse_query_vector() {
   if (cur().kind == TK_VEC) {
-    std::string body = cur().text;
+    const std::string& body = cur().text;
     adv();
     std::vector<float> v;
-    if (!parse_float_list(body, &v)) syntax_error("invalid vector literal '[" + body + "]'");
+    if (!parse_float_list(std::string_view(body), &v)) syntax_error("invalid vector literal '[" + body + "]'");
     return v;
   }
   if (cur().kind == TK_STR) {
-    std::string s = cur().text;
+    const std::string& s = cur().text;
     adv();
-    std::string t = trim_copy(s);
-    if (t.size() >= 2 && t.front() == '[' && t.back() == ']') {
+    size_t b = 0, e = s.size();
+    while (b < e && is_space((unsigned char)s[b])) ++b;
+    while (e > b && is_space((unsigned char)s[e - 1])) --e;
+    if (e - b >= 2 && s[b] == '[' && s[e - 1] == ']') {
       std::vector<float> v;
-      if (parse_float_list(t.substr(1, t.size() - 2), &v)) return v;
+      if (parse_float_list(std::string_view(s.data() + b + 1, e - b - 2), &v)) return v;
     }
     syntax_error("invalid vector literal '" + s + "'");
   }
@@ -836,16 +904,57 @@ void Parser::parse_insert(Statement* st) {
     }
   }
 
-  for (;;) {
-    expect_punct("(", "VALUES");
-    std::vector<Value> row;
+  // Rows are independent, so from kParallelRowThreshold on the literal
+  // conversions are recorded and run on the parse pool once the structural scan
+  // is done. Ordering stays sequential: jobs are appended in parse order, every
+  // job precedes the token where the scan stopped, and the pool rethrows the
+  // earliest part's failure -- so the reported error is the one a one-thread
+  // parse would report, at the same token.
+  std::vector<LiteralJob> jobs;
+  bool bound = true;  // every recorded job already names its destination slot
+  auto drain = [&]() {
+    if (jobs.empty()) return;
+    // Swapped out first, so the list stays empty even if a literal throws: the
+    // failure that was raised is already the sequential-order one.
+    std::vector<LiteralJob> pending;
+    pending.swap(jobs);
+    ParsePool& pool = ParsePool::instance();
+    if (st->rows.size() >= kParallelRowThreshold && pool.parts() > 1 && bound) {
+      pool.run(pending.size(),
+               [this, &pending](std::size_t i) { materialize_into(pending[i], pending[i].dest); });
+    } else {
+      // Unbound jobs belong to a row the scan never finished (the statement is
+      // already failing), so only their errors matter: keep one scratch slot and
+      // stay on this thread.
+      Value scratch;
+      for (LiteralJob& job : pending)
+        materialize_into(job, job.dest != nullptr ? job.dest : &scratch);
+    }
+    bound = true;
+  };
+  try {
     for (;;) {
-      row.push_back(parse_value("the VALUES list"));
+      expect_punct("(", "VALUES");
+      std::vector<Value> row;
+      const size_t first_job = jobs.size();
+      bound = false;
+      for (;;) {
+        jobs.push_back(scan_value("the VALUES list"));
+        if (!accept_punct(",")) break;
+      }
+      expect_punct(")", "VALUES");
+      // Every destination slot exists before a worker can write to it; moving the
+      // row into st->rows keeps its buffer, so the pointers stay valid.
+      row.resize(jobs.size() - first_job);
+      for (size_t k = first_job; k < jobs.size(); ++k) jobs[k].dest = &row[k - first_job];
+      bound = true;
+      st->rows.push_back(std::move(row));
       if (!accept_punct(",")) break;
     }
-    expect_punct(")", "VALUES");
-    st->rows.push_back(std::move(row));
-    if (!accept_punct(",")) break;
+    drain();
+  } catch (const ParseError&) {
+    drain();  // a literal that precedes the structural failure reports first
+    throw;
   }
   if (st->rows.empty()) syntax_error("VALUES needs at least one row");
   if (!st->columns.empty()) {

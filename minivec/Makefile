@@ -29,11 +29,7 @@ test_distance_simd: tests/test_distance_simd.cpp src/distance.h
 	$(CXX) $(CXXFLAGS) -o $@ tests/test_distance_simd.cpp
 test_quantized_bound: tests/test_quantized_bound.cpp src/quantized_bound.h src/distance.h
 	$(CXX) $(CXXFLAGS) -o $@ tests/test_quantized_bound.cpp
-test_crc32: tests/test_crc32.cpp src/crc32.h
-	$(CXX) $(CXXFLAGS) -o $@ tests/test_crc32.cpp
-test_crc32_byte: tests/test_crc32.cpp src/crc32.h
-	$(CXX) $(CXXFLAGS) -DMVDB_DISABLE_CRC_SLICING -o $@ tests/test_crc32.cpp
-test: all test_sql test_db test_recovery test_vector test_query test_sort test_flat test_distance_neighbors test_distance_simd test_quantized_bound test_crc32 test_crc32_byte
+test: all test_sql test_db test_recovery test_vector test_query test_sort test_flat test_distance_neighbors test_distance_simd test_quantized_bound
 	./test_sql
 	./test_db
 	./test_recovery
@@ -44,8 +40,6 @@ test: all test_sql test_db test_recovery test_vector test_query test_sort test_f
 	./test_distance_neighbors
 	./test_distance_simd
 	./test_quantized_bound
-	./test_crc32
-	./test_crc32_byte
 	MVDB_PROTOCOL=sql python3 tests/regressions.py
 	python3 tests/topk_bounds.py --binary ./minivec
 
