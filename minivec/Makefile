@@ -29,7 +29,11 @@ test_distance_simd: tests/test_distance_simd.cpp src/distance.h
 	$(CXX) $(CXXFLAGS) -o $@ tests/test_distance_simd.cpp
 test_quantized_bound: tests/test_quantized_bound.cpp src/quantized_bound.h src/distance.h
 	$(CXX) $(CXXFLAGS) -o $@ tests/test_quantized_bound.cpp
-test: all test_sql test_db test_recovery test_vector test_query test_sort test_flat test_distance_neighbors test_distance_simd test_quantized_bound
+test_query_pool: tests/test_query_pool_safety.cpp src/query_pool.h
+	$(CXX) $(CXXFLAGS) -o $@ tests/test_query_pool_safety.cpp -Wl,--wrap=pthread_create
+test_cross_table_spill: tests/test_cross_table_spill.cpp src/db.cpp src/flat_index.cpp src/value.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $^
+test: all test_sql test_db test_recovery test_vector test_query test_sort test_flat test_distance_neighbors test_distance_simd test_quantized_bound test_query_pool test_cross_table_spill
 	./test_sql
 	./test_db
 	./test_recovery
@@ -40,8 +44,13 @@ test: all test_sql test_db test_recovery test_vector test_query test_sort test_f
 	./test_distance_neighbors
 	./test_distance_simd
 	./test_quantized_bound
+	./test_query_pool
+	./test_query_pool --create-fails
+	./test_cross_table_spill
 	MVDB_PROTOCOL=sql python3 tests/regressions.py
+	python3 tests/json_protocol.py --binary ./minivec
 	python3 tests/topk_bounds.py --binary ./minivec
+	MVDB_QUERY_THREADS=2 python3 tests/topk_bounds.py --binary ./minivec
 
 clean:
 	rm -f $(BIN)

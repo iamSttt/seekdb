@@ -1358,9 +1358,7 @@ int64_t Database::update_rows(const std::string& t, const std::vector<Cond>& con
       rec.append(reinterpret_cast<const char*>(&crc), 4);
       rec.append(pay);
     }
-    const uint64_t before = wal_bytes_;
-    append_wal(rec);
-    if (wal_ && wal_bytes_ - before != rec.size()) {
+    if (!append_wal(rec)) {
       set_err(err, code, ErrCode::TXN, "WAL write failed");
       return -1;
     }
@@ -1447,9 +1445,7 @@ int64_t Database::delete_rows(const std::string& t, const std::vector<Cond>& con
       rec.append(reinterpret_cast<const char*>(&crc), 4);
       rec.append(pay);
     }
-    const uint64_t before = wal_bytes_;
-    append_wal(rec);
-    if (wal_ && wal_bytes_ - before != rec.size()) {
+    if (!append_wal(rec)) {
       set_err(err, code, ErrCode::TXN, "WAL write failed");
       return -1;
     }

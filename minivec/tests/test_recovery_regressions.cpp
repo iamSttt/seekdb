@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 #include <unistd.h>
@@ -234,9 +235,214 @@ static void discard_uncommitted_wal_tail(const std::string& dir) {
   expect(db, {1, 3});
 }
 
-int main() {
+static std::string staging_wal(const std::string& dir) {
+  std::ifstream file(dir + "/data.log", std::ios::binary);
+  assert(file.good());
+  return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+}
+
+static std::string staging_batch(const char* table, int first, int count, size_t width) {
+  std::string sql = std::string("INSERT INTO ") + table + " VALUES ";
+  for (int i = 0; i < count; ++i) {
+    if (i) sql += ',';
+    sql += '(' + std::to_string(first + i) + ",'" + std::string(width, 'p') + "')";
+  }
+  return sql;
+}
+
+static std::vector<std::pair<int64_t, std::string>> staging_rows(Database& db) {
+  std::vector<std::pair<int64_t, std::string>> result;
+  db.scan("t", {}, [&](const Row& row) {
+    result.emplace_back(row.vals[0].i, row.vals[1].s);
+    return true;
+  });
+  std::sort(result.begin(), result.end());
+  return result;
+}
+
+// For p(id BIGINT,s VARCHAR), a framed INSERT is 41 + string bytes:
+// frame 8, kind/flags/LSN 10, table 5, count 4, BIGINT 9, VARCHAR 5.
+// Sixteen rows and BEGIN stay just below the 1 MiB staging flush threshold.
+static constexpr uint64_t kStagedPriorBytes = 22 + 16 * (41 + 65000);
+static_assert(kStagedPriorBytes < (1u << 20), "prior statement must stay staged");
+
+static void verify_staged_prior(Database& db) {
+  const auto ids = keys(db, "p");
+  assert(ids.size() == 16);
+  for (int i = 0; i < 16; ++i) assert(ids[i] == i + 1);
+  db.scan("p", {}, [&](const Row& row) {
+    assert(row.vals[1].s == std::string(65000, 'p'));
+    return true;
+  });
+}
+
+static void staging_dml_short_writes(const std::string& dir, bool observe) {
+  struct rlimit original;
+  assert(::getrlimit(RLIMIT_FSIZE, &original) == 0);
+  const auto previous_handler = ::signal(SIGXFSZ, SIG_IGN);
+  assert(previous_handler != SIG_ERR);
+  for (const std::string operation : {"INSERT", "UPDATE", "DELETE"}) {
+    Database db;
+    std::string error;
+    const std::string path = dir + "/" + operation;
+    assert(db.open(path, &error));
+    ok(db, "CREATE TABLE t (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
+    ok(db, "CREATE TABLE p (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
+    if (operation == "UPDATE") ok(db, "INSERT INTO t VALUES (1,'original')");
+    if (operation == "DELETE") ok(db, staging_batch("t", 1, 300, 0));
+    const auto original_rows = staging_rows(db);
+    const std::string committed = staging_wal(path);
+    ok(db, "BEGIN");
+    ok(db, staging_batch("p", 1, 16, 65000));
+    const uint64_t prior_lsn = db.committed_rows();
+    // This acknowledged statement is still staged, not physically written.
+    assert(staging_wal(path) == committed);
+    const std::string sql = operation == "INSERT" ? staging_batch("t", 1, 1, 10000) :
+        operation == "UPDATE" ? "UPDATE t SET s='" + std::string(10000, 'u') + "'" :
+                                "DELETE FROM t";
+    struct rlimit limited = original;
+    limited.rlim_cur = static_cast<rlim_t>(committed.size() + 32768);
+    assert(::setrlimit(RLIMIT_FSIZE, &limited) == 0);
+    const bool accepted = run(db, sql);
+    assert(::setrlimit(RLIMIT_FSIZE, &original) == 0);
+    const std::string partial = staging_wal(path);
+    assert(partial.size() == committed.size() + 32768);
+    assert(partial.compare(0, committed.size(), committed) == 0);
+    std::cout << "WAL threshold probe op=" << operation << " accepted=" << accepted
+              << " partial_bytes=32768 prior_statement_still_staged=true\n" << std::flush;
+    if (!observe) assert(!accepted);
+    assert(db.in_txn());
+    verify_staged_prior(db);
+    std::vector<std::pair<int64_t, std::string>> expected = original_rows;
+    if (!accepted) {
+      assert(db.committed_rows() == prior_lsn);
+    } else if (operation == "INSERT") {
+      expected = {{1, std::string(10000, 'p')}};
+    } else if (operation == "UPDATE") {
+      expected = {{1, std::string(10000, 'u')}};
+    } else {
+      expected.clear();
+    }
+    assert(staging_rows(db) == expected);
+    // The default regression requires statement failure and its complete undo.
+    // Observation mode also documents the old implementation: swallowed errors
+    // can still recover consistently after space is restored and COMMIT retries.
+    ok(db, "COMMIT");
+    db.close();
+    assert(db.open(path, &error));
+    assert(staging_rows(db) == expected);
+    verify_staged_prior(db);
+  }
+  assert(::signal(SIGXFSZ, previous_handler) != SIG_ERR);
+}
+
+static void staging_partial_commits(const std::string& dir) {
+  struct rlimit original;
+  assert(::getrlimit(RLIMIT_FSIZE, &original) == 0);
+  const auto previous_handler = ::signal(SIGXFSZ, SIG_IGN);
+  assert(previous_handler != SIG_ERR);
+  int case_number = 0;
+  for (bool marker_partial : {false, true}) {
+    for (bool retry : {false, true}) {
+      Database db;
+      std::string error;
+      const std::string path = dir + "/case-" + std::to_string(case_number++);
+      assert(db.open(path, &error));
+      ok(db, "CREATE TABLE p (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
+      const std::string committed = staging_wal(path);
+      ok(db, "BEGIN");
+      ok(db, staging_batch("p", 1, 16, 65000));
+      const uint64_t prior_lsn = db.committed_rows();
+      assert(staging_wal(path) == committed);
+      // Either fail in BEGIN's header while prior records are still pending,
+      // or write all prior rows and only five bytes of the COMMIT header.
+      const uint64_t allowance = marker_partial ? kStagedPriorBytes + 5 : 5;
+      struct rlimit limited = original;
+      limited.rlim_cur = static_cast<rlim_t>(committed.size() + allowance);
+      assert(::setrlimit(RLIMIT_FSIZE, &limited) == 0);
+      const bool accepted = run(db, "COMMIT");
+      assert(!accepted && db.in_txn() && db.committed_rows() == prior_lsn);
+      const auto physical_size = std::filesystem::file_size(path + "/data.log");
+      assert(physical_size == committed.size() + (marker_partial ? kStagedPriorBytes : 5));
+      if (!retry) {
+        // Leave the limit active during close: an unwritten suffix cannot be
+        // silently completed before the subsequent crash-style reopen.
+        db.close();
+        assert(::setrlimit(RLIMIT_FSIZE, &original) == 0);
+        assert(db.open(path, &error) && keys(db, "p").empty());
+        assert(staging_wal(path) == committed);
+      } else {
+        assert(::setrlimit(RLIMIT_FSIZE, &original) == 0);
+        verify_staged_prior(db);
+        ok(db, "COMMIT");
+        db.close();
+        assert(db.open(path, &error));
+        verify_staged_prior(db);
+        assert(db.checkpoint(&error));
+        db.close();
+        assert(db.open(path, &error));
+        verify_staged_prior(db);
+      }
+      std::cout << "WAL partial COMMIT probe marker=" << marker_partial
+                << " retry=" << retry << " recovered=true\n";
+    }
+  }
+  assert(::signal(SIGXFSZ, previous_handler) != SIG_ERR);
+}
+
+static void staging_later_duplicate_key(const std::string& dir) {
+  Database db;
+  std::string error;
+  assert(db.open(dir, &error));
+  ok(db, "CREATE TABLE t (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
+  ok(db, "CREATE TABLE p (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
+  const uint64_t committed_size = staging_wal(dir).size();
+  ok(db, "BEGIN");
+  ok(db, staging_batch("p", 1, 16, 65000));
+  const uint64_t prior_lsn = db.committed_rows();
+  assert(staging_wal(dir).size() == committed_size);
+  // Eight new records cross 1 MiB and physically write the earlier statement;
+  // the final duplicate then requires truncating its entire failed successor.
+  assert(!run(db, staging_batch("t", 1, 16, 1000) + ",(1,'duplicate')"));
+  assert(db.in_txn() && db.committed_rows() == prior_lsn && keys(db).empty());
+  assert(staging_wal(dir).size() == committed_size + kStagedPriorBytes);
+  verify_staged_prior(db);
+  ok(db, "INSERT INTO t VALUES (99,'after failed statement')");
+  ok(db, "COMMIT");
+  db.close();
+  assert(db.open(dir, &error));
+  assert(keys(db) == std::vector<int64_t>{99});
+  verify_staged_prior(db);
+  assert(db.checkpoint(&error));
+  db.close();
+  assert(db.open(dir, &error) && keys(db) == std::vector<int64_t>{99});
+  verify_staged_prior(db);
+}
+
+static void staging_regressions(const std::string& dir, bool observe) {
+  staging_dml_short_writes(dir + "/dml", observe);
+  staging_partial_commits(dir + "/commit");
+  staging_later_duplicate_key(dir + "/duplicate");
+  if (observe)
+    std::cout << "OBSERVED WAL error handling and verified recovery; accepted flags are diagnostic\n";
+  else
+    std::cout << "PASS 1 MiB WAL staging, partial writes, commit retry and recovery\n";
+}
+
+int main(int argc, char** argv) {
+  bool staging_only = false, observe = false;
+  if (argc == 2) {
+    const std::string option = argv[1];
+    staging_only = option == "--wal-staging" || option == "--wal-staging-observe";
+    observe = option == "--wal-staging-observe";
+    if (!staging_only) return 2;
+  } else if (argc != 1) return 2;
   char tmp[]="/tmp/mvdb-recovery-XXXXXX";
   const char* p=::mkdtemp(tmp); assert(p); const std::string dir=p;
+  if (staging_only) {
+    staging_regressions(dir + "/staging", observe);
+    return 0;
+  }
   Database d; std::string e;
   assert(d.open(dir,&e));
   ok(d,"CREATE TABLE t (id BIGINT PRIMARY KEY, v VECTOR(2))");
@@ -311,4 +517,5 @@ int main() {
   std::cout << "PASS spilled INSERT and UPDATE failures, partial WAL and transaction boundaries\n";
   discard_uncommitted_wal_tail(dir+"/discard-wal-tail");
   std::cout << "PASS recovery reclaims complete and torn uncommitted WAL tails\n";
+  staging_regressions(dir + "/staging", false);
 }
