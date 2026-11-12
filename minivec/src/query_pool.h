@@ -13,6 +13,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
+#include <signal.h>
 #include <linux/futex.h>
 #include <pthread.h>
 #include <sys/syscall.h>
@@ -54,6 +56,8 @@ inline void futex_wake(std::atomic<uint32_t>* word) {
 
 struct Pool {
   std::atomic<uint32_t> seq{0};   // the caller publishes a job by bumping this
+  std::atomic<uint32_t> ready{0}; // Worker inherited its blocked termination mask.
+  std::exception_ptr error; // Published by done release, consumed after acquire.
   std::atomic<uint32_t> done{0};  // the worker echoes the generation it finished
   // Zero between queries: the worker sleeps instead of holding a core warm.
   std::atomic<int> idle_spin{0};
@@ -68,6 +72,8 @@ inline Pool& pool() {
 
 inline void* worker_main(void* arg) {
   Pool& p = *static_cast<Pool*>(arg);
+  p.ready.store(1, std::memory_order_release);
+  futex_wake(&p.ready);
   uint32_t seen = 0;
   for (;;) {
     const int budget = p.idle_spin.load(std::memory_order_relaxed);
@@ -81,7 +87,8 @@ inline void* worker_main(void* arg) {
       continue;
     }
     seen = now;
-    p.body(p.ctx, 1);
+    try { p.body(p.ctx, 1); }
+    catch (...) { p.error = std::current_exception(); }
     p.done.store(seen, std::memory_order_release);
     futex_wake(&p.done);
   }
@@ -93,12 +100,28 @@ inline bool start_worker() {
     Pool& p = pool();
     pthread_attr_t attr;
     if (pthread_attr_init(&attr) != 0) return false;
-    pthread_attr_setstacksize(&attr, kWorkerStack);
+    if (pthread_attr_setstacksize(&attr, kWorkerStack) != 0 ||
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0) {
+      pthread_attr_destroy(&attr);
+      return false;
+    }
+    // Block before creation so there is no startup window where the worker can
+    // consume a process termination signal instead of interrupting main's read.
+    sigset_t blocked, previous;
+    sigemptyset(&blocked);
+    sigaddset(&blocked, SIGTERM);
+    sigaddset(&blocked, SIGINT);
+    if (pthread_sigmask(SIG_BLOCK, &blocked, &previous) != 0) {
+      pthread_attr_destroy(&attr);
+      return false;
+    }
     pthread_t thread;
     const int rc = pthread_create(&thread, &attr, &worker_main, &p);
+    const int restore = pthread_sigmask(SIG_SETMASK, &previous, nullptr);
     pthread_attr_destroy(&attr);
+    if (restore != 0) std::terminate(); // Cannot safely continue with main masked.
     if (rc != 0) return false;
-    pthread_detach(thread);
+    while (!p.ready.load(std::memory_order_acquire)) futex_wait(&p.ready, 0);
     return true;
   }();
   return started;
@@ -154,8 +177,12 @@ inline void query_fanout_run(void* ctx, void (*body)(void*, unsigned), bool allo
   using namespace query_pool_detail;
   static const bool started = start_worker();
   if (!started) {
-    body(ctx, 0);
-    body(ctx, 1);
+    std::exception_ptr errors[2];
+    for (unsigned half = 0; half < 2; ++half) {
+      try { body(ctx, half); } catch (...) { errors[half] = std::current_exception(); }
+    }
+    if (errors[0]) std::rethrow_exception(errors[0]);
+    if (errors[1]) std::rethrow_exception(errors[1]);
     return;
   }
   Pool& p = pool();
@@ -163,11 +190,13 @@ inline void query_fanout_run(void* ctx, void (*body)(void*, unsigned), bool allo
   // is idle its half is done, so a spin there can only burn CPU, never shorten
   // this query. The only spin worth arming is the join below.
   p.idle_spin.store(0, std::memory_order_relaxed);
+  p.error = nullptr;
   p.ctx = ctx;
   p.body = body;
   const uint32_t generation = p.seq.fetch_add(1, std::memory_order_acq_rel) + 1;
   futex_wake(&p.seq);
-  body(ctx, 0);
+  std::exception_ptr caller_error;
+  try { body(ctx, 0); } catch (...) { caller_error = std::current_exception(); }
   uint32_t now = p.done.load(std::memory_order_acquire);
   for (int spin = 0; now != generation && spin < (allow_spin ? kJoinSpin : 0); ++spin) {
     spin_hint();
@@ -177,10 +206,14 @@ inline void query_fanout_run(void* ctx, void (*body)(void*, unsigned), bool allo
     futex_wait(&p.done, now);
     now = p.done.load(std::memory_order_acquire);
   }
+  const std::exception_ptr worker_error = p.error;
+  p.error = nullptr;
   p.ctx = nullptr;
   p.body = nullptr;
   // Back to sleep: between two queries this thread must hold no core.
   p.idle_spin.store(0, std::memory_order_relaxed);
+  if (caller_error) std::rethrow_exception(caller_error);
+  if (worker_error) std::rethrow_exception(worker_error);
 }
 
 // Median cost of one sleep/wake handshake, in microseconds. The probe spends

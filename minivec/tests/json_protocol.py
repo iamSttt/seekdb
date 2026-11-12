@@ -136,15 +136,15 @@ class Session:
             check_value(response.get("rows"), rows, "rows")
 
     def expect_unchanged_after_invalid(self, raw, columns, rows):
-        self.send(raw.encode("utf-8") + b"\n")
+        encoded = raw.encode("utf-8") if isinstance(raw, str) else raw
+        self.send(encoded + b"\n")
+        response = self.read_json(f"rejection of invalid frame {raw!r}")
+        require(response.get("ok") is False, f"invalid frame succeeded: {response!r}")
+        check_error(response)
         ident = "check-after-invalid-frame"
         self.send_json({"id": ident, "op": "execute", "sql": "SELECT * FROM tx ORDER BY id;",
                         "search_mode": "exact"})
         response = self.read_json(f"response after invalid frame {raw!r}")
-        if response.get("id") != ident:
-            require(response.get("ok") is False, f"invalid frame succeeded: {response!r}")
-            check_error(response)
-            response = self.read_json("verification response after malformed request")
         self.check_response(response, ident, True)
         check_value(response.get("columns"), columns, "columns after invalid frame")
         check_value(response.get("rows"), rows, "rows after invalid frame")
@@ -178,7 +178,7 @@ class Session:
 
 
 @contextmanager
-def launch(binary, data, timeout, *options, protocol=None, ready=True):
+def launch(binary, data, timeout, *options, protocol=None, ready=True, parse_threads=None):
     env = os.environ.copy()
     env.pop("MVDB_PROTOCOL", None)
     env.pop("MVDB_OUT", None)
@@ -186,6 +186,8 @@ def launch(binary, data, timeout, *options, protocol=None, ready=True):
         env["MVDB_OUT"] = "tsv-status"
     if protocol is not None:
         env["MVDB_PROTOCOL"] = protocol
+    if parse_threads is not None:
+        env["MVDB_PARSE_THREADS"] = str(parse_threads)
     argv = [str(binary), "--data", str(data), *options]
     with tempfile.TemporaryFile() as stderr:
         session = Session(argv, env, timeout, stderr)
@@ -224,6 +226,8 @@ def typed_rows(binary, data, timeout):
                    columns=["body"], rows=[[message]])
         db.execute("SELECT id, v FROM docs ORDER BY id LIMIT 0;", ident=ABOVE_UINT64,
                    columns=["id", "v"], rows=[])
+        db.execute("SELECT id FROM docs ORDER BY id LIMIT 0;", ident=low,
+                   columns=["id"], rows=[])
         db.execute("SELECT FROM docs;", ident=WIDE_REQUEST_ID, ok=False)
         db.shutdown(ident=WIDE_REQUEST_ID)
 
@@ -252,6 +256,20 @@ def transactions_and_invalid_input(binary, data, timeout):
         invalid += [request[:-1] + f',"extra":{token}}}' for token in ("NaN", "Infinity", "-Infinity")]
         for raw in invalid:
             db.expect_unchanged_after_invalid(raw, columns, committed)
+
+        # Invalid UTF-8 must fail before SQL executes. Exercise both the scalar
+        # tail and the eight-byte span of the ASCII envelope optimization.
+        raw_id_request = json.dumps({"id": "MARKER", "op": "execute",
+                                     "sql": "INSERT INTO tx VALUES(6,'bad');"}).encode("utf-8")
+        for invalid_id in (b"\xff", b"abcdefg\xff", b"\xc0\xaf", b"\xed\xa0\x80"):
+            db.expect_unchanged_after_invalid(
+                raw_id_request.replace(b"MARKER", invalid_id), columns, committed)
+        # The SQL tokenizer ignores comments, so validating only SQL string
+        # values would miss this side-effecting request with a malformed frame.
+        raw_sql_request = json.dumps({"id": "invalid-sql-utf8", "op": "execute",
+                                      "sql": "INSERT INTO tx VALUES(6,'bad'); -- MARKER"}).encode("utf-8")
+        db.expect_unchanged_after_invalid(
+            raw_sql_request.replace(b"MARKER", b"\xff"), columns, committed)
 
         db.execute("BEGIN;")
         db.execute("UPDATE tx SET value='temporary' WHERE id=1;", affected=1)
@@ -308,6 +326,51 @@ def mode_switch(binary, data, timeout):
         db.shutdown()
 
 
+def fragmented_jsonl(binary, data, timeout):
+    with launch(binary, data, timeout) as db:
+        db.execute("CREATE TABLE fragments(id BIGINT PRIMARY KEY,txt VARCHAR(16));")
+        ident = "split\n多字节😀"
+        request = {"id": ident, "op": "execute", "search_mode": "exact",
+                   "sql": "INSERT INTO fragments VALUES(1,'多字节😀');"}
+        encoded = json.dumps(request, ensure_ascii=False, allow_nan=False).encode("utf-8")
+        # Each byte is a separate write: this splits UTF-8 sequences and the
+        # escaped newline in id, while stdin stays open throughout the exchange.
+        for byte in encoded:
+            db.send(bytes((byte,)))
+        try:
+            early = db.lines.get(timeout=min(timeout, 0.05))
+        except Empty:
+            pass
+        else:
+            raise AssertionError(f"response before JSONL newline: {early[:240]!r}")
+        db.send(b"\n")
+        response = db.check_response(db.read_json("fragmented UTF-8 request"), ident, True)
+        check_value(response.get("affected_rows"), 1, "fragmented affected_rows")
+        db.execute("SELECT * FROM fragments ORDER BY id;", columns=["id", "txt"],
+                   rows=[[1, "多字节😀"]])
+        db.shutdown()
+
+
+def parallel_insert_errors(binary, data, timeout):
+    with launch(binary, data, timeout, parse_threads=2) as db:
+        db.execute("CREATE TABLE parsed(id BIGINT PRIMARY KEY);")
+        values = [str(i) for i in range(32)]
+        # These conversions fail respectively in the caller and worker halves.
+        # Each request must join the other half before emitting its error, and
+        # leave the persistent pool usable for the next statement.
+        for bad_position in (0, 31):
+            bad = values.copy()
+            bad[bad_position] = str(1 << 63)
+            db.execute("INSERT INTO parsed VALUES" + ",".join(f"({v})" for v in bad) + ";",
+                       ok=False)
+            db.execute("SELECT id FROM parsed ORDER BY id;", columns=["id"], rows=[])
+        db.execute("INSERT INTO parsed VALUES" + ",".join(f"({v})" for v in values) + ";",
+                   affected=32)
+        db.execute("SELECT id FROM parsed ORDER BY id;", columns=["id"],
+                   rows=[[i] for i in range(32)])
+        db.shutdown()
+
+
 def legacy_mode(binary, data, timeout):
     with launch(binary, data, timeout, "--protocol", "sql", ready=False) as db:
         db.send(b"CREATE TABLE legacy(id BIGINT PRIMARY KEY);\n")
@@ -335,7 +398,8 @@ def main():
         parser.error("--timeout must be finite and positive")
     binary = (args.binary or args.path or Path(__file__).resolve().parents[1] / "minivec").resolve()
     with tempfile.TemporaryDirectory(prefix="mvdb-jsonl-") as directory:
-        for check in (typed_rows, transactions_and_invalid_input, crash_recovery, mode_switch, legacy_mode):
+        for check in (typed_rows, transactions_and_invalid_input, crash_recovery, mode_switch,
+                      fragmented_jsonl, parallel_insert_errors, legacy_mode):
             data = Path(directory) / check.__name__
             data.mkdir()
             check(binary, data, args.timeout)

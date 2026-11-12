@@ -278,7 +278,8 @@ inline double bound_sum_avx512(const float* a,const float* b,size_t n) {
 using BoundSum = double(*)(const float*,const float*,size_t);
 inline BoundSum choose_bound_sum() {
 #if !defined(MVDB_DISABLE_AVX512_BOUND)
-  if(__builtin_cpu_supports("avx512f"))return bound_sum_avx512;
+  if(__builtin_cpu_supports("avx512f") && __builtin_cpu_supports("avx2"))
+    return bound_sum_avx512; // Short dimensions delegate to the AVX2 kernel.
 #endif
   if(__builtin_cpu_supports("avx2"))return bound_sum_avx2;
   if(__builtin_cpu_supports("sse2"))return bound_sum_sse2;

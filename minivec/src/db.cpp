@@ -324,6 +324,9 @@ void spill_payloads(Table& table, bool force = false) {
   for (const Row& row : table.rows) offsets.push_back(store_payload(*store,row));
   table.payload_offsets=std::move(offsets);
   table.payload_store=std::move(store);
+  // Global budget enforcement may spill another table with a live borrowed index.
+  // Invalidate its pointers before releasing any resident payload.
+  table.vector_index.reset();
   for (Row& row : table.rows) std::vector<Value>().swap(row.vals);
   table.payload_bytes=0;
 }

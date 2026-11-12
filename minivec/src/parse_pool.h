@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <csignal>
 #include <cstdlib>
 #include <exception>
 #include <functional>
@@ -21,6 +22,7 @@
 #include <condition_variable>
 #include <thread>
 #include <vector>
+#include <pthread.h>
 
 namespace mvdb {
 
@@ -97,12 +99,44 @@ class ParsePool {
   }
 
   explicit ParsePool(int parts) : parts_(parts < 1 ? 1 : parts) {
-    workers_.reserve(static_cast<std::size_t>(parts_ - 1));
-    for (int w = 1; w < parts_; ++w) workers_.emplace_back([this, w] { worker_loop(w); });
+    if (parts_ < 2) return;
+    // A worker must never receive the process's shutdown signal while the
+    // foreground thread is blocked in read(2). Block before creation so even a
+    // newly scheduled worker inherits the mask without a startup race.
+    sigset_t blocked, saved;
+    sigemptyset(&blocked);
+    sigaddset(&blocked, SIGTERM);
+    sigaddset(&blocked, SIGINT);
+    if (pthread_sigmask(SIG_BLOCK, &blocked, &saved) != 0) {
+      parts_ = 1;  // Safe serial fallback if signal ownership cannot be assured.
+      return;
+    }
+    try {
+      workers_.reserve(static_cast<std::size_t>(parts_ - 1));
+      for (int w = 1; w < parts_; ++w)
+        workers_.emplace_back([this, w] { worker_loop(w); });
+      std::unique_lock<std::mutex> lock(mu_);
+      cv_main_.wait(lock, [this] { return ready_ == parts_ - 1; });
+    } catch (...) {
+      // Partial construction can already own joinable threads. Stop and join
+      // every one before the vector or synchronization objects are destroyed.
+      {
+        std::lock_guard<std::mutex> lock(mu_);
+        stop_ = true;
+        cv_worker_.notify_all();
+      }
+      for (std::thread& worker : workers_)
+        if (worker.joinable()) worker.join();
+      pthread_sigmask(SIG_SETMASK, &saved, nullptr);
+      throw;
+    }
+    pthread_sigmask(SIG_SETMASK, &saved, nullptr);
   }
 
   void worker_loop(int part) {
     std::unique_lock<std::mutex> lock(mu_);
+    ++ready_;
+    cv_main_.notify_one();
     std::uint64_t seen = 0;
     for (;;) {
       cv_worker_.wait(lock, [this, seen] { return stop_ || generation_ != seen; });
@@ -123,6 +157,7 @@ class ParsePool {
   Job* job_ = nullptr;
   std::uint64_t generation_ = 0;
   int busy_ = 0;
+  int ready_ = 0;
   int parts_;
   bool stop_ = false;
   std::vector<std::thread> workers_;

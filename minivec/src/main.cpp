@@ -133,20 +133,19 @@ using Json = nlohmann::json;
 // (and a duplicate-key std::set) for each request. Anything outside the shape —
 // nesting, backslash escapes, unknown keys, out-of-range integers — falls back
 // to the nlohmann parse below, which stays the reference implementation.
-// True when [p,q) holds a byte below 0x20: JSON forbids a raw control byte inside
-// a string. Eight bytes per step; a byte with the high bit set reads as "maybe",
-// which only sends the envelope back to nlohmann, so this never accepts input the
-// strict path rejects.
-static bool has_control_byte(const char* p, const char* q) {
-  while (p + 8 <= q) {
+// Only unescaped ASCII strings use this path. Non-ASCII must go through the
+// reference parser's UTF-8 validation before SQL can have any side effects.
+static bool needs_strict_string_parse(const char* p, const char* q) {
+  while (q - p >= 8) {
     uint64_t w = 0;
     std::memcpy(&w, p, 8);
-    w &= 0x7f7f7f7f7f7f7f7full;
+    if ((w & 0x8080808080808080ull) != 0) return true;
     if (((w - 0x2020202020202020ull) & ~w & 0x8080808080808080ull) != 0) return true;
     p += 8;
   }
   while (p < q) {
-    if (static_cast<unsigned char>(*p) < 0x20) return true;
+    const unsigned char c = static_cast<unsigned char>(*p);
+    if (c < 0x20 || c >= 0x80) return true;
     ++p;
   }
   return false;
@@ -164,7 +163,7 @@ static bool scan_simple_json_string(const std::string& t, size_t* p, std::string
   if (hit == nullptr) return false;
   const size_t close = static_cast<size_t>(hit - base);
   if (std::memchr(base + i, '\\', close - i) != nullptr) return false;
-  if (has_control_byte(base + i, base + close)) return false;
+  if (needs_strict_string_parse(base + i, base + close)) return false;
   if (out) out->assign(base + i, close - i);
   *p = close + 1;
   return true;
@@ -230,16 +229,21 @@ static bool fast_envelope(const std::string& t, Json* out) {
         while (p < n && t[p] >= '0' && t[p] <= '9') ++p;
       }
       // The id value is only tested for presence; other members are strings.
-      bool integral = true;
       uint64_t acc = 0;
       for (size_t k = (neg ? b + 1 : b); k < p; ++k) {
-        if (t[k] < '0' || t[k] > '9') { integral = false; break; }
-        if (acc > 1844674407370955161ull) { integral = false; break; }
-        acc = acc * 10 + static_cast<uint64_t>(t[k] - '0');
+        // Floating-point and wide integer IDs retain the reference parser's
+        // range checks. The original lexical ID is echoed after validation.
+        if (t[k] < '0' || t[k] > '9') return false;
+        const uint64_t digit = static_cast<uint64_t>(t[k] - '0');
+        if (acc > 1844674407370955161ull ||
+            (acc == 1844674407370955161ull && digit > 5)) return false;
+        acc = acc * 10 + digit;
       }
-      if (!integral) obj[kKeys[slot]] = nullptr;
-      else if (neg) obj[kKeys[slot]] = -static_cast<int64_t>(acc);
-      else obj[kKeys[slot]] = acc;
+      if (neg) {
+        if (acc > 9223372036854775808ull) return false;
+        obj[kKeys[slot]] = acc == 9223372036854775808ull
+            ? (-9223372036854775807LL - 1) : -static_cast<int64_t>(acc);
+      } else obj[kKeys[slot]] = acc;
     } else {
       return false;  // arrays/objects/other tokens: let nlohmann handle it
     }
