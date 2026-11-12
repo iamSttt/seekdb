@@ -58,6 +58,8 @@ CI会构建根镜像，测试源码和镜像的公开用例、保持stdin打开�
 
 选用的运行核心 `4d8de37` 已通过[完整门禁](https://github.com/iamSttt/seekdb/actions/runs/43226783666)，源码/镜像公开用例各20/20；另有[追加候选的门禁与负结果](https://github.com/iamSttt/seekdb/actions/runs/43229668934)。详细范围及 SHA256 见本轮报告。工作流支持手动 dispatch，并对独立优化分支 push 自动验证；指定提交标记选择配对性能任务。
 
+回退后完整交付树 `20eac01` 也已通过[最终门禁](https://github.com/iamSttt/seekdb/actions/runs/43232155090)，包含新增回归和 27 项工具测试；镜像程序与已测运行核心逐字节相同。
+
 旧SQL文本适配器仅供引擎回归：`--protocol sql`或`MVDB_PROTOCOL=sql`；`minivec/run.sh`与harness显式选该模式，不能替代JSONL准入。
 
 ## 后续测量和仓库结构

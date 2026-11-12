@@ -69,6 +69,12 @@
       "role": "assistant",
       "source_kind": "current_iteration_work_record",
       "content": "默认10k持平后又验证用户I14的小步版：每SELECT复用JSON行数组capacity，保留同一dump编码规则；另由代理提出量化cap整数比较和缓存验证，保留旧拒绝判定。991d105完整Linux门禁通过，27项Python工具测试通过，新增编码/数值边界真实运行。与4d8非LTO版本完成标准15对、边界75对，完整结果嵌入hotpath-paired-90；不把两处改动各自认定为独立提速。该组合未获得足够可靠净收益，运行源码回退到4d8，保留真实实验记录。整数cap优化是代理实现细化，不是用户原文中的具体方案。"
+    },
+    {
+      "id": "assistant-final-selection",
+      "role": "assistant",
+      "source_kind": "current_iteration_work_record",
+      "content": "根据255对真实配对实验保留I03/I04/I08/I13，拒绝LTO及I14/cap微调组合。最终20eac01完整交付树门禁通过，包括27项工具测试、新增编码和数值边界回归；运行源码/构建输入与4d8一致，镜像程序SHA256亦与已测4d8一致。最终证据提交只补充文档和材料。默认10k查询仍基本持平，3000到6000尚未达成或验证；没有发起新正式评测、合并比赛分支或编造用户结果反馈。"
     }
   ],
   "adopted_directions": [
@@ -2187,6 +2193,64 @@
           "sha256": "e2e81ccfec5b4f591080e43eb280a82bf96874e8742f70a9d67a671dc4097b62"
         }
       ]
+    },
+    {
+      "id": "final-selected-tree-gate",
+      "executed_by": "assistant",
+      "status": "passed",
+      "observed_result": {
+        "image-binary-sha256.txt": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753  /home/runner/work/_temp/minivec-checks-51z7nN/image-binary\n",
+        "image-id.txt": "sha256:f69a56314a3d4ec49453e49d0caaf7a4beed83e2f1bf9f1c5c86ce2f79b9d9b7\n",
+        "runtime-commit.txt": "20eac01a0d6df6ce04284bb66107006f9d2c66da\n",
+        "verification-summary.json": {
+          "runtime_commit": "20eac01a0d6df6ce04284bb66107006f9d2c66da",
+          "image_tag": "minivec:verify-20eac01a0d6d",
+          "image_id": "sha256:f69a56314a3d4ec49453e49d0caaf7a4beed83e2f1bf9f1c5c86ce2f79b9d9b7",
+          "scope": "current-checkout build and regression verification; not formal scoring",
+          "passed": true,
+          "checks": {
+            "root_docker_build": true,
+            "image_official_handshake_and_public_cases": true,
+            "source_official_handshake_and_public_cases": true,
+            "live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill": true,
+            "make_test": true,
+            "image_binary_json_and_exact_topk_serial_parallel": true,
+            "eight_wal_failure_cases_asan_ubsan": true,
+            "query_pool_both_modes_asan_ubsan": true,
+            "cross_table_spill_asan_ubsan": true,
+            "full_binary_json_ubsan": true,
+            "index_budget_and_resident_update_asan_ubsan": true
+          },
+          "limitations": [
+            "No hidden formal cases or score.",
+            "No new paired performance measurement.",
+            "WAL fixture injects short/failed writes; not fdatasync or allocation failure.",
+            "ASan leak detection disabled; memory-safety and undefined-behavior checks enabled."
+          ]
+        },
+        "binary_identical_to_4d8de": true,
+        "ci_url": "https://github.com/iamSttt/seekdb/actions/runs/43232155090",
+        "job_id": 131229989840,
+        "source_run": "https://github.com/iamSttt/seekdb/actions/runs/43232155090",
+        "source_job": "https://github.com/iamSttt/seekdb/actions/runs/43232155090/job/131229989840",
+        "selected_runtime_equivalence": {
+          "reference_commit": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4",
+          "git_diff_empty_for": [
+            "Dockerfile",
+            ".dockerignore",
+            "minivec/src",
+            "minivec/third_party"
+          ],
+          "image_binary_matches_reference_sha256": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753"
+        },
+        "context": "Final selected tree with expanded regression tests and attributed evidence; later delivery changes are documentation/evidence only."
+      },
+      "artifacts": [
+        {
+          "path": "validation/iteration-linux-final.json",
+          "sha256": "e3ce63202ed802479b5de80b1825b726cb1a8a46c8a42162e24558ab2ff3c31a"
+        }
+      ]
     }
   ],
   "official_result": {
@@ -2212,7 +2276,7 @@
   "selected_runtime": {
     "commit": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4",
     "binary_sha256": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753",
-    "later_delivery_changes": "Documentation, recorded evidence and benchmark comments only; runtime/build identity checked before packaging."
+    "later_delivery_changes": "运行源码和Docker构建输入与reference commit一致；其余修改为测试、测量、文档和归因材料。最终门禁后仅追加证据。"
   },
   "timing_clarification": "UPDATE后的查询首请求包括失效索引重建，不能直接等同稳态QPS。open()在ready前恢复已登记索引，重建计入restart；30k原实验每阶段32次、整个生命周期64次。不同提交、不同阶段比值不相乘。"
 }

@@ -75,6 +75,8 @@
 
 首轮门禁曾失败：旧测试假定两次 UPDATE 必然让 payload 落盘，访问了新的驻留路径中为空的 offsets。随后将测试设置成确实超过 Undo 上限的真实落盘场景，保留原故障断言，并重新跑过完整门禁。该失败及修复不隐藏，也不计为引擎提速。
 
+最终回退微调后的完整交付树 `20eac01a0d6df6ce04284bb66107006f9d2c66da` 于北京时间 22:01:38 再次通过全部门禁，包括新增编码/数值边界测试与 27 项 Python 工具测试。其镜像程序 SHA-256 与上面的 `4d8de37` 完全一致。最终证据提交仅补充文档和材料；[最终门禁](https://github.com/iamSttt/seekdb/actions/runs/43232155090)与[身份核对记录](../validation/iteration-linux-final.json)可复核。
+
 - [首次性能实验](https://github.com/iamSttt/seekdb/actions/runs/43225295552)：性能 job 通过；同 run 的旧测试前提失败。
 - [测试前提修复后的完整门禁](https://github.com/iamSttt/seekdb/actions/runs/43226164871)。
 - [SQL 复制优化后的完整门禁、默认负载和 LTO 对照](https://github.com/iamSttt/seekdb/actions/runs/43226783666)。
