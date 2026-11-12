@@ -3,8 +3,8 @@
 set -euo pipefail
 unset MVDB_PROTOCOL MVDB_OUT
 root_checkout="$PWD"
-export RUNTIME_COMMIT=cdfdb7cfe48910e4ef2506a5ffcccd143722587f
-export IMAGE=minivec:cdfdb7cf-20261112
+export RUNTIME_COMMIT=385766a2251595867a546840fe8f41c5db6b1c9e
+export IMAGE=minivec:fixed385-20261112
 driver_commit=$(git rev-parse HEAD)
 git fetch --no-tags --depth=1 origin "$RUNTIME_COMMIT"
 scratch=$(mktemp -d "${RUNNER_TEMP:-/tmp}/minivec-verify-XXXXXX")
@@ -134,11 +134,76 @@ docker rm "$container"
 sha256sum /tmp/minivec-image-binary | tee protocol-results/image-binary-sha256.txt
 python3 minivec/tests/json_protocol.py --binary /tmp/minivec-image-binary --timeout 15 2>&1 | tee protocol-results/image-binary-json.log
 python3 minivec/tests/topk_bounds.py --binary /tmp/minivec-image-binary 2>&1 | tee protocol-results/image-binary-topk.log
+MVDB_QUERY_THREADS=2 python3 minivec/tests/topk_bounds.py --binary /tmp/minivec-image-binary 2>&1 | tee protocol-results/image-binary-topk-parallel.log
+
+# Additional native regression and sanitizer coverage for the parallel runtime.
+candidate="$PWD"
+reports="$PWD/protocol-results"
+g++ -std=c++17 -O2 -pthread -Iminivec/src minivec/tests/test_query_pool_safety.cpp -Wl,--wrap=pthread_create -o /tmp/query-pool
+timeout 25 /tmp/query-pool
+timeout 25 /tmp/query-pool --create-fails
+g++ -std=c++17 -O2 -pthread -Iminivec/src minivec/tests/test_cross_table_spill.cpp minivec/src/db.cpp minivec/src/flat_index.cpp minivec/src/value.cpp -o /tmp/cross-spill
+timeout 120 /tmp/cross-spill
+g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_query_pool_safety.cpp -Wl,--wrap=pthread_create -o /tmp/query-pool-san
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 timeout 25 /tmp/query-pool-san
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 timeout 25 /tmp/query-pool-san --create-fails
+g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_cross_table_spill.cpp minivec/src/db.cpp minivec/src/flat_index.cpp minivec/src/value.cpp -o /tmp/cross-spill-san
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 timeout 120 /tmp/cross-spill-san
+g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/src/*.cpp -o /tmp/minivec-ubsan
+python3 minivec/tests/json_protocol.py --binary /tmp/minivec-ubsan --timeout 15
+printf 'passed\n' > "$reports/current-extra-gates.txt"
+
+# Reproduce the new regressions against the unmodified upstream runtime.
+git fetch --no-tags --depth=1 origin 72bda06d7bedcf2e5f79cb838922f8ffdcd609a4 cdfdb7cfe48910e4ef2506a5ffcccd143722587f
+git worktree add --detach "$scratch/upstream" 72bda06d7bedcf2e5f79cb838922f8ffdcd609a4
+git worktree add --detach "$scratch/cdf" cdfdb7cfe48910e4ef2506a5ffcccd143722587f
+observe() {
+  name=$1
+  shift
+  set +e
+  "$@" > "$reports/$name.log" 2>&1
+  status=$?
+  set -e
+  cat "$reports/$name.log"
+  printf '%s\n' "$status" > "$reports/$name-status.txt"
+}
+cd "$scratch/upstream"
+git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > "$reports/upstream-input-sha256.txt"
+docker build --platform linux/amd64 --progress=plain -t minivec:upstream72 .
+docker image inspect minivec:upstream72 > "$reports/upstream-image-inspect.json"
+python3 protocol_check/run.py --image minivec:upstream72 --output "$reports/upstream-public"
+container=$(docker create minivec:upstream72)
+docker cp "$container:/minivec" /tmp/minivec-upstream72
+docker rm "$container"
+observe upstream-strict-json python3 "$candidate/minivec/tests/json_protocol.py" --binary /tmp/minivec-upstream72 --timeout 15
+g++ -std=c++17 -O2 -pthread -Iminivec/src "$candidate/minivec/tests/test_query_pool_safety.cpp" -Wl,--wrap=pthread_create -o /tmp/upstream-pool
+observe upstream-pool timeout 25 /tmp/upstream-pool
+observe upstream-pool-create-fails timeout 25 /tmp/upstream-pool --create-fails
+g++ -std=c++17 -O2 -pthread -Iminivec/src "$candidate/minivec/tests/test_cross_table_spill.cpp" minivec/src/db.cpp minivec/src/flat_index.cpp minivec/src/value.cpp -o /tmp/upstream-spill
+observe upstream-spill timeout 120 /tmp/upstream-spill
+git diff --exit-code
+
+# Freeze the same harness and official limits for all runtime versions.
+cd "$scratch/cdf"
+docker build --platform linux/amd64 --progress=plain -t minivec:cdf-control .
+docker image inspect minivec:cdf-control > "$reports/cdf-image-inspect.json"
+sha256sum minivec/tools/{benchmark_jsonl,profile_jsonl,profile_container}.py protocol_check/{config.json,_transport.py} > "$reports/measurement-harness-sha256.txt"
+for seed in 7319 7320 7321; do
+  case "$seed" in
+    7319) order="cdf-control upstream72 fixed385-20261112" ;;
+    7320) order="upstream72 fixed385-20261112 cdf-control" ;;
+    7321) order="fixed385-20261112 cdf-control upstream72" ;;
+  esac
+  for version in $order; do
+    python3 minivec/tools/benchmark_jsonl.py --image "minivec:$version" --rows 10000 --queries 1000 --seed "$seed" --sudo-cgroup --output "$reports/bench-$version-$seed.json"
+    python3 minivec/tools/profile_jsonl.py --image "minivec:$version" --write-rows 1000 --requests 500 --seed "$seed" --timeout 600 --output "$reports/profile-$version-$seed.json"
+  done
+done
+git diff --exit-code
+cd "$candidate"
 
 # Measure end-to-end paths for the next optimization
 set -euo pipefail
-python3 minivec/tools/profile_jsonl.py --image "$IMAGE" --write-rows 2000 --requests 1000 --timeout 600 --output protocol-results/path-profile.json 2>&1 | tee protocol-results/path-profile.log
-python3 minivec/tools/benchmark_jsonl.py --image "$IMAGE" --rows 10000 --queries 1000 --seed 7319 --sudo-cgroup --output protocol-results/baseline-workload.json 2>&1 | tee protocol-results/baseline-workload.log
 
 # Material diagnostics are separate; retain their exit code explicitly.
 set +e
