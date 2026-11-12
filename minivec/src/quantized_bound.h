@@ -1,5 +1,6 @@
 #pragma once
 #include "distance.h"
+#include <algorithm>
 #include <vector>
 
 namespace mvdb {
@@ -170,7 +171,22 @@ class QuantizedQueryBound {
     if(!enabled_ || !row || !std::isfinite(threshold) || threshold<0)return false;
     if(!cached_ || threshold!=cached_threshold_)update_cap(threshold);
     if(!usable_cap_)return false;
+#if defined(MVDB_QUANTIZED_BLOCK_SIZE) && MVDB_QUANTIZED_BLOCK_SIZE > 0
+    static_assert(MVDB_QUANTIZED_BLOCK_SIZE>=16,"quantized blocks must be at least 16 coordinates");
+    // Each partial sum is an exact nonnegative integer no larger than the full
+    // integer distance. The existing full-dimensional outward-rounded cap is
+    // unchanged, so exceeding it early proves the same strict rejection.
+    // n<=65536 and coordinates in [-127,127] keep the full sum below UINT32_MAX.
+    uint32_t sum=0;
+    for(size_t offset=0;offset<n_;offset+=MVDB_QUANTIZED_BLOCK_SIZE) {
+      const size_t count=std::min<size_t>(MVDB_QUANTIZED_BLOCK_SIZE,n_-offset);
+      sum+=kernel_(row+offset,query_.data()+offset,count);
+      if(static_cast<double>(sum)>cap_)return true;
+    }
+    return false;
+#else
     return static_cast<double>(kernel_(row,query_.data(),n_))>cap_;
+#endif
   }
  private:
   void update_cap(double threshold) const {

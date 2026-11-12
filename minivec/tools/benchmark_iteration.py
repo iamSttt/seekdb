@@ -229,8 +229,9 @@ def one_run(binary, workload, args):
     phases = result["phase_seconds"]
     with tempfile.TemporaryDirectory(prefix="mvdb-iteration-log-") as temporary:
         log = Path(temporary) / "stderr.log"
-        session = Session(config, log, command=[str(binary), "--data", "{data_dir}",
-                                               "--protocol", "jsonl"],
+        command = list(getattr(args, 'command_prefix', [])) + [str(binary), "--data", "{data_dir}",
+                                                               "--protocol", "jsonl"]
+        session = Session(config, log, command=command,
                           case_timeout=args.case_timeout)
 
         def snapshot(phase):

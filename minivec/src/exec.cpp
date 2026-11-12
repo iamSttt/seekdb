@@ -4,6 +4,10 @@
 #include "distance.h"
 #include "quantized_bound.h"
 #include "query_pool.h"
+#include "query_cost.h"
+#ifdef MVDB_ENABLE_TYPED_JSON
+#include "json_row_writer.h"
+#endif
 #include "../third_party/json.hpp"
 #include <limits>
 
@@ -420,6 +424,20 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             : distance2(row.vals[item.col].v, *item.qvec);
         return std::sqrt(squared);
       };
+#ifdef MVDB_ENABLE_TYPED_JSON
+      std::string encoded_row;
+      JsonRowWriter row_writer(encoded_row);
+      auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) -> const std::string& {
+        encoded_row.clear();encoded_row+='[';
+        for(size_t j=0;j<items.size();++j) {
+          if(j)encoded_row+=',';
+          const auto& item=items[j];
+          if(item.is_distance)row_writer.number(projected_distance(row,item,candidate));
+          else row_writer.value(row.vals[item.col]);
+        }
+        encoded_row+=']';return encoded_row;
+      };
+#else
       auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
         Json cells = Json::array();
         for (const auto& item : items) {
@@ -434,6 +452,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         }
         return cells.dump();
       };
+#endif
       bool first_json_row = true;
       auto append_json_row = [&](const std::string& row) {
         if (!first_json_row) *out += ',';
@@ -546,7 +565,9 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             // K best rows under (exact distance, primary key), a total order, so
             // the winner set cannot depend on how the span was cut.
             const bool fanout=!approximate && bounded && !st.order_desc && k>=1 &&
-                k<=kFanoutTopKMax && query_fanout_wanted(view.count);
+                k<=kFanoutTopKMax && query_workload_fanout(view.count,view.dimension,k,view.quantized!=nullptr);
+            QueryCostObservation scan_cost(view.count,view.dimension,k,view.quantized!=nullptr,fanout,
+                !approximate && bounded && !st.order_desc && k>=1 && k<=kFanoutTopKMax);
             if(fanout) {
               std::vector<Candidate> halves[2];
               halves[0].reserve(k);halves[1].reserve(k);
@@ -572,7 +593,22 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 const QuantizedQueryBound quantized(query,dimension,
                     view.quantized ? view.quantization_step : 0);
                 std::vector<Candidate>& heap=halves[worker];
+#if defined(MVDB_PILOT_COUNT) && MVDB_PILOT_COUNT > 0
+                const size_t pilots=std::min<size_t>(MVDB_PILOT_COUNT,last-first);
+                const auto pilot_at=[&](size_t j) {
+                  return first+(last-first)/pilots*j+((last-first)%pilots)*j/pilots;
+                };
+                for(size_t j=0;j<pilots;++j) {
+                  const size_t i=pilot_at(j);
+                  Candidate c;c.pk=view.keys[i];c.distance=distance_squared(view.rows[i],query,dimension);
+                  keep(heap,std::move(c));
+                }
+                size_t next_pilot=0;
+#endif
                 for(size_t i=first;i<last;++i) {
+#if defined(MVDB_PILOT_COUNT) && MVDB_PILOT_COUNT > 0
+                  if(next_pilot<pilots && i==pilot_at(next_pilot)) {++next_pilot;continue;}
+#endif
                   // Integer codes are only a certified rejection filter, taken
                   // against this half's own k-th distance. Every uncertain row
                   // follows the existing float bound and exact kernel.
@@ -606,14 +642,35 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
               if(approximate) {
                 for(size_t j=0;j<ordinal_count;++j)
                   if(!scan_ordinal(ordinals[j]))break;
+#if defined(MVDB_PILOT_COUNT) && MVDB_PILOT_COUNT > 0
+              } else {
+                // The pilot changes traversal only. Every other ordinal is
+                // still visited exactly once; ties retain canonical PK order.
+                const size_t pilots=bounded && !st.order_desc && k>0 ?
+                    std::min<size_t>(MVDB_PILOT_COUNT,view.count) : 0;
+                const auto pilot_at=[&](size_t j) {
+                  return view.count/pilots*j+(view.count%pilots)*j/pilots;
+                };
+                for(size_t j=0;j<pilots;++j) {
+                  const size_t i=pilot_at(j);
+                  consider(view.keys[i],view.rows[i],view.dimension);
+                }
+                size_t next_pilot=0;
+                for(size_t i=0;i<view.count;++i) {
+                  if(next_pilot<pilots && i==pilot_at(next_pilot)) {++next_pilot;continue;}
+                  if(!scan_ordinal(i))break;
+                }
+#else
               } else if(quantized.enabled()) {
                 for(size_t i=0;i<view.count;++i)
                   if(!scan_ordinal(i))break;
               } else {
                 for(size_t i=0;i<view.count;++i)
                   if(!consider(view.keys[i],view.rows[i],view.dimension))break;
+#endif
               }
             }
+            scan_cost.finish();
           } else {
             // Filtered search: the same certified int8 rejection, with the
             // threshold kept current from the winning heap. Before the heap is

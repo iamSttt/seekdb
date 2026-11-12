@@ -1,0 +1,30 @@
+{
+  "status": "battery_save_unverified_experimental_drafts",
+  "stage_a_commit": "e47cb44695b8e547d2d91cb099c03c030c6f9717",
+  "artifacts": [
+    {
+      "name": "index-delta-draft.zip",
+      "files": 25,
+      "bytes": 263911,
+      "sha256": "36c84494648f7b7267c17d61d6b94428b7dec038b2dc40d2957eeb706db8d477"
+    },
+    {
+      "name": "spill-filter-draft.zip",
+      "files": 40,
+      "bytes": 458750,
+      "sha256": "23bdaac524346147fe61b1fcc3f50f4ea489a294d9d462761df2ff1b64d217d4"
+    },
+    {
+      "name": "pgo-spill-draft.zip",
+      "files": 8,
+      "bytes": 20003,
+      "sha256": "64ff0d881308b9e4bdc8f9b96e444747a2bd3a17db77b3ae9b7f2371eed49fad"
+    },
+    {
+      "name": "quant-scale-draft.zip",
+      "files": 2,
+      "bytes": 3184,
+      "sha256": "64d691621ecfd98728f116f3700a36e159e219480e17c7bbacad3a215cf424c0"
+    }
+  ]
+}
