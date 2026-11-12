@@ -3,21 +3,22 @@
 set -euo pipefail
 unset MVDB_PROTOCOL MVDB_OUT
 root_checkout="$PWD"
-export RUNTIME_COMMIT=385766a2251595867a546840fe8f41c5db6b1c9e
-export IMAGE=minivec:fixed385-20261112
+export RUNTIME_COMMIT=e8534416dcef2af64847330ffedb12831e45885d
+export IMAGE=minivec:final-e853-20261112
 driver_commit=$(git rev-parse HEAD)
 git fetch --no-tags --depth=1 origin "$RUNTIME_COMMIT"
 scratch=$(mktemp -d "${RUNNER_TEMP:-/tmp}/minivec-verify-XXXXXX")
 git worktree add --detach "$scratch/engine" "$RUNTIME_COMMIT"
 ln -s "$scratch/engine/protocol-results" "$root_checkout/protocol-results"
 cd "$scratch/engine"
+export MINIVEC_REPORTS="$PWD/protocol-results"
 dump_reports() {
   result=$?
   set +e
   python3 - <<'PYREPORT'
-import json
+import json, os
 from pathlib import Path
-root = Path('protocol-results')
+root = Path(os.environ['MINIVEC_REPORTS'])
 for path in sorted(root.rglob('*')):
     if not path.is_file() or path.suffix not in {'.json','.txt'}:
         continue
@@ -136,30 +137,31 @@ python3 minivec/tests/json_protocol.py --binary /tmp/minivec-image-binary --time
 python3 minivec/tests/topk_bounds.py --binary /tmp/minivec-image-binary 2>&1 | tee protocol-results/image-binary-topk.log
 MVDB_QUERY_THREADS=2 python3 minivec/tests/topk_bounds.py --binary /tmp/minivec-image-binary 2>&1 | tee protocol-results/image-binary-topk-parallel.log
 
-# Additional native regression and sanitizer coverage for the parallel runtime.
+# Candidate WAL recovery checks; all ordinary regressions ran above.
 candidate="$PWD"
 reports="$PWD/protocol-results"
-g++ -std=c++17 -O2 -pthread -Iminivec/src minivec/tests/test_query_pool_safety.cpp -Wl,--wrap=pthread_create -o /tmp/query-pool
-timeout 25 /tmp/query-pool
-timeout 25 /tmp/query-pool --create-fails
-g++ -std=c++17 -O2 -pthread -Iminivec/src minivec/tests/test_cross_table_spill.cpp minivec/src/db.cpp minivec/src/flat_index.cpp minivec/src/value.cpp -o /tmp/cross-spill
-timeout 120 /tmp/cross-spill
-g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_query_pool_safety.cpp -Wl,--wrap=pthread_create -o /tmp/query-pool-san
-ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 timeout 25 /tmp/query-pool-san
-ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 timeout 25 /tmp/query-pool-san --create-fails
-g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_cross_table_spill.cpp minivec/src/db.cpp minivec/src/flat_index.cpp minivec/src/value.cpp -o /tmp/cross-spill-san
-ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 timeout 120 /tmp/cross-spill-san
-g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/src/*.cpp -o /tmp/minivec-ubsan
-python3 minivec/tests/json_protocol.py --binary /tmp/minivec-ubsan --timeout 15
+export MINIVEC_REPORTS="$reports"
+export PREVIOUS_COMMIT=385766a2251595867a546840fe8f41c5db6b1c9e
+export CDF_HARNESS_COMMIT=cdfdb7cfe48910e4ef2506a5ffcccd143722587f
+export BASELINE_IMAGE=minivec:baseline385-20261112
+
+g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_recovery_regressions.cpp minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/recovery-final-san
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 /tmp/recovery-final-san --wal-staging 2>&1 | tee "$reports/recovery-final-san.log"
+
+g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/src/*.cpp -o /tmp/minivec-final-ubsan
+UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 minivec/tests/json_protocol.py --binary /tmp/minivec-final-ubsan --timeout 15 2>&1 | tee "$reports/fullbinary-json-ubsan.log"
 printf 'passed\n' > "$reports/current-extra-gates.txt"
 
-# Reproduce the new regressions against the unmodified upstream runtime.
-git fetch --no-tags --depth=1 origin 72bda06d7bedcf2e5f79cb838922f8ffdcd609a4 cdfdb7cfe48910e4ef2506a5ffcccd143722587f
-git worktree add --detach "$scratch/upstream" 72bda06d7bedcf2e5f79cb838922f8ffdcd609a4
-git worktree add --detach "$scratch/cdf" cdfdb7cfe48910e4ef2506a5ffcccd143722587f
+# Compare the same candidate recovery fixture against the previous source.
+# The strict run is observational: nonzero is not automatically a reproduction,
+# and timeout's 124 specifically requires log inspection rather than a PASS.
+git fetch --no-tags --depth=1 origin "$PREVIOUS_COMMIT" "$CDF_HARNESS_COMMIT"
+git worktree add --detach "$scratch/previous" "$PREVIOUS_COMMIT"
+git worktree add --detach "$scratch/cdf" "$CDF_HARNESS_COMMIT"
 observe() {
-  name=$1
+  local name=$1
   shift
+  local status=0
   set +e
   "$@" > "$reports/$name.log" 2>&1
   status=$?
@@ -167,43 +169,115 @@ observe() {
   cat "$reports/$name.log"
   printf '%s\n' "$status" > "$reports/$name-status.txt"
 }
-cd "$scratch/upstream"
-git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > "$reports/upstream-input-sha256.txt"
-docker build --platform linux/amd64 --progress=plain -t minivec:upstream72 .
-docker image inspect minivec:upstream72 > "$reports/upstream-image-inspect.json"
-python3 protocol_check/run.py --image minivec:upstream72 --output "$reports/upstream-public"
-container=$(docker create minivec:upstream72)
-docker cp "$container:/minivec" /tmp/minivec-upstream72
-docker rm "$container"
-observe upstream-strict-json python3 "$candidate/minivec/tests/json_protocol.py" --binary /tmp/minivec-upstream72 --timeout 15
-g++ -std=c++17 -O2 -pthread -Iminivec/src "$candidate/minivec/tests/test_query_pool_safety.cpp" -Wl,--wrap=pthread_create -o /tmp/upstream-pool
-observe upstream-pool timeout 25 /tmp/upstream-pool
-observe upstream-pool-create-fails timeout 25 /tmp/upstream-pool --create-fails
-g++ -std=c++17 -O2 -pthread -Iminivec/src "$candidate/minivec/tests/test_cross_table_spill.cpp" minivec/src/db.cpp minivec/src/flat_index.cpp minivec/src/value.cpp -o /tmp/upstream-spill
-observe upstream-spill timeout 120 /tmp/upstream-spill
+cd "$scratch/previous"
+git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party | xargs -0 sha256sum > "$reports/previous-input-sha256.txt"
+g++ -std=c++17 -O2 -pthread -Iminivec/src "$candidate/minivec/tests/test_recovery_regressions.cpp" minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o /tmp/recovery-previous385
+observe previous-recovery-strict timeout 120 /tmp/recovery-previous385 --wal-staging
+timeout 120 /tmp/recovery-previous385 --wal-staging-observe 2>&1 | tee "$reports/previous-recovery-observe.log"
+printf '0\n' > "$reports/previous-recovery-observe-status.txt"
+python3 - <<'PYOBSERVATION'
+import json, os
+from pathlib import Path
+root = Path(os.environ['MINIVEC_REPORTS'])
+strict = int((root/'previous-recovery-strict-status.txt').read_text())
+report = {
+    'runtime_commit': os.environ['PREVIOUS_COMMIT'],
+    'test_source_commit': os.environ['RUNTIME_COMMIT'],
+    'strict_shell_exit_code': strict,
+    'observation_mode_shell_exit_code': 0,
+    'reproduction_conclusion': None,
+    'note': 'Inspect the strict log for the specific assertion. A nonzero exit or timeout 124 alone is not proof. The OBSERVED mode verifies recovery while allowing accepted=true; it does not certify the strict rejection semantics.'
+}
+(root/'previous-recovery-observation.json').write_text(json.dumps(report, indent=2)+'\n')
+PYOBSERVATION
+
+docker build --platform linux/amd64 --progress=plain -t "$BASELINE_IMAGE" . 2>&1 | tee "$reports/previous-docker-build.log"
+docker image inspect "$BASELINE_IMAGE" > "$reports/previous-image-inspect.json"
 git diff --exit-code
 
-# Freeze the same harness and official limits for all runtime versions.
+# Both real images use the identical CDF-frozen measurement harness and limits.
+# Every benchmark contains 1,000 queries per mode, not 1,000 total; profile's
+# requests argument is per query class. These are local diagnostics, not E.
 cd "$scratch/cdf"
-docker build --platform linux/amd64 --progress=plain -t minivec:cdf-control .
-docker image inspect minivec:cdf-control > "$reports/cdf-image-inspect.json"
 sha256sum minivec/tools/{benchmark_jsonl,profile_jsonl,profile_container}.py protocol_check/{config.json,_transport.py} > "$reports/measurement-harness-sha256.txt"
+python3 - <<'PYVERSIONS'
+import json, os
+from pathlib import Path
+report = {'candidate_commit': os.environ['RUNTIME_COMMIT'],
+          'candidate_image': os.environ['IMAGE'],
+          'previous_commit': os.environ['PREVIOUS_COMMIT'],
+          'previous_image': os.environ['BASELINE_IMAGE'],
+          'measurement_harness_commit': os.environ['CDF_HARNESS_COMMIT'],
+          'seeds': [7319,7320,7321],
+          'benchmark': {'rows':10000,'queries_per_mode':1000},
+          'profile': {'write_rows':1000,'query_rows':10000,'requests_per_class':500},
+          'order': {'7319':['baseline385','candidate'],
+                    '7320':['candidate','baseline385'],
+                    '7321':['baseline385','candidate']}}
+(Path(os.environ['MINIVEC_REPORTS'])/'paired-version-map.json').write_text(json.dumps(report, indent=2)+'\n')
+PYVERSIONS
 for seed in 7319 7320 7321; do
   case "$seed" in
-    7319) order="cdf-control upstream72 fixed385-20261112" ;;
-    7320) order="upstream72 fixed385-20261112 cdf-control" ;;
-    7321) order="fixed385-20261112 cdf-control upstream72" ;;
+    7319|7321) order="baseline385 candidate" ;;
+    7320) order="candidate baseline385" ;;
   esac
   for version in $order; do
-    python3 minivec/tools/benchmark_jsonl.py --image "minivec:$version" --rows 10000 --queries 1000 --seed "$seed" --sudo-cgroup --output "$reports/bench-$version-$seed.json"
-    python3 minivec/tools/profile_jsonl.py --image "minivec:$version" --write-rows 1000 --requests 500 --seed "$seed" --timeout 600 --output "$reports/profile-$version-$seed.json"
+    case "$version" in
+      baseline385) measured_image="$BASELINE_IMAGE" ;;
+      candidate) measured_image="$IMAGE" ;;
+    esac
+    python3 minivec/tools/benchmark_jsonl.py --image "$measured_image" --rows 10000 --queries 1000 --seed "$seed" --sudo-cgroup --output "$reports/bench-$version-$seed.json"
+    python3 minivec/tools/profile_jsonl.py --image "$measured_image" --write-rows 1000 --query-rows 10000 --requests 500 --seed "$seed" --timeout 600 --output "$reports/profile-$version-$seed.json"
   done
 done
 git diff --exit-code
 cd "$candidate"
 
-# Measure end-to-end paths for the next optimization
-set -euo pipefail
+# Optional historical failure diagnosis, never a replacement for official
+# defaults above: copy startup_timeout=2 only for this native legacy probe.
+export LEGACY_COMMIT=ff6a3bdbf6f10a1b17908229b170aa85579f5be9
+git fetch --no-tags --depth=1 origin "$LEGACY_COMMIT"
+git worktree add --detach "$scratch/legacy" "$LEGACY_COMMIT"
+make -C "$scratch/legacy/minivec" -j2
+export LEGACY_BINARY="$scratch/legacy/minivec/minivec"
+python3 - <<'PYLEGACY' 2>&1 | tee "$reports/legacy-no-ready-diagnostic.log"
+import json, os, sys
+from pathlib import Path
+sys.path.insert(0, str(Path('protocol_check').resolve()))
+from _transport import Session
+reports = Path(os.environ['MINIVEC_REPORTS'])
+official = json.loads(Path('protocol_check/config.json').read_text())
+config = dict(official)
+config['startup_timeout'] = 2
+record = {'scope':'historical-native-startup-diagnostic',
+          'runtime_commit':os.environ['LEGACY_COMMIT'],
+          'official_startup_timeout_seconds':official['startup_timeout'],
+          'diagnostic_startup_timeout_seconds':2,
+          'official_limits_were_not_modified':True,
+          'note':'This copied two-second diagnostic limit is not the official grading timeout. No SQL or request is sent before waiting for ready.'}
+session = Session(config, reports/'legacy-no-ready.stderr.log',
+                  command=[os.environ['LEGACY_BINARY'],'--data','{data_dir}'])
+process = None
+try:
+    try:
+        session.start()
+        record['startup_result'] = 'received_ready'
+    except Exception as error:
+        record['startup_result'] = type(error).__name__
+        record['diagnostic_error'] = str(error)
+    process = session.proc
+    record['alive_before_cleanup'] = process is not None and process.poll() is None
+    record['stdin_open_before_cleanup'] = process is not None and not process.stdin.closed
+    record['stdout_buffer_bytes'] = len(session.buffer)
+    record['stdout_pending_readable'] = bool(session.selector and session.selector.select(0))
+finally:
+    session.close()
+    record['process_exited_after_cleanup'] = process is None or process.poll() is not None
+    (reports/'legacy-no-ready-diagnostic.json').write_text(json.dumps(record, indent=2)+'\n')
+print(json.dumps(record, indent=2))
+PYLEGACY
+cd "$candidate"
+
 
 # Material diagnostics are separate; retain their exit code explicitly.
 set +e
