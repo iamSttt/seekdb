@@ -1,0 +1,1410 @@
+{
+  "run": 43132750770,
+  "cpu": "AMD EPYC 9V74",
+  "seeds": [
+    7319,
+    7320,
+    7321
+  ],
+  "ratio_definition": "numerator version metric / denominator version metric; >1 means denominator faster/smaller",
+  "bench": {
+    "cdf-control": [
+      {
+        "seed": 7319,
+        "ingest_s": 1.7370544129999814,
+        "index_s": 0.019204027999990103,
+        "query_both_s": 0.6981500560005998,
+        "query_exact_s": 0.3490795270000149,
+        "filtered_both_s": 0.31326225300011856,
+        "unfiltered_both_s": 0.3848878030004812,
+        "query_cpu_usec": 276405,
+        "ingest_cpu_usec": 286924,
+        "peak_sampled_bytes": 18006016,
+        "query_lifetime_peak_bytes": 18006016,
+        "restart_s": 0.13283530100000007,
+        "io_after_index": {
+          "259:0": {
+            "rbytes": 0,
+            "wbytes": 6070272,
+            "rios": 0,
+            "wios": 208,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "correctness": {
+          "ann_matches_exact": true,
+          "full_scan_oracle_query_indices": [
+            0,
+            1,
+            179,
+            634,
+            817,
+            838,
+            892,
+            895,
+            961,
+            962
+          ],
+          "primary_key_tie": true,
+          "restart_seconds": 0.13283530100000007,
+          "restart_records_checked": 10000,
+          "restart_vectors_checked": 10
+        }
+      },
+      {
+        "seed": 7320,
+        "ingest_s": 0.7711576220000893,
+        "index_s": 0.018591772999968725,
+        "query_both_s": 0.6959651769986976,
+        "query_exact_s": 0.3483563689997027,
+        "filtered_both_s": 0.3142485599993847,
+        "unfiltered_both_s": 0.3817166169993129,
+        "query_cpu_usec": 270611,
+        "ingest_cpu_usec": 279432,
+        "peak_sampled_bytes": 18489344,
+        "query_lifetime_peak_bytes": 18489344,
+        "restart_s": 0.1371241469999518,
+        "io_after_index": {
+          "259:0": {
+            "rbytes": 0,
+            "wbytes": 6070272,
+            "rios": 0,
+            "wios": 208,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "correctness": {
+          "ann_matches_exact": true,
+          "full_scan_oracle_query_indices": [
+            0,
+            1,
+            55,
+            140,
+            166,
+            186,
+            435,
+            450,
+            743,
+            753
+          ],
+          "primary_key_tie": true,
+          "restart_seconds": 0.1371241469999518,
+          "restart_records_checked": 10000,
+          "restart_vectors_checked": 10
+        }
+      },
+      {
+        "seed": 7321,
+        "ingest_s": 0.575583305000066,
+        "index_s": 0.020265269999981683,
+        "query_both_s": 0.7028245719980646,
+        "query_exact_s": 0.35242391399867756,
+        "filtered_both_s": 0.31561222499914265,
+        "unfiltered_both_s": 0.38721234699892193,
+        "query_cpu_usec": 283797,
+        "ingest_cpu_usec": 287456,
+        "peak_sampled_bytes": 17977344,
+        "query_lifetime_peak_bytes": 17977344,
+        "restart_s": 0.12805916499996783,
+        "io_after_index": {
+          "259:0": {
+            "rbytes": 0,
+            "wbytes": 6070272,
+            "rios": 0,
+            "wios": 208,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "correctness": {
+          "ann_matches_exact": true,
+          "full_scan_oracle_query_indices": [
+            0,
+            1,
+            87,
+            181,
+            382,
+            402,
+            489,
+            654,
+            673,
+            712
+          ],
+          "primary_key_tie": true,
+          "restart_seconds": 0.12805916499996783,
+          "restart_records_checked": 10000,
+          "restart_vectors_checked": 10
+        }
+      }
+    ],
+    "upstream72": [
+      {
+        "seed": 7319,
+        "ingest_s": 0.3406060990000981,
+        "index_s": 0.02043911100000173,
+        "query_both_s": 0.6700837219999869,
+        "query_exact_s": 0.3350149779998617,
+        "filtered_both_s": 0.2941204990000301,
+        "unfiltered_both_s": 0.37596322299995677,
+        "query_cpu_usec": 339614,
+        "ingest_cpu_usec": 103589,
+        "peak_sampled_bytes": 17367040,
+        "query_lifetime_peak_bytes": 13410304,
+        "restart_s": 0.2102785909999909,
+        "io_after_index": {
+          "259:0": {
+            "rbytes": 413696,
+            "wbytes": 6070272,
+            "rios": 101,
+            "wios": 153,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "correctness": {
+          "ann_matches_exact": true,
+          "full_scan_oracle_query_indices": [
+            0,
+            1,
+            179,
+            634,
+            817,
+            838,
+            892,
+            895,
+            961,
+            962
+          ],
+          "primary_key_tie": true,
+          "restart_seconds": 0.2102785909999909,
+          "restart_records_checked": 10000,
+          "restart_vectors_checked": 10
+        }
+      },
+      {
+        "seed": 7320,
+        "ingest_s": 0.3839976420001392,
+        "index_s": 0.018895297000000255,
+        "query_both_s": 0.6629895349996673,
+        "query_exact_s": 0.3323154549998719,
+        "filtered_both_s": 0.290682392999571,
+        "unfiltered_both_s": 0.3723071420000963,
+        "query_cpu_usec": 332776,
+        "ingest_cpu_usec": 118181,
+        "peak_sampled_bytes": 17088512,
+        "query_lifetime_peak_bytes": 13291520,
+        "restart_s": 0.17087889999999106,
+        "io_after_index": {
+          "259:0": {
+            "rbytes": 413696,
+            "wbytes": 6070272,
+            "rios": 101,
+            "wios": 153,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "correctness": {
+          "ann_matches_exact": true,
+          "full_scan_oracle_query_indices": [
+            0,
+            1,
+            55,
+            140,
+            166,
+            186,
+            435,
+            450,
+            743,
+            753
+          ],
+          "primary_key_tie": true,
+          "restart_seconds": 0.17087889999999106,
+          "restart_records_checked": 10000,
+          "restart_vectors_checked": 10
+        }
+      },
+      {
+        "seed": 7321,
+        "ingest_s": 1.0329263759999208,
+        "index_s": 0.0189448529999936,
+        "query_both_s": 0.6662642839996806,
+        "query_exact_s": 0.33397963600066305,
+        "filtered_both_s": 0.2931367199997794,
+        "unfiltered_both_s": 0.3731275639999012,
+        "query_cpu_usec": 339668,
+        "ingest_cpu_usec": 114746,
+        "peak_sampled_bytes": 17108992,
+        "query_lifetime_peak_bytes": 13660160,
+        "restart_s": 0.15761492200005023,
+        "io_after_index": {
+          "259:0": {
+            "rbytes": 413696,
+            "wbytes": 6070272,
+            "rios": 101,
+            "wios": 153,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "correctness": {
+          "ann_matches_exact": true,
+          "full_scan_oracle_query_indices": [
+            0,
+            1,
+            87,
+            181,
+            382,
+            402,
+            489,
+            654,
+            673,
+            712
+          ],
+          "primary_key_tie": true,
+          "restart_seconds": 0.15761492200005023,
+          "restart_records_checked": 10000,
+          "restart_vectors_checked": 10
+        }
+      }
+    ],
+    "fixed385-20261112": [
+      {
+        "seed": 7319,
+        "ingest_s": 0.4060968520000756,
+        "index_s": 0.020842858000008846,
+        "query_both_s": 0.6676821410000855,
+        "query_exact_s": 0.3336948360001486,
+        "filtered_both_s": 0.29402479999987463,
+        "unfiltered_both_s": 0.37365734100021086,
+        "query_cpu_usec": 334529,
+        "ingest_cpu_usec": 112524,
+        "peak_sampled_bytes": 16818176,
+        "query_lifetime_peak_bytes": 13377536,
+        "restart_s": 0.16124078200002145,
+        "io_after_index": {
+          "259:0": {
+            "rbytes": 413696,
+            "wbytes": 6070272,
+            "rios": 101,
+            "wios": 153,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "correctness": {
+          "ann_matches_exact": true,
+          "full_scan_oracle_query_indices": [
+            0,
+            1,
+            179,
+            634,
+            817,
+            838,
+            892,
+            895,
+            961,
+            962
+          ],
+          "primary_key_tie": true,
+          "restart_seconds": 0.16124078200002145,
+          "restart_records_checked": 10000,
+          "restart_vectors_checked": 10
+        }
+      },
+      {
+        "seed": 7320,
+        "ingest_s": 0.3456923789996722,
+        "index_s": 0.020469262000005983,
+        "query_both_s": 0.6744255240016059,
+        "query_exact_s": 0.3374879210011841,
+        "filtered_both_s": 0.29496848100012585,
+        "unfiltered_both_s": 0.3794570430014801,
+        "query_cpu_usec": 346438,
+        "ingest_cpu_usec": 113010,
+        "peak_sampled_bytes": 17362944,
+        "query_lifetime_peak_bytes": 13742080,
+        "restart_s": 0.17196589700000686,
+        "io_after_index": {
+          "259:0": {
+            "rbytes": 413696,
+            "wbytes": 6070272,
+            "rios": 101,
+            "wios": 153,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "correctness": {
+          "ann_matches_exact": true,
+          "full_scan_oracle_query_indices": [
+            0,
+            1,
+            55,
+            140,
+            166,
+            186,
+            435,
+            450,
+            743,
+            753
+          ],
+          "primary_key_tie": true,
+          "restart_seconds": 0.17196589700000686,
+          "restart_records_checked": 10000,
+          "restart_vectors_checked": 10
+        }
+      },
+      {
+        "seed": 7321,
+        "ingest_s": 1.3007877100004066,
+        "index_s": 0.018920518000015818,
+        "query_both_s": 0.6711502380011893,
+        "query_exact_s": 0.33592883900047354,
+        "filtered_both_s": 0.29337217800087956,
+        "unfiltered_both_s": 0.3777780600003098,
+        "query_cpu_usec": 341731,
+        "ingest_cpu_usec": 112401,
+        "peak_sampled_bytes": 17092608,
+        "query_lifetime_peak_bytes": 13520896,
+        "restart_s": 0.17056728900001872,
+        "io_after_index": {
+          "259:0": {
+            "rbytes": 413696,
+            "wbytes": 6070272,
+            "rios": 101,
+            "wios": 153,
+            "dbytes": 0,
+            "dios": 0
+          }
+        },
+        "correctness": {
+          "ann_matches_exact": true,
+          "full_scan_oracle_query_indices": [
+            0,
+            1,
+            87,
+            181,
+            382,
+            402,
+            489,
+            654,
+            673,
+            712
+          ],
+          "primary_key_tie": true,
+          "restart_seconds": 0.17056728900001872,
+          "restart_records_checked": 10000,
+          "restart_vectors_checked": 10
+        }
+      }
+    ]
+  },
+  "profile": {
+    "cdf-control": [
+      {
+        "seed": 7319,
+        "batch_statement_batch_commit_s": 0.05230715600012559,
+        "batch_statement_batch_commit_begin_s": 0.002351371000031577,
+        "batch_statement_batch_commit_insert_s": 0.04433037400005446,
+        "batch_statement_batch_commit_commit_s": 0.0056254110000395485,
+        "single_statement_single_commit_s": 0.9858208390001835,
+        "single_statement_single_commit_begin_s": 0.20457822600033637,
+        "single_statement_single_commit_insert_s": 0.25118028300002493,
+        "single_statement_single_commit_commit_s": 0.5300623299998222,
+        "single_statement_batch_commit_s": 0.2649058610005852,
+        "single_statement_batch_commit_begin_s": 0.002108308999993369,
+        "single_statement_batch_commit_insert_s": 0.24387418200058164,
+        "single_statement_batch_commit_commit_s": 0.01892337000001021,
+        "empty_result_ms_per_request": 0.21048080800022717,
+        "primary_key_ms_per_request": 0.2132199679998621,
+        "vector_unfiltered_ms_per_request": 0.39823849999999084,
+        "vector_filtered_ms_per_request": 0.3258679279998091
+      },
+      {
+        "seed": 7320,
+        "single_statement_single_commit_s": 1.0206835359993534,
+        "single_statement_single_commit_begin_s": 0.20794525999986035,
+        "single_statement_single_commit_insert_s": 0.25513296299965305,
+        "single_statement_single_commit_commit_s": 0.55760531299984,
+        "single_statement_batch_commit_s": 0.2723310499996501,
+        "single_statement_batch_commit_begin_s": 0.002238391999981104,
+        "single_statement_batch_commit_insert_s": 0.24560300399974722,
+        "single_statement_batch_commit_commit_s": 0.024489653999921757,
+        "batch_statement_batch_commit_s": 0.05864748500005135,
+        "batch_statement_batch_commit_begin_s": 0.002206020000016906,
+        "batch_statement_batch_commit_insert_s": 0.04091159400002198,
+        "batch_statement_batch_commit_commit_s": 0.015529871000012463,
+        "empty_result_ms_per_request": 0.22195269600172196,
+        "primary_key_ms_per_request": 0.2249522100004242,
+        "vector_unfiltered_ms_per_request": 0.41234495199955745,
+        "vector_filtered_ms_per_request": 0.3357439840008283
+      },
+      {
+        "seed": 7321,
+        "single_statement_batch_commit_s": 0.3674292549999336,
+        "single_statement_batch_commit_begin_s": 0.0024026980000257936,
+        "single_statement_batch_commit_insert_s": 0.24410164399978385,
+        "single_statement_batch_commit_commit_s": 0.12092491300012398,
+        "batch_statement_batch_commit_s": 0.1744192659999726,
+        "batch_statement_batch_commit_begin_s": 0.0027143230001343,
+        "batch_statement_batch_commit_insert_s": 0.04328726299996788,
+        "batch_statement_batch_commit_commit_s": 0.12841767999987042,
+        "single_statement_single_commit_s": 3.8515218860010805,
+        "single_statement_single_commit_begin_s": 0.21098715700082948,
+        "single_statement_single_commit_insert_s": 0.2540337030001183,
+        "single_statement_single_commit_commit_s": 3.3865010260001327,
+        "empty_result_ms_per_request": 0.1939192700001513,
+        "primary_key_ms_per_request": 0.1957593980000638,
+        "vector_unfiltered_ms_per_request": 0.3813413520007316,
+        "vector_filtered_ms_per_request": 0.3099967299974651
+      }
+    ],
+    "upstream72": [
+      {
+        "seed": 7319,
+        "batch_statement_batch_commit_s": 0.03220203199992966,
+        "batch_statement_batch_commit_begin_s": 0.0020525679999821023,
+        "batch_statement_batch_commit_insert_s": 0.022646487999963938,
+        "batch_statement_batch_commit_commit_s": 0.007502975999983619,
+        "single_statement_single_commit_s": 1.3250757699994722,
+        "single_statement_single_commit_begin_s": 0.2013157159996979,
+        "single_statement_single_commit_insert_s": 0.22365392300000053,
+        "single_statement_single_commit_commit_s": 0.9001061309997738,
+        "single_statement_batch_commit_s": 0.2783574009996812,
+        "single_statement_batch_commit_begin_s": 0.0020606119999797556,
+        "single_statement_batch_commit_insert_s": 0.21148905899968895,
+        "single_statement_batch_commit_commit_s": 0.0648077300000125,
+        "empty_result_ms_per_request": 0.1944550659998754,
+        "primary_key_ms_per_request": 0.19632060799989404,
+        "vector_unfiltered_ms_per_request": 0.37203066600000056,
+        "vector_filtered_ms_per_request": 0.28933543399978134
+      },
+      {
+        "seed": 7320,
+        "single_statement_single_commit_s": 5.378726359000154,
+        "single_statement_single_commit_begin_s": 0.2037917149997952,
+        "single_statement_single_commit_insert_s": 0.22563935599995943,
+        "single_statement_single_commit_commit_s": 4.9492952880004,
+        "single_statement_batch_commit_s": 0.22526593300011655,
+        "single_statement_batch_commit_begin_s": 0.001904764000016712,
+        "single_statement_batch_commit_insert_s": 0.21370205000008013,
+        "single_statement_batch_commit_commit_s": 0.0096591190000197,
+        "batch_statement_batch_commit_s": 0.09201662999993232,
+        "batch_statement_batch_commit_begin_s": 0.0021618459999785955,
+        "batch_statement_batch_commit_insert_s": 0.0235937289999697,
+        "batch_statement_batch_commit_commit_s": 0.06626105499998403,
+        "empty_result_ms_per_request": 0.1945066899993435,
+        "primary_key_ms_per_request": 0.195735785998977,
+        "vector_unfiltered_ms_per_request": 0.37447051199978887,
+        "vector_filtered_ms_per_request": 0.2895769320011823
+      },
+      {
+        "seed": 7321,
+        "single_statement_batch_commit_s": 0.2224283649992458,
+        "single_statement_batch_commit_begin_s": 0.0019309839999550604,
+        "single_statement_batch_commit_insert_s": 0.21392990299921166,
+        "single_statement_batch_commit_commit_s": 0.006567478000079063,
+        "batch_statement_batch_commit_s": 0.032343682999908197,
+        "batch_statement_batch_commit_begin_s": 0.002059272999986206,
+        "batch_statement_batch_commit_insert_s": 0.022330252999950062,
+        "batch_statement_batch_commit_commit_s": 0.007954156999971929,
+        "single_statement_single_commit_s": 1.0956899140015253,
+        "single_statement_single_commit_begin_s": 0.19672333900064132,
+        "single_statement_single_commit_insert_s": 0.21677511900037416,
+        "single_statement_single_commit_commit_s": 0.6821914560005098,
+        "empty_result_ms_per_request": 0.2116538540011561,
+        "primary_key_ms_per_request": 0.2119292160000441,
+        "vector_unfiltered_ms_per_request": 0.40992497000092953,
+        "vector_filtered_ms_per_request": 0.31680758199956927
+      }
+    ],
+    "fixed385-20261112": [
+      {
+        "seed": 7319,
+        "batch_statement_batch_commit_s": 0.0316611759999148,
+        "batch_statement_batch_commit_begin_s": 0.0020743879999827186,
+        "batch_statement_batch_commit_insert_s": 0.02223291899994706,
+        "batch_statement_batch_commit_commit_s": 0.007353868999985025,
+        "single_statement_single_commit_s": 1.5789634839997575,
+        "single_statement_single_commit_begin_s": 0.21403899799986448,
+        "single_statement_single_commit_insert_s": 0.23731070800016596,
+        "single_statement_single_commit_commit_s": 1.127613777999727,
+        "single_statement_batch_commit_s": 0.2413165200002254,
+        "single_statement_batch_commit_begin_s": 0.002039262000010922,
+        "single_statement_batch_commit_insert_s": 0.2180940830002669,
+        "single_statement_batch_commit_commit_s": 0.021183174999947596,
+        "empty_result_ms_per_request": 0.19420523399941203,
+        "primary_key_ms_per_request": 0.1954494880004063,
+        "vector_unfiltered_ms_per_request": 0.3706090899999026,
+        "vector_filtered_ms_per_request": 0.2878956560001029
+      },
+      {
+        "seed": 7320,
+        "single_statement_single_commit_s": 0.9674895899997864,
+        "single_statement_single_commit_begin_s": 0.19245388899980753,
+        "single_statement_single_commit_insert_s": 0.21688805099984165,
+        "single_statement_single_commit_commit_s": 0.5581476500001372,
+        "single_statement_batch_commit_s": 0.22321723799990423,
+        "single_statement_batch_commit_begin_s": 0.0019857730000580887,
+        "single_statement_batch_commit_insert_s": 0.214631259999976,
+        "single_statement_batch_commit_commit_s": 0.0066002049998701295,
+        "batch_statement_batch_commit_s": 0.03140667499980054,
+        "batch_statement_batch_commit_begin_s": 0.0020272899999440597,
+        "batch_statement_batch_commit_insert_s": 0.02360514699984151,
+        "batch_statement_batch_commit_commit_s": 0.005774238000014975,
+        "empty_result_ms_per_request": 0.2112136179986237,
+        "primary_key_ms_per_request": 0.2083394780005392,
+        "vector_unfiltered_ms_per_request": 0.4162080839990949,
+        "vector_filtered_ms_per_request": 0.3202597139978707
+      },
+      {
+        "seed": 7321,
+        "single_statement_batch_commit_s": 0.2240526900010309,
+        "single_statement_batch_commit_begin_s": 0.0019918869999173694,
+        "single_statement_batch_commit_insert_s": 0.2156256060011401,
+        "single_statement_batch_commit_commit_s": 0.006435196999973414,
+        "batch_statement_batch_commit_s": 0.03423535099994979,
+        "batch_statement_batch_commit_begin_s": 0.0020928000000139946,
+        "batch_statement_batch_commit_insert_s": 0.022968364999883306,
+        "batch_statement_batch_commit_commit_s": 0.009174186000052487,
+        "single_statement_single_commit_s": 1.5524015410004495,
+        "single_statement_single_commit_begin_s": 0.19244568600015555,
+        "single_statement_single_commit_insert_s": 0.21456870699961428,
+        "single_statement_single_commit_commit_s": 1.1453871480006796,
+        "empty_result_ms_per_request": 0.19297191000089242,
+        "primary_key_ms_per_request": 0.19420584799775042,
+        "vector_unfiltered_ms_per_request": 0.37157999200019276,
+        "vector_filtered_ms_per_request": 0.2858332120011937
+      }
+    ]
+  },
+  "comparisons": {
+    "cdf-control_over_upstream72": {
+      "ingest_s": {
+        "paired_ratios": [
+          5.099892274681438,
+          2.0082353057777627,
+          0.5572355575128718
+        ],
+        "median": 2.0082353057777627,
+        "min": 0.5572355575128718,
+        "max": 5.099892274681438
+      },
+      "index_s": {
+        "paired_ratios": [
+          0.939572567514726,
+          0.9839365319300604,
+          1.06969792798015
+        ],
+        "median": 0.9839365319300604,
+        "min": 0.939572567514726,
+        "max": 1.06969792798015
+      },
+      "query_both_s": {
+        "paired_ratios": [
+          1.0418848168954826,
+          1.04973780166688,
+          1.054873552247026
+        ],
+        "median": 1.04973780166688,
+        "min": 1.0418848168954826,
+        "max": 1.054873552247026
+      },
+      "query_exact_s": {
+        "paired_ratios": [
+          1.0419818513313126,
+          1.0482701413927227,
+          1.0552257563331733
+        ],
+        "median": 1.0482701413927227,
+        "min": 1.0419818513313126,
+        "max": 1.0552257563331733
+      },
+      "filtered_both_s": {
+        "paired_ratios": [
+          1.065081332532645,
+          1.0810718762723566,
+          1.076672431210188
+        ],
+        "median": 1.076672431210188,
+        "min": 1.065081332532645,
+        "max": 1.0810718762723566
+      },
+      "unfiltered_both_s": {
+        "paired_ratios": [
+          1.0237379069402366,
+          1.0252734206189742,
+          1.0377479027494856
+        ],
+        "median": 1.0252734206189742,
+        "min": 1.0237379069402366,
+        "max": 1.0377479027494856
+      },
+      "query_cpu_usec": {
+        "paired_ratios": [
+          0.8138798753879404,
+          0.813192658124384,
+          0.8355129126087827
+        ],
+        "median": 0.8138798753879404,
+        "min": 0.813192658124384,
+        "max": 0.8355129126087827
+      },
+      "ingest_cpu_usec": {
+        "paired_ratios": [
+          2.769830773537731,
+          2.3644409845914316,
+          2.505150506335733
+        ],
+        "median": 2.505150506335733,
+        "min": 2.3644409845914316,
+        "max": 2.769830773537731
+      },
+      "peak_sampled_bytes": {
+        "paired_ratios": [
+          1.0367924528301886,
+          1.0819750719079577,
+          1.0507541297581997
+        ],
+        "median": 1.0507541297581997,
+        "min": 1.0367924528301886,
+        "max": 1.0819750719079577
+      },
+      "query_lifetime_peak_bytes": {
+        "paired_ratios": [
+          1.342700061087355,
+          1.3910631741140216,
+          1.3160419790104947
+        ],
+        "median": 1.342700061087355,
+        "min": 1.3160419790104947,
+        "max": 1.3910631741140216
+      },
+      "restart_s": {
+        "paired_ratios": [
+          0.6317110095150191,
+          0.8024638910945644,
+          0.8124812256032904
+        ],
+        "median": 0.8024638910945644,
+        "min": 0.6317110095150191,
+        "max": 0.8124812256032904
+      }
+    },
+    "cdf-control_over_fixed385-20261112": {
+      "ingest_s": {
+        "paired_ratios": [
+          4.277438754929472,
+          2.230762576344851,
+          0.4424882712029053
+        ],
+        "median": 2.230762576344851,
+        "min": 0.4424882712029053,
+        "max": 4.277438754929472
+      },
+      "index_s": {
+        "paired_ratios": [
+          0.921372107413578,
+          0.9082776408823773,
+          1.0710737412138898
+        ],
+        "median": 0.921372107413578,
+        "min": 0.9082776408823773,
+        "max": 1.0710737412138898
+      },
+      "query_both_s": {
+        "paired_ratios": [
+          1.045632364757994,
+          1.0319377784952286,
+          1.0471941037988861
+        ],
+        "median": 1.045632364757994,
+        "min": 1.0319377784952286,
+        "max": 1.0471941037988861
+      },
+      "query_exact_s": {
+        "paired_ratios": [
+          1.0461040727638333,
+          1.0322039614522396,
+          1.0491028845492505
+        ],
+        "median": 1.0461040727638333,
+        "min": 1.0322039614522396,
+        "max": 1.0491028845492505
+      },
+      "filtered_both_s": {
+        "paired_ratios": [
+          1.0654279945101641,
+          1.0653631836658868,
+          1.0758083031247647
+        ],
+        "median": 1.0654279945101641,
+        "min": 1.0653631836658868,
+        "max": 1.0758083031247647
+      },
+      "unfiltered_both_s": {
+        "paired_ratios": [
+          1.0300555101371982,
+          1.0059547557213848,
+          1.0249730939869943
+        ],
+        "median": 1.0249730939869943,
+        "min": 1.0059547557213848,
+        "max": 1.0300555101371982
+      },
+      "query_cpu_usec": {
+        "paired_ratios": [
+          0.8262512368135498,
+          0.7811238951847084,
+          0.8304689946185743
+        ],
+        "median": 0.8262512368135498,
+        "min": 0.7811238951847084,
+        "max": 0.8304689946185743
+      },
+      "ingest_cpu_usec": {
+        "paired_ratios": [
+          2.549891578685436,
+          2.472630740642421,
+          2.557414969617708
+        ],
+        "median": 2.549891578685436,
+        "min": 2.472630740642421,
+        "max": 2.557414969617708
+      },
+      "peak_sampled_bytes": {
+        "paired_ratios": [
+          1.0706283487579153,
+          1.0648737909884407,
+          1.05176132278936
+        ],
+        "median": 1.0648737909884407,
+        "min": 1.05176132278936,
+        "max": 1.0706283487579153
+      },
+      "query_lifetime_peak_bytes": {
+        "paired_ratios": [
+          1.3459889773423148,
+          1.3454545454545455,
+          1.3295970917903666
+        ],
+        "median": 1.3454545454545455,
+        "min": 1.3295970917903666,
+        "max": 1.3459889773423148
+      },
+      "restart_s": {
+        "paired_ratios": [
+          0.823831907488407,
+          0.7973915142020649,
+          0.7507838446089964
+        ],
+        "median": 0.7973915142020649,
+        "min": 0.7507838446089964,
+        "max": 0.823831907488407
+      }
+    },
+    "upstream72_over_fixed385-20261112": {
+      "ingest_s": {
+        "paired_ratios": [
+          0.8387311975519443,
+          1.11080736900047,
+          0.7940775947211232
+        ],
+        "median": 0.8387311975519443,
+        "min": 0.7940775947211232,
+        "max": 1.11080736900047
+      },
+      "index_s": {
+        "paired_ratios": [
+          0.98062900011088,
+          0.9231059234082173,
+          1.001286169859502
+        ],
+        "median": 0.98062900011088,
+        "min": 0.9231059234082173,
+        "max": 1.001286169859502
+      },
+      "query_both_s": {
+        "paired_ratios": [
+          1.00359689267157,
+          0.9830433626917249,
+          0.9927200293989912
+        ],
+        "median": 0.9927200293989912,
+        "min": 0.9830433626917249,
+        "max": 1.00359689267157
+      },
+      "query_exact_s": {
+        "paired_ratios": [
+          1.003956135538497,
+          0.984673626285742,
+          0.9941975717071205
+        ],
+        "median": 0.9941975717071205,
+        "min": 0.984673626285742,
+        "max": 1.003956135538497
+      },
+      "filtered_both_s": {
+        "paired_ratios": [
+          1.0003254793478493,
+          0.9854693356184282,
+          0.9991974085521517
+        ],
+        "median": 0.9991974085521517,
+        "min": 0.9854693356184282,
+        "max": 1.0003254793478493
+      },
+      "unfiltered_both_s": {
+        "paired_ratios": [
+          1.0061711138701932,
+          0.9811575483094778,
+          0.9876898727247295
+        ],
+        "median": 0.9876898727247295,
+        "min": 0.9811575483094778,
+        "max": 1.0061711138701932
+      },
+      "query_cpu_usec": {
+        "paired_ratios": [
+          1.015200475892972,
+          0.960564372268631,
+          0.9939630879258832
+        ],
+        "median": 0.9939630879258832,
+        "min": 0.960564372268631,
+        "max": 1.015200475892972
+      },
+      "ingest_cpu_usec": {
+        "paired_ratios": [
+          0.9205947175713626,
+          1.0457570126537474,
+          1.0208628037117107
+        ],
+        "median": 1.0208628037117107,
+        "min": 0.9205947175713626,
+        "max": 1.0457570126537474
+      },
+      "peak_sampled_bytes": {
+        "paired_ratios": [
+          1.032635168046761,
+          0.9841943854682709,
+          1.0009585430146177
+        ],
+        "median": 1.0009585430146177,
+        "min": 0.9841943854682709,
+        "max": 1.032635168046761
+      },
+      "query_lifetime_peak_bytes": {
+        "paired_ratios": [
+          1.0024494794856094,
+          0.9672131147540983,
+          1.010299909118449
+        ],
+        "median": 1.0024494794856094,
+        "min": 0.9672131147540983,
+        "max": 1.010299909118449
+      },
+      "restart_s": {
+        "paired_ratios": [
+          1.3041278291490979,
+          0.9936789967140068,
+          0.9240630071808958
+        ],
+        "median": 0.9936789967140068,
+        "min": 0.9240630071808958,
+        "max": 1.3041278291490979
+      }
+    }
+  },
+  "profile_comparisons": {
+    "cdf-control_over_upstream72": {
+      "batch_statement_batch_commit_s": {
+        "paired_ratios": [
+          1.6243433333722495,
+          0.6373574537569403,
+          5.392684129400713
+        ],
+        "median": 1.6243433333722495,
+        "min": 0.6373574537569403,
+        "max": 5.392684129400713
+      },
+      "batch_statement_batch_commit_begin_s": {
+        "paired_ratios": [
+          1.1455752014316116,
+          1.0204334629010336,
+          1.3180976976595535
+        ],
+        "median": 1.1455752014316116,
+        "min": 1.0204334629010336,
+        "max": 1.3180976976595535
+      },
+      "batch_statement_batch_commit_insert_s": {
+        "paired_ratios": [
+          1.9574944247481134,
+          1.7340028784798927,
+          1.9385030254724245
+        ],
+        "median": 1.9385030254724245,
+        "min": 1.7340028784798927,
+        "max": 1.9574944247481134
+      },
+      "batch_statement_batch_commit_commit_s": {
+        "paired_ratios": [
+          0.7497572963117343,
+          0.23437403766082818,
+          16.144725330455966
+        ],
+        "median": 0.7497572963117343,
+        "min": 0.23437403766082818,
+        "max": 16.144725330455966
+      },
+      "single_statement_single_commit_s": {
+        "paired_ratios": [
+          0.7439731835112917,
+          0.1897630531606161,
+          3.5151568311285186
+        ],
+        "median": 0.7439731835112917,
+        "min": 0.1897630531606161,
+        "max": 3.5151568311285186
+      },
+      "single_statement_single_commit_begin_s": {
+        "paired_ratios": [
+          1.0162059379439774,
+          1.0203813241380757,
+          1.072506994201342
+        ],
+        "median": 1.0203813241380757,
+        "min": 1.0162059379439774,
+        "max": 1.072506994201342
+      },
+      "single_statement_single_commit_insert_s": {
+        "paired_ratios": [
+          1.1230756860009308,
+          1.1307112709526566,
+          1.17187666265186
+        ],
+        "median": 1.1307112709526566,
+        "min": 1.1230756860009308,
+        "max": 1.17187666265186
+      },
+      "single_statement_single_commit_commit_s": {
+        "paired_ratios": [
+          0.588888700725843,
+          0.11266357744945181,
+          4.964150453971095
+        ],
+        "median": 0.588888700725843,
+        "min": 0.11266357744945181,
+        "max": 4.964150453971095
+      },
+      "single_statement_batch_commit_s": {
+        "paired_ratios": [
+          0.9516752924449406,
+          1.208931356697904,
+          1.6518992755316055
+        ],
+        "median": 1.208931356697904,
+        "min": 0.9516752924449406,
+        "max": 1.6518992755316055
+      },
+      "single_statement_batch_commit_begin_s": {
+        "paired_ratios": [
+          1.0231470068184025,
+          1.175154507309811,
+          1.2442868506842684
+        ],
+        "median": 1.175154507309811,
+        "min": 1.0231470068184025,
+        "max": 1.2442868506842684
+      },
+      "single_statement_batch_commit_insert_s": {
+        "paired_ratios": [
+          1.1531290703834487,
+          1.149277716332881,
+          1.1410356410093982
+        ],
+        "median": 1.149277716332881,
+        "min": 1.1410356410093982,
+        "max": 1.1531290703834487
+      },
+      "single_statement_batch_commit_commit_s": {
+        "paired_ratios": [
+          0.29199248299557107,
+          2.535392099411117,
+          18.412686422195584
+        ],
+        "median": 2.535392099411117,
+        "min": 0.29199248299557107,
+        "max": 18.412686422195584
+      },
+      "empty_result_ms_per_request": {
+        "paired_ratios": [
+          1.082413599861482,
+          1.1411057172505021,
+          0.9162094917444408
+        ],
+        "median": 1.082413599861482,
+        "min": 0.9162094917444408,
+        "max": 1.1411057172505021
+      },
+      "primary_key_ms_per_request": {
+        "paired_ratios": [
+          1.0860804180067392,
+          1.1492646010147571,
+          0.9237017986232869
+        ],
+        "median": 1.0860804180067392,
+        "min": 0.9237017986232869,
+        "max": 1.1492646010147571
+      },
+      "vector_unfiltered_ms_per_request": {
+        "paired_ratios": [
+          1.0704453594693462,
+          1.101141314966317,
+          0.9302710981472216
+        ],
+        "median": 1.0704453594693462,
+        "min": 0.9302710981472216,
+        "max": 1.101141314966317
+      },
+      "vector_filtered_ms_per_request": {
+        "paired_ratios": [
+          1.1262634634652298,
+          1.1594293153138922,
+          0.9785016130008105
+        ],
+        "median": 1.1262634634652298,
+        "min": 0.9785016130008105,
+        "max": 1.1594293153138922
+      }
+    },
+    "cdf-control_over_fixed385-20261112": {
+      "batch_statement_batch_commit_s": {
+        "paired_ratios": [
+          1.6520913815793306,
+          1.8673573372674377,
+          5.0947123632594975
+        ],
+        "median": 1.8673573372674377,
+        "min": 1.6520913815793306,
+        "max": 5.0947123632594975
+      },
+      "batch_statement_batch_commit_begin_s": {
+        "paired_ratios": [
+          1.1335251650371896,
+          1.088162029151122,
+          1.296981555865897
+        ],
+        "median": 1.1335251650371896,
+        "min": 1.088162029151122,
+        "max": 1.296981555865897
+      },
+      "batch_statement_batch_commit_insert_s": {
+        "paired_ratios": [
+          1.993907052877763,
+          1.7331641273107374,
+          1.8846471222565389
+        ],
+        "median": 1.8846471222565389,
+        "min": 1.7331641273107374,
+        "max": 1.993907052877763
+      },
+      "batch_statement_batch_commit_commit_s": {
+        "paired_ratios": [
+          0.7649593703737453,
+          2.6895100271191086,
+          13.997719252600255
+        ],
+        "median": 2.6895100271191086,
+        "min": 0.7649593703737453,
+        "max": 13.997719252600255
+      },
+      "single_statement_single_commit_s": {
+        "paired_ratios": [
+          0.6243468256168582,
+          1.0549814143215521,
+          2.481008801059909
+        ],
+        "median": 1.0549814143215521,
+        "min": 0.6243468256168582,
+        "max": 2.481008801059909
+      },
+      "single_statement_single_commit_begin_s": {
+        "paired_ratios": [
+          0.9557988399874022,
+          1.0804939358750414,
+          1.0963465141050703
+        ],
+        "median": 1.0804939358750414,
+        "min": 0.9557988399874022,
+        "max": 1.0963465141050703
+      },
+      "single_statement_single_commit_insert_s": {
+        "paired_ratios": [
+          1.0584447921323856,
+          1.1763348041697295,
+          1.183927081224267
+        ],
+        "median": 1.1763348041697295,
+        "min": 1.0584447921323856,
+        "max": 1.183927081224267
+      },
+      "single_statement_single_commit_commit_s": {
+        "paired_ratios": [
+          0.47007436441589,
+          0.9990283270021881,
+          2.956643115745981
+        ],
+        "median": 0.9990283270021881,
+        "min": 0.47007436441589,
+        "max": 2.956643115745981
+      },
+      "single_statement_batch_commit_s": {
+        "paired_ratios": [
+          1.0977526984076258,
+          1.2200269676294755,
+          1.6399234260398436
+        ],
+        "median": 1.2200269676294755,
+        "min": 1.0977526984076258,
+        "max": 1.6399234260398436
+      },
+      "single_statement_batch_commit_begin_s": {
+        "paired_ratios": [
+          1.0338588175438357,
+          1.12721443987587,
+          1.2062421212274923
+        ],
+        "median": 1.12721443987587,
+        "min": 1.0338588175438357,
+        "max": 1.2062421212274923
+      },
+      "single_statement_batch_commit_insert_s": {
+        "paired_ratios": [
+          1.1182063201608419,
+          1.1443021114434806,
+          1.1320624137677469
+        ],
+        "median": 1.1320624137677469,
+        "min": 1.1182063201608419,
+        "max": 1.1443021114434806
+      },
+      "single_statement_batch_commit_commit_s": {
+        "paired_ratios": [
+          0.8933207604647095,
+          3.7104383879597123,
+          18.79117500219862
+        ],
+        "median": 3.7104383879597123,
+        "min": 0.8933207604647095,
+        "max": 18.79117500219862
+      },
+      "empty_result_ms_per_request": {
+        "paired_ratios": [
+          1.0838060523171298,
+          1.0508446287926767,
+          1.0049093155540332
+        ],
+        "median": 1.0508446287926767,
+        "min": 1.0049093155540332,
+        "max": 1.0838060523171298
+      },
+      "primary_key_ms_per_request": {
+        "paired_ratios": [
+          1.0909210874956032,
+          1.079738761752307,
+          1.0079995016542003
+        ],
+        "median": 1.079738761752307,
+        "min": 1.0079995016542003,
+        "max": 1.0909210874956032
+      },
+      "vector_unfiltered_ms_per_request": {
+        "paired_ratios": [
+          1.0745513554459647,
+          0.9907182677414169,
+          1.026269875156609
+        ],
+        "median": 1.026269875156609,
+        "min": 0.9907182677414169,
+        "max": 1.0745513554459647
+      },
+      "vector_filtered_ms_per_request": {
+        "paired_ratios": [
+          1.1318959533022361,
+          1.0483491033251238,
+          1.0845371250845772
+        ],
+        "median": 1.0845371250845772,
+        "min": 1.0483491033251238,
+        "max": 1.1318959533022361
+      }
+    },
+    "upstream72_over_fixed385-20261112": {
+      "batch_statement_batch_commit_s": {
+        "paired_ratios": [
+          1.017082625105786,
+          2.929843098657107,
+          0.9447451845887497
+        ],
+        "median": 1.017082625105786,
+        "min": 0.9447451845887497,
+        "max": 2.929843098657107
+      },
+      "batch_statement_batch_commit_begin_s": {
+        "paired_ratios": [
+          0.9894812349469828,
+          1.066372349312752,
+          0.9839798356137401
+        ],
+        "median": 0.9894812349469828,
+        "min": 0.9839798356137401,
+        "max": 1.066372349312752
+      },
+      "batch_statement_batch_commit_insert_s": {
+        "paired_ratios": [
+          1.0186016510030853,
+          0.9995162919395552,
+          0.9722177873811877
+        ],
+        "median": 0.9995162919395552,
+        "min": 0.9722177873811877,
+        "max": 1.0186016510030853
+      },
+      "batch_statement_batch_commit_commit_s": {
+        "paired_ratios": [
+          1.020275993493887,
+          11.475289899691038,
+          0.8670150136400572
+        ],
+        "median": 1.020275993493887,
+        "min": 0.8670150136400572,
+        "max": 11.475289899691038
+      },
+      "single_statement_single_commit_s": {
+        "paired_ratios": [
+          0.8392060889482076,
+          5.559466907547131,
+          0.7058031604989292
+        ],
+        "median": 0.8392060889482076,
+        "min": 0.7058031604989292,
+        "max": 5.559466907547131
+      },
+      "single_statement_single_commit_begin_s": {
+        "paired_ratios": [
+          0.9405562438664815,
+          1.0589119090235637,
+          1.0222278456295575
+        ],
+        "median": 1.0222278456295575,
+        "min": 0.9405562438664815,
+        "max": 1.0589119090235637
+      },
+      "single_statement_single_commit_insert_s": {
+        "paired_ratios": [
+          0.9424518804260789,
+          1.0403494104897655,
+          1.010283009258959
+        ],
+        "median": 1.010283009258959,
+        "min": 0.9424518804260789,
+        "max": 1.0403494104897655
+      },
+      "single_statement_single_commit_commit_s": {
+        "paired_ratios": [
+          0.7982397417992454,
+          8.867358463301212,
+          0.5955990140026479
+        ],
+        "median": 0.7982397417992454,
+        "min": 0.5955990140026479,
+        "max": 8.867358463301212
+      },
+      "single_statement_batch_commit_s": {
+        "paired_ratios": [
+          1.1534950073017014,
+          1.0091780322100985,
+          0.992750254407668
+        ],
+        "median": 1.0091780322100985,
+        "min": 0.992750254407668,
+        "max": 1.1534950073017014
+      },
+      "single_statement_batch_commit_begin_s": {
+        "paired_ratios": [
+          1.0104694737452664,
+          0.9592053069313528,
+          0.9694244703816856
+        ],
+        "median": 0.9694244703816856,
+        "min": 0.9592053069313528,
+        "max": 1.0104694737452664
+      },
+      "single_statement_batch_commit_insert_s": {
+        "paired_ratios": [
+          0.9697147950567285,
+          0.9956706679171712,
+          0.9921358922375876
+        ],
+        "median": 0.9921358922375876,
+        "min": 0.9697147950567285,
+        "max": 0.9956706679171712
+      },
+      "single_statement_batch_commit_commit_s": {
+        "paired_ratios": [
+          3.0593964313740893,
+          1.46345742294516,
+          1.020555858679415
+        ],
+        "median": 1.46345742294516,
+        "min": 1.020555858679415,
+        "max": 3.0593964313740893
+      },
+      "empty_result_ms_per_request": {
+        "paired_ratios": [
+          1.0012864328901872,
+          0.9209003275565827,
+          1.096811727676724
+        ],
+        "median": 1.0012864328901872,
+        "min": 0.9209003275565827,
+        "max": 1.096811727676724
+      },
+      "primary_key_ms_per_request": {
+        "paired_ratios": [
+          1.0044570083472715,
+          0.9395040626840316,
+          1.0912607327998638
+        ],
+        "median": 1.0044570083472715,
+        "min": 0.9395040626840316,
+        "max": 1.0912607327998638
+      },
+      "vector_unfiltered_ms_per_request": {
+        "paired_ratios": [
+          1.003835782873265,
+          0.8997194585980295,
+          1.1031944098882398
+        ],
+        "median": 1.003835782873265,
+        "min": 0.8997194585980295,
+        "max": 1.1031944098882398
+      },
+      "vector_filtered_ms_per_request": {
+        "paired_ratios": [
+          1.0050010410705117,
+          0.9041940629570024,
+          1.108365188850924
+        ],
+        "median": 1.0050010410705117,
+        "min": 0.9041940629570024,
+        "max": 1.108365188850924
+      }
+    }
+  }
+}

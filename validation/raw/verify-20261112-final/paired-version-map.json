@@ -1,0 +1,35 @@
+{
+  "candidate_commit": "e8534416dcef2af64847330ffedb12831e45885d",
+  "candidate_image": "minivec:final-e853-20261112",
+  "previous_commit": "385766a2251595867a546840fe8f41c5db6b1c9e",
+  "previous_image": "minivec:baseline385-20261112",
+  "measurement_harness_commit": "cdfdb7cfe48910e4ef2506a5ffcccd143722587f",
+  "seeds": [
+    7319,
+    7320,
+    7321
+  ],
+  "benchmark": {
+    "rows": 10000,
+    "queries_per_mode": 1000
+  },
+  "profile": {
+    "write_rows": 1000,
+    "query_rows": 10000,
+    "requests_per_class": 500
+  },
+  "order": {
+    "7319": [
+      "baseline385",
+      "candidate"
+    ],
+    "7320": [
+      "candidate",
+      "baseline385"
+    ],
+    "7321": [
+      "baseline385",
+      "candidate"
+    ]
+  }
+}

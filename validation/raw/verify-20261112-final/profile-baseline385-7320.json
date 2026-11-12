@@ -1,0 +1,139 @@
+{
+  "kind": "local_jsonl_path_diagnostic",
+  "seed": 7320,
+  "target": {
+    "image": "minivec:baseline385-20261112"
+  },
+  "artifact_output": "/home/runner/work/_temp/minivec-verify-Mq6F1e/engine/protocol-results/profile-baseline385-7320.json",
+  "write_order": [
+    "single_statement_single_commit",
+    "single_statement_batch_commit",
+    "batch_statement_batch_commit"
+  ],
+  "write": {
+    "single_statement_single_commit": {
+      "rows": 1000,
+      "statement_rows": 1,
+      "commit_rows": 1,
+      "phase": {
+        "begin": {
+          "count": 1000,
+          "total_seconds": 0.1998422179996453,
+          "p50_ms": 0.19362450001381148,
+          "p95_ms": 0.24337899998272405,
+          "qps": 5003.947664360765
+        },
+        "insert": {
+          "count": 1000,
+          "total_seconds": 0.22528887999993685,
+          "p50_ms": 0.2193584999901077,
+          "p95_ms": 0.2753899999845544,
+          "qps": 4438.745489791952
+        },
+        "commit": {
+          "count": 1000,
+          "total_seconds": 0.6959756930002357,
+          "p50_ms": 0.42923699999164455,
+          "p95_ms": 0.6531009999832804,
+          "qps": 1436.8317888936122
+        }
+      },
+      "request_seconds": 1.1211067909998178
+    },
+    "single_statement_batch_commit": {
+      "rows": 1000,
+      "statement_rows": 1,
+      "commit_rows": 100,
+      "phase": {
+        "begin": {
+          "count": 10,
+          "total_seconds": 0.0020404710000150317,
+          "p50_ms": 0.1882875000092099,
+          "p95_ms": 0.2628320000042095,
+          "qps": 4900.829269284559
+        },
+        "insert": {
+          "count": 1000,
+          "total_seconds": 0.2216241650002928,
+          "p50_ms": 0.21583250000389853,
+          "p95_ms": 0.27070899997738707,
+          "qps": 4512.143339597822
+        },
+        "commit": {
+          "count": 10,
+          "total_seconds": 0.041542667000015854,
+          "p50_ms": 0.7774145000070121,
+          "p95_ms": 28.613496999980725,
+          "qps": 240.71636999127148
+        }
+      },
+      "request_seconds": 0.2652073030003237
+    },
+    "batch_statement_batch_commit": {
+      "rows": 1000,
+      "statement_rows": 100,
+      "commit_rows": 100,
+      "phase": {
+        "begin": {
+          "count": 10,
+          "total_seconds": 0.0021412819999397925,
+          "p50_ms": 0.21355449999305165,
+          "p95_ms": 0.23891199998615775,
+          "qps": 4670.099501271283
+        },
+        "insert": {
+          "count": 10,
+          "total_seconds": 0.023006843000018762,
+          "p50_ms": 2.216017500003886,
+          "p95_ms": 2.6879379999797948,
+          "qps": 434.65328989257
+        },
+        "commit": {
+          "count": 10,
+          "total_seconds": 0.006662469999952236,
+          "p50_ms": 0.6650449999909824,
+          "p95_ms": 0.7685520000109136,
+          "qps": 1500.9448447905493
+        }
+      },
+      "request_seconds": 0.03181059499991079
+    }
+  },
+  "query_rows": 10000,
+  "query_index_seconds": 0.0211970919999942,
+  "query": {
+    "empty_result": {
+      "count": 500,
+      "total_seconds": 0.09984218399984002,
+      "p50_ms": 0.1934769999962782,
+      "p95_ms": 0.23714900001436945,
+      "qps": 5007.903272636756,
+      "response_json_characters": 24000
+    },
+    "primary_key": {
+      "count": 500,
+      "total_seconds": 0.10099242200007552,
+      "p50_ms": 0.19654199999763478,
+      "p95_ms": 0.23888600000532279,
+      "qps": 4950.866511545056,
+      "response_json_characters": 26390
+    },
+    "vector_unfiltered": {
+      "count": 500,
+      "total_seconds": 0.19167002600013916,
+      "p50_ms": 0.3823725000131617,
+      "p95_ms": 0.4269949999979872,
+      "qps": 2608.6499304781073,
+      "response_json_characters": 153988
+    },
+    "vector_filtered": {
+      "count": 500,
+      "total_seconds": 0.148547644999951,
+      "p50_ms": 0.2894240000159698,
+      "p95_ms": 0.3318440000157352,
+      "qps": 3365.923438235355,
+      "response_json_characters": 153941
+    }
+  },
+  "scope": "One container and official driver; interleaved request classes. Different SQL and responses are not additive component timings. Single-row commits intentionally change durability frequency; compare single_statement_batch_commit with batch_statement_batch_commit to hold commit count fixed. No formal score or exhaustive query oracle."
+}

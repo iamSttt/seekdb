@@ -1,0 +1,15 @@
+{
+  "scope": "historical-native-startup-diagnostic",
+  "runtime_commit": "ff6a3bdbf6f10a1b17908229b170aa85579f5be9",
+  "official_startup_timeout_seconds": 120,
+  "diagnostic_startup_timeout_seconds": 2,
+  "official_limits_were_not_modified": true,
+  "note": "This copied two-second diagnostic limit is not the official grading timeout. No SQL or request is sent before waiting for ready.",
+  "startup_result": "TimeoutError",
+  "diagnostic_error": "JSON response timeout",
+  "alive_before_cleanup": true,
+  "stdin_open_before_cleanup": true,
+  "stdout_buffer_bytes": 0,
+  "stdout_pending_readable": false,
+  "process_exited_after_cleanup": true
+}

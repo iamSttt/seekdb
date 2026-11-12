@@ -1,0 +1,8 @@
+{
+  "runtime_commit": "385766a2251595867a546840fe8f41c5db6b1c9e",
+  "test_source_commit": "e8534416dcef2af64847330ffedb12831e45885d",
+  "strict_shell_exit_code": 134,
+  "observation_mode_shell_exit_code": 0,
+  "reproduction_conclusion": null,
+  "note": "Inspect the strict log for the specific assertion. A nonzero exit or timeout 124 alone is not proof. The OBSERVED mode verifies recovery while allowing accepted=true; it does not certify the strict rejection semantics."
+}
