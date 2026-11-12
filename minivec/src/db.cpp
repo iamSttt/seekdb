@@ -26,6 +26,7 @@
 //     skipped on replay using the LSN stored in the snapshot header.
 // ---------------------------------------------------------------------------
 #include "db.h"
+#include "filter_diagnostics.h"
 #include "flat_index.h"
 #include "quantized_bound.h"
 
@@ -328,10 +329,12 @@ void discard_appended_row(Table& table) {
 void positional_io(int fd, void* data, size_t size, uint64_t off, bool writing) {
   char* p = static_cast<char*>(data);
   while (size) {
+    if(!writing)MVDB_FILTER_COUNT(payload_pread_calls);
     ssize_t n = writing ? ::pwrite(fd,p,size,static_cast<off_t>(off))
                         : ::pread(fd,p,size,static_cast<off_t>(off));
     if (n < 0 && errno == EINTR) continue;
     if (n <= 0) throw std::runtime_error("row payload cache I/O failed");
+    if(!writing)MVDB_FILTER_BYTES(payload_pread_returned_bytes,static_cast<uint64_t>(n));
     p += n; size -= static_cast<size_t>(n); off += static_cast<uint64_t>(n);
   }
 }
@@ -767,6 +770,7 @@ inline bool row_matches(const Pred& pr, const Row& row) {
   const size_t nvals = row.vals.size();
   for (size_t i = 0; i < ncond; ++i) {
     const RCond& c = pr.c[i];
+    MVDB_FILTER_COLUMN(predicate_checks,c.col);
     if (c.col >= nvals) return false;
     const Value& a = row.vals[c.col];
     int cmpv;
@@ -890,11 +894,14 @@ size_t Table::live_count() const {
 }
 
 const Row& Table::read_row(size_t slot, Row& scratch) const {
+  MVDB_FILTER_COUNT(row_fetches);
   if (!payload_store) return rows[slot];
+  MVDB_FILTER_COUNT(payload_fetches);
   const uint64_t off=payload_offsets[slot];
   uint32_t len=0;
   positional_io(payload_store->fd,&len,4,off,false);
   if (len > kMaxRec) throw std::runtime_error("invalid payload cache record");
+  MVDB_FILTER_BYTES(payload_bytes,uint64_t(len)+4);
   std::string b(len,'\0');
   if (len) positional_io(payload_store->fd,&b[0],len,off+4,false);
   Rd rd(b.data(),b.size());
@@ -2069,6 +2076,7 @@ void Database::build_vector_index(Table& table) {
 void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
                            const std::function<bool(int64_t,const float*,size_t)>& cb,
                            const QuantizedQueryBound* quantized,const double* threshold) {
+  MVDB_FILTER_COUNT(scan_calls);
   auto it=tables_.find(t);
   if (it==tables_.end() || it->second.schema.vec_idx<0) return;
   Table& table=it->second;
@@ -2214,6 +2222,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
             const size_t ordinal=(filtered_view.count/samples)*j+
                                  (filtered_view.count%samples)*j/samples;
             Row scratch;
+            MVDB_FILTER_COUNT(sample_rows);
             const Row& row=table.read_row(static_cast<size_t>(filtered_view.slots[ordinal]),scratch);
             if(range.contains(row.vals[plan.column].i))++matches;
           }
@@ -2226,6 +2235,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
       }
     }
     if(have_plan) {
+      MVDB_FILTER_COLUMN(plan_choices,chosen.column);
       const uint32_t* ordinals=nullptr;
       size_t count=0;
       if(table.vector_index->integer_ordinals(chosen.column,chosen.range,
@@ -2238,6 +2248,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
         const bool reject=codes && threshold && quantized && quantized->enabled();
         for(size_t j=0;j<count;++j) {
           const size_t ordinal=ordinals[j];
+          MVDB_FILTER_COUNT(vector_visits);
           const size_t slot=static_cast<size_t>(filtered_view.slots[ordinal]);
           if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[slot]))
             throw std::runtime_error("stale flat vector index slot");
@@ -2279,6 +2290,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
           const bool reject=codes && threshold && quantized && quantized->enabled();
           for(size_t j=0;j<count;++j) {
             const size_t i=ordinals[j];
+            MVDB_FILTER_COUNT(vector_visits);
             const uint64_t slot=view.slots[i];
             if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[slot]))
               throw std::runtime_error("stale flat vector index slot");
@@ -2292,6 +2304,7 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
   }
 #endif
   const FlatIndex::Visitor visit=[&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
+    MVDB_FILTER_COUNT(vector_visits);
     if (slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
       throw std::runtime_error("stale flat vector index slot");
     if (!conds.empty()) {

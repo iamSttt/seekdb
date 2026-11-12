@@ -1,0 +1,116 @@
+{
+  "commit": "9aa18865c85bd74578f9e408438dcd29e7247728",
+  "run_id": 43319744761,
+  "job_id": 131536969014,
+  "scope": "I11 isolated screening; no default adoption or formal score",
+  "gates_passed": 20,
+  "database_pairs": 12,
+  "synthetic_pairs": 3,
+  "binaries": {
+    "base-diagnostic.bin": "c8e12b3a3578bbed7956d2ba4417e357ae6a759da654b0a68f6fac55b146ce47",
+    "base.bin": "2858ac9fc808bd99bc5288fb2007daef45b2606973857eac92ea6686b6292653",
+    "scale-diagnostic.bin": "ce9f9194a55fae9529e3dced317444b710de1604a3bfe529bbb392248301121e",
+    "scale.bin": "307348d28429a82d599d5734de095a4927c110ff54785efcbd584a11c29dc6d6"
+  },
+  "raw_sha256": "af0e43bb38c9351e5753e158c2b6aa277065a71019a53e84303e157a8d082356",
+  "whole_request": {
+    "standard10k": {
+      "startup": 1.1695497530153747,
+      "create_table": 0.9945100772563569,
+      "ingest": 0.6049689245489329,
+      "index_build": 0.979830790406469,
+      "query_before_update": 0.9637696759824795,
+      "shutdown": 0.9780794981286376,
+      "restart": 1.358461309862857,
+      "restart_verification_wall": 1.0875522904314494,
+      "query_after_restart": 0.9816798606980862,
+      "final_shutdown": 0.9747157579219984,
+      "measured_lifecycle": 0.6168474760940066
+    },
+    "high768_k1": {
+      "startup": 1.128246762182654,
+      "create_table": 1.0397348835923703,
+      "ingest": 0.9340244732014388,
+      "index_build": 1.0208949267353118,
+      "query_before_update": 1.0042516188297705,
+      "shutdown": 0.9876930150367738,
+      "restart": 0.5086082562909581,
+      "restart_verification_wall": 1.0660197111546084,
+      "query_after_restart": 1.0057911866294316,
+      "final_shutdown": 1.015492562823825,
+      "measured_lifecycle": 0.8667962492339409
+    },
+    "high768_k100": {
+      "startup": 0.9157337090715374,
+      "create_table": 0.9502961213722194,
+      "ingest": 1.0214308663327962,
+      "index_build": 1.002869187018262,
+      "query_before_update": 1.0260615427335873,
+      "shutdown": 1.023115923676616,
+      "restart": 1.0261651068876207,
+      "restart_verification_wall": 0.814385513880281,
+      "query_after_restart": 1.0779243177812805,
+      "final_shutdown": 0.9050216866413828,
+      "measured_lifecycle": 1.0324453608056723
+    },
+    "large100k": {
+      "startup": 0.996409950697552,
+      "create_table": 1.032650046077365,
+      "ingest": 1.027053400835451,
+      "index_build": 0.9664243077235918,
+      "query_before_update": 0.8107421469221738,
+      "shutdown": 0.9525756205219665,
+      "restart": 1.0370453327680846,
+      "restart_verification_wall": 1.0262642865043339,
+      "query_after_restart": 0.8131441780880145,
+      "final_shutdown": 1.0766449061227386,
+      "measured_lifecycle": 1.009753738850125
+    }
+  },
+  "synthetic": {
+    "gaussian": {
+      "query_ratio": 1.4058025389249005,
+      "build_ratio": 0.9317791871578488,
+      "cache_ratio": 0.6530786684486992,
+      "base_rejected": 394438,
+      "scale_rejected": 396947,
+      "base_rmse": 0.01803987248,
+      "scale_rmse": 0.01553131448,
+      "extra_resident_bytes": 1663
+    },
+    "clustered": {
+      "query_ratio": 1.0834533173772967,
+      "build_ratio": 0.9876639447502805,
+      "cache_ratio": 0.39776594431611806,
+      "base_rejected": 0,
+      "scale_rejected": 43941,
+      "base_rmse": 0.07187591962,
+      "scale_rmse": 0.05441631784,
+      "extra_resident_bytes": 3439
+    },
+    "outlier": {
+      "query_ratio": 31.98870108584814,
+      "build_ratio": 0.9165810850071114,
+      "cache_ratio": 0.5029083022854919,
+      "base_rejected": 0,
+      "scale_rejected": 391195,
+      "base_rmse": 1.021304305,
+      "scale_rmse": 0.1567513436,
+      "extra_resident_bytes": 2847
+    },
+    "dispersed_outlier": {
+      "query_ratio": 1.007692195582135,
+      "build_ratio": 0.985479304326261,
+      "cache_ratio": 0.5054933231317322,
+      "base_rejected": 0,
+      "scale_rejected": 638,
+      "base_rmse": 1.021291484,
+      "scale_rmse": 0.9337035206,
+      "extra_resident_bytes": 2255
+    }
+  },
+  "limitations": [
+    "3 pairs only; standard ingest anomaly precedes scale building and needs investigation.",
+    "Synthetic diagnostic query timings exclude full request costs. Exact checksums stay integers in archived JSON."
+  ]
+}

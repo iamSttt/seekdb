@@ -158,3 +158,47 @@ jobs:
           name: report-b-quantization
           path: quant-scale-results/
           retention-days: 90
+  report-c-parser:
+    if: ${{ contains(github.event.head_commit.message, '[report-c]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Bounded owning-token reuse correctness allocations and timings
+        run: bash minivec/tools/ci_parser_reuse.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-c-parser
+          path: parser-reuse-results/
+          retention-days: 90
+  report-c-projection:
+    if: ${{ contains(github.event.head_commit.message, '[report-c]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Wide typed output and mid-response UTF8 failures
+        run: bash minivec/tools/ci_projection_report.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-c-projection
+          path: projection-report-results/
+          retention-days: 90
+  report-c-filter:
+    if: ${{ contains(github.event.head_commit.message, '[report-c]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Filter factorial confirmation and separately instrumented mechanisms
+        run: bash minivec/tools/ci_filter_report.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-c-filter
+          path: filter-report-results/
+          retention-days: 90

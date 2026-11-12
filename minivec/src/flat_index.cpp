@@ -1,4 +1,5 @@
 #include "flat_index.h"
+#include "filter_diagnostics.h"
 #include "distance.h"
 #include "quantized_bound.h"
 #include <algorithm>
@@ -47,12 +48,15 @@ size_t ann_default_probes(size_t clusters) {
   return probes;
 }
 void transfer(int fd,void* data,size_t bytes,uint64_t offset,bool write) {
+  if(!write)MVDB_FILTER_BYTES(vector_read_requested_bytes,bytes);
   char* p=static_cast<char*>(data);
   while(bytes) {
+    if(!write)MVDB_FILTER_COUNT(vector_pread_calls);
     const ssize_t n=write ? ::pwrite(fd,p,bytes,static_cast<off_t>(offset))
                           : ::pread(fd,p,bytes,static_cast<off_t>(offset));
     if(n<0 && errno==EINTR)continue;
     if(n<=0)throw std::runtime_error("flat vector index I/O failed");
+    if(!write)MVDB_FILTER_BYTES(vector_pread_returned_bytes,static_cast<uint64_t>(n));
     bytes-=static_cast<size_t>(n);p+=n;offset+=static_cast<uint64_t>(n);
   }
 }
@@ -219,6 +223,7 @@ void FlatIndex::scan_filtered(const MetadataPredicate& predicate,const Visitor& 
   for(size_t first=0;first<count_;) {
     const size_t count=std::min(per_block,count_-first);
     transfer(fd_,block.data(),count*stride,static_cast<uint64_t>(first)*stride,false);
+    MVDB_FILTER_BYTES(vector_records,count);
     for(size_t i=0;i<count;++i) {
       const float* record=block.data()+i*words;
       int64_t pk;uint64_t slot;
@@ -523,7 +528,11 @@ bool FlatIndex::equal_ordinals(size_t column,int64_t value,
   if(!ready_)throw std::runtime_error("flat vector index is not ready");
   if(!ordinals||!count)return false;
   if(fd_>=0 || (count_ && !posting_budget_))return false;
+  MVDB_FILTER_COLUMN(posting_lookups,column);
+  if(postings_ready_ && posting_column_==column)MVDB_FILTER_COLUMN(posting_hits,column);
   if(!postings_ready_ || posting_column_!=column) {
+    MVDB_FILTER_COLUMN(posting_build_attempts,column);
+    if(postings_ready_)MVDB_FILTER_COLUMN(posting_evictions,posting_column_);
     // Mark invalid first: an exception in read_value must not leave an older
     // column's ready flag attached to partially replaced entries.
     postings_ready_=false;
@@ -543,6 +552,7 @@ bool FlatIndex::equal_ordinals(size_t column,int64_t value,
     for(size_t i=0;i<count_;++i)sorted[i]=posting_values_[posting_ordinals_[i]];
     posting_values_.swap(sorted);
     posting_column_=column;postings_ready_=true;
+    MVDB_FILTER_COLUMN(posting_builds,column);
   }
   const auto begin=posting_values_.begin();
   const auto first=std::lower_bound(begin,posting_values_.end(),value);
@@ -561,19 +571,23 @@ bool FlatIndex::equal_ordinals(size_t column,int64_t value,
 #ifndef MVDB_DISABLE_MULTI_POSTING
 FlatIndex::IntegerPosting* FlatIndex::integer_posting(size_t column,
     const std::function<int64_t(uint64_t)>& read_value) {
+  MVDB_FILTER_COLUMN(posting_lookups,column);
   // This counter only orders two cache entries; wrap loses recency, not data.
   if(++posting_clock_==0) {
     for(auto& posting:postings_)posting.last_used=0;
     posting_clock_=1;
   }
   for(auto& posting:postings_)if(posting.ready && posting.column==column) {
+    MVDB_FILTER_COLUMN(posting_hits,column);
     posting.last_used=posting_clock_;return &posting;
   }
+  MVDB_FILTER_COLUMN(posting_build_attempts,column);
   const auto evict_oldest=[&]() {
     IntegerPosting* victim=nullptr;
     for(auto& posting:postings_)if(posting.ready &&
         (!victim || posting.last_used<victim->last_used))victim=&posting;
     if(!victim)return false;
+    MVDB_FILTER_COLUMN(posting_evictions,victim->column);
     *victim=IntegerPosting{};return true;
   };
   const auto make_room=[&](size_t extra) {
@@ -624,6 +638,7 @@ FlatIndex::IntegerPosting* FlatIndex::integer_posting(size_t column,
   built.ordinals=std::move(ordinals);built.value_count=values;
   built.bytes=count_*sizeof(uint32_t)+output;
   built.column=column;built.last_used=posting_clock_;built.ready=true;
+  MVDB_FILTER_COLUMN(posting_builds,column);
   for(auto& posting:postings_)if(!posting.ready) {
     posting=std::move(built);return &posting;
   }
@@ -676,6 +691,7 @@ bool FlatIndex::cached_integer_count(size_t column,const IntegerRange& range,siz
   if(!count || !ready_ || fd_>=0)return false;
   if(!count_) {*count=0;return true;}
   for(const auto& posting:postings_)if(posting.ready && posting.column==column) {
+    MVDB_FILTER_COLUMN(estimate_cache_hits,column);
     const auto span=posting_span(posting,range);
     *count=span.second-span.first;return true;
   }
@@ -707,6 +723,7 @@ void FlatIndex::scan(const Visitor& visitor) const {
   for(size_t first=0;first<count_;) {
     const size_t count=std::min(per_block,count_-first);
     transfer(fd_,block.data(),count*stride,static_cast<uint64_t>(first)*stride,false);
+    MVDB_FILTER_BYTES(vector_records,count);
     for(size_t i=0;i<count;++i) {
       const float* record=block.data()+i*words;
       int64_t pk;uint64_t slot;

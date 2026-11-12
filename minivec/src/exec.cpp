@@ -1,5 +1,6 @@
 // exec.cpp — statement execution + MySQL-style table rendering
 #include "exec.h"
+#include "filter_diagnostics.h"
 #include "result_sort.h"
 #include "distance.h"
 #include "quantized_bound.h"
@@ -168,6 +169,10 @@ void render_table(const std::vector<std::string>& headers,
 
 static bool execute_impl(Database& db, const Statement& st, std::string* out, std::string* err,
                          int* code, const OutputSink& sink, bool json_response, bool ann_mode) {
+#ifdef MVDB_FILTER_DIAGNOSTICS
+  FilterDiagnosticScope filter_diagnostics(st.kind==Statement::SELECT || st.kind==Statement::CREATE_INDEX,
+                                          st.conds.size(),static_cast<int>(st.kind));
+#endif
   *code = 0;
   switch (st.kind) {
     case Statement::EMPTY:
@@ -540,6 +545,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             if (bounded && !st.order_desc && result.size()==k &&
                 bound_context.definitely_greater(v,order.qvec->data(),result.front().distance))
               return true;
+            MVDB_FILTER_COUNT(exact_distances);
             Candidate c;c.pk=pk;c.distance=distance_squared(v,order.qvec->data(),dim);
             return offer(std::move(c));
           };
@@ -633,6 +639,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   bounded && !st.order_desc && view.quantized ? view.quantization_step : 0,
                   bounded && !st.order_desc && view.quantized ? view.quantization_scales : QuantizedScaleView{});
               auto scan_ordinal=[&](size_t i) {
+                MVDB_FILTER_COUNT(vector_visits);
                 // Integer codes are only a certified rejection filter. Every
                 // uncertain row follows the existing float bound/exact path.
                 if(quantized.enabled() && result.size()==k &&
@@ -688,6 +695,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
               if(bounded && !st.order_desc && result.size()==k &&
                  bound_context.definitely_greater(v,order.qvec->data(),result.front().distance))
                 return true;
+              MVDB_FILTER_COUNT(exact_distances);
               Candidate c;c.pk=pk;c.distance=distance_squared(v,order.qvec->data(),dim);
               const bool more=offer(std::move(c));
               if(result.size()==k) threshold=result.front().distance;

@@ -35,6 +35,7 @@ size_t payload_reads=0,flat_reads=0,payload_bytes=0;
 bool flat_interrupt=false,flat_short=false,flat_fail=false;
 #ifdef MVDB_TEST_WRAP_PWRITE
 bool fail_flat_write=false;
+size_t injected_flat_write_failures=0;
 #endif
 }
 void* operator new[](size_t n) {if(void* p=std::malloc(n?n:1))return p;throw std::bad_alloc();}
@@ -70,7 +71,7 @@ extern "C" ssize_t __wrap_pread(int fd,void* data,size_t bytes,off_t offset) {
 #ifdef MVDB_TEST_WRAP_PWRITE
 extern "C" ssize_t __real_pwrite(int,const void*,size_t,off_t);
 extern "C" ssize_t __wrap_pwrite(int fd,const void* data,size_t bytes,off_t offset) {
-  if(fail_flat_write) {errno=ENOSPC;return -1;}
+  if(fail_flat_write) {++injected_flat_write_failures;errno=ENOSPC;return -1;}
   return __real_pwrite(fd,data,bytes,offset);
 }
 #endif
@@ -161,14 +162,27 @@ static void direct(const std::string& path) {
   FlatIndex too_large(path,5,(2u<<20)/8+1,0);
   assert(!too_large.configure_spill_integers(columns,2,std::numeric_limits<size_t>::max()));
 #ifdef MVDB_TEST_WRAP_PWRITE
-  {
-    FlatIndex failed(path,5,n,0);
-    assert(failed.configure_spill_integers(columns,2,budget)==2);
-    for(size_t i=0;i<n;++i) {
+  for(bool tail_flush:{false,true}) {
+    // Small indexes flush their entire allocated build buffer on the last
+    // add(), so finish() has no pending write. Exercise that boundary and a
+    // larger index whose partial final block really is flushed by finish().
+    const size_t rows=tail_flush ? (256u<<10)/(5*sizeof(float)+16)+1 : n;
+    FlatIndex failed(path,5,rows,0);
+    assert(failed.configure_spill_integers(columns,2,256u<<10)==2);
+    const size_t before_fault=tail_flush ? rows : rows-1;
+    for(size_t i=0;i<before_fault;++i) {
       const int64_t integers[2]={int64_t(i%13),int64_t(i)};
       failed.add(int64_t(i),i,vector,5,integers,2);
     }
-    fail_flat_write=true;throws([&]{failed.finish();});fail_flat_write=false;
+    injected_flat_write_failures=0;fail_flat_write=true;
+    throws([&] {
+      if(tail_flush)failed.finish();
+      else {
+        const int64_t integers[2]={int64_t((rows-1)%13),int64_t(rows-1)};
+        failed.add(int64_t(rows-1),rows-1,vector,5,integers,2);
+      }
+    });
+    fail_flat_write=false;assert(injected_flat_write_failures==1);
     int64_t integer=0;
     assert(!failed.has_spill_integer(3) && !failed.spill_integer_value(0,3,&integer));
     throws([&]{failed.finish();});
