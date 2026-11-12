@@ -1,1 +1,0 @@
-47bf783297cbae1af4efd84502b51ff749a538915b2e651b1ecf0d3325a5e06f  /tmp/minivec-image-binary

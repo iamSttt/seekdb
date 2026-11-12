@@ -1,17 +1,6 @@
-.gitattributes export-ignore
-.gitignore export-ignore
-
-# All OceanBase code is auto-formatted using clang-format.
-*.c filter=codeformat
-*.cc filter=codeformat
-*.cpp filter=codeformat
-*.h filter=codeformat
-*.hpp filter=codeformat
-*.i filter=codeformat
-*.ic filter=codeformat
-*.js filter=codeformat
-
-# Material digests use UTF-8 bytes with LF across Linux and Windows checkouts.
-/conversation.json text eol=lf
-/agent/conversation.json text eol=lf
-/agent/raw/01-session-2026-11-09.md -text
+# Keep shell scripts runnable in Linux checkouts from Windows commits.
+*.sh text eol=lf
+# Preserve upstream fixtures byte for byte.
+/STDIO_PROTOCOL.md -text
+/mysqltest/** -text
+/protocol_check/** -text

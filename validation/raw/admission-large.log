@@ -1,7 +1,0 @@
-data_directory=/tmp/mvdb-large-recovery-Axes3C
-build_under_address_limit max_rss_kib=35156 payload_bytes=268435456
-recovery_children_sigkilled=6
-wal_recovery_under_address_limit max_rss_kib=35504 payload_bytes=268435456
-checkpoint_under_address_limit max_rss_kib=36876 payload_bytes=268435456
-snapshot_recovery_under_address_limit max_rss_kib=36376 payload_bytes=268435456
-PASS large payload, WAL restart, repeated recovery SIGKILL, snapshot integrity

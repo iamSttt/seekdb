@@ -1,0 +1,23 @@
+{
+  "kind": "authenticated_platform_observation",
+  "source_url": "https://open.oceanbase.com/train/TestRecord?questionId=600081",
+  "observed_date_asia_shanghai": "2026-11-12",
+  "submission_time_asia_shanghai": "2026-11-12 19:52",
+  "repository": "https://github.com/iamSttt/seekdb",
+  "branch": "2026-competition-round2",
+  "commit": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "task_status": "执行成功",
+  "success_count": 1,
+  "failure_count": 0,
+  "mysql_admission": "pass",
+  "mysql_message": "通过；此项为准入条件，不计排名分",
+  "performance_raw_E": "3014.419039",
+  "performance_message": "性能评测完成；原始指标 E = 3014.419039",
+  "agent_prompt_raw_score": null,
+  "agent_prompt_display": "—",
+  "agent_prompt_message": "Prompt结果无效、待复核、超出平台0–100范围或缺少材料摘要，本项不参与排名；未截断或换算本地分数。",
+  "observation_method": "Read the latest submission row and its success-result dialog through the authenticated browser after the user logged in. The repository URL was redacted to remove embedded credentials before recording.",
+  "submission_action": "None; read existing results only.",
+  "unavailable": ["write/query T, B and M", "hidden test names and execution logs", "Agent Prompt dimension review", "material digest or invalidity-specific reason", "current leaderboard rank or rank-based points"],
+  "interpretation": "The MySQL gate passed and performance E was produced. Prompt invalidity is unresolved; the generic message lists alternatives and does not identify a cause. This result applies to the recorded commit, not to an unsubmitted cleanup commit."
+}

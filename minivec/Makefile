@@ -15,8 +15,6 @@ test_db: tests/test_db.cpp src/db.cpp src/value.cpp src/flat_index.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^
 test_recovery: tests/test_recovery_regressions.cpp $(TEST_COMMON)
 	$(CXX) $(CXXFLAGS) -o $@ $^
-test_vector: tests/test_vector.cpp src/vector.cpp src/value.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $^
 test_query: tests/test_query_regressions.cpp $(TEST_COMMON)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 test_sort: tests/test_sort.cpp src/result_sort.h
@@ -33,11 +31,10 @@ test_query_pool: tests/test_query_pool_safety.cpp src/query_pool.h
 	$(CXX) $(CXXFLAGS) -o $@ tests/test_query_pool_safety.cpp -Wl,--wrap=pthread_create
 test_cross_table_spill: tests/test_cross_table_spill.cpp src/db.cpp src/flat_index.cpp src/value.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^
-test: all test_sql test_db test_recovery test_vector test_query test_sort test_flat test_distance_neighbors test_distance_simd test_quantized_bound test_query_pool test_cross_table_spill
+test: all test_sql test_db test_recovery test_query test_sort test_flat test_distance_neighbors test_distance_simd test_quantized_bound test_query_pool test_cross_table_spill
 	./test_sql
 	./test_db
 	./test_recovery
-	./test_vector quick
 	./test_query
 	./test_sort
 	./test_flat

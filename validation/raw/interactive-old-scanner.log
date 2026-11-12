@@ -1,2 +1,0 @@
-REPRODUCED 0fb1c19: malformed bare vector stalls subsequent statement with stdin open
-REPRODUCED 0fb1c19: statement inside a rejected vector literal changes the database

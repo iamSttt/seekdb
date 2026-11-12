@@ -1,4 +1,0 @@
-# Preserve archived CI bytes so manifest hashes survive Windows checkouts.
-verify-20261112-cdf/** -text
-verify-20261112-parallel/** -text
-verify-20261112-final/** -text
