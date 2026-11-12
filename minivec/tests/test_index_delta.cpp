@@ -129,11 +129,20 @@ static void mutation_tests(const std::string& path) {
   update(db,3,std::vector<float>(16,2));assert(table.index_delta);
   assert(db.resident_vector_index("t") && !table.index_delta); // ANN accessor rebuild.
 
-  // The base key is suppressed too: PK-only UPDATE must emit the replacement
-  // key exactly once, and rollback restores the old identity.
+  // PK UPDATE is explicitly unsupported by this database. A rejected attempt
+  // must leave an already live delta, the original key and transaction intact.
   assert(db.begin(&error,&code));
-  assert(db.update_rows("t",{eq(4)},{{"id",Value::ofInt(4000)}},&error,&code)==1);
-  assert(table.index_delta);check(db,"t");
+  assert(db.update_rows("t",{eq(4)},{{"g",Value::ofInt(77)}},&error,&code)==1);
+  const auto before_rejected_pk=table.vector_index;
+  assert(table.index_delta);
+  assert(db.update_rows("t",{eq(4)},{{"id",Value::ofInt(4000)}},&error,&code)==-1);
+  assert(code==static_cast<int>(ErrCode::NOT_SUPPORTED));
+  assert(error=="updating the primary key is not supported");
+  assert(table.index_delta && table.vector_index==before_rejected_pk);
+  size_t old_keys=0,new_keys=0;
+  db.scan("t",{eq(4)},[&](const Row& row){assert(row.vals[1].i==77);++old_keys;return true;});
+  db.scan("t",{eq(4000)},[&](const Row&){++new_keys;return true;});
+  assert(old_keys==1 && new_keys==0);check(db,"t");
   assert(db.rollback(&error,&code));check(db,"t");
 
   // 1024 rows allow ten distinct dirty slots. The eleventh falls back.

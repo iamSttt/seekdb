@@ -81,7 +81,7 @@ def check_artifact(root, artifact, path_key='path'):
     require(not Path(name).is_absolute(), 'artifact path must be repository relative')
     path = (root / name).resolve()
     require(path.is_relative_to(root), 'artifact path escapes repository')
-    require(hashlib.sha256(path.read_bytes()).hexdigest() == digest, 'artifact hash mismatch')
+    require(hashlib.sha256(path.read_bytes()).hexdigest() == digest, 'artifact hash mismatch: '+name)
 
 
 def check_structure(record, value):

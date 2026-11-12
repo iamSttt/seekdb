@@ -117,7 +117,7 @@ jobs:
           path: report-b-results/
           retention-days: 90
   report-b-storage:
-    if: ${{ contains(github.event.head_commit.message, '[report-b]') }}
+    if: ${{ contains(github.event.head_commit.message, '[report-b]') || contains(github.event.head_commit.message, '[storage-report]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:

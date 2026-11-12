@@ -1,5 +1,7 @@
 # Keep shell scripts runnable in Linux checkouts from Windows commits.
 *.sh text eol=lf
+# Evidence digests must be identical in Windows and Linux checkouts.
+/validation/iteration3-*.json text eol=lf
 # Preserve upstream fixtures byte for byte.
 /STDIO_PROTOCOL.md -text
 /mysqltest/** -text
