@@ -30,6 +30,82 @@ static std::vector<int64_t> ids(const std::string& text) {
   while(std::getline(in,line))if(!line.empty())result.push_back(std::stoll(line));
   return result;
 }
+static void insert_copy_regressions(Database& db) {
+  query(db,"CREATE TABLE insert_copies(id BIGINT PRIMARY KEY,s VARCHAR(64),v VECTOR(3))",false);
+  std::string err,out;int code=0;
+  const std::string spelling=" [0x1p0, +2, -0] ";
+  Statement st;
+  assert(parse_sql("INSERT INTO insert_copies VALUES (1,'"+spelling+"','"+spelling+
+                   "'),(2,'a\\nb''c','[3,4,5]')",&st,&err,&code,false));
+  auto unchanged=[&]() {
+    assert(st.rows.size()==2 && st.rows[0].size()==3);
+    assert(st.rows[0][1].type==Type::VECTOR && st.rows[0][1].s==spelling);
+    assert(st.rows[0][2].type==Type::VECTOR && st.rows[0][2].s==spelling);
+    assert(st.rows[0][2].v==std::vector<float>({1,2,0}) && std::signbit(st.rows[0][2].v[2]));
+    assert(st.rows[1][1].s=="a\nb'c" && st.rows[1][2].s=="[3,4,5]");
+  };
+  // The executable AST can be reused after both success and rollback. Only the
+  // row owned by Database is normalised; VECTOR text stays in the public AST.
+  query(db,"BEGIN",false);
+  assert(execute_json(db,st,&out,&err,&code));unchanged();
+  query(db,"ROLLBACK",false);
+  assert(db.table("insert_copies")->live_count()==0);
+  assert(execute_json(db,st,&out,&err,&code));unchanged();
+  assert(!execute_json(db,st,&out,&err,&code) && code==1062);unchanged();
+
+  Statement mapped;
+  assert(parse_sql("INSERT INTO insert_copies(v,id,s) VALUES ('[-0,0x1p-149,+1.5]',3,' [1, 2] ')",
+                   &mapped,&err,&code,false));
+  assert(execute_json(db,mapped,&out,&err,&code));
+  assert(mapped.rows[0][0].s=="[-0,0x1p-149,+1.5]" && mapped.rows[0][2].s==" [1, 2] ");
+  std::string nul_sql="INSERT INTO insert_copies(s,v,id) VALUES ('x";
+  nul_sql.push_back('\0');nul_sql+="y','[0,0,0]',4)";
+  assert(parse_sql(nul_sql,&mapped,&err,&code,false));
+  nul_sql.assign(nul_sql.size(),'z');
+  assert(execute_json(db,mapped,&out,&err,&code));
+  assert(mapped.rows[0][0].s==std::string("x\0y",3));
+
+  // A later row failing dimension validation must roll back the preceding row
+  // both in autocommit and inside an explicit transaction, and remain reusable.
+  Statement bad;
+  assert(parse_sql("INSERT INTO insert_copies VALUES (5,'kept','[1,2,3]'),(6,'bad','[1,2]')",
+                   &bad,&err,&code,false));
+  for(bool explicit_txn:{false,true}) {
+    if(explicit_txn)query(db,"BEGIN",false);
+    for(int attempt=0;attempt<2;++attempt) {
+      assert(!execute_json(db,bad,&out,&err,&code) && code==1264 && out.empty());
+      assert(db.table("insert_copies")->live_count()==4);
+      assert(db.table("insert_copies")->pk_pos.count(5)==0);
+      assert(bad.rows[0][2].s=="[1,2,3]" && bad.rows[1][2].s=="[1,2]");
+    }
+    if(explicit_txn)query(db,"ROLLBACK",false);
+  }
+  for(const char* invalid:{
+      "INSERT INTO insert_copies VALUES (5,[1,2,3],'[0,0,0]')",
+      "INSERT INTO insert_copies VALUES (5,'valid','not a vector')"}) {
+    assert(parse_sql(invalid,&bad,&err,&code,false));
+    assert(!execute_json(db,bad,&out,&err,&code) && code==1264);
+  }
+  // The same normalised representation must survive the existing WAL path.
+  const std::string path=db.data_directory();db.close();assert(db.open(path,&err));
+  size_t seen=0;
+  db.scan("insert_copies",{},[&](const Row& row) {
+    ++seen;const int64_t id=row.vals[0].i;
+    assert(row.vals[1].type==Type::VARCHAR && row.vals[2].type==Type::VECTOR);
+    assert(row.vals[2].s.empty() && row.vals[2].v.size()==3);
+    if(id==1) {
+      assert(row.vals[1].s==spelling && row.vals[2].v==std::vector<float>({1,2,0}));
+      assert(std::signbit(row.vals[2].v[2]));
+    } else if(id==2)assert(row.vals[1].s=="a\nb'c");
+    else if(id==3) {
+      assert(row.vals[1].s==" [1, 2] " && std::signbit(row.vals[2].v[0]));
+      assert(row.vals[2].v[1]==std::numeric_limits<float>::denorm_min() && row.vals[2].v[2]==1.5f);
+    } else {assert(id==4 && row.vals[1].s==std::string("x\0y",3));}
+    return true;
+  });
+  assert(seen==4);unchanged();
+  std::cout<<"PASS INSERT copy ownership, column mapping, VARCHAR spelling, failure rollback and WAL replay\n";
+}
 static void distance_regressions(Database& db) {
   auto check_order=[&](const std::string& table,const std::vector<float>& first,
                        const std::vector<float>& second,const std::vector<int64_t>& expected) {
@@ -188,6 +264,7 @@ int main(int argc,char** argv) {
   if(argc>1 && std::string(argv[1])=="--stress-topk")return stress_topk();
   char path[]="/tmp/mvdb-query-test-XXXXXX";assert(::mkdtemp(path));
   Database db;std::string err;int code=0;assert(db.open(path,&err));
+  insert_copy_regressions(db);
   distance_regressions(db);
   json_encoding_failure_regression(db);
   projection_regressions(db);

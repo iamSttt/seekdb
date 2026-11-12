@@ -69,6 +69,8 @@ struct Statement {
 // message; `err_code` receives a MySQL-ish error code (1064 by default).
 // Execution-only callers may skip the diagnostic raw-text copy. With
 // retain_raw=false, out->raw is empty on both success and failure.
+// Tokens may borrow sql only until this call returns (including worker joins).
+// Every string and vector in out owns its storage independently of sql.
 bool parse_sql(const std::string& sql, Statement* out, std::string* err, int* err_code,
                bool retain_raw=true);
 

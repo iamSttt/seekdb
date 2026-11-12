@@ -181,20 +181,32 @@ void FlatIndex::finish() {
       quantized_.reset(new(std::nothrow) int8_t[quantized_budget_]);
       if(quantized_) {
         quantization_step_=step;
+#ifndef MVDB_DISABLE_RESIDUAL_BOUND
+        quantization_error_radius_=0;
+#endif
         // Do not reorder: codes have exactly the rows_/keys_ traversal order.
         size_t code=0;
         for(size_t i=0;i<count_ && quantization_step_;++i) {
           const float* row=row_at(i);
+          quantized_detail::ResidualNormUpper residual;
+          quantized_detail::ResidualNormUpper* collect=nullptr;
+#ifndef MVDB_DISABLE_RESIDUAL_BOUND
+          if(quantization_error_radius_>=0)collect=&residual;
+#endif
           for(size_t d=0;d<dimension_;++d) {
-            if(!mvdb::quantize_coordinate(row[d],step,&quantized_[code++])) {
+            if(!mvdb::quantize_coordinate(row[d],step,&quantized_[code++],collect)) {
               quantization_step_=0;break;
             }
+          }
+          if(collect) {
+            const double radius=residual.radius(dimension_);
+            quantization_error_radius_=radius>=0 ? std::max(quantization_error_radius_,radius) : -1;
           }
         }
       }
     }
     if(!quantization_step_) {
-      quantized_.reset();quantized_budget_=0;
+      quantized_.reset();quantized_budget_=0;quantization_error_radius_=-1;
     }
   }
 #endif
@@ -303,6 +315,7 @@ bool FlatIndex::resident_view(ResidentView* view) const {
   view->rows=rows_.data();view->keys=keys_.data();view->slots=slots_.data();
   view->dimension=dimension_;view->count=count_;
   view->quantized=quantized_.get();view->quantization_step=quantization_step_;
+  view->quantization_error_radius=quantization_error_radius_;
   return true;
 }
 size_t FlatIndex::resident_bytes() const {

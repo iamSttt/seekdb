@@ -60,8 +60,8 @@ bool is_ident_char(unsigned char c) {
   return is_ident_start(c) || is_digit(c) || c == '$';
 }
 
-std::string to_upper(const std::string& s) {
-  std::string r = s;
+std::string to_upper(std::string_view s) {
+  std::string r(s);
   for (char& c : r)
     if (c >= 'a' && c <= 'z') c = (char)(c - 'a' + 'A');
   return r;
@@ -73,9 +73,26 @@ enum TokKind { TK_END, TK_IDENT, TK_INT, TK_NUM, TK_STR, TK_VEC, TK_PUNCT };
 
 struct Tok {
   TokKind kind = TK_END;
-  std::string text;  // IDENT: name, STR: decoded text, VEC: body, PUNCT: operator
+  // Only decoded spellings own text. Source spans use offsets, never pointers
+  // into this object's string: token-vector growth may move its SSO storage.
+  std::string text;
   bool quoted = false;
   size_t pos = 0;
+  size_t source_begin = 0, source_size = 0;
+  bool borrowed = false;
+
+  void source(const std::string& sql,size_t begin,size_t size) {
+#ifdef MVDB_DISABLE_BORROWED_TOKENS
+    text.assign(sql,begin,size);
+#else
+    (void)sql;
+    source_begin=begin;source_size=size;borrowed=true;
+#endif
+  }
+  std::string_view view(const std::string& sql) const {
+    return borrowed ? std::string_view(sql.data()+source_begin,source_size)
+                    : std::string_view(text);
+  }
 };
 
 void tokenize(const std::string& s, std::vector<Tok>* out) {
@@ -104,7 +121,7 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
     const size_t start = i;
 
     // Fast path: a quoted literal with no escape sequence and no doubled quote
-    // is copied in one pass instead of being rebuilt byte by byte.
+    // can borrow the input instead of being rebuilt byte by byte.
     if (c == '\'' || c == '"') {
       const char q = (char)c;
       // memchr hands the scan to the vectorised libc search instead of walking
@@ -119,7 +136,7 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
         if (simple) {
           Tok t;
           t.kind = TK_STR;
-          t.text.assign(s, i + 1, j - i - 1);
+          t.source(s, i + 1, j - i - 1);
           t.pos = start;
           out->push_back(std::move(t));
           i = j + 1;
@@ -180,6 +197,16 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
 
     // --- backtick identifier ----------------------------------------------
     if (c == '`') {
+      const char* hit = static_cast<const char*>(
+          std::memchr(s.data()+i+1,'`',n-i-1));
+      if (hit) {
+        const size_t end=static_cast<size_t>(hit-s.data());
+        if (end+1==n || s[end+1]!='`') {
+          Tok t;t.kind=TK_IDENT;t.quoted=true;t.pos=start;
+          t.source(s,i+1,end-i-1);
+          out->push_back(std::move(t));i=end+1;continue;
+        }
+      }
       std::string v;
       ++i;
       bool closed = false;
@@ -225,7 +252,7 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
       if (!closed) throw_err(1064, "unterminated vector literal '['");
       Tok t;
       t.kind = TK_VEC;
-      t.text = s.substr(i + 1, j - i - 1);
+      t.source(s, i + 1, j - i - 1);
       t.pos = start;
       out->push_back(std::move(t));
       i = j + 1;
@@ -252,7 +279,7 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
       }
       Tok t;
       t.kind = is_num ? TK_NUM : TK_INT;
-      t.text = s.substr(start, i - start);
+      t.source(s, start, i - start);
       t.pos = start;
       out->push_back(std::move(t));
       continue;
@@ -263,7 +290,7 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
       while (i < n && is_ident_char((unsigned char)s[i])) ++i;
       Tok t;
       t.kind = TK_IDENT;
-      t.text = s.substr(start, i - start);
+      t.source(s, start, i - start);
       t.pos = start;
       out->push_back(std::move(t));
       continue;
@@ -273,18 +300,15 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
     if (i + 1 < n) {
       const char a = s[i], b = s[i + 1];
       bool two = false;
-      std::string op;
       if ((a == '<' && (b == '=' || b == '>')) || (a == '>' && b == '=') ||
           (a == '!' && b == '=') ||
           (a == '|' && b == '|') || (a == '&' && b == '&')) {
-        op.push_back(a);
-        op.push_back(b);
         two = true;
       }
       if (two) {
         Tok t;
         t.kind = TK_PUNCT;
-        t.text = std::move(op);
+        t.source(s, start, 2);
         t.pos = start;
         out->push_back(std::move(t));
         i += 2;
@@ -294,7 +318,7 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
     if (std::strchr("(),.=<>*+-/;", (int)c) != nullptr && c < 0x80) {
       Tok t;
       t.kind = TK_PUNCT;
-      t.text = std::string(1, (char)c);
+      t.source(s, start, 1);
       t.pos = start;
       out->push_back(std::move(t));
       ++i;
@@ -318,6 +342,7 @@ bool parse_float_list(std::string_view body, std::vector<float>* out) {
   if (out->capacity() == 0) out->reserve(body.size() / 8 + 4);
   const size_t n = body.size();
   size_t i = 0;
+  std::string compatible;
   while (i < n) {
     while (i < n && is_space((unsigned char)body[i])) ++i;
     if (i >= n) break;
@@ -333,9 +358,14 @@ bool parse_float_list(std::string_view body, std::vector<float>* out) {
     } else {
       // Keep strtof's leading plus, hexadecimal and underflow-to-zero forms.
       // In particular, from_chars may successfully consume only the 0 in 0x1.
+      // Unlike a token-owned string, a borrowed span need not end in NUL.
+      // Keep the uncommon compatibility parser bounded to the same body.
+      // Materialise at most once: a vector containing many plus/hexadecimal
+      // coordinates must not repeatedly copy the remaining input suffix.
+      if (compatible.empty()) compatible.assign(body);
       char* compatible_end = nullptr;
-      stored = std::strtof(begin, &compatible_end);
-      endp = compatible_end;
+      stored = std::strtof(compatible.c_str()+i, &compatible_end);
+      endp = begin + (compatible_end-(compatible.c_str()+i));
     }
     if (endp == begin || !std::isfinite(stored)) return false;
     out->push_back(stored);
@@ -354,7 +384,7 @@ bool parse_float_list(std::string_view body, std::vector<float>* out) {
 
 // A quoted string that looks like '[1.0, 2, -3.5]' becomes a VECTOR value;
 // anything else stays a VARCHAR.
-Value value_from_string(const std::string& raw) {
+Value value_from_string(std::string_view raw) {
   // Trim and bracket stripping stay views: the byte range is examined in place.
   size_t b = 0, e = raw.size();
   while (b < e && is_space((unsigned char)raw[b])) ++b;
@@ -363,11 +393,11 @@ Value value_from_string(const std::string& raw) {
     std::vector<float> v;
     if (parse_float_list(std::string_view(raw.data() + b + 1, e - b - 2), &v)) {
       Value result = Value::ofVec(std::move(v));
-      result.s = raw;  // retain quoted spelling for a VARCHAR destination
+      result.s.assign(raw);  // retain owned spelling for a VARCHAR destination
       return result;
     }
   }
-  return Value::ofStr(raw);
+  return Value::ofStr(std::string(raw));
 }
 
 // Keywords that may never be used as a bare table/column name.
@@ -427,19 +457,21 @@ class Parser {
  private:
   // token access
   const Tok& cur() const { return t_[i_]; }
+  std::string_view text(const Tok& token) const { return token.view(sql_); }
+  std::string_view text() const { return text(cur()); }
   void adv() {
     if (i_ + 1 < t_.size()) ++i_;
   }
   bool at_end() const { return cur().kind == TK_END; }
   bool is_kw(const char* kw) const {
-    return cur().kind == TK_IDENT && !cur().quoted && to_upper(cur().text) == kw;
+    return cur().kind == TK_IDENT && !cur().quoted && to_upper(text()) == kw;
   }
   bool accept_kw(const char* kw) {
     if (!is_kw(kw)) return false;
     adv();
     return true;
   }
-  bool is_punct(const char* p) const { return cur().kind == TK_PUNCT && cur().text == p; }
+  bool is_punct(const char* p) const { return cur().kind == TK_PUNCT && text() == p; }
   bool accept_punct(const char* p) {
     if (!is_punct(p)) return false;
     adv();
@@ -455,7 +487,7 @@ class Parser {
   // primitives
   std::string ident(const char* ctx);
   int64_t int_literal(const char* ctx);
-  int64_t decode_int(const std::string& digits, bool neg, size_t near_tok) const;
+  int64_t decode_int(std::string_view spelling, bool neg, size_t near_tok) const;
   LiteralJob scan_value(const char* ctx);
   void materialize_into(const LiteralJob& job, Value* dest) const;
   Value parse_value(const char* ctx);
@@ -522,14 +554,17 @@ void Parser::expect_punct(const char* p, const char* ctx) {
 
 std::string Parser::ident(const char* ctx) {
   if (cur().kind != TK_IDENT) syntax_error(std::string("expected ") + ctx);
-  if (!cur().quoted && is_name_reserved(to_upper(cur().text)))
-    syntax_error(std::string("expected ") + ctx + ", found keyword '" + cur().text + "'");
-  std::string r = cur().text;
+  if (!cur().quoted && is_name_reserved(to_upper(text())))
+    syntax_error(std::string("expected ") + ctx + ", found keyword '" + std::string(text()) + "'");
+  std::string r(text());
   adv();
   return r;
 }
 
-int64_t Parser::decode_int(const std::string& digits, bool neg, size_t near_tok) const {
+int64_t Parser::decode_int(std::string_view spelling, bool neg, size_t near_tok) const {
+  // Preserve strtoull's existing range and diagnostic behavior; only this
+  // small integer token needs a NUL-terminated compatibility copy.
+  const std::string digits(spelling);
   errno = 0;
   char* endp = nullptr;
   const unsigned long long u = std::strtoull(digits.c_str(), &endp, 10);
@@ -547,8 +582,7 @@ int64_t Parser::decode_int(const std::string& digits, bool neg, size_t near_tok)
 
 int64_t Parser::int_literal(const char* ctx) {
   if (cur().kind != TK_INT) syntax_error(std::string("expected an integer literal for ") + ctx);
-  // strtoull needs a stable string; copy before advancing.
-  std::string digits = cur().text;
+  const std::string_view digits = text();
   adv();
   return decode_int(digits, false, i_);
 }
@@ -577,7 +611,7 @@ LiteralJob Parser::scan_value(const char* ctx) {
   }
   if (job.neg) syntax_error("expected a number after '-'");
   if (cur().kind == TK_NUM)
-    syntax_error("floating point literal '" + cur().text +
+    syntax_error("floating point literal '" + std::string(text()) +
                  "' is not a valid value; use an integer, a quoted string or '[..]'");
   if (is_kw("NULL")) syntax_error("NULL is not supported; supply a concrete value");
   if (is_kw("TRUE") || is_kw("FALSE")) syntax_error("boolean literals are not supported");
@@ -593,13 +627,13 @@ LiteralJob Parser::scan_value(const char* ctx) {
 void Parser::materialize_into(const LiteralJob& job, Value* dest) const {
   const Tok& tok = *job.tok;
   if (tok.kind == TK_INT) {
-    *dest = Value::ofInt(decode_int(tok.text, job.neg, job.near_tok));
+    *dest = Value::ofInt(decode_int(text(tok), job.neg, job.near_tok));
   } else if (tok.kind == TK_STR) {
-    *dest = value_from_string(tok.text);
+    *dest = value_from_string(text(tok));
   } else {
     std::vector<float> v;
-    if (!parse_float_list(std::string_view(tok.text), &v))
-      syntax_error_at(job.near_tok, "invalid vector literal '[" + tok.text + "]'");
+    if (!parse_float_list(text(tok), &v))
+      syntax_error_at(job.near_tok, "invalid vector literal '[" + std::string(text(tok)) + "]'");
     *dest = Value::ofVec(std::move(v));
   }
 }
@@ -612,14 +646,14 @@ Value Parser::parse_value(const char* ctx) {
 
 std::vector<float> Parser::parse_query_vector() {
   if (cur().kind == TK_VEC) {
-    const std::string& body = cur().text;
+    const std::string_view body = text();
     adv();
     std::vector<float> v;
-    if (!parse_float_list(std::string_view(body), &v)) syntax_error("invalid vector literal '[" + body + "]'");
+    if (!parse_float_list(body, &v)) syntax_error("invalid vector literal '[" + std::string(body) + "]'");
     return v;
   }
   if (cur().kind == TK_STR) {
-    const std::string& s = cur().text;
+    const std::string_view s = text();
     adv();
     size_t b = 0, e = s.size();
     while (b < e && is_space((unsigned char)s[b])) ++b;
@@ -628,7 +662,7 @@ std::vector<float> Parser::parse_query_vector() {
       std::vector<float> v;
       if (parse_float_list(std::string_view(s.data() + b + 1, e - b - 2), &v)) return v;
     }
-    syntax_error("invalid vector literal '" + s + "'");
+    syntax_error("invalid vector literal '" + std::string(s) + "'");
   }
   syntax_error("expected a vector literal such as '[1.0,2.0]'");
 }
@@ -642,7 +676,7 @@ void Parser::run(Statement* st) {
     return;
   }
   if (cur().kind != TK_IDENT || cur().quoted) syntax_error("expected a SQL statement");
-  const std::string w = to_upper(cur().text);
+  const std::string w = to_upper(text());
   adv();
 
   if (w == "CREATE") {
@@ -803,7 +837,7 @@ Column Parser::parse_column_def() {
       syntax_error("invalid VECTOR dimension " + std::to_string(dim) + " (expected 1..65536)");
     c.len = (int32_t)dim;
   } else if (cur().kind == TK_IDENT) {
-    syntax_error("unknown column type '" + cur().text +
+    syntax_error("unknown column type '" + std::string(text()) +
                  "' (expected BIGINT, INT, VARCHAR(n) or VECTOR(n))");
   } else {
     syntax_error("expected a column type after '" + c.name + "'");
@@ -832,7 +866,7 @@ Column Parser::parse_column_def() {
     if (is_kw("UNIQUE") || is_kw("DEFAULT") || is_kw("COMMENT") || is_kw("CHECK") ||
         is_kw("REFERENCES") || is_kw("COLLATE") || is_kw("UNSIGNED") || is_kw("ZEROFILL") ||
         is_kw("KEY") || is_kw("INDEX") || is_kw("GENERATED")) {
-      not_supported("column constraint '" + to_upper(cur().text) + "'");
+      not_supported("column constraint '" + to_upper(text()) + "'");
     }
     break;
   }
@@ -976,10 +1010,10 @@ SelectItem Parser::parse_select_item() {
   if (cur().kind != TK_IDENT) syntax_error("expected a column name in the select list");
 
   if (cur().quoted) {
-    it.column = cur().text;
+    it.column.assign(text());
     adv();
   } else {
-    const std::string up = to_upper(cur().text);
+    const std::string up = to_upper(text());
     if (up == "L2_DISTANCE" || up == "L2_DIST") {
       adv();
       expect_punct("(", "L2_DISTANCE");
@@ -989,16 +1023,16 @@ SelectItem Parser::parse_select_item() {
       it.query = parse_query_vector();
       expect_punct(")", "L2_DISTANCE");
     } else if (is_name_reserved(up)) {
-      syntax_error("expected a column name in the select list, found keyword '" + cur().text + "'");
+      syntax_error("expected a column name in the select list, found keyword '" + std::string(text()) + "'");
     } else {
-      it.column = cur().text;
+      it.column.assign(text());
       adv();
     }
   }
   if (accept_kw("AS")) {
     it.alias = ident("an alias");
   } else if (cur().kind == TK_IDENT &&
-             (cur().quoted || !is_clause_word(to_upper(cur().text)))) {
+             (cur().quoted || !is_clause_word(to_upper(text())))) {
     it.alias = ident("an alias");
   }
   if (is_punct("(")) not_supported("function calls other than L2_DISTANCE");
@@ -1032,7 +1066,7 @@ void Parser::parse_select(Statement* st) {
     not_supported("JOIN");
   if (is_punct(",")) not_supported("selecting from multiple tables (comma join)");
   if (cur().kind == TK_IDENT) {
-    const std::string up = cur().quoted ? std::string() : to_upper(cur().text);
+    const std::string up = cur().quoted ? std::string() : to_upper(text());
     if (cur().quoted || !is_clause_word(up)) adv();  // optional alias, unused
   }
 
@@ -1104,7 +1138,7 @@ void Parser::parse_delete(Statement* st) {
   expect_kw("FROM", "DELETE");
   st->table = ident("a table name");
   if (is_punct(",")) not_supported("multi-table DELETE");
-  if (cur().kind == TK_IDENT && !is_clause_word(cur().quoted ? std::string() : to_upper(cur().text)))
+  if (cur().kind == TK_IDENT && !is_clause_word(cur().quoted ? std::string() : to_upper(text())))
     not_supported("DELETE with a table alias");
   if (accept_kw("WHERE")) parse_where(st);
   if (is_kw("ORDER")) not_supported("ORDER BY in DELETE");
@@ -1133,7 +1167,7 @@ Cond Parser::parse_cond() {
   Cond c;
   c.column = ident("a column name in WHERE");
   if (cur().kind == TK_PUNCT) {
-    const std::string& p = cur().text;
+    const std::string_view p = text();
     if (p == "=") c.op = Cond::EQ;
     else if (p == "<>") c.op = Cond::NE;
     else if (p == "!=") c.op = Cond::NE;
@@ -1141,7 +1175,7 @@ Cond Parser::parse_cond() {
     else if (p == "<=") c.op = Cond::LE;
     else if (p == ">") c.op = Cond::GT;
     else if (p == ">=") c.op = Cond::GE;
-    else syntax_error("expected a comparison operator, found '" + p + "'");
+    else syntax_error("expected a comparison operator, found '" + std::string(p) + "'");
     adv();
   } else if (is_kw("IS")) {
     not_supported("IS NULL / IS NOT NULL");

@@ -1,5 +1,6 @@
 #pragma once
 #include "distance.h"
+#include <algorithm>
 #include <vector>
 
 namespace mvdb {
@@ -21,7 +22,38 @@ inline bool power_of_two(double step) {
   const uint64_t fraction=bits&0x000fffffffffffffull;
   return (bits>>52) ? fraction==0 : (fraction && !(fraction&(fraction-1)));
 }
-inline bool encode(float value,double step,int8_t* out) {
+inline double up(double x) {
+  return std::isfinite(x) ? distance_detail::positive_neighbors(x).upper : x;
+}
+// Accumulate an upper bound on ||value/step-code||, in code units. The caller
+// supplies the complete encoded row, in the normal FP environment, with a
+// power-of-two step whose square is positive and finite. Scaling a finite
+// binary32 into the code range is then exact in binary64. Every subsequent
+// subtraction, square, addition and square root is rounded outwards; even an
+// underflowed square is covered by its positive successor. Zero error is exact.
+class ResidualNormUpper {
+ public:
+  void add(double scaled,int8_t code) {
+    if(squared_<0)return;
+    const double delta=std::fabs(scaled-static_cast<double>(code));
+    if(!std::isfinite(scaled) || scaled < -127 || scaled > 127 ||
+       code < -127 || !(delta<=0.5)) {squared_=-1;return;}
+    if(delta==0)return;
+    const double error=up(delta);
+    squared_=up(squared_+up(error*error));
+  }
+  double radius(size_t n) const {
+    if(!(squared_>=0) || !std::isfinite(squared_) || n>65536)return -1;
+    if(squared_==0)return 0;
+    // Both quantities bound the same norm; the second follows directly from
+    // each encoded coordinate's half-step error and prevents accumulated
+    // rounding from making this optional bound worse than the original one.
+    return std::min(up(std::sqrt(squared_)),up(std::sqrt(static_cast<double>(n)))*0.5);
+  }
+ private:
+  double squared_=0;
+};
+inline bool encode(float value,double step,int8_t* out,ResidualNormUpper* residual=nullptr) {
   if(!out || !std::isfinite(value))return false;
   const double scaled=static_cast<double>(value)/step;
   if(!std::isfinite(scaled) || scaled < -127 || scaled > 127)return false;
@@ -30,6 +62,7 @@ inline bool encode(float value,double step,int8_t* out) {
   // Truncation therefore rounds nearest with half ties away from zero.
   const int code=static_cast<int>(scaled+(scaled>=0 ? 0.5 : -0.5));
   *out=static_cast<int8_t>(code);
+  if(residual)residual->add(scaled,*out);
   return true;
 }
 inline uint32_t distance_scalar(const int8_t* a,const int8_t* b,size_t n) {
@@ -110,9 +143,6 @@ inline Distance choose_distance() {
 #endif
   return distance_scalar;
 }
-inline double up(double x) {
-  return std::isfinite(x) ? distance_detail::positive_neighbors(x).upper : x;
-}
 } // namespace quantized_detail
 
 // Zero signals unavailable/invalid input; zero-valued data uses unit step.
@@ -127,10 +157,11 @@ inline double quantization_step(double max_abs) {
   if(max_abs/step>127)step*=2;
   return quantized_detail::power_of_two(step) ? step : 0;
 }
-inline bool quantize_coordinate(float value,double step,int8_t* out) {
+inline bool quantize_coordinate(float value,double step,int8_t* out,
+                                quantized_detail::ResidualNormUpper* residual=nullptr) {
   return quantized_detail::normal_fp_environment() &&
          quantized_detail::power_of_two(step) &&
-         quantized_detail::encode(value,step,out);
+         quantized_detail::encode(value,step,out,residual);
 }
 
 // Exact integer distance for n<=65536. Invalid length returns conservative zero.
@@ -145,23 +176,39 @@ inline uint32_t quantized_distance_squared(const int8_t* a,const int8_t* b,size_
 // is mutable and this object must not be shared between concurrent threads.
 class QuantizedQueryBound {
  public:
-  QuantizedQueryBound(const float* query,size_t n,double step):n_(n) {
+  // A nonnegative max_row_error must upper-bound every encoded row's residual
+  // norm in code units. Unknown (-1, the default) retains the original bound.
+  QuantizedQueryBound(const float* query,size_t n,double step,double max_row_error=-1):n_(n) {
 #if !defined(MVDB_DISABLE_QUANTIZED_BOUND)
     if(!query || n<16 || n>65536 || !quantized_detail::normal_fp_environment() ||
        !quantized_detail::power_of_two(step))return;
     step_squared_=step*step;
     if(!(step_squared_>0) || !std::isfinite(step_squared_))return;
     try {query_.resize(n);} catch(const std::bad_alloc&) {return;}
+    root_n_=quantized_detail::up(std::sqrt(static_cast<double>(n)));
+    error_radius_=root_n_;
+    quantized_detail::ResidualNormUpper residual;
+    quantized_detail::ResidualNormUpper* collect=nullptr;
+#ifndef MVDB_DISABLE_RESIDUAL_BOUND
+    if(std::isfinite(max_row_error) && max_row_error>=0 && max_row_error<=root_n_*0.5)
+      collect=&residual;
+#else
+    (void)max_row_error;
+#endif
     for(size_t i=0;i<n;++i) {
-      if(!quantized_detail::encode(query[i],step,&query_[i])) {
+      if(!quantized_detail::encode(query[i],step,&query_[i],collect)) {
         std::vector<int8_t>().swap(query_);return;
       }
     }
-    root_n_=quantized_detail::up(std::sqrt(static_cast<double>(n)));
+    if(collect) {
+      const double query_error=residual.radius(n);
+      if(query_error>=0)
+        error_radius_=std::min(root_n_,quantized_detail::up(max_row_error+query_error));
+    }
     kernel_=quantized_detail::choose_distance();
     enabled_=true;
 #else
-    (void)query;(void)step;
+    (void)query;(void)step;(void)max_row_error;
 #endif
   }
   bool enabled() const {return enabled_;}
@@ -176,7 +223,8 @@ class QuantizedQueryBound {
   void update_cap(double threshold) const {
     cached_=true;cached_threshold_=threshold;usable_cap_=false;
     // X=c*A+eX and Q=c*B+eQ, with each coordinate error <=c/2.
-    // Hence ||X-Q|| >= c*(sqrt(Qint)-sqrt(n)).
+    // Hence ||X-Q|| >= c*(sqrt(Qint)-R), where R bounds the sum of
+    // residual norms in code units. Without measured radii, R=sqrt(n).
     // Tu is the successor of the canonical threshold. If Qint exceeds this
     // outward-rounded cap, the real squared distance exceeds Tu, so its
     // correctly rounded double is strictly greater than threshold.
@@ -186,13 +234,13 @@ class QuantizedQueryBound {
     if(!std::isfinite(scaled))return;
     const double root=quantized_detail::up(std::sqrt(scaled));
     if(!std::isfinite(root) || root<4*root_n_)return; // performance fallback only
-    const double sum=quantized_detail::up(root+root_n_);
+    const double sum=quantized_detail::up(root+error_radius_);
     cap_=quantized_detail::up(sum*sum);
     usable_cap_=std::isfinite(cap_);
   }
   size_t n_=0;
   bool enabled_=false;
-  double step_squared_=0,root_n_=0;
+  double step_squared_=0,root_n_=0,error_radius_=0;
   quantized_detail::Distance kernel_=nullptr;
   std::vector<int8_t> query_;
   mutable bool cached_=false,usable_cap_=false;

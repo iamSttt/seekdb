@@ -257,6 +257,19 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           return false;
         }
       }
+      auto copy_insert_value = [&](const Value& value,size_t column) {
+#ifndef MVDB_KEEP_INSERT_TEXT
+        // The parser keeps a quoted vector's original spelling for VARCHAR
+        // destinations. A VECTOR column validates only the numeric payload and
+        // check_value() discards that spelling; avoid copying it just to free it.
+        // The AST remains untouched and all type/dimension checks still run.
+        if (sch.cols[column].type==Type::VECTOR && value.type==Type::VECTOR)
+          return Value::ofVec(value.v);
+#else
+        (void)column;
+#endif
+        return value;
+      };
       int64_t n = 0;
       for (auto& row : st.rows) {
         if (row.size() != pos.size()) {
@@ -265,14 +278,24 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           return false;
         }
         if (pos.size() == sch.cols.size() && st.columns.empty()) {
+#ifdef MVDB_KEEP_INSERT_TEXT
           if (!db.insert(st.table, row, err, code)) {
+#else
+          // Build the owned storage input once. Passing an AST lvalue to the
+          // by-value insert API would first copy every redundant spelling.
+          std::vector<Value> owned;
+          owned.reserve(row.size());
+          for(size_t column=0;column<row.size();++column)
+            owned.push_back(copy_insert_value(row[column],column));
+          if (!db.insert(st.table, std::move(owned), err, code)) {
+#endif
             return false;
           }
         } else {
           std::vector<Value> full(sch.cols.size());
           std::vector<uint8_t> filled(sch.cols.size(), 0);
           for (size_t k = 0; k < pos.size(); ++k) {
-            full[pos[k]] = row[k];
+            full[pos[k]] = copy_insert_value(row[k],static_cast<size_t>(pos[k]));
             filled[pos[k]] = 1;
           }
           for (size_t k = 0; k < full.size(); ++k) {
@@ -282,7 +305,11 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   return false;
             }
           }
+#ifdef MVDB_KEEP_INSERT_TEXT
           if (!db.insert(st.table, full, err, code)) {
+#else
+          if (!db.insert(st.table, std::move(full), err, code)) {
+#endif
             return false;
           }
         }
@@ -570,7 +597,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 // One bound object per half: both cache their current threshold.
                 const DistanceBoundContext bound(dimension);
                 const QuantizedQueryBound quantized(query,dimension,
-                    view.quantized ? view.quantization_step : 0);
+                    view.quantized ? view.quantization_step : 0,view.quantization_error_radius);
                 std::vector<Candidate>& heap=halves[worker];
                 for(size_t i=first;i<last;++i) {
                   // Integer codes are only a certified rejection filter, taken
@@ -594,7 +621,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 for(auto& candidate:halves[worker])offer(std::move(candidate));
             } else {
               const QuantizedQueryBound quantized(order.qvec->data(),view.dimension,
-                  bounded && !st.order_desc && view.quantized ? view.quantization_step : 0);
+                  bounded && !st.order_desc && view.quantized ? view.quantization_step : 0,
+                  view.quantization_error_radius);
               auto scan_ordinal=[&](size_t i) {
                 // Integer codes are only a certified rejection filter. Every
                 // uncertain row follows the existing float bound/exact path.
@@ -623,7 +651,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 filtered_view.quantized && bounded && !st.order_desc;
             std::unique_ptr<QuantizedQueryBound> filtered_bound;
             if(resident) filtered_bound.reset(new QuantizedQueryBound(order.qvec->data(),
-                filtered_view.dimension,filtered_view.quantization_step));
+                filtered_view.dimension,filtered_view.quantization_step,
+                filtered_view.quantization_error_radius));
             const bool filtered_reject=resident && filtered_bound->enabled();
             double threshold=std::numeric_limits<double>::infinity();
             auto consider_filtered=[&](int64_t pk,const float* v,size_t dim) {

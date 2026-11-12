@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -27,7 +28,9 @@ static void insert(Database& db,int64_t id) {
       Value::ofVec({float(id),1,2,3,4})},&err,&code));
 }
 static void check_quantized_view(const FlatIndex::ResidentView& view) {
-  if(!view.quantized) {assert(view.quantization_step==0);return;}
+  if(!view.quantized) {
+    assert(view.quantization_step==0 && view.quantization_error_radius==-1);return;
+  }
   assert(view.count && view.dimension>=16 && view.dimension<=65536);
   assert(view.quantization_step>0 && std::isfinite(view.quantization_step));
   for(size_t i=0;i<view.count*view.dimension;++i) {
@@ -37,6 +40,20 @@ static void check_quantized_view(const FlatIndex::ResidentView& view) {
         static_cast<long double>(view.quantized[i])*static_cast<long double>(view.quantization_step));
     assert(error<=static_cast<long double>(view.quantization_step)*0.5L);
   }
+#ifndef MVDB_DISABLE_RESIDUAL_BOUND
+  assert(view.quantization_error_radius>=0 && std::isfinite(view.quantization_error_radius));
+  for(size_t row=0;row<view.count;++row) {
+    long double squared=0;
+    for(size_t d=0;d<view.dimension;++d) {
+      const long double error=static_cast<long double>(view.rows[row][d])/view.quantization_step-
+          view.quantized[row*view.dimension+d];
+      squared+=error*error;
+    }
+    assert(static_cast<long double>(view.quantization_error_radius)*view.quantization_error_radius>=squared);
+  }
+#else
+  assert(view.quantization_error_radius==-1);
+#endif
 }
 static void check_view(Database& db) {
   const Table* table=db.table("t");assert(table);
@@ -50,7 +67,7 @@ static void check_view(Database& db) {
   }
   if(!available) {
     assert(!view.rows && !view.keys && !view.dimension && !view.count);
-    assert(!view.quantized && view.quantization_step==0);
+    assert(!view.quantized && view.quantization_step==0 && view.quantization_error_radius==-1);
     return;
   }
   std::map<int64_t,std::vector<float>> expected,actual;
@@ -178,6 +195,30 @@ static void quantized_index_regression() {
   // Exactly 4 MiB is eligible; one further row must retain only float storage.
   verify_physical(65536,64,32u<<20,true);
   verify_physical(65536,65,32u<<20,false);
+  // An unready view and a failed optional quantization must never expose a
+  // stale radius. Non-finite data leaves the exact float scan available.
+  for(float invalid:{std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()}) {
+    FlatIndex index(path,128,1,4096);
+    FlatIndex::ResidentView view;view.quantization_error_radius=99;
+    assert(!index.resident_view(&view) && view.quantization_error_radius==-1);
+    std::vector<float> values(128,0.1f);values[127]=invalid;
+    index.add(1,0,values.data(),values.size());index.finish();
+    assert(index.resident_view(&view));check_quantized_view(view);
+    assert(!view.quantized && view.quantization_error_radius==-1);
+  }
+  {
+    FlatIndex index(path,128,4,4096);
+    std::vector<float> values(4*128);
+    for(size_t row=0;row<4;++row) {
+      for(size_t d=0;d<128;++d)values[row*128+d]=float(int((row*17+d*5)%127)-63)*0.123f;
+      index.add(row,row,values.data()+row*128,128);
+    }
+    index.finish();FlatIndex::ResidentView view;
+    assert(index.resident_view(&view));check_quantized_view(view);
+#if !defined(MVDB_DISABLE_QUANTIZED_BOUND) && !defined(MVDB_DISABLE_RESIDUAL_BOUND)
+    assert(view.quantization_error_radius>0 && view.quantization_error_radius<std::sqrt(128.0)*0.5);
+#endif
+  }
 
   Database db;assert(db.open(path,&err));auto cols=schema();cols[2].len=16;
   assert(db.create_table("q",cols,&err,&code));
@@ -205,7 +246,8 @@ static void quantized_index_regression() {
     });assert(actual==expected);
     // A failed request must clear every borrowed code pointer as well.
     assert(!db.resident_vector_view("missing",&view));
-    assert(!view.quantized && !view.quantization_step && !view.rows && !view.keys);
+    assert(!view.quantized && !view.quantization_step && !view.rows && !view.keys &&
+           view.quantization_error_radius==-1);
   };
   verify_database();assert(db.begin(&err,&code));add(7,0.75f);
   assert(!db.table("q")->vector_index);verify_database();

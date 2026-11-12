@@ -298,6 +298,89 @@ static void test_float32_literals() {
   }
 }
 
+static void test_token_lifetimes() {
+  std::printf("\n-- borrowed token spans and owned AST lifetime\n");
+  Statement st;std::string error;int code=0;
+  for(bool retain_raw:{false,true}) {
+    std::string sql="INSERT INTO `t``a` (`i`,`short`,`v`,`looks`) VALUES ";
+    for(int row=0;row<256;++row) {
+      if(row)sql+=',';
+      // Mix borrowed tokens with short decoded strings. Repeated token-vector
+      // growth must not leave views into moved small-string buffers.
+      sql+='('+std::to_string(row)+",'a\\nb''c','[-0,0x1p-149,+1.5]',' [1, 2] ')";
+    }
+    const std::string original=sql;
+    const bool parsed=parse_sql(sql,&st,&error,&code,retain_raw);
+    CHECK(parsed);
+    sql.assign(sql.size(),'x');std::string().swap(sql);
+    // A copied/moved public AST also outlives both input and parser workers.
+    Statement copy=st;st=Statement();st=std::move(copy);
+    CHECK(st.table=="t`a" && st.columns.size()==4 && st.rows.size()==256);
+    CHECK(st.raw==(retain_raw?original:std::string()));
+    if(st.rows.size()!=256 || st.columns.size()!=4)continue;
+    CHECK(st.columns[1].name=="short" && st.columns[2].name=="v");
+    for(size_t row=0;row<st.rows.size();++row) {
+      const auto& values=st.rows[row];
+      CHECK(values.size()==4);
+      if(values.size()!=4)continue;
+      CHECK(values[0].type==Type::BIGINT && values[0].i==static_cast<int64_t>(row));
+      CHECK(values[1].type==Type::VARCHAR && values[1].s=="a\nb'c");
+      CHECK(values[2].type==Type::VECTOR && values[2].v.size()==3);
+      if(values[2].v.size()==3) {
+        CHECK(float_bits(values[2].v[0])==0x80000000u);
+        CHECK(float_bits(values[2].v[1])==0x00000001u);
+        CHECK(float_bits(values[2].v[2])==0x3fc00000u);
+      }
+      CHECK(values[2].s=="[-0,0x1p-149,+1.5]");
+      CHECK(values[3].type==Type::VECTOR && values[3].s==" [1, 2] ");
+    }
+  }
+  {
+    std::string sql="SELECT `c``d` AS `alias`,L2_DISTANCE(v,'[+0x1p-149,-1e-9999]') AS d "
+                    "FROM `table` WHERE s='left";
+    sql.push_back('\0');sql+="right' ORDER BY d LIMIT 1";
+    CHECK(parse_sql(sql,&st,&error,&code,false));
+    sql.assign(sql.size(),'z');std::string().swap(sql);
+    CHECK(st.table=="table" && st.items.size()==2 && st.conds.size()==1);
+    if(st.items.size()==2 && st.conds.size()==1) {
+      CHECK(st.items[0].column=="c`d" && st.items[0].alias=="alias");
+      CHECK(st.items[1].query.size()==2);
+      if(st.items[1].query.size()==2) {
+        CHECK(float_bits(st.items[1].query[0])==1u);
+        CHECK(float_bits(st.items[1].query[1])==0x80000000u);
+      }
+      CHECK(st.conds[0].value.s==std::string("left\0right",10));
+    }
+  }
+  {
+    // An embedded NUL does not terminate a borrowed literal. It still makes
+    // vector conversion fail, while INSERT retains the complete VARCHAR bytes.
+    const std::string body("1\0,2",4);
+    const std::string literal="["+body+"]";
+    CHECK(parse_sql("INSERT INTO t VALUES ('"+literal+"')",&st,&error,&code,false));
+    CHECK(st.rows.size()==1 && AT(st.rows,0).size()==1 &&
+          AT(AT(st.rows,0),0).type==Type::VARCHAR && AT(AT(st.rows,0),0).s==literal);
+    CHECK(!parse_sql("SELECT L2_DISTANCE(v,'"+literal+"') FROM t",&st,&error,&code,false));
+    CHECK(code==1064);
+  }
+  {
+    // A completed batch exercises worker failure propagation. The same literal
+    // error also wins over a later structural error in an incomplete batch.
+    std::string sql="INSERT INTO t VALUES ";
+    for(int row=0;row<32;++row) {
+      if(row)sql+=',';
+      sql+='('+std::string(row==17?"9223372036854775808":"7")+")";
+    }
+    CHECK(!parse_sql(sql,&st,&error,&code,false));
+    CHECK(code==1064 && error.find("integer literal '9223372036854775808' is out of range")!=std::string::npos);
+    sql+=",(";
+    CHECK(!parse_sql(sql,&st,&error,&code,false));
+    CHECK(code==1064 && error.find("integer literal '9223372036854775808' is out of range")!=std::string::npos);
+    CHECK(parse_sql("SELECT id FROM t WHERE id=7 LIMIT 1",&st,&error,&code,false));
+    CHECK(st.items.size()==1 && st.limit==1 && error.empty() && code==0);
+  }
+}
+
 static void test_raw_retention() {
   Statement st;
   std::string error;
@@ -332,6 +415,7 @@ int main() {
   std::setvbuf(stdout, nullptr, _IONBF, 0);  // keep partial output on any crash
   test_float32_literals();
   test_raw_retention();
+  test_token_lifetimes();
 
   // ---------------------------------------------------------------- CREATE --
   {

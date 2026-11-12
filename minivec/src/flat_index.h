@@ -35,6 +35,8 @@ class FlatIndex {
     size_t dimension=0,count=0;
     const int8_t* quantized=nullptr;
     double quantization_step=0;
+    // Maximum encoded-row residual norm, in code units; -1 means unknown.
+    double quantization_error_radius=-1;
   };
   FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t memory_budget);
   ~FlatIndex();
@@ -89,6 +91,7 @@ class FlatIndex {
   std::unique_ptr<int8_t[]> quantized_;
   size_t quantized_budget_=0;
   double quantization_step_=0;
+  double quantization_error_radius_=-1;
   size_t posting_budget_=0,posting_column_=0;
   bool postings_ready_=false;
   std::vector<int64_t> posting_values_;

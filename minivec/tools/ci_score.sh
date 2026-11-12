@@ -51,6 +51,14 @@ python3 minivec/tests/image_interactive.py --image "$IMAGE" --output protocol-re
 
 # Existing numeric transaction recovery and sorting regressions
 make -C minivec -j2 test 2>&1 | tee protocol-results/source-regressions.log
+MVDB_PARSE_THREADS=1 ./minivec/test_sql 2>&1 | tee protocol-results/parser-serial.log
+MVDB_PARSE_THREADS=2 ./minivec/test_sql 2>&1 | tee protocol-results/parser-parallel.log
+g++ -O2 -std=c++17 -pthread -Iminivec/src -DMVDB_DISABLE_RESIDUAL_BOUND \
+  minivec/tests/test_quantized_bound.cpp -o "$scratch/test-legacy-radius"
+"$scratch/test-legacy-radius" 2>&1 | tee protocol-results/legacy-radius.log
+g++ -O2 -std=c++17 -pthread -Iminivec/src -DMVDB_DISABLE_QUANTIZED_BOUND \
+  minivec/tests/test_quantized_bound.cpp -o "$scratch/test-no-quantization"
+"$scratch/test-no-quantization" 2>&1 | tee protocol-results/no-quantization.log
 python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --handshake-only --output protocol-results/source-handshake 2>&1 | tee protocol-results/source-handshake.log
 python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --output protocol-results/source-public 2>&1 | tee protocol-results/source-public.log
 
