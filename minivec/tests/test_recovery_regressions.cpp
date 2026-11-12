@@ -82,8 +82,14 @@ static void failed_payload_writes(const std::string& dir) {
   ok(d, "CREATE TABLE marker (id BIGINT PRIMARY KEY)");
   ok(d, "CREATE TABLE resident (id BIGINT PRIMARY KEY, s VARCHAR(65535))");
   ok(d, "INSERT INTO spill VALUES (1,'first')");
-  ok(d, "UPDATE spill SET s='" + std::string(8192, 'x') + "'");
+  // A small UPDATE now remains resident. Fill the bounded old-image allowance
+  // in one transaction so this fixture still exercises actual payload I/O.
+  ok(d, "BEGIN");
+  for(int i=0;i<256 && !d.table("spill")->payload_store;++i)
+    ok(d, "UPDATE spill SET s='" + std::string(8192, 'x') + "'");
+  assert(d.table("spill")->payload_store);
   ok(d, "UPDATE spill SET s='kept'");
+  ok(d, "COMMIT");
   const uint64_t kept_offset = d.table("spill")->payload_offsets[0];
   assert(kept_offset > 4096);
   assert(d.checkpoint(&error));
