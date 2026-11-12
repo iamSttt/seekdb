@@ -1,38 +1,7 @@
-# .dockerignore -- repository-root context (this is the context the grader uses)
-#
-# Canonical copy: minivec/tools/scaffold/dockerignore.root
-# `bash tools/ci.sh --sync` installs this file as <repo-root>/.dockerignore.
-#
-# The grader builds the image from the repository root, where our source lives
-# in minivec/. The rest of this repository (seekdb tree, CI, docs, evidence)
-# must never enter the build context: it is hundreds of megabytes and would slow
-# the build without being used.
-#
-# Whitelist, so the context is exactly: minivec/Makefile + minivec/src/**.
-# The Dockerfile accepts both layouts; this file is what keeps the root context
-# small. Any new build input directory under minivec/ needs a rule here --
-# `python3 tools/lint_packaging.py --repo <repo-root>` fails if one is missing.
 *
-!minivec
-!minivec/Makefile
-!minivec/src
+!Dockerfile
+!minivec/
+!minivec/src/
 !minivec/src/**
-
-# never ship: VCS, tests, tooling, docs, agent evidence, built artifacts
-.git
-.git/**
-.github
-.github/**
-minivec/.git
-minivec/tests
-minivec/tools
-minivec/docs
-minivec/agent
-agent
-agent/**
-minivec/minivec
-*.o
-*.a
-*.so
-**/data
-**/__pycache__
+!minivec/third_party/
+!minivec/third_party/**

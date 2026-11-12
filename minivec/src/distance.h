@@ -249,37 +249,8 @@ inline double bound_sum_avx2(const float* a,const float* b,size_t n) {
   for(;i<n;++i){const float d=a[i]-b[i];const float term=d*d;sum+=term;}
   return sum;
 }
-#if !defined(MVDB_DISABLE_AVX512_BOUND)
-// 32 float lanes per step. The analytic float bound in
-// float_sum_definitely_greater_cached assumes only a positive-term addition
-// tree with at most n-1 additions on any root path, which holds for any lane
-// width, so the shipped relative/absolute constants stay valid unchanged.
-__attribute__((target("avx512f,no-fma")))
-inline double bound_sum_avx512(const float* a,const float* b,size_t n) {
-  if(n<32)return bound_sum_avx2(a,b,n);
-  __m512 s0=_mm512_setzero_ps(),s1=_mm512_setzero_ps();
-  size_t i=0;
-  for(;i+32<=n;i+=32) {
-    const __m512 d0=_mm512_sub_ps(_mm512_loadu_ps(a+i),_mm512_loadu_ps(b+i));
-    const __m512 d1=_mm512_sub_ps(_mm512_loadu_ps(a+i+16),_mm512_loadu_ps(b+i+16));
-    s0=_mm512_add_ps(s0,_mm512_mul_ps(d0,d0));s1=_mm512_add_ps(s1,_mm512_mul_ps(d1,d1));
-  }
-  const __m512 combined=_mm512_add_ps(s0,s1);
-  __m256 half=_mm256_add_ps(_mm512_castps512_ps256(combined),
-                           _mm256_castpd_ps(_mm512_extractf64x4_pd(_mm512_castps_pd(combined),1)));
-  __m128 total=_mm_add_ps(_mm256_castps256_ps128(half),_mm256_extractf128_ps(half,1));
-  total=_mm_add_ps(total,_mm_movehl_ps(total,total));
-  total=_mm_add_ss(total,_mm_shuffle_ps(total,total,_MM_SHUFFLE(1,1,1,1)));
-  double sum=static_cast<double>(_mm_cvtss_f32(total));
-  for(;i<n;++i){const float d=a[i]-b[i];const float term=d*d;sum+=term;}
-  return sum;
-}
-#endif
 using BoundSum = double(*)(const float*,const float*,size_t);
 inline BoundSum choose_bound_sum() {
-#if !defined(MVDB_DISABLE_AVX512_BOUND)
-  if(__builtin_cpu_supports("avx512f"))return bound_sum_avx512;
-#endif
   if(__builtin_cpu_supports("avx2"))return bound_sum_avx2;
   if(__builtin_cpu_supports("sse2"))return bound_sum_sse2;
   return nullptr;
