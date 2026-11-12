@@ -44,7 +44,7 @@ struct Dataset { std::string table; size_t dim, queries; std::vector<Row> rows; 
 static void require(bool ok, const std::string& message) {
   if (!ok) throw std::runtime_error(message);
 }
-static std::string quoted(const std::string& text) {
+static std::string sql_quote(const std::string& text) {
   std::string result = "'";
   for (char ch : text) {
     if (ch == '\'' || ch == '\\') result += ch;
@@ -142,7 +142,7 @@ static void query(Phase& phase, const Dataset& data, Random& random, size_t numb
   for (size_t i = 0; i < std::min(k, ranked.size()); ++i)
     rows.push_back(Json::array({ranked[i].row->id, ranked[i].row->group}));
   phase.selected("SELECT id,g FROM " + data.table + where + " ORDER BY L2_DISTANCE(v," +
-      quoted(vector_sql(q)) + ") LIMIT " + std::to_string(k), {"id", "g"}, std::move(rows));
+      sql_quote(vector_sql(q)) + ") LIMIT " + std::to_string(k), {"id", "g"}, std::move(rows));
 }
 static void project(Phase& phase, const Dataset& data, size_t row_index) {
   const Row& row = data.rows.at(row_index);
@@ -172,9 +172,9 @@ static void populate(Phase& phase, Dataset& data, Random& random, size_t count) 
     for (size_t i = start; i < end; ++i) {
       const Row& row = data.rows[i];
       if (i != start) sql += ',';
-      const std::string v = quoted(vector_sql(row.vector));
-      sql += mapped ? "(" + v + "," + quoted(row.tag) + "," + std::to_string(row.group) + "," + std::to_string(row.id) + ")"
-                    : "(" + std::to_string(row.id) + "," + std::to_string(row.group) + "," + quoted(row.tag) + "," + v + ")";
+      const std::string v = sql_quote(vector_sql(row.vector));
+      sql += mapped ? "(" + v + "," + sql_quote(row.tag) + "," + std::to_string(row.group) + "," + std::to_string(row.id) + ")"
+                    : "(" + std::to_string(row.id) + "," + std::to_string(row.group) + "," + sql_quote(row.tag) + "," + v + ")";
     }
     phase.change(sql, static_cast<int64_t>(end - start));
   }
@@ -183,7 +183,7 @@ static void mutations(Phase& phase, Dataset& data, Random& random) {
   const Row first = data.rows[0], second = data.rows[1];
   phase.change("BEGIN");
   data.rows[0].vector = random.vector(data.dim);
-  phase.change("UPDATE " + data.table + " SET v=" + quoted(vector_sql(data.rows[0].vector)) + " WHERE id=1", 1);
+  phase.change("UPDATE " + data.table + " SET v=" + sql_quote(vector_sql(data.rows[0].vector)) + " WHERE id=1", 1);
   data.rows[1].group = 9;
   phase.change("UPDATE " + data.table + " SET g=9 WHERE id=2", 1);
   query(phase, data, random, 1); project(phase, data, 0); project(phase, data, 1);
@@ -191,12 +191,12 @@ static void mutations(Phase& phase, Dataset& data, Random& random) {
   data.rows[0] = first; data.rows[1] = second;
   project(phase, data, 0); project(phase, data, 1);
   data.rows[3].vector = random.vector(data.dim);
-  phase.change("UPDATE " + data.table + " SET v=" + quoted(vector_sql(data.rows[3].vector)) + " WHERE id=4", 1);
+  phase.change("UPDATE " + data.table + " SET v=" + sql_quote(vector_sql(data.rows[3].vector)) + " WHERE id=4", 1);
   phase.change("BEGIN");
   data.rows[4].tag = "committed-'text\\-行";
-  phase.change("UPDATE " + data.table + " SET s=" + quoted(data.rows[4].tag) + " WHERE id=5", 1);
+  phase.change("UPDATE " + data.table + " SET s=" + sql_quote(data.rows[4].tag) + " WHERE id=5", 1);
   phase.change("COMMIT");
-  phase.error("INSERT INTO " + data.table + " VALUES (1,0,'duplicate'," + quoted(vector_sql(data.rows[0].vector)) + ")");
+  phase.error("INSERT INTO " + data.table + " VALUES (1,0,'duplicate'," + sql_quote(vector_sql(data.rows[0].vector)) + ")");
   phase.error("INSERT INTO " + data.table + " VALUES (999999,0,'wrong dimension','[1,2,3]')");
   phase.selected("SELECT id FROM " + data.table + " WHERE id=999999", {"id"}, Json::array());
 }

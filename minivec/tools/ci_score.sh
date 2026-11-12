@@ -81,7 +81,9 @@ g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefi
 for threads in 1 2; do
   MVDB_PARSE_THREADS="$threads" ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/sql-san" 2>&1 | tee "$reports/sql-$threads-san.log"
 done
-g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_quantized_bound.cpp -o "$scratch/quantized-san"
+# Exercise AVX2 dot dispatch even when this runner also supports AVX512.
+# Native/release checks above retain normal CPU dispatch.
+g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -DMVDB_DISABLE_AVX512_QUANTIZED -Iminivec/src minivec/tests/test_quantized_bound.cpp -o "$scratch/quantized-san"
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/quantized-san" 2>&1 | tee "$reports/quantized-san.log"
 g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_recovery_regressions.cpp minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o "$scratch/recovery-san"
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/recovery-san" --wal-staging 2>&1 | tee "$reports/recovery-san.log"
@@ -94,6 +96,7 @@ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 tim
 # Budget and transactional before-image changes need their own sanitizer checks.
 for name in index_budget resident_update; do
   extra=(-DMVDB_TEST_WRAP_PWRITE -Wl,--wrap=pwrite)
+  if [ "$name" = index_budget ]; then extra+=(-DMVDB_DISABLE_AVX512_QUANTIZED); fi
   g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src "minivec/tests/test_${name}.cpp" minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp "${extra[@]}" -o "$scratch/${name}-san"
   ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 "$scratch/${name}-san" 2>&1 | tee "$reports/${name}-san.log"
   if [ "$name" = index_budget ]; then
@@ -128,6 +131,7 @@ report = {
         'full_binary_json_ubsan': True,
         'index_budget_and_resident_update_asan_ubsan': True
     },
+    'sanitizer_quantized_dispatch': 'AVX512 quantized disabled for quantized_bound and index_budget, so AVX2-capable runners exercise optional dot/norm paths; native and release tests retain default dispatch.',
     'limitations': ['No hidden formal cases or score.',
                     'No new paired performance measurement.',
                     'WAL fixture injects short/failed writes; not fdatasync or allocation failure.',

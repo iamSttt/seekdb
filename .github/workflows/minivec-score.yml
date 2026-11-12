@@ -19,7 +19,7 @@ jobs:
           if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
           if [ -d protocol-results ]; then find protocol-results -name "*.stderr.log" -exec tail -30 {} \;; fi
   paired-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -78,3 +78,13 @@ jobs:
           fetch-depth: 0
       - name: Profile-guided build, correctness and paired measurement
         run: bash minivec/tools/ci_pgo.sh
+  dot-avx2-performance:
+    if: ${{ contains(github.event.head_commit.message, '[dot-avx2]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Forced AVX2 integer dispatcher and dot ablation
+        run: bash minivec/tools/ci_dot_avx2.sh
