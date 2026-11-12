@@ -118,6 +118,26 @@ class OracleTests(unittest.TestCase):
 
 
 class ReportTests(unittest.TestCase):
+    def test_environment_snapshot_excludes_unrelated_prefixed_values(self):
+        with patch.dict(benchmark.os.environ, {"MVDB_QUERY_THREADS": "1", "MVDB_PARSE_THREADS": "2",
+                                              "MVDB_SECRET_KEY": "must-not-publish", "OTHER_SECRET": "hidden"},
+                        clear=True):
+            self.assertEqual(benchmark.runtime_environment(), {"MVDB_QUERY_THREADS": "1", "MVDB_PARSE_THREADS": "2"})
+
+    def test_stderr_tail_is_bounded_and_keeps_observed_policy(self):
+        with tempfile.TemporaryDirectory(prefix="mvdb-tools-stderr-") as directory:
+            log = Path(directory) / "stderr.log"
+            content = b"earlier diagnostic\n" * 500 + b"mvdb: fanout rows=10000 -> 1 thread\n"
+            log.write_bytes(content)
+            result = benchmark.stderr_tail(log)
+            self.assertEqual(result["tail_source_bytes"], 4096)
+            self.assertEqual(result["total_bytes"], len(content))
+            self.assertTrue(result["truncated"])
+            self.assertTrue(result["tail_utf8"].endswith("-> 1 thread\n"))
+            log.write_bytes(b"")
+            self.assertEqual(benchmark.stderr_tail(log), {"total_bytes": 0, "tail_source_bytes": 0,
+                                                          "truncated": False, "tail_utf8": ""})
+
     def test_median_uses_each_pair_and_keeps_regressions(self):
         pairs = [{"scenario": "s", "baseline": {"phase_seconds": {"q": old}},
                   "candidate": {"phase_seconds": {"q": new}}}

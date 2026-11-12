@@ -15,5 +15,6 @@ __pycache__/
 /protocol-results/
 /iteration-results/
 /standard-results/
+/hotpath-results/
 /data/
 /minivec/data/

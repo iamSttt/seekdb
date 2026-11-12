@@ -9,7 +9,8 @@
     "root_copy": "conversation.json",
     "encoding": "UTF-8",
     "maximum_bytes": 131072,
-    "verification_scope": "Path and size follow the archived contract; current organizer rules were not accessible in this session."
+    "verification_scope": "Current organizer page section 4.4 was read in the authenticated browser on 2026-11-12: UTF-8 JSON object, default agent/conversation.json, <=128 KiB, no duplicate keys or non-finite numbers. Mechanical checks cannot determine official Prompt validity or authenticate personal authorship.",
+    "rules_url": "https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/lg8enxlmwg69unt6"
   },
   "messages": [
     {
@@ -37,13 +38,37 @@
       "id": "assistant-selection",
       "role": "assistant",
       "source_kind": "current_iteration_work_record",
-      "content": "Selected user-report I03 (resident admission), I04 (bounded UPDATE undo), I08 (disk index construction batching), and I02 (paired lifecycle measurements) after checking a90b2b7 source. Implementation and experiment execution are performed by agents. No personal user interpretation of new results has yet been recorded."
+      "content": "从用户指定 a90b2b7 源码筛选报告 I02/I03/I04/I08，之后依据默认负载结果验证 I13/I15。用户报告仍归 user；实现、执行实验及以下解释归 assistant。没有把旧聊天搬作本轮用户证据。"
     },
     {
       "id": "assistant-implementation",
       "role": "assistant",
       "source_kind": "current_iteration_work_record",
-      "content": "Implemented I03 metadata-based resident admission with posting/construction peak accounting; I04 1 MiB bounded UPDATE before-images with safe spill migration and rollback; I08 256 KiB disk FlatIndex build buffering (payload spill batching is not implemented). Added regression/fault-injection tests and I02 lifecycle benchmark. Independent agent review caught and fixed a potential 52k-65k posting coverage regression. Windows checks pass 24 Python tool tests and material validation; Linux engine/performance validation is still pending. These are agent work and observations, not user-authored experiment conclusions."
+      "content": "I03 按借用索引真实元数据与容量核算，保留原 16 MiB 预算、posting 65536 行覆盖并计入构建峰值。I04 用 1 MiB 有界旧值保护少量 UPDATE，迁移时先写活跃 before-images 再发布，保留回滚/WAL/多表语义。I08 仅实现磁盘 FlatIndex 的 256 KiB 批量构建，未实现 payload 批量 spill。I13 跳过执行入口未使用的 SQL raw 复制，默认解析 API 不变。"
+    },
+    {
+      "id": "assistant-review-and-failure",
+      "role": "assistant",
+      "source_kind": "current_iteration_work_record",
+      "content": "代理交叉审查发现初稿 posting 准入可能将 52k–65k 覆盖缩窄，已在首个候选提交前修正。首轮 Linux 门禁又发现旧故障测试假定两次 UPDATE 必落盘；现在它们仍驻留，访问 offsets 的测试前提无效。ada4add 调整为确实溢出的测试数据并保留故障断言，运行源码/构建输入不变，完整门禁重跑通过。此记录属于代理审查与实验，不是用户亲自发现。"
+    },
+    {
+      "id": "assistant-measured-outcome",
+      "role": "assistant",
+      "source_kind": "current_iteration_work_record",
+      "content": "135 对边界/UPDATE/spill 实验全部响应一致且抽样 oracle 通过。35k/50k 查询中位成对加速 1.681/1.598 倍，少量 UPDATE 后查询 1.606–1.651 倍。负结果也保留：30k 查询虽为 2.470 倍，但新增量化构建成本让 32 查询短批次生命周期为 0.955 倍、HWM 约增 13.4%。默认 10k/128d/1000query 的 15 对仅 1.002 倍，查询持平；生命周期噪声大，不认定稳定 8% 提升。单独 LTO 15 对查询 0.988 倍，拒绝默认启用。所有数字按具体提交区分，不乘出官方分数。"
+    },
+    {
+      "id": "assistant-correctness-4d8de",
+      "role": "assistant",
+      "source_kind": "current_iteration_work_record",
+      "content": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4 完整 Linux 门禁通过：5618 SQL 检查、141 DB 检查、源码/镜像公开用例各20/20、交互协议、恢复与COMMIT后SIGKILL、串行/强制双线程精确TopK、WAL/pwrite故障、线程池/跨表spill及ASan/UBSan。25项Python工具测试通过。二进制SHA256=9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753。公开通过不代表隐藏用例；ASan未启用leak detection，未穷尽fdatasync或allocation失败。"
+    },
+    {
+      "id": "assistant-hotpath-candidate",
+      "role": "assistant",
+      "source_kind": "current_iteration_work_record",
+      "content": "默认10k查询持平后，继续试验用户I14的小步版：每条SELECT复用JSON行数组及其capacity，保留原dump与编码规则；另由代理提出量化cap整数比较/缓存合法性检查，保持旧拒绝判定等价。这两项在下一轮同机对照及完整门禁前仍属候选，不能将预期提速计作结果；整数cap方案不是用户原文中的具体实现。"
     }
   ],
   "adopted_directions": [
@@ -52,41 +77,1427 @@
       "origin_role": "user",
       "source_message": "user-report",
       "implementation_role": "assistant",
-      "state": "implemented_pending_linux_validation"
+      "state": "implemented_and_measured_with_recorded_tradeoffs"
     },
     {
       "proposal": "I03",
       "origin_role": "user",
       "source_message": "user-report",
       "implementation_role": "assistant",
-      "state": "implemented_pending_linux_validation"
+      "state": "implemented_and_measured_with_recorded_tradeoffs"
     },
     {
       "proposal": "I04",
       "origin_role": "user",
       "source_message": "user-report",
       "implementation_role": "assistant",
-      "state": "implemented_pending_linux_validation"
+      "state": "implemented_and_measured_with_recorded_tradeoffs"
     },
     {
       "proposal": "I08",
       "origin_role": "user",
       "source_message": "user-report",
       "implementation_role": "assistant",
-      "state": "implemented_pending_linux_validation"
+      "state": "implemented_and_measured_with_recorded_tradeoffs"
+    },
+    {
+      "proposal": "I13",
+      "origin_role": "user",
+      "source_message": "user-report",
+      "implementation_role": "assistant",
+      "state": "implemented_and_measured_with_recorded_tradeoffs"
+    },
+    {
+      "proposal": "I15",
+      "origin_role": "user",
+      "source_message": "user-report",
+      "implementation_role": "assistant",
+      "state": "implemented_and_measured_with_recorded_tradeoffs"
+    },
+    {
+      "proposal": "I14",
+      "origin_role": "user",
+      "source_message": "user-report",
+      "implementation_role": "assistant",
+      "state": "implemented_and_measured_with_recorded_tradeoffs"
     }
   ],
-  "experiments": [],
+  "experiments": [
+    {
+      "id": "linux-runtime-gate-4d8de",
+      "executed_by": "assistant",
+      "status": "passed",
+      "observed_result": {
+        "image-binary-sha256.txt": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753  /home/runner/work/_temp/minivec-checks-ie5nJL/image-binary\n",
+        "image-id.txt": "sha256:4c9fc6f89a720d46c4327973af6431cf2e886508e66efa0650d84d9052f0dd0d\n",
+        "runtime-commit.txt": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4\n",
+        "verification-summary.json": {
+          "runtime_commit": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4",
+          "image_tag": "minivec:verify-4d8de37178eb",
+          "image_id": "sha256:4c9fc6f89a720d46c4327973af6431cf2e886508e66efa0650d84d9052f0dd0d",
+          "scope": "current-checkout build and regression verification; not formal scoring",
+          "passed": true,
+          "checks": {
+            "root_docker_build": true,
+            "image_official_handshake_and_public_cases": true,
+            "source_official_handshake_and_public_cases": true,
+            "live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill": true,
+            "make_test": true,
+            "image_binary_json_and_exact_topk_serial_parallel": true,
+            "eight_wal_failure_cases_asan_ubsan": true,
+            "query_pool_both_modes_asan_ubsan": true,
+            "cross_table_spill_asan_ubsan": true,
+            "full_binary_json_ubsan": true,
+            "index_budget_and_resident_update_asan_ubsan": true
+          },
+          "limitations": [
+            "No hidden formal cases or score.",
+            "No new paired performance measurement.",
+            "WAL fixture injects short/failed writes; not fdatasync or allocation failure.",
+            "ASan leak detection disabled; memory-safety and undefined-behavior checks enabled."
+          ]
+        },
+        "source_run": "https://github.com/iamSttt/seekdb/actions/runs/43226783666",
+        "source_job": "https://github.com/iamSttt/seekdb/actions/runs/43226783666/job/131211894758",
+        "context": "This job verifies correctness. Paired performance is recorded separately in iteration-results-20261112.json."
+      },
+      "artifacts": [
+        {
+          "path": "validation/iteration-linux-4d8de.json",
+          "sha256": "9c2456470cede2cbd8dc1fa9fa943500548c056a3595b5059421ce775ba39430"
+        }
+      ]
+    },
+    {
+      "id": "paired-performance-165-pairs",
+      "executed_by": "assistant",
+      "status": "passed_with_negative_results",
+      "observed_result": {
+        "kind": "measured_iteration_summary",
+        "date_asia_shanghai": "2026-11-12",
+        "base_commit": "a90b2b750e40f020793cddefe01d5b66631afc63",
+        "official_result": {
+          "new_submission_observed": false,
+          "score": null,
+          "target": 6000,
+          "target_achieved": false
+        },
+        "measurement_contract": {
+          "metric_array_columns": [
+            "baseline_median",
+            "candidate_median",
+            "paired_ratio_median",
+            "paired_ratio_min",
+            "paired_ratio_max"
+          ],
+          "compiler": "Root Dockerfile pinned GCC 13.3.0, static -O3; LTO experiment adds only -flto=2.",
+          "host": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39; same runner per comparison, affinity CPUs 0 and 1.",
+          "tracked_worktree_clean_in_both_recorded_contexts": true,
+          "ratio": "Baseline seconds / candidate seconds calculated per paired sample, then median/min/max; >1 is faster. Resource ratios use the same baseline/candidate convention.",
+          "two_endpoint_medians": "baseline_median and candidate_median are separate medians, not the basis of paired_ratio_median.",
+          "lifecycle": "Sum of startup/create/ingest/index/query/update if present/shutdown/restart/final-shutdown request timers; excludes workload generation, oracle construction, resource snapshots and restart verification.",
+          "resource_boundary": "VmHWM is the maximum observed process high-water mark across both starts; I/O sums /proc/PID/io snapshots before each shutdown and omits final shutdown work. These are process proxies, not official cgroup M/B.",
+          "order": "Alternating baseline-first/candidate-first with seed and scenario rotation; fresh database per process lifecycle; shared host/page cache, no cache eviction.",
+          "retention": "No slow samples removed. Full per-query latencies and resource snapshots remain in the embedded CI JSON and bundled raw evidence; summaries retain paired min/max and slowest lifecycle sample.",
+          "json_extraction": "Remove GitHub timestamps and segment BOMs before timestamps; normalize LF. Extracted report SHA-256 values below identify exact saved bytes.",
+          "scope": "Successful performance jobs only; this file does not assert whole-workflow or hidden-case success. No conversion to organizer E or leaderboard points."
+        },
+        "boundary_update_spill": {
+          "source": {
+            "ci_run": "https://github.com/iamSttt/seekdb/actions/runs/43225295552",
+            "ci_job": "https://github.com/iamSttt/seekdb/actions/runs/43225295552/job/131206801724",
+            "embedded_json": "iteration-results/paired.json",
+            "extracted_json_sha256": "0f40eed56edb5a740c2c04ddfd183dfb525e0a7416a25c41eee75817d35ab624",
+            "extracted_json_bytes": 3184350
+          },
+          "performance_job_status": "success",
+          "benchmark_status": "passed",
+          "seeds": [
+            7319,
+            8911,
+            13337
+          ],
+          "pairs_per_seed_per_scenario": 5,
+          "queries_per_phase": 32,
+          "top_k": 10,
+          "insert_batch_size": 100,
+          "total_pairs": 135,
+          "all_paired_responses_identical": true,
+          "oracle": {
+            "method": "Python binary32 input vectors; math.fsum full-scan TopK on sampled queries; PK tie checks",
+            "query_indices_each_phase": [
+              0,
+              1,
+              31
+            ],
+            "all_sampled_checks_passed": true,
+            "restart_checks": "All IDs plus sampled vector payloads; every measured response compared by content hash."
+          },
+          "binary_sha256": {
+            "baseline": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+            "candidate": "579f9a7f3a0573dc5d4f13efaefef736df7cf02e92737be1914e089bd30f3dca"
+          },
+          "scenarios": {
+            "resident30k": {
+              "pairs": 15,
+              "rows": 30000,
+              "dimension": 128,
+              "updated_rows": 0,
+              "padding_bytes": 0,
+              "groups": 0,
+              "timing_seconds": {
+                "ingest": [
+                  0.716663793,
+                  0.717155136,
+                  1.006686,
+                  0.956972,
+                  1.05513
+                ],
+                "index_build": [
+                  0.009844687,
+                  0.059805111,
+                  0.164483,
+                  0.126139,
+                  0.196538
+                ],
+                "query_before_update": [
+                  0.04662964,
+                  0.018552737,
+                  2.469586,
+                  2.111909,
+                  2.808371
+                ],
+                "query_after_restart": [
+                  0.046412524,
+                  0.018480202,
+                  2.529635,
+                  2.327982,
+                  2.805153
+                ],
+                "restart": [
+                  0.12355083,
+                  0.17329538,
+                  0.712157,
+                  0.699308,
+                  0.726019
+                ],
+                "measured_lifecycle": [
+                  0.965961812,
+                  1.010601446,
+                  0.955117,
+                  0.92934,
+                  0.997027
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  28753920,
+                  32620544,
+                  0.881577,
+                  0.881356,
+                  0.883084
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  14835712,
+                  14835712,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  17932288,
+                  17932288,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  16693375,
+                  16693375,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 8911,
+                "pair_index_zero_based": 0,
+                "order": [
+                  "candidate",
+                  "baseline"
+                ],
+                "baseline_seconds": 0.946265671,
+                "candidate_seconds": 1.018212756
+              }
+            },
+            "resident35k": {
+              "pairs": 15,
+              "rows": 35000,
+              "dimension": 128,
+              "updated_rows": 0,
+              "padding_bytes": 0,
+              "groups": 0,
+              "timing_seconds": {
+                "ingest": [
+                  0.841627243,
+                  0.839983359,
+                  1.002122,
+                  0.95175,
+                  1.031034
+                ],
+                "index_build": [
+                  0.028348609,
+                  0.011807644,
+                  2.424911,
+                  2.272033,
+                  2.838044
+                ],
+                "query_before_update": [
+                  0.103989187,
+                  0.061428345,
+                  1.68082,
+                  1.595523,
+                  2.092398
+                ],
+                "query_after_restart": [
+                  0.105319454,
+                  0.059914583,
+                  1.757827,
+                  1.512231,
+                  1.999829
+                ],
+                "restart": [
+                  0.159807635,
+                  0.143633532,
+                  1.110546,
+                  1.091099,
+                  1.176411
+                ],
+                "measured_lifecycle": [
+                  1.273208957,
+                  1.145232055,
+                  1.114428,
+                  1.078533,
+                  1.144138
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  35475456,
+                  36331520,
+                  0.976437,
+                  0.970124,
+                  0.977316
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  17317888,
+                  17317888,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  57880576,
+                  20918272,
+                  2.766986,
+                  2.766986,
+                  2.766986
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  19475575,
+                  19475575,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 13337,
+                "pair_index_zero_based": 0,
+                "order": [
+                  "candidate",
+                  "baseline"
+                ],
+                "baseline_seconds": 1.273208957,
+                "candidate_seconds": 1.180500467
+              }
+            },
+            "resident50k": {
+              "pairs": 15,
+              "rows": 50000,
+              "dimension": 128,
+              "updated_rows": 0,
+              "padding_bytes": 0,
+              "groups": 0,
+              "timing_seconds": {
+                "ingest": [
+                  1.190091187,
+                  1.183114264,
+                  1.006542,
+                  0.975322,
+                  1.036047
+                ],
+                "index_build": [
+                  0.040259164,
+                  0.016736424,
+                  2.396075,
+                  2.328651,
+                  2.524819
+                ],
+                "query_before_update": [
+                  0.166087865,
+                  0.104019939,
+                  1.597971,
+                  1.346893,
+                  1.865644
+                ],
+                "query_after_restart": [
+                  0.153371279,
+                  0.106684393,
+                  1.480369,
+                  1.295721,
+                  1.648691
+                ],
+                "restart": [
+                  0.229275026,
+                  0.206097381,
+                  1.112862,
+                  1.083734,
+                  1.138438
+                ],
+                "measured_lifecycle": [
+                  1.824792995,
+                  1.653773421,
+                  1.103997,
+                  1.076431,
+                  1.144084
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  47112192,
+                  48328704,
+                  0.974831,
+                  0.970845,
+                  0.975986
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  24748032,
+                  24748032,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  82685952,
+                  29880320,
+                  2.767238,
+                  2.767238,
+                  2.767238
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  27822175,
+                  27822175,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 8911,
+                "pair_index_zero_based": 1,
+                "order": [
+                  "baseline",
+                  "candidate"
+                ],
+                "baseline_seconds": 1.796439851,
+                "candidate_seconds": 1.668885344
+              }
+            },
+            "update1": {
+              "pairs": 15,
+              "rows": 10000,
+              "dimension": 128,
+              "updated_rows": 1,
+              "padding_bytes": 0,
+              "groups": 0,
+              "timing_seconds": {
+                "ingest": [
+                  0.243797199,
+                  0.243822876,
+                  0.997139,
+                  0.878144,
+                  1.053361
+                ],
+                "index_build": [
+                  0.01903648,
+                  0.01937738,
+                  0.995671,
+                  0.940803,
+                  1.02031
+                ],
+                "query_before_update": [
+                  0.009427929,
+                  0.009827797,
+                  0.970294,
+                  0.872764,
+                  1.065424
+                ],
+                "update": [
+                  0.011203033,
+                  0.00099409,
+                  11.422515,
+                  10.684774,
+                  12.182183
+                ],
+                "query_after_update": [
+                  0.045698366,
+                  0.028223419,
+                  1.606444,
+                  1.569601,
+                  1.692868
+                ],
+                "query_after_restart": [
+                  0.009611069,
+                  0.010687354,
+                  0.999312,
+                  0.861605,
+                  1.164615
+                ],
+                "restart": [
+                  0.056472133,
+                  0.057247459,
+                  0.990983,
+                  0.960231,
+                  1.007539
+                ],
+                "measured_lifecycle": [
+                  0.409302404,
+                  0.381943382,
+                  1.074107,
+                  0.97453,
+                  1.113251
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  12476416,
+                  12496896,
+                  0.998361,
+                  0.998033,
+                  0.999672
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  4943872,
+                  4943872,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  16613376,
+                  5988352,
+                  2.774282,
+                  2.774282,
+                  2.774282
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  5565183,
+                  5565183,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 7319,
+                "pair_index_zero_based": 0,
+                "order": [
+                  "candidate",
+                  "baseline"
+                ],
+                "baseline_seconds": 0.405065287,
+                "candidate_seconds": 0.415652043
+              }
+            },
+            "update10": {
+              "pairs": 15,
+              "rows": 10000,
+              "dimension": 128,
+              "updated_rows": 10,
+              "padding_bytes": 0,
+              "groups": 0,
+              "timing_seconds": {
+                "ingest": [
+                  0.243159078,
+                  0.242924819,
+                  1.003241,
+                  0.971433,
+                  1.053667
+                ],
+                "index_build": [
+                  0.019085294,
+                  0.019166192,
+                  1.003959,
+                  0.967605,
+                  1.067297
+                ],
+                "query_before_update": [
+                  0.009673363,
+                  0.009555478,
+                  1.00145,
+                  0.812441,
+                  1.17088
+                ],
+                "update": [
+                  0.011399115,
+                  0.001064368,
+                  10.79566,
+                  9.442745,
+                  12.115853
+                ],
+                "query_after_update": [
+                  0.045869688,
+                  0.027893023,
+                  1.651298,
+                  1.535307,
+                  1.69788
+                ],
+                "query_after_restart": [
+                  0.010836873,
+                  0.010740625,
+                  1.010523,
+                  0.887836,
+                  1.127952
+                ],
+                "restart": [
+                  0.05687463,
+                  0.056864548,
+                  0.994211,
+                  0.975724,
+                  1.03964
+                ],
+                "measured_lifecycle": [
+                  0.409453436,
+                  0.38059618,
+                  1.085505,
+                  1.04242,
+                  1.11268
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  12472320,
+                  12496896,
+                  0.998361,
+                  0.991806,
+                  0.998689
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  4947968,
+                  4947968,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  16625664,
+                  5992448,
+                  2.774436,
+                  2.774436,
+                  2.774436
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  5570259,
+                  5570259,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 13337,
+                "pair_index_zero_based": 3,
+                "order": [
+                  "candidate",
+                  "baseline"
+                ],
+                "baseline_seconds": 0.407213731,
+                "candidate_seconds": 0.390642599
+              }
+            },
+            "update100": {
+              "pairs": 15,
+              "rows": 10000,
+              "dimension": 128,
+              "updated_rows": 100,
+              "padding_bytes": 0,
+              "groups": 0,
+              "timing_seconds": {
+                "ingest": [
+                  0.243549246,
+                  0.242575511,
+                  0.995609,
+                  0.965021,
+                  1.029532
+                ],
+                "index_build": [
+                  0.01896745,
+                  0.019334434,
+                  0.979979,
+                  0.934482,
+                  1.009381
+                ],
+                "query_before_update": [
+                  0.009368624,
+                  0.00956525,
+                  0.985858,
+                  0.84143,
+                  1.119308
+                ],
+                "update": [
+                  0.011620549,
+                  0.001301441,
+                  8.986126,
+                  5.08638,
+                  9.815214
+                ],
+                "query_after_update": [
+                  0.045550342,
+                  0.028123768,
+                  1.616046,
+                  1.08661,
+                  1.651177
+                ],
+                "query_after_restart": [
+                  0.010855388,
+                  0.010453885,
+                  1.011975,
+                  0.931638,
+                  1.1365
+                ],
+                "restart": [
+                  0.056642922,
+                  0.057029414,
+                  0.99427,
+                  0.969891,
+                  1.008378
+                ],
+                "measured_lifecycle": [
+                  0.409279539,
+                  0.381847473,
+                  1.072286,
+                  1.006946,
+                  1.089104
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  12476416,
+                  12492800,
+                  0.998361,
+                  0.997379,
+                  1.007611
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  5001216,
+                  5001216,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  16723968,
+                  6045696,
+                  2.76626,
+                  2.76626,
+                  2.76626
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  5621019,
+                  5621019,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 13337,
+                "pair_index_zero_based": 2,
+                "order": [
+                  "candidate",
+                  "baseline"
+                ],
+                "baseline_seconds": 0.406993578,
+                "candidate_seconds": 0.404185907
+              }
+            },
+            "low16": {
+              "pairs": 15,
+              "rows": 10000,
+              "dimension": 16,
+              "updated_rows": 0,
+              "padding_bytes": 0,
+              "groups": 0,
+              "timing_seconds": {
+                "ingest": [
+                  0.089630221,
+                  0.089563817,
+                  1.004666,
+                  0.9475,
+                  1.239212
+                ],
+                "index_build": [
+                  0.004526225,
+                  0.004462801,
+                  1.007093,
+                  0.930273,
+                  1.091421
+                ],
+                "query_before_update": [
+                  0.005744813,
+                  0.005897378,
+                  0.969836,
+                  0.813001,
+                  1.118061
+                ],
+                "query_after_restart": [
+                  0.006153485,
+                  0.005898606,
+                  1.014296,
+                  0.896965,
+                  1.135357
+                ],
+                "restart": [
+                  0.015180614,
+                  0.01510193,
+                  1.002555,
+                  0.95185,
+                  1.053863
+                ],
+                "measured_lifecycle": [
+                  0.132003756,
+                  0.132115163,
+                  1.005335,
+                  0.963348,
+                  1.175196
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  6934528,
+                  6889472,
+                  1.005942,
+                  0.970885,
+                  1.01135
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  884736,
+                  884736,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  1503232,
+                  1503232,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  1084575,
+                  1084575,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 13337,
+                "pair_index_zero_based": 3,
+                "order": [
+                  "candidate",
+                  "baseline"
+                ],
+                "baseline_seconds": 0.130485342,
+                "candidate_seconds": 0.135449913
+              }
+            },
+            "filter60k": {
+              "pairs": 15,
+              "rows": 60000,
+              "dimension": 16,
+              "updated_rows": 0,
+              "padding_bytes": 0,
+              "groups": 100,
+              "timing_seconds": {
+                "ingest": [
+                  0.550515328,
+                  0.547526239,
+                  1.004297,
+                  0.940307,
+                  1.250314
+                ],
+                "index_build": [
+                  0.035383462,
+                  0.035103867,
+                  1.009382,
+                  0.989758,
+                  1.030183
+                ],
+                "query_before_update": [
+                  0.012975611,
+                  0.013165952,
+                  0.979993,
+                  0.962901,
+                  1.001036
+                ],
+                "query_after_restart": [
+                  0.01267797,
+                  0.012719321,
+                  0.996996,
+                  0.95566,
+                  1.033398
+                ],
+                "restart": [
+                  0.117698415,
+                  0.117747647,
+                  1.00326,
+                  0.973189,
+                  1.04039
+                ],
+                "measured_lifecycle": [
+                  0.762577235,
+                  0.756696056,
+                  1.001983,
+                  0.955056,
+                  1.175631
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  34230272,
+                  34017280,
+                  1.006261,
+                  1.001325,
+                  1.008933
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  5820416,
+                  5820416,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  9515008,
+                  9515008,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  7046588,
+                  7046588,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 13337,
+                "pair_index_zero_based": 2,
+                "order": [
+                  "candidate",
+                  "baseline"
+                ],
+                "baseline_seconds": 0.720922133,
+                "candidate_seconds": 0.754847971
+              }
+            },
+            "spill": {
+              "pairs": 15,
+              "rows": 50000,
+              "dimension": 128,
+              "updated_rows": 0,
+              "padding_bytes": 512,
+              "groups": 0,
+              "timing_seconds": {
+                "ingest": [
+                  1.530435651,
+                  1.537904136,
+                  0.997442,
+                  0.953896,
+                  1.030281
+                ],
+                "index_build": [
+                  0.085089799,
+                  0.054334061,
+                  1.56627,
+                  1.544835,
+                  1.585405
+                ],
+                "query_before_update": [
+                  0.164426728,
+                  0.145403169,
+                  1.138901,
+                  0.989564,
+                  1.217332
+                ],
+                "query_after_restart": [
+                  0.155425844,
+                  0.146214509,
+                  1.060166,
+                  1.001731,
+                  1.187863
+                ],
+                "restart": [
+                  0.48531185,
+                  0.454423728,
+                  1.068915,
+                  1.04552,
+                  1.084888
+                ],
+                "measured_lifecycle": [
+                  2.45055354,
+                  2.382682702,
+                  1.043052,
+                  1.002229,
+                  1.056955
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  47190016,
+                  47210496,
+                  0.999566,
+                  0.995488,
+                  1.001565
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  49434624,
+                  49434624,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  213639168,
+                  213639168,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  53672188,
+                  53672188,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 8911,
+                "pair_index_zero_based": 0,
+                "order": [
+                  "candidate",
+                  "baseline"
+                ],
+                "baseline_seconds": 2.413296514,
+                "candidate_seconds": 2.40792867
+              }
+            }
+          },
+          "baseline_commit": "a90b2b750e40f020793cddefe01d5b66631afc63",
+          "candidate_commit": "30a44d5050a86a1fc055ebcf82bd6f1fbc3ad7a0",
+          "unchanged_runtime_and_build_inputs_at": "ada4add9e18e1857758f1333cf663435ae9ab08e",
+          "equivalence_checked_paths": [
+            "Dockerfile",
+            ".dockerignore",
+            "minivec/src",
+            "minivec/third_party"
+          ]
+        },
+        "representative_default_workload": {
+          "source": {
+            "ci_run": "https://github.com/iamSttt/seekdb/actions/runs/43226783666",
+            "ci_job": "https://github.com/iamSttt/seekdb/actions/runs/43226783666/job/131211894464",
+            "embedded_json": "standard-results/baseline-candidate.json",
+            "extracted_json_sha256": "6ce2fcf3ffc94e48e28780341d813baedc46a17ce56aac9fd9d47f8f991d41c9",
+            "extracted_json_bytes": 3776301
+          },
+          "performance_job_status": "success",
+          "benchmark_status": "passed",
+          "seeds": [
+            7319,
+            8911,
+            13337
+          ],
+          "pairs_per_seed_per_scenario": 5,
+          "queries_per_phase": 1000,
+          "top_k": 10,
+          "insert_batch_size": 100,
+          "total_pairs": 15,
+          "all_paired_responses_identical": true,
+          "oracle": {
+            "method": "Python binary32 input vectors; math.fsum full-scan TopK on sampled queries; PK tie checks",
+            "query_indices_each_phase": [
+              0,
+              1,
+              999
+            ],
+            "all_sampled_checks_passed": true,
+            "restart_checks": "All IDs plus sampled vector payloads; every measured response compared by content hash."
+          },
+          "binary_sha256": {
+            "baseline": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+            "candidate": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753"
+          },
+          "scenarios": {
+            "standard10k": {
+              "pairs": 15,
+              "rows": 10000,
+              "dimension": 128,
+              "updated_rows": 0,
+              "padding_bytes": 0,
+              "groups": 10,
+              "timing_seconds": {
+                "ingest": [
+                  0.377865521,
+                  0.271134254,
+                  1.079159,
+                  0.664692,
+                  6.798607
+                ],
+                "index_build": [
+                  0.018593356,
+                  0.018995767,
+                  0.996634,
+                  0.548923,
+                  5.989556
+                ],
+                "query_before_update": [
+                  0.186711229,
+                  0.184730831,
+                  1.002301,
+                  0.977075,
+                  1.056265
+                ],
+                "query_after_restart": [
+                  0.187001952,
+                  0.183378254,
+                  1.00816,
+                  0.921719,
+                  1.049707
+                ],
+                "restart": [
+                  0.061915551,
+                  0.059197024,
+                  1.047978,
+                  0.269161,
+                  3.441411
+                ],
+                "measured_lifecycle": [
+                  0.941144178,
+                  0.78689642,
+                  1.080216,
+                  0.821549,
+                  3.409335
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  13111296,
+                  13131776,
+                  0.998441,
+                  0.995633,
+                  1.001251
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  5038080,
+                  5038080,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  6074368,
+                  6074368,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  5654588,
+                  5654588,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 8911,
+                "pair_index_zero_based": 2,
+                "order": [
+                  "candidate",
+                  "baseline"
+                ],
+                "baseline_seconds": 0.716807909,
+                "candidate_seconds": 0.87250797
+              }
+            }
+          },
+          "baseline_commit": "a90b2b750e40f020793cddefe01d5b66631afc63",
+          "candidate_commit": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4",
+          "workload": "10,000 x 128d; 1,000 queries each before shutdown and after restart; half unfiltered, half equality filtered over ten groups.",
+          "query_latency_ms": {
+            "query_before_update": {
+              "p50_ms": [
+                0.209375,
+                0.2083585,
+                1.003755,
+                0.982748,
+                1.038147
+              ],
+              "p95_ms": [
+                0.249159,
+                0.247416,
+                1.002064,
+                0.943854,
+                1.146922
+              ]
+            },
+            "query_after_restart": {
+              "p50_ms": [
+                0.2096255,
+                0.206175,
+                1.011494,
+                0.954259,
+                1.043169
+              ],
+              "p95_ms": [
+                0.250421,
+                0.245343,
+                1.009842,
+                0.748428,
+                1.057999
+              ]
+            }
+          }
+        },
+        "lto_ablation": {
+          "source": {
+            "ci_run": "https://github.com/iamSttt/seekdb/actions/runs/43226783666",
+            "ci_job": "https://github.com/iamSttt/seekdb/actions/runs/43226783666/job/131211894464",
+            "embedded_json": "standard-results/candidate-lto.json",
+            "extracted_json_sha256": "ea147fa049697e9cafd0022f7b6adfdcb671588e159948234528099d9c593766",
+            "extracted_json_bytes": 3775779
+          },
+          "performance_job_status": "success",
+          "benchmark_status": "passed",
+          "seeds": [
+            7319,
+            8911,
+            13337
+          ],
+          "pairs_per_seed_per_scenario": 5,
+          "queries_per_phase": 1000,
+          "top_k": 10,
+          "insert_batch_size": 100,
+          "total_pairs": 15,
+          "all_paired_responses_identical": true,
+          "oracle": {
+            "method": "Python binary32 input vectors; math.fsum full-scan TopK on sampled queries; PK tie checks",
+            "query_indices_each_phase": [
+              0,
+              1,
+              999
+            ],
+            "all_sampled_checks_passed": true,
+            "restart_checks": "All IDs plus sampled vector payloads; every measured response compared by content hash."
+          },
+          "binary_sha256": {
+            "baseline": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753",
+            "candidate": "99fce6caffb15096a46a8464e2c29704a249ab53ace207894aca691c89f30d2a"
+          },
+          "scenarios": {
+            "standard10k": {
+              "pairs": 15,
+              "rows": 10000,
+              "dimension": 128,
+              "updated_rows": 0,
+              "padding_bytes": 0,
+              "groups": 10,
+              "timing_seconds": {
+                "ingest": [
+                  0.358593929,
+                  0.288300084,
+                  1.015785,
+                  0.409932,
+                  6.199451
+                ],
+                "index_build": [
+                  0.018891032,
+                  0.018512892,
+                  1.003887,
+                  0.107242,
+                  14.325022
+                ],
+                "query_before_update": [
+                  0.184322621,
+                  0.186253836,
+                  0.988296,
+                  0.939161,
+                  1.025603
+                ],
+                "query_after_restart": [
+                  0.184020243,
+                  0.186172683,
+                  0.982317,
+                  0.910393,
+                  1.077924
+                ],
+                "restart": [
+                  0.071252311,
+                  0.059676867,
+                  1.086609,
+                  0.215223,
+                  6.902345
+                ],
+                "measured_lifecycle": [
+                  0.910738137,
+                  0.896938755,
+                  0.983153,
+                  0.641222,
+                  2.979426
+                ]
+              },
+              "resources_proxy": {
+                "maximum_observed_process_hwm_bytes": [
+                  13131776,
+                  13029376,
+                  1.007859,
+                  1.003771,
+                  1.008805
+                ],
+                "pre_shutdown_process_io_read_bytes": [
+                  5038080,
+                  5038080,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "pre_shutdown_process_io_write_bytes": [
+                  6074368,
+                  6074368,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "persistent_files_after_final_shutdown_bytes": [
+                  5654588,
+                  5654588,
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "slowest_paired_lifecycle_sample": {
+                "seed": 13337,
+                "pair_index_zero_based": 2,
+                "order": [
+                  "baseline",
+                  "candidate"
+                ],
+                "baseline_seconds": 0.803874391,
+                "candidate_seconds": 1.253659685
+              }
+            }
+          },
+          "both_sides_source_commit": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4",
+          "isolated_change": "Candidate compiler adds -flto=2; same source and other root Dockerfile options.",
+          "decision": "Rejected for default build: median query speedup 0.988296, post-restart query 0.982317, lifecycle 0.983153; no reliable net benefit.",
+          "query_latency_ms": {
+            "query_before_update": {
+              "p50_ms": [
+                0.2076875,
+                0.206756,
+                0.989695,
+                0.938321,
+                1.034453
+              ],
+              "p95_ms": [
+                0.247106,
+                0.250311,
+                0.989026,
+                0.917905,
+                1.029994
+              ]
+            },
+            "query_after_restart": {
+              "p50_ms": [
+                0.2062155,
+                0.2068065,
+                0.980197,
+                0.862981,
+                1.102919
+              ],
+              "p95_ms": [
+                0.247096,
+                0.24985,
+                0.98079,
+                0.882194,
+                1.09445
+              ]
+            }
+          }
+        },
+        "findings_and_limits": [
+          "35k/50k indexes changed from an observed .flat file to resident storage; median query speedups 1.680820/1.597971 and lifecycle 1.114428/1.103997.",
+          "UPDATE 1/10/100 rows avoided observed .payload and .flat files; update speedups 11.422515/10.795660/8.986126; subsequent query speedups 1.606444/1.651298/1.616046.",
+          "35k/50k and UPDATE process write_bytes proxies decreased about 64%; process read_bytes proxies were unchanged. This is not a measured official I/O score.",
+          "Spilled index construction speedup 1.566270 and lifecycle 1.043052; its recorded I/O bytes and peak memory proxies were nearly unchanged.",
+          "Negative tradeoff: 30k queries improved 2.469586 but index build speedup was 0.164483, lifecycle 0.955117, HWM approximately +13.4%. Source-based explanation: corrected admission also makes the optional quantization codes affordable; short query batches do not amortize their build cost.",
+          "Default 10k workload query speedup 1.002301 is effectively unchanged. Lifecycle median 1.080216 spans 0.821549 to 3.409335; ingestion spans 0.664692 to 6.798607. Retained outliers prevent treating this as a stable 8% end-to-end gain.",
+          "LTO query and lifecycle median ratios were below one; keep the non-LTO default. No official 6000 score has been achieved or verified.",
+          "Boundary and standard runs measure different candidate commits and query counts. Their individual best ratios must not be multiplied or attributed to an untested combined revision."
+        ],
+        "raw_job_logs": [
+          {
+            "job_id": 131206801724,
+            "filename": "paired-job.log",
+            "bytes": 6393590,
+            "sha256": "045a6ba441ddb612586e69345be2749258e89e954b2cf5058cb06ddcf67d7b19"
+          },
+          {
+            "job_id": 131211894464,
+            "filename": "standard-job.log",
+            "bytes": 14919462,
+            "sha256": "93250b3a17025547a0892a727d54de10b0faafaa657b595094bcdc91151a0baa"
+          }
+        ]
+      },
+      "artifacts": [
+        {
+          "path": "validation/iteration-results-20261112.json",
+          "sha256": "29700bb3ad4ad05b9d1f2278fb14430e52afdb1d350313e0051d8581fa177e89"
+        }
+      ]
+    }
+  ],
   "official_result": {
     "new_submission": false,
     "score": null,
     "target": 6000
   },
   "limitations": [
-    "The current browser observation confirms E=3014.419039 for ee299adb and the generic Prompt-invalid message; no T/B/M breakdown or precise failure cause is exposed.",
-    "An official 6000 score has not been achieved or verified.",
-    "The report is attributed as user-supplied; this file does not independently verify authorship of historical underlying evidence.",
-    "Local record IDs are identifiers in this file, not platform message IDs."
+    "当前平台观察：ee299adb 的 E=3014.419039，Prompt 为空并提示组合原因；没有T/B/M明细和确定的Prompt失败分支。",
+    "6000尚未达到或验证；本轮尚未正式提测。",
+    "进程RSS/HWM/I/O为代理，不能代替cgroup memory.peak/page cache/物理设备I/O，不能换算平台E。",
+    "用户报告按用户提供来源记录，但不独立认证历史底层证据的作者；没有用户亲自运行本轮实验或解释新结果的记录。",
+    "本地消息ID是材料内部标识，不是平台原始消息ID；未伪造用户反馈、自评分或官方评审结论。",
+    "不同实验对应不同明确提交；负样本全部保留，不能将各场景最好比值相乘。"
   ],
   "platform_observation": {
     "source": "validation/iteration-platform-baseline.json",

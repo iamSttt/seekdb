@@ -50,6 +50,26 @@ SMOKE_CASES = {
     "update": (512, 16, 1, 0),
     "spill": (2048, 16, 0, 16384),
 }
+RUNTIME_ENVIRONMENT_KEYS = (
+    "MVDB_PROTOCOL", "MVDB_OUT", "MVDB_SINGLE_THREAD", "MVDB_QUERY_THREADS",
+    "MVDB_QUERY_FANOUT_ROWS", "MVDB_WAKE_US_OVERRIDE", "MVDB_PARSE_THREADS",
+    "MVDB_ANN_PROBE_PERCENT", "MVDB_ANN_OFF",
+)
+
+
+def runtime_environment():
+    # Deliberately enumerate behavior knobs; unrelated MVDB_* values may hold
+    # secrets or unrelated task data and do not belong in a published report.
+    return {key: os.environ[key] for key in RUNTIME_ENVIRONMENT_KEYS if key in os.environ}
+
+
+def stderr_tail(path, limit=4096):
+    with path.open("rb") as stream:
+        size = stream.seek(0, 2)
+        stream.seek(max(0, size - limit))
+        tail = stream.read(limit)
+    return {"total_bytes": size, "tail_source_bytes": len(tail), "truncated": size > len(tail),
+            "tail_utf8": tail.decode("utf-8", "replace")}
 
 
 def require(condition, message):
@@ -294,10 +314,13 @@ def one_run(binary, workload, args):
             query_phase("query_after_restart", workload["after_oracle"])
             shutdown("final_shutdown")
         except Exception:
-            print("database stderr tail: " + log.read_bytes()[-4096:].decode("utf-8", "replace"), file=sys.stderr)
+            print("database stderr tail: " + stderr_tail(log)["tail_utf8"], file=sys.stderr)
             raise
         finally:
-            session.close()
+            try:
+                session.close()
+            finally:
+                result["stderr"] = stderr_tail(log)
     phases["measured_lifecycle"] = math.fsum(
         value for key, value in phases.items() if key != "restart_verification_wall")
     result["response_sha256"] = digest.hexdigest()
@@ -372,7 +395,7 @@ def main():
         "queries_per_phase": args.queries, "batch_size": args.batch_size, "k": args.k,
         "host": {"platform": platform.platform(), "python": platform.python_version(),
                  "cpu_affinity": sorted(os.sched_getaffinity(0)), "logical_cpus": os.cpu_count()},
-        "environment": {key: value for key, value in os.environ.items() if key.startswith("MVDB_")},
+        "environment": runtime_environment(),
         "binaries": {label: {"path": str(binary), "sha256": hashlib.sha256(binary.read_bytes()).hexdigest()}
                      for label, binary in (("baseline", args.baseline), ("candidate", args.candidate))},
         "limits": ["Not formal scoring; no conversion to E or leaderboard points.",
@@ -381,6 +404,7 @@ def main():
                    "No cgroup resource limits imposed by this tool; record external limits separately.",
                    "Shared host/page cache, no cache eviction; alternating order mitigates but does not remove noise.",
                    "Oracle uses binary32 inputs and Python math.fsum for synthetic Gaussian ranks; numeric edge cases need separate tests.",
+                   "Bounded stderr records observed fanout policy diagnostics. CPU affinity or environment settings alone do not establish actual parallel execution.",
                    "Full defaults: 3 seeds x 5 pairs. Smoke/smaller overrides are screening only."],
         "pairs": [],
     }

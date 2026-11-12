@@ -80,6 +80,31 @@ static void distance_regressions(Database& db) {
   assert(distance_squared(a.data(),b.data(),1)==std::ldexp(1.0,-46));
   assert(distance_squared(nullptr,nullptr,0)==0);
 }
+static void json_encoding_failure_regression(Database& db) {
+  Column id;id.name="id";id.type=Type::BIGINT;id.is_primary=true;
+  Column text;text.name="s";text.type=Type::VARCHAR;text.len=16;
+  std::string err,out;int code=0;
+  assert(db.create_table("encoding_failure",{id,text},&err,&code));
+  assert(db.insert("encoding_failure",{Value::ofInt(1),Value::ofStr("first")},&err,&code));
+  assert(db.insert("encoding_failure",{Value::ofInt(2),Value::ofStr("second")},&err,&code));
+  // Inject corrupt payload through the internal table API, never the protocol.
+  // The first row has already been encoded when the second row's UTF-8 fails.
+  db.table("encoding_failure")->rows[1].vals[1].s=std::string(1,static_cast<char>(0xff));
+  for(const char* suffix:{" LIMIT 10",""," LIMIT 4096"}) {
+    Statement st;
+    assert(parse_sql(std::string("SELECT id,s FROM encoding_failure ORDER BY id")+suffix,&st,&err,&code));
+    out="prior response";
+    assert(!execute_json(db,st,&out,&err,&code));
+    assert(out.empty() && code!=0 && !err.empty());
+  }
+  db.table("encoding_failure")->rows[1].vals[1].s="second";
+  Statement st;
+  assert(parse_sql("SELECT id,s FROM encoding_failure ORDER BY id LIMIT 10",&st,&err,&code));
+  assert(execute_json(db,st,&out,&err,&code));
+  assert(nlohmann::json::parse(out).at("rows")==nlohmann::json({{1,"first"},{2,"second"}}));
+  std::cout<<"PASS JSON row reuse rejects invalid UTF-8 without partial response\n";
+}
+
 static void projection_regressions(Database& db) {
   using Json = nlohmann::json;
   const std::string prefix =
@@ -164,6 +189,7 @@ int main(int argc,char** argv) {
   char path[]="/tmp/mvdb-query-test-XXXXXX";assert(::mkdtemp(path));
   Database db;std::string err;int code=0;assert(db.open(path,&err));
   distance_regressions(db);
+  json_encoding_failure_regression(db);
   projection_regressions(db);
   Column id;id.name="id";id.type=Type::BIGINT;id.is_primary=true;
   Column n;n.name="n";n.type=Type::BIGINT;
