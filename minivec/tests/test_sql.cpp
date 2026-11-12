@@ -298,9 +298,40 @@ static void test_float32_literals() {
   }
 }
 
+static void test_raw_retention() {
+  Statement st;
+  std::string error;
+  int code=0;
+  const std::string sql="SELECT id FROM t WHERE id=7 ORDER BY id LIMIT 1; --"+
+                        std::string(4096,'x');
+  // Existing API callers still receive the original spelling by default.
+  CHECK(parse_sql(sql,&st,&error,&code));
+  CHECK(st.raw==sql);
+  CHECK(parse_sql(sql,&st,&error,&code,false));
+  CHECK(st.raw.empty() && st.kind==Statement::SELECT && st.table=="t" && st.limit==1);
+  CHECK(st.conds.size()==1 && st.conds[0].value.i==7);
+  CHECK(parse_sql("COMMIT;",&st,&error,&code,true));
+  CHECK(st.raw=="COMMIT;" && st.kind==Statement::COMMIT_TXN);
+  CHECK(parse_sql("BEGIN;",&st,&error,&code,false));
+  CHECK(st.raw.empty() && st.kind==Statement::BEGIN_TXN);
+
+  // Error locations depend on the live parser input, never the retained copy.
+  const std::string invalid="SELECT id FROM t LIMIT broken;";
+  CHECK(!parse_sql(invalid,&st,&error,&code));
+  CHECK(st.raw==invalid && st.kind==Statement::UNKNOWN);
+  const std::string expected_error=error;
+  const int expected_code=code;
+  CHECK(!parse_sql(invalid,&st,&error,&code,false));
+  CHECK(st.raw.empty() && st.kind==Statement::UNKNOWN);
+  CHECK(error==expected_error && code==expected_code);
+  CHECK(parse_sql("SELECT id FROM t;",&st,&error,&code));
+  CHECK(st.raw=="SELECT id FROM t;" && error.empty() && code==0);
+}
+
 int main() {
   std::setvbuf(stdout, nullptr, _IONBF, 0);  // keep partial output on any crash
   test_float32_literals();
+  test_raw_retention();
 
   // ---------------------------------------------------------------- CREATE --
   {

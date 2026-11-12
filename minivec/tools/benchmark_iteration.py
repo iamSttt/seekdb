@@ -43,6 +43,7 @@ FULL_CASES = {
     "low16": (10000, 16, 0, 0),
     "filter60k": (60000, 16, 0, 0, 100),
     "spill": (50000, 128, 0, 512),
+    "standard10k": (10000, 128, 0, 0, 10, True),
 }
 SMOKE_CASES = {
     "resident": (256, 16, 0, 0),
@@ -72,6 +73,7 @@ def squared_distance(a, b):
 def make_workload(spec, seed, queries, batch_size, k):
     rows, dimension, updated_rows, padding = spec[:4]
     group_modulus = spec[4] if len(spec) > 4 else 0
+    mixed_filters = bool(spec[5]) if len(spec) > 5 else False
     rng = random.Random(seed)
     require(array("f").itemsize == 4, "IEEE binary32 array storage required")
     vectors = [array("f", (rng.gauss(0, 1) for _ in range(dimension)))
@@ -80,6 +82,8 @@ def make_workload(spec, seed, queries, batch_size, k):
     query_vectors = [array("f", vectors[0])]
     query_vectors.extend(array("f", (rng.gauss(0, 1) for _ in range(dimension)))
                          for _ in range(queries - 1))
+    if mixed_filters:
+        query_vectors[1] = array("f", vectors[0])
     literals = [vector_literal(v) for v in vectors]
     extra = ",pad VARCHAR(%d)" % padding if padding else ""
     if group_modulus:
@@ -100,11 +104,14 @@ def make_workload(spec, seed, queries, batch_size, k):
             for key in range(stop - 1, start - 1, -1)) + ";"
         inserts.append((sql, stop - start))
         digest.update(sql.encode())
-    query_groups = [index % group_modulus if group_modulus else None for index in range(queries)]
+    query_groups = [((index // 2) % group_modulus if index % 2 else None)
+                    if mixed_filters else (index % group_modulus if group_modulus else None)
+                    for index in range(queries)]
     sql_queries = [f"SELECT id,L2_DISTANCE(v,{vector_literal(q)}) AS d FROM docs" +
                    (f" WHERE grp={group}" if group is not None else "") +
                    f" ORDER BY d LIMIT {k};" for q, group in zip(query_vectors, query_groups)]
-    query_counts = [min(k, groups.count(group) if groups else rows) for group in query_groups]
+    query_counts = [min(k, groups.count(group) if groups and group is not None else rows)
+                    for group in query_groups]
     update = (f"UPDATE docs SET v={vector_literal(query_vectors[1])} "
               f"WHERE id<{updated_rows};") if updated_rows else None
     oracle_indices = sorted({0, 1, queries - 1})
@@ -116,7 +123,7 @@ def make_workload(spec, seed, queries, batch_size, k):
             distances = ((squared_distance(query_vectors[1] if after_update and key < updated_rows
                                           else vector, query), key)
                          for key, vector in enumerate(vectors)
-                         if groups is None or groups[key] == query_groups[index])
+                         if groups is None or query_groups[index] is None or groups[key] == query_groups[index])
             result[index] = heapq.nsmallest(k, distances)
         return result
 
@@ -130,7 +137,7 @@ def make_workload(spec, seed, queries, batch_size, k):
             "after_oracle": after, "oracle_indices": oracle_indices,
             "vectors": vectors, "updated_vector": query_vectors[1],
             "sha256": digest.hexdigest(), "k": min(k, rows), "query_counts": query_counts,
-            "group_modulus": group_modulus}
+            "group_modulus": group_modulus, "mixed_filters": mixed_filters}
 
 
 def process_snapshot(session, phase):
@@ -393,6 +400,7 @@ def main():
                             "order": order, "rows": spec[0], "dimension": spec[1],
                             "updated_rows": spec[2], "padding_bytes": spec[3],
                             "group_modulus": workload["group_modulus"],
+                            "mixed_filters": workload["mixed_filters"],
                             "workload_sha256": workload["sha256"],
                             "generation_and_oracle_seconds_excluded": generation_seconds}
                     for label in order:

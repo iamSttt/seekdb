@@ -43,7 +43,7 @@ class OracleTests(unittest.TestCase):
     def test_generated_queries_against_fraction_oracle(self):
         # Fractions reconstruct exact binary32 distances independently of the
         # implementation's math.fsum accumulation and heap selection.
-        for spec in ((17, 16, 3, 0), (17, 16, 0, 0, 5)):
+        for spec in ((17, 16, 3, 0), (17, 16, 0, 0, 5), (17, 16, 0, 0, 5, True)):
             workload = benchmark.make_workload(spec, 8911, 5, 7, 6)
             groups = [key % 5 for key in range(17)] if len(spec) > 4 else None
             if groups:
@@ -52,9 +52,11 @@ class OracleTests(unittest.TestCase):
                 for index, expected in workload[phase].items():
                     literal = re.search(r"L2_DISTANCE\(v,'(\[[^]]*\])'", workload["queries"][index]).group(1)
                     query = list(map(Fraction.from_float, json.loads(literal)))
+                    filter_match = re.search(r"WHERE grp=(\d+)", workload["queries"][index])
+                    group = int(filter_match.group(1)) if filter_match else None
                     ranked = []
                     for key, vector in enumerate(workload["vectors"]):
-                        if groups is not None and groups[key] != index % 5:
+                        if groups is not None and group is not None and groups[key] != group:
                             continue
                         if phase == "after_oracle" and key < spec[2]:
                             vector = workload["updated_vector"]
@@ -75,6 +77,17 @@ class OracleTests(unittest.TestCase):
         workload = benchmark.make_workload((12, 16, 3, 0), 7319, 4, 5, 10)
         self.assertEqual(workload["after_oracle"][1][:3], [(0.0, 0), (0.0, 1), (0.0, 2)])
         self.assertNotEqual(workload["before_oracle"][1], workload["after_oracle"][1])
+
+    def test_standard_workload_alternates_unfiltered_and_ten_groups(self):
+        workload = benchmark.make_workload((41, 16, 0, 0, 10, True), 7319, 24, 10, 10)
+        for index, sql in enumerate(workload["queries"]):
+            if index % 2:
+                self.assertIn(f"WHERE grp={(index // 2) % 10} ", sql)
+            else:
+                self.assertNotIn("WHERE", sql)
+        self.assertEqual(sum("WHERE" in sql for sql in workload["queries"]), 12)
+        for index in (0, 1):
+            self.assertEqual(workload["before_oracle"][index][:2], [(0.0, 0), (0.0, 1)])
 
     def test_seed_controls_fingerprint(self):
         args = ((12, 16, 0, 0), 7319, 4, 5, 10)
