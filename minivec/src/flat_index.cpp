@@ -110,6 +110,13 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
     // 2 MiB for it whatever the budget says.
     const size_t left=available-posting_budget_-quantized_budget_;
     ann_budget_=std::min<size_t>(2u<<20,left);
+#ifndef MVDB_DISABLE_QUANTIZED_DOT
+    // Never displace postings, codes, or the existing ANN reservation. The
+    // optional exact dot kernel gets only the remainder of the same budget.
+    if(quantized_budget_ && dimension>=32 && mvdb::quantized_dot_available() &&
+       count<=(left-ann_budget_)/sizeof(uint32_t))
+      quantized_norm_budget_=count*sizeof(uint32_t);
+#endif
   } else {
     std::string path=dir+"/.flat-XXXXXX";
     std::vector<char> name(path.begin(),path.end());name.push_back(0);
@@ -181,32 +188,38 @@ void FlatIndex::finish() {
       quantized_.reset(new(std::nothrow) int8_t[quantized_budget_]);
       if(quantized_) {
         quantization_step_=step;
-#ifndef MVDB_DISABLE_RESIDUAL_BOUND
-        quantization_error_radius_=0;
+#ifndef MVDB_DISABLE_QUANTIZED_DOT
+        if(quantized_norm_budget_) {
+          quantized_norms_.reset(new(std::nothrow) uint32_t[count_]);
+          if(!quantized_norms_)quantized_norm_budget_=0;
+        }
 #endif
         // Do not reorder: codes have exactly the rows_/keys_ traversal order.
         size_t code=0;
         for(size_t i=0;i<count_ && quantization_step_;++i) {
           const float* row=row_at(i);
-          quantized_detail::ResidualNormUpper residual;
-          quantized_detail::ResidualNormUpper* collect=nullptr;
-#ifndef MVDB_DISABLE_RESIDUAL_BOUND
-          if(quantization_error_radius_>=0)collect=&residual;
+#ifndef MVDB_DISABLE_QUANTIZED_DOT
+          uint32_t norm=0;
 #endif
           for(size_t d=0;d<dimension_;++d) {
-            if(!mvdb::quantize_coordinate(row[d],step,&quantized_[code++],collect)) {
+            if(!mvdb::quantize_coordinate(row[d],step,&quantized_[code++])) {
               quantization_step_=0;break;
             }
+#ifndef MVDB_DISABLE_QUANTIZED_DOT
+            if(quantized_norms_) {
+              const int value=quantized_[code-1];norm+=static_cast<uint32_t>(value*value);
+            }
+#endif
           }
-          if(collect) {
-            const double radius=residual.radius(dimension_);
-            quantization_error_radius_=radius>=0 ? std::max(quantization_error_radius_,radius) : -1;
-          }
+#ifndef MVDB_DISABLE_QUANTIZED_DOT
+          if(quantized_norms_)quantized_norms_[i]=norm;
+#endif
         }
       }
     }
     if(!quantization_step_) {
-      quantized_.reset();quantized_budget_=0;quantization_error_radius_=-1;
+      quantized_.reset();quantized_budget_=0;
+      quantized_norms_.reset();quantized_norm_budget_=0;
     }
   }
 #endif
@@ -315,12 +328,12 @@ bool FlatIndex::resident_view(ResidentView* view) const {
   view->rows=rows_.data();view->keys=keys_.data();view->slots=slots_.data();
   view->dimension=dimension_;view->count=count_;
   view->quantized=quantized_.get();view->quantization_step=quantization_step_;
-  view->quantization_error_radius=quantization_error_radius_;
+  view->quantized_norms=quantized_norms_.get();
   return true;
 }
 size_t FlatIndex::resident_bytes() const {
   return rows_.capacity()*sizeof(const float*)+keys_.capacity()*sizeof(int64_t)+
-         slots_.capacity()*sizeof(uint64_t)+posting_budget_+quantized_budget_+
+         slots_.capacity()*sizeof(uint64_t)+posting_budget_+quantized_budget_+quantized_norm_budget_+
          ann_centroids_.capacity()*sizeof(float)+ann_members_.capacity()*sizeof(uint32_t)+
          ann_offsets_.capacity()*sizeof(uint32_t);
 }

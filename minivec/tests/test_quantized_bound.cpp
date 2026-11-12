@@ -32,6 +32,12 @@ static uint64_t integer_oracle(const int8_t* a,const int8_t* b,size_t n) {
   }
   return sum;
 }
+static uint32_t norm_oracle(const int8_t* a,size_t n) {
+  uint64_t sum=0;
+  for(size_t i=0;i<n;++i) {const int64_t x=a[i];sum+=static_cast<uint64_t>(x*x);}
+  require(sum<=UINT32_MAX,"code norm fits uint32");
+  return static_cast<uint32_t>(sum);
+}
 static void check_integer_result(const std::vector<int8_t>& a,const std::vector<int8_t>& b) {
   const uint64_t expected=integer_oracle(a.data(),b.data(),a.size());
   require(quantized_distance_squared(a.data(),b.data(),a.size())==expected,
@@ -41,6 +47,16 @@ static void check_integer_result(const std::vector<int8_t>& a,const std::vector<
     require(quantized_detail::distance_sse2(a.data(),b.data(),a.size())==expected,"SSE2 uint64 oracle");
   if(__builtin_cpu_supports("avx2"))
     require(quantized_detail::distance_avx2(a.data(),b.data(),a.size())==expected,"AVX2 uint64 oracle");
+#ifndef MVDB_DISABLE_QUANTIZED_DOT
+  // -128 is deliberately tested by the old distance API, but is outside the
+  // quantizer/dot contract. Never silently extend the saturation proof to it.
+  if(__builtin_cpu_supports("avx2") &&
+     std::all_of(a.begin(),a.end(),[](int8_t x){return x>=-127;}) &&
+     std::all_of(b.begin(),b.end(),[](int8_t x){return x>=-127;}))
+    require(quantized_detail::distance_dot_avx2(a.data(),b.data(),a.size(),
+                norm_oracle(a.data(),a.size()),norm_oracle(b.data(),b.size()))==expected,
+            "AVX2 dot differs from independent uint64 squared-distance oracle");
+#endif
 #if !defined(MVDB_DISABLE_AVX512_QUANTIZED)
   if(__builtin_cpu_supports("avx512f") && __builtin_cpu_supports("avx512bw") && __builtin_cpu_supports("avx2"))
     require(quantized_detail::distance_avx512(a.data(),b.data(),a.size())==expected,"AVX512 uint64 oracle");
@@ -67,16 +83,30 @@ static void check_integer_kernel() {
     }
     require(quantized_distance_squared(a.data(),a.data(),n)==0,"identical code distance");
     check_integer_result(a,b);
+    check_integer_result(a,a);check_integer_result(b,b);
     std::fill(a.begin(),a.end(),int8_t(-128));check_integer_result(a,b);
   }
 }
-static std::vector<int8_t> encode(const std::vector<float>& values,double step,double* radius=nullptr) {
+static void check_dot_unaligned() {
+#if defined(MVDB_SIMD_BOUND_X86) && !defined(MVDB_DISABLE_QUANTIZED_DOT)
+  if(!__builtin_cpu_supports("avx2"))return;
+  for(size_t n:{size_t(0),size_t(1),size_t(17),size_t(31),size_t(32),size_t(33),
+                size_t(127),size_t(129),size_t(65535),size_t(65536)}) {
+    std::vector<int8_t> a(n+3),b(n+3);
+    for(size_t i=0;i<n;++i) {
+      a[i+1]=static_cast<int8_t>(int(random_bits()%255)-127);
+      b[i+2]=static_cast<int8_t>(int(random_bits()%255)-127);
+    }
+    require(quantized_detail::distance_dot_avx2(a.data()+1,b.data()+2,n,
+                norm_oracle(a.data()+1,n),norm_oracle(b.data()+2,n))==
+                integer_oracle(a.data()+1,b.data()+2,n),"unaligned/tail dot uint64 oracle");
+  }
+#endif
+}
+static std::vector<int8_t> encode(const std::vector<float>& values,double step) {
   std::vector<int8_t> result(values.size());
-  quantized_detail::ResidualNormUpper residual;
-  long double residual_squared=0;
   for(size_t i=0;i<values.size();++i) {
-    require(quantize_coordinate(values[i],step,&result[i],radius?&residual:nullptr),
-            "generated step must encode finite input");
+    require(quantize_coordinate(values[i],step,&result[i]),"generated step must encode finite input");
     require(result[i]>=-127 && result[i]<=127,"legal signed quantization range");
     // A float32 and an integer times a power of two are dyadic numbers.
     // Long double is used only for this independent error check, never to
@@ -84,20 +114,10 @@ static std::vector<int8_t> encode(const std::vector<float>& values,double step,d
     const long double error=std::fabs(static_cast<long double>(values[i])-
         static_cast<long double>(result[i])*static_cast<long double>(step));
     require(error<=static_cast<long double>(step)*0.5L,"coordinate error exceeds half a step");
-    const long double scaled_error=static_cast<long double>(values[i])/static_cast<long double>(step)-result[i];
-    residual_squared+=scaled_error*scaled_error;
-  }
-  if(radius) {
-    *radius=residual.radius(values.size());
-    if(values.size()<=65536) {
-      require(std::isfinite(*radius) && *radius>=0,"finite residual radius");
-      require(static_cast<long double>(*radius)*static_cast<long double>(*radius)>=residual_squared,
-              "measured residual radius underestimates independent long-double norm");
-    } else require(*radius<0,"unsupported residual dimension remains unknown");
   }
   return result;
 }
-static size_t rejections=0,checked_pairs=0,residual_rejections=0,tighter_rejections=0;
+static size_t rejections=0,checked_pairs=0;
 static void check_pair(const std::vector<float>& row,const std::vector<float>& query,double forced_step=0) {
   const size_t n=row.size();require(query.size()==n,"test dimension agreement");
   double max_abs=0;
@@ -106,22 +126,22 @@ static void check_pair(const std::vector<float>& row,const std::vector<float>& q
   const double step=forced_step>0 ? forced_step : quantization_step(max_abs);
   require(step>0 && std::isfinite(step),"finite data produces positive finite step");
   int exponent=0;require(std::frexp(step,&exponent)==0.5,"step is a power of two");
-  double row_radius=-1,query_radius=-1;
-  const auto coded_row=encode(row,step,&row_radius),coded_query=encode(query,step,&query_radius);
+  const auto coded_row=encode(row,step),coded_query=encode(query,step);
   if(n<=65536)require(quantized_distance_squared(coded_row.data(),coded_query.data(),n)==
       integer_oracle(coded_row.data(),coded_query.data(),n),"pair integer distance oracle");
   const QuantizedQueryBound bound(query.data(),n,step);
-  const QuantizedQueryBound measured(query.data(),n,step,row_radius);
+  const QuantizedQueryBound dot(query.data(),n,step,true);
+  const uint32_t row_norm=norm_oracle(coded_row.data(),n);
   bool supported=n>=16 && n<=65536;
 #ifdef MVDB_DISABLE_QUANTIZED_BOUND
   supported=false;
 #endif
   require(bound.enabled()==supported,"default-FP generated-step dimension eligibility");
-  require(measured.enabled()==supported,"measured-radius dimension eligibility");
+  require(dot.enabled()==supported && dot.dot_enabled()==(supported && n>=32 && quantized_dot_available()),
+          "dot eligibility follows optional AVX2-only dispatch");
   if(supported)require(bound.coded_query()==coded_query,"query code equals independently encoded coordinates");
   const double exact=distance_exact(row.data(),query.data(),n);
-  const std::vector<double> thresholds={0.0,-0.0,exact*0.25,exact*0.97,exact*0.99,
-      std::nextafter(exact,0.0),exact,
+  const std::vector<double> thresholds={0.0,-0.0,exact*0.25,std::nextafter(exact,0.0),exact,
       std::nextafter(exact,std::numeric_limits<double>::infinity()),exact*2,
       std::numeric_limits<double>::max(),std::numeric_limits<double>::min(),
       -1.0,std::numeric_limits<double>::quiet_NaN(),std::numeric_limits<double>::infinity()};
@@ -130,22 +150,16 @@ static void check_pair(const std::vector<float>& row,const std::vector<float>& q
   for(size_t pass=0;pass<2;++pass)for(size_t i=0;i<thresholds.size();++i) {
     const double threshold=thresholds[pass?thresholds.size()-1-i:i];
     const bool rejected=bound.definitely_greater(coded_row.data(),threshold);
-    const bool measured_rejected=measured.definitely_greater(coded_row.data(),threshold);
+    require(dot.definitely_greater(coded_row.data(),threshold,row_norm)==rejected,
+            "dot rejection differs from the exact integer distance kernel");
+    require(dot.definitely_greater(coded_row.data(),threshold)==rejected,
+            "old rejection overload remains valid with a dot-enabled context");
     require(!rejected || exact>threshold,"quantized bound rejected canonical exact <= threshold");
-    require(!measured_rejected || exact>threshold,"measured residual rejected canonical exact <= threshold");
-    require(!rejected || measured_rejected,"measured residual must preserve every legacy rejection");
     if(!supported || !std::isfinite(threshold) || threshold<0)
       require(!rejected,"unsupported query or threshold must not reject");
     require(rejected==QuantizedQueryBound(query.data(),n,step).definitely_greater(coded_row.data(),threshold),
             "cached threshold and a fresh query context differ");
-    require(measured_rejected==QuantizedQueryBound(query.data(),n,step,row_radius).definitely_greater(
-                coded_row.data(),threshold),"measured residual cached threshold differs from fresh context");
-#ifdef MVDB_DISABLE_RESIDUAL_BOUND
-    require(measured_rejected==rejected,"residual ablation must retain every legacy decision");
-#endif
     rejections+=rejected;
-    residual_rejections+=measured_rejected;
-    tighter_rejections+=measured_rejected && !rejected;
   }
   ++checked_pairs;
 }
@@ -158,7 +172,7 @@ static void check_coordinates() {
       for(float value:{std::nextafter(midpoint,-std::numeric_limits<float>::infinity()),
                        midpoint,std::nextafter(midpoint,std::numeric_limits<float>::infinity())}) {
         if(std::fabs(double(value))>127*step)continue;
-        double radius=-1;encode({value},step,&radius);
+        encode({value},step);
       }
     }
   }
@@ -168,15 +182,6 @@ static void check_coordinates() {
     require(code==expected,"midpoint ties are away from zero");
   }
   for(float value:{127.0f,-127.0f})encode({value},1);
-  // Even at the largest usable step, scaling a float32 subnormal is exact;
-  // its residual square can underflow in binary64 and must round upwards.
-  double tiny_radius=-1;
-  encode({std::numeric_limits<float>::denorm_min()},std::ldexp(1.0,511),&tiny_radius);
-  require(tiny_radius>0,"underflowed residual square retains a positive upper bound");
-  for(double invalid:{std::numeric_limits<double>::quiet_NaN(),128.0,0.75}) {
-    quantized_detail::ResidualNormUpper residual;residual.add(invalid,0);
-    require(residual.radius(1)<0,"invalid residual cannot produce a measured radius");
-  }
   int8_t code=0;
   for(float value:{std::nextafter(127.0f,std::numeric_limits<float>::infinity()),
                    std::nextafter(-127.0f,-std::numeric_limits<float>::infinity()),
@@ -235,18 +240,6 @@ static void check_pairs() {
   require(!coarse.definitely_greater(far.data(),32),"coarse-scale small-radius fallback");
   const auto codes=encode(one,quantization_step(1));
   const QuantizedQueryBound useful(zero.data(),zero.size(),quantization_step(1));
-  // Exactly represented code points have zero residual. At 126 the legacy
-  // half-step envelope cannot reject this row, while its canonical distance
-  // is 128. This makes the strictly tighter, still exact path deterministic.
-  const QuantizedQueryBound measured(zero.data(),zero.size(),quantization_step(1),0);
-  require(!useful.definitely_greater(codes.data(),126),"legacy envelope covers test threshold");
-#if !defined(MVDB_DISABLE_QUANTIZED_BOUND) && !defined(MVDB_DISABLE_RESIDUAL_BOUND)
-  require(measured.definitely_greater(codes.data(),126),"zero residual strictly tightens safe rejection");
-  require(distance_exact(one.data(),zero.data(),one.size())>126,"strict rejection exact oracle");
-  ++tighter_rejections;++residual_rejections;
-#else
-  require(!measured.definitely_greater(codes.data(),126),"disabled residual retains legacy envelope");
-#endif
 #ifndef MVDB_DISABLE_QUANTIZED_BOUND
   require(useful.definitely_greater(codes.data(),32),"nontrivial ordinary-data rejection");
 #else
@@ -259,41 +252,38 @@ static void check_invalid_and_environment() {
                    std::numeric_limits<double>::quiet_NaN(),std::ldexp(1.0,-600),std::ldexp(1.0,600)}) {
     const QuantizedQueryBound invalid(query.data(),query.size(),step);
     require(!invalid.enabled() && !invalid.definitely_greater(row.data(),0),"invalid step disables bound");
+    const QuantizedQueryBound invalid_dot(query.data(),query.size(),step,true);
+    require(!invalid_dot.enabled() && !invalid_dot.dot_enabled() &&
+            !invalid_dot.definitely_greater(row.data(),0,norm_oracle(row.data(),row.size())),
+            "invalid step disables dot context");
   }
   for(double step:{0.0,-1.0,0.3,std::numeric_limits<double>::infinity(),std::numeric_limits<double>::quiet_NaN()})
     require(!quantize_coordinate(1,step,&code),"invalid coordinate step");
   for(double maximum:{-1.0,std::numeric_limits<double>::infinity(),std::numeric_limits<double>::quiet_NaN()})
     require(quantization_step(maximum)==0,"invalid maximum disables quantization");
   for(float invalid:{std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN(),128.0f}) {
-    query[11]=invalid;const QuantizedQueryBound bound(query.data(),query.size(),1);
+    query[11]=invalid;const QuantizedQueryBound bound(query.data(),query.size(),1,true);
     require(!bound.enabled() && !bound.definitely_greater(row.data(),0),"invalid or unencodable query disables bound");
+    require(!bound.dot_enabled(),"failed query encoding cannot enable dot");
   }
   query[11]=0;
-  for(double radius:{-1.0,-0.25,std::numeric_limits<double>::quiet_NaN(),
-                     std::numeric_limits<double>::infinity(),1000.0}) {
-    const QuantizedQueryBound fallback(query.data(),query.size(),1,radius);
-    const QuantizedQueryBound legacy(query.data(),query.size(),1);
-    for(double threshold:{0.0,32.0,10000.0,1000000.0,2000000.0})
-      require(fallback.definitely_greater(row.data(),threshold)==legacy.definitely_greater(row.data(),threshold),
-              "unknown or invalid row residual retains legacy envelope");
-  }
 #if defined(MVDB_SIMD_BOUND_X86)
   const unsigned csr=_mm_getcsr();
   for(unsigned flags:{1u<<6,1u<<15,1u<<13,2u<<13,3u<<13}) {
     _mm_setcsr((csr&~(3u<<13))|flags);
-    const QuantizedQueryBound disabled(query.data(),query.size(),1,0);
+    const QuantizedQueryBound disabled(query.data(),query.size(),1,true);
     const bool enabled=disabled.enabled(),reject=disabled.definitely_greater(row.data(),0);
     _mm_setcsr(csr);
-    require(!enabled && !reject,"non-default MXCSR disables quantized bound");
+    require(!enabled && !reject && !disabled.dot_enabled(),"non-default MXCSR disables quantized bound");
   }
 #else
   const int rounding=std::fegetround();
   for(int mode:{FE_DOWNWARD,FE_UPWARD,FE_TOWARDZERO}) {
     require(std::fesetround(mode)==0,"test rounding mode supported");
-    const QuantizedQueryBound disabled(query.data(),query.size(),1,0);
+    const QuantizedQueryBound disabled(query.data(),query.size(),1,true);
     const bool enabled=disabled.enabled(),reject=disabled.definitely_greater(row.data(),0);
     std::fesetround(rounding);
-    require(!enabled && !reject,"non-nearest rounding disables quantized bound");
+    require(!enabled && !reject && !disabled.dot_enabled(),"non-nearest rounding disables quantized bound");
   }
 #endif
 }
@@ -325,12 +315,17 @@ static void check_integer_cap_equivalence() {
       std::vector<int8_t> row(n,127),coded_query(n,-127);
       const uint64_t integer=integer_oracle(row.data(),coded_query.data(),n);
       const QuantizedQueryBound bound(query.data(),n,step);
+      const QuantizedQueryBound dot(query.data(),n,step,true);
+      const uint32_t row_norm=norm_oracle(row.data(),n);
       const auto check=[&](double threshold) {
         const bool expected=bound.enabled() && legacy_reject(integer,n,step,threshold);
         // Repeat to exercise both cache miss and the validated cached path.
-        for(int repeat=0;repeat<2;++repeat)
+        for(int repeat=0;repeat<2;++repeat) {
           require(bound.definitely_greater(row.data(),threshold)==expected,
                   "integer cap differs from legacy floating cap");
+          require(dot.definitely_greater(row.data(),threshold,row_norm)==expected,
+                  "dot cap differs near signed/unsigned integer boundaries");
+        }
       };
       for(double target:{double(integer)-1,double(integer),double(integer)+1,
                          2147483647.0,2147483648.0,2147483649.0,
@@ -354,14 +349,10 @@ static void check_integer_cap_equivalence() {
 }
 int main() {
   check_integer_kernel();check_coordinates();check_pairs();check_invalid_and_environment();
-  check_integer_cap_equivalence();
+  check_integer_cap_equivalence();check_dot_unaligned();
 #ifndef MVDB_DISABLE_QUANTIZED_BOUND
   require(rejections>100,"test exercises nontrivial rejection");
 #endif
-#if !defined(MVDB_DISABLE_QUANTIZED_BOUND) && !defined(MVDB_DISABLE_RESIDUAL_BOUND)
-  require(tighter_rejections>0,"measured residual exercises strictly tighter safe rejection");
-#endif
   std::cout<<"PASS quantized uint64 oracle, coordinate error, exact-distance thresholds, cache and FP environment; pairs="
-           <<checked_pairs<<" safe_rejections="<<rejections<<" residual_safe_rejections="<<residual_rejections
-           <<" strictly_tighter_rejections="<<tighter_rejections<<"\n";
+           <<checked_pairs<<" safe_rejections="<<rejections<<"\n";
 }

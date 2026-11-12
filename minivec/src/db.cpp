@@ -1953,7 +1953,8 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
             const uint64_t slot=view.slots[i];
             if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[slot]))
               throw std::runtime_error("stale flat vector index slot");
-            if(reject && quantized->definitely_greater(codes+i*dimension,*threshold))continue;
+            if(reject && quantized->definitely_greater(codes+i*dimension,*threshold,
+                view.quantized_norms ? view.quantized_norms[i] : 0))continue;
             if(!cb(view.keys[i],view.rows[i],dimension))return;
           }
           return;

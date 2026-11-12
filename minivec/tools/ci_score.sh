@@ -53,9 +53,9 @@ python3 minivec/tests/image_interactive.py --image "$IMAGE" --output protocol-re
 make -C minivec -j2 test 2>&1 | tee protocol-results/source-regressions.log
 MVDB_PARSE_THREADS=1 ./minivec/test_sql 2>&1 | tee protocol-results/parser-serial.log
 MVDB_PARSE_THREADS=2 ./minivec/test_sql 2>&1 | tee protocol-results/parser-parallel.log
-g++ -O2 -std=c++17 -pthread -Iminivec/src -DMVDB_DISABLE_RESIDUAL_BOUND \
-  minivec/tests/test_quantized_bound.cpp -o "$scratch/test-legacy-radius"
-"$scratch/test-legacy-radius" 2>&1 | tee protocol-results/legacy-radius.log
+g++ -O2 -std=c++17 -pthread -Iminivec/src -DMVDB_DISABLE_QUANTIZED_DOT \
+  minivec/tests/test_quantized_bound.cpp -o "$scratch/test-no-dot"
+"$scratch/test-no-dot" 2>&1 | tee protocol-results/no-dot.log
 g++ -O2 -std=c++17 -pthread -Iminivec/src -DMVDB_DISABLE_QUANTIZED_BOUND \
   minivec/tests/test_quantized_bound.cpp -o "$scratch/test-no-quantization"
 "$scratch/test-no-quantization" 2>&1 | tee protocol-results/no-quantization.log
@@ -75,6 +75,14 @@ MVDB_QUERY_THREADS=2 python3 minivec/tests/topk_bounds.py --binary "$scratch/ima
 # Native tests above include all eight staged-WAL cases. Run them explicitly
 # again under sanitizers, without weakening error or durability assertions.
 reports="$PWD/protocol-results"
+
+# AST ownership must survive destroyed SQL input, including worker failures.
+g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_sql.cpp minivec/src/sql.cpp minivec/src/value.cpp -o "$scratch/sql-san"
+for threads in 1 2; do
+  MVDB_PARSE_THREADS="$threads" ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/sql-san" 2>&1 | tee "$reports/sql-$threads-san.log"
+done
+g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_quantized_bound.cpp -o "$scratch/quantized-san"
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/quantized-san" 2>&1 | tee "$reports/quantized-san.log"
 g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_recovery_regressions.cpp minivec/src/db.cpp minivec/src/exec.cpp minivec/src/sql.cpp minivec/src/value.cpp minivec/src/flat_index.cpp -o "$scratch/recovery-san"
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/recovery-san" --wal-staging 2>&1 | tee "$reports/recovery-san.log"
 g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_query_pool_safety.cpp -Wl,--wrap=pthread_create -o "$scratch/query-pool-san"
@@ -112,6 +120,7 @@ report = {
         'source_official_handshake_and_public_cases': True,
         'live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill': True,
         'make_test': True,
+        'parser_ownership_serial_parallel_and_quantized_bound_asan_ubsan': True,
         'image_binary_json_and_exact_topk_serial_parallel': True,
         'eight_wal_failure_cases_asan_ubsan': True,
         'query_pool_both_modes_asan_ubsan': True,

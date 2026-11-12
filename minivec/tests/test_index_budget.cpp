@@ -1,6 +1,7 @@
 // g++ -std=c++17 -O2 -Isrc tests/test_index_budget.cpp src/flat_index.cpp -o test_index_budget
 // Add -DMVDB_TEST_WRAP_PWRITE -Wl,--wrap=pwrite for EINTR/short/error injection.
 #include "flat_index.h"
+#include "quantized_bound.h"
 #include <algorithm>
 #include <cassert>
 #include <cerrno>
@@ -8,6 +9,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -17,6 +19,7 @@ using mvdb::FlatIndex;
 namespace {
 constexpr size_t metadata_stride=sizeof(const float*)+sizeof(int64_t)+sizeof(uint64_t);
 constexpr size_t posting_peak=2*sizeof(int64_t)+sizeof(uint32_t);
+size_t fail_array_bytes=0;
 #ifdef MVDB_TEST_WRAP_PWRITE
 size_t writes=0;
 bool interrupt_next=false,short_writes=false,fail_writes=false,zero_write=false;
@@ -132,6 +135,53 @@ void check_disk(const std::string& dir,size_t dimension,size_t count) {
   visited=0;disk.scan([&](int64_t,uint64_t,const float*,size_t){++visited;return false;});
   assert(visited==1);
 }
+void check_dot_budget(const std::string& dir) {
+  constexpr size_t count=33,dimension=128,ann_reservation=2u<<20;
+  size_t base=count*(metadata_stride+posting_peak);
+#ifndef MVDB_DISABLE_QUANTIZED_BOUND
+  base+=count*dimension;
+#endif
+  const size_t norms=count*sizeof(uint32_t);
+  std::vector<float> values(count*dimension);
+  for(size_t row=0;row<count;++row)for(size_t d=0;d<dimension;++d)
+    values[row*dimension+d]=float(int((row*17+d*5)%127)-63)*0.123f;
+  // Norms may use only space beyond the existing full ANN reservation. One
+  // byte short must keep all old codes/postings, and discard only the dot path.
+  for(size_t extra:{size_t(0),ann_reservation+norms-1,ann_reservation+norms}) {
+    FlatIndex index(dir,dimension,count,base+extra);
+    assert(index.resident_bytes()<=base+extra);
+    for(size_t row=0;row<count;++row)index.add(row,row,values.data()+row*dimension,dimension);
+    index.finish();FlatIndex::ResidentView view;
+    assert(index.resident_view(&view));
+#ifndef MVDB_DISABLE_QUANTIZED_BOUND
+    assert(view.quantized);
+#else
+    assert(!view.quantized);
+#endif
+    const bool have_norms=mvdb::quantized_dot_available() && extra==ann_reservation+norms;
+    assert(bool(view.quantized_norms)==have_norms);
+    assert(index.resident_bytes()==base+(have_norms?norms:0));
+    if(have_norms)for(size_t row=0;row<count;++row) {
+      uint64_t expected=0;
+      for(size_t d=0;d<dimension;++d) {
+        const int64_t code=view.quantized[row*dimension+d];expected+=uint64_t(code*code);
+      }
+      assert(view.quantized_norms[row]==expected);
+    }
+    const uint32_t* ordinals=nullptr;size_t matches=0;
+    assert(index.equal_ordinals(1,2,[](uint64_t slot){return int64_t(slot%3);},&ordinals,&matches));
+    assert(matches==11 && index.resident_bytes()<=base+extra);
+  }
+  if(mvdb::quantized_dot_available()) {
+    FlatIndex index(dir,dimension,count,base+ann_reservation+norms);
+    for(size_t row=0;row<count;++row)index.add(row,row,values.data()+row*dimension,dimension);
+    // Fail only the uint32 norm array (132 bytes), not the int8 code array
+    // (4224 bytes). This optional failure must retain exact quantized scanning.
+    fail_array_bytes=norms;index.finish();fail_array_bytes=0;
+    FlatIndex::ResidentView view;assert(index.resident_view(&view));
+    assert(view.quantized && !view.quantized_norms && index.resident_bytes()==base);
+  }
+}
 void check_invalid(const std::string& dir) {
   throws([&]{FlatIndex bad(dir,0,1,0);});
   throws([&]{FlatIndex bad(dir,std::numeric_limits<size_t>::max(),1,0);});
@@ -162,6 +212,24 @@ void check_partition_budget(const std::string& dir) {
     assert(index.ann_clusters()==(extra==peak?clusters:0));
     assert(index.resident_bytes()<=base+extra);
   }
+  // Repeat at a dot-eligible dimension. The original ANN construction boundary
+  // must not move to make space for norms; those norms simply remain absent.
+  constexpr size_t wide_dimension=128;
+  size_t wide_base=count*(metadata_stride+posting_peak);
+#ifndef MVDB_DISABLE_QUANTIZED_BOUND
+  wide_base+=count*wide_dimension;
+#endif
+  const size_t wide_peak=clusters*wide_dimension*(sizeof(float)+sizeof(double))+
+                        count*sizeof(uint32_t)+clusters*sizeof(uint32_t);
+  vector.resize(wide_dimension,0.5f);
+  for(size_t extra:{wide_peak-1,wide_peak,size_t(2u<<20)+count*sizeof(uint32_t)}) {
+    FlatIndex index(dir,wide_dimension,count,wide_base+extra);
+    for(size_t i=0;i<count;++i)index.add(int64_t(i),i,vector.data(),wide_dimension);
+    index.finish();FlatIndex::ResidentView view;assert(index.resident_view(&view));
+    assert(index.ann_clusters()==(extra>=wide_peak?clusters:0));
+    assert(bool(view.quantized_norms)==(mvdb::quantized_dot_available() && extra>wide_peak));
+    assert(index.resident_bytes()<=wide_base+extra);
+  }
 }
 #ifdef MVDB_TEST_WRAP_PWRITE
 void check_failures(const std::string& dir) {
@@ -191,6 +259,12 @@ void check_failures(const std::string& dir) {
 }
 #endif
 }
+// Test-only allocation fault. All successful requests still use the matching
+// ordinary array-new/delete implementation, including sanitizer interceptors.
+void* operator new[](std::size_t bytes,const std::nothrow_t&) noexcept {
+  if(fail_array_bytes && bytes==fail_array_bytes)return nullptr;
+  try {return ::operator new[](bytes);} catch(...) {return nullptr;}
+}
 #ifdef MVDB_TEST_WRAP_PWRITE
 extern "C" ssize_t __real_pwrite(int,const void*,size_t,off_t);
 extern "C" ssize_t __wrap_pwrite(int fd,const void* data,size_t bytes,off_t offset) {
@@ -210,6 +284,7 @@ int main(int argc,char** argv) {
     return 0;
   }
   check_budget(path);
+  check_dot_budget(path);
   check_disk(path,128,1001);
   check_disk(path,65537,3); // one record exceeds the batching buffer target
   check_invalid(path);
