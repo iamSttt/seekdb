@@ -10,7 +10,9 @@
 
 本轮从用户指定的 `a90b2b750e40f020793cddefe01d5b66631afc63` 开始，筛选用户报告中的驻留预算、少量 UPDATE、磁盘索引批写与配对测量方向。按用户本轮要求新建 [agent/conversation.json](agent/conversation.json) 及相同根副本：报告与用户原话标为 `user`，实现与实验标为 `assistant`，不导入旧对话历史。`python3 minivec/tools/validate_iteration_material.py` 检查两份字节、大小与来源引用，不代表官方材料评审通过。
 
-[本轮优化实测报告](docs/ITERATION_20261112.md)记录 255 对实验、收益和回退决定：35k/50k 及少量 UPDATE 有明显收益，默认 10k 查询仍基本持平；LTO 和追加微调均未保留。**6000 分尚未验证，没有新的正式提测。**
+[第一轮优化实测报告](docs/ITERATION_20261112.md)记录 255 对实验、收益和回退决定：35k/50k 及少量 UPDATE 有明显收益，默认 10k 查询仍基本持平；LTO 和追加微调均未保留。**6000 分尚未验证，没有新的正式提测。**
+
+[第二轮记录](docs/ITERATION2_20261112.md)保存525对追加实验及回退决定。当前交付采用上一轮运行源码＋默认构建期PGO；按用户要求在额度耗尽时保存并推送。[最终同镜像验证与105对测试](https://github.com/iamSttt/seekdb/actions/runs/43247796185)在保存时仍运行，最终组合收益和6000分尚未确认。
 
 ## 构建和运行
 

@@ -9,6 +9,8 @@ bash /absolute/repo/minivec/tools/pgo/compare.sh /absolute/repo 502931da5b1e9804
 # 去掉 --build-only 后还会执行 15 对标准测试与 90 对边界测试。
 ```
 
+下文的 `[pgo]`/`ci_pgo.sh` 是历史同源隔离入口，须在 `502931d` 的 checkout 中使用。当前根 Dockerfile 已启用 PGO，不满足该旧入口的基线预检，因此当前 HEAD 应使用 `[final-perf]` 或文末的 `MVDB_FINAL_PERFORMANCE=1` 完整验证入口。
+
 `--build-only` 仍会运行两个二进制的 JSONL、精确 TopK（默认/双线程）和官方公开协议检查，只跳过性能测量。脚本按给定 commit 的 Git archive 创建新上下文；使用该提交的源码、测试和基准脚本，不读取未提交工作区。原仓库保持不变。临时上下文、镜像和结果保留，便于诊断；临时容器及其匿名卷用 `docker rm -v` 释放。
 
 仓库 CI 入口为 `bash minivec/tools/ci_pgo.sh`。包含 `[pgo]` 的提交触发独立 50 分钟 job，并排除普通 paired-performance；原 validate job 仍运行。先完成编译、六次训练响应验证、反馈哈希检查、发布镜像检查和八项二进制正确性门禁，再启动 15 对标准与 90 对边界测量。失败立即停止。EXIT trap 始终尝试输出 `MINIVEC_PGO_REPORT_BEGIN ...` / `MINIVEC_PGO_REPORT_END`，其中含 context、hashes、run-status、proof、correctness 和已有配对 JSON，便于从日志下载；输出目录 `pgo-results/` 已忽略。
