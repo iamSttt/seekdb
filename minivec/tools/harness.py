@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """tools/harness.py -- mysqltest-style driver for MiniVectorDB.
 
-MiniVectorDB is a competition entry that talks a *text* protocol on
-stdin/stdout (no TCP, no network at run time).  The official driver has not
-been published yet, so this harness plays the same role locally:
+This harness exercises MiniVectorDB's optional plain-SQL adapter for local
+engine regressions. Run it with MVDB_PROTOCOL=sql (run.sh does this for you).
+The submitted entrypoint uses JSONL; use protocol_check/run.py for the
+organizer's published protocol and fixtures. This local harness:
 
   * reads a ``.sql`` case (mysqltest syntax subset),
   * feeds the statements to ``./minivec --data <tmpdir>`` one at a time,
@@ -21,9 +22,8 @@ Usage
 Exit codes: 0 = pass, 1 = mismatch / assertion failure, 2 = usage error,
 3 = binary missing or did not start.
 
-Trailing horizontal whitespace is normalised with the exact same rule as
-``.github/script/seekdb/mysqltest_for_seekdb.py:normalize_trailing_horizontal_whitespace``
-so that a case recorded here also matches what the official runner computes.
+Trailing horizontal whitespace is normalised for the local .result fixtures.
+These SQL-text results are not evidence of official JSONL compatibility.
 
 Directives understood
 ---------------------
@@ -38,11 +38,11 @@ Directives understood
     --disable_query_log / --enable_query_log / --skip  accepted and honoured/ignored
     #  and  -- <comment>      comment lines (not sent to the server)
 
-PROTOCOL ASSUMPTIONS -- the one place to change when the real driver appears
---------------------------------------------------------------------------
+LOCAL ADAPTER SETTINGS
+----------------------
 Everything the harness believes about the wire format lives in ``PROTOCOL``
-below, plus the ``MYSQLTEST_VIEW`` switch.  ``tools/probe.py`` measures which
-framing a given binary actually implements; paste its recommendation here.
+below, plus the ``MYSQLTEST_VIEW`` switch. These settings do not select or
+modify the official JSONL contract.
 """
 
 from __future__ import annotations

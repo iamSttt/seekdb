@@ -52,6 +52,8 @@ python3 minivec/tests/image_interactive.py --image minivec --output protocol-res
 
 CI会构建根镜像，测试源码和镜像的公开用例、保持stdin打开的交互、退出/恢复、COMMIT后SIGKILL、精确TopK、线程池/跨表spill/WAL故障及sanitizer。公开用例与本地回归不计算正式E，也不包含隐藏用例。
 
+清理候选已通过[本轮CI](https://github.com/iamSttt/seekdb/actions/runs/43219423574)，源码/镜像公开用例各20/20；镜像内程序SHA256与清理前运行核心相同。详细结果见[复验记录](validation/cleanup-ci-20261112.json)。工作流支持手动dispatch，提交分支push不会自动触发。
+
 旧SQL文本适配器仅供引擎回归：`--protocol sql`或`MVDB_PROTOCOL=sql`；`minivec/run.sh`与harness显式选该模式，不能替代JSONL准入。
 
 ## 后续测量和仓库结构
