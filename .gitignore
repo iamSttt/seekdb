@@ -18,5 +18,6 @@ __pycache__/
 /hotpath-results/
 /round2-results/
 /dot-results/
+/pgo-results/
 /data/
 /minivec/data/
