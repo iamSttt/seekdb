@@ -68,6 +68,11 @@ for role in baseline candidate; do
   git archive "$source" Dockerfile .dockerignore minivec/src minivec/third_party \
     minivec/tests minivec/tools protocol_check | tar -x -C "$scratch/$role"
 done
+if ! grep -q MVDB_ENABLE_EQUALITY_FASTPATH "$scratch/candidate/minivec/src/db.cpp" ||
+   ! grep -q MVDB_ENABLE_DOM_ROW_RESERVE "$scratch/candidate/minivec/src/exec.cpp"; then
+  echo 'Historical equality/DOM candidates are absent from this revision; reproduce commit 76d7687b6eb002bb765bb555102d528166af50ac instead.' >&2
+  exit 2
+fi
 git status --porcelain --untracked-files=no > "$out/worktree-status.txt"
 lscpu > "$out/lscpu.txt"
 helper="$scratch/candidate/minivec/tools/regression_ablation_proof.py"

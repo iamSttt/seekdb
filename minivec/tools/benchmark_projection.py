@@ -28,7 +28,8 @@ from json_protocol import Session, require, strict_json
 
 DEFAULT_CASES = ("wide768", "many16")
 CASES = {"wide768": (1024, 768, 96), "many16": (8192, 16, 256),
-         "wide128": (1024, 128, 96)}
+         "wide128": (1024, 128, 96), "many64": (8192, 64, 256),
+         "many127": (8192, 127, 256)}
 LOW, HIGH = -(1 << 63), (1 << 63) - 1
 F32_MAX = float.fromhex("0x1.fffffep127")
 F32_TINY = float.fromhex("0x1p-149")

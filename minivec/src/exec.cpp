@@ -1,6 +1,7 @@
 // exec.cpp — statement execution + MySQL-style table rendering
 #include "exec.h"
 #include "filter_diagnostics.h"
+#include "json_response_diagnostics.h"
 #include "result_sort.h"
 #include "distance.h"
 #include "quantized_bound.h"
@@ -436,9 +437,19 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
 #ifdef MVDB_TYPED_WIDE_VECTOR_ONLY
       // Experimental boundary, not a proven optimal threshold. Choose once per
       // SELECT; distance-only/scalar projections retain the original DOM path.
+#ifdef MVDB_TYPED_BULK_VECTOR_ONLY
+      // pk_pos counts live keys without scanning tombstones. The existing wide
+      // rule below remains independent of the extra bulk-output eligibility.
+      const bool bulk_vector_output = st.conds.empty() &&
+          (st.limit < 0 || st.limit >= 4096) && t->pk_pos.size() >= 4096;
+#endif
       const bool use_typed_json = std::any_of(items.begin(), items.end(), [&](const Item& item) {
         return !item.is_distance && sch.cols[item.col].type == Type::VECTOR &&
-            sch.cols[item.col].len >= 128;
+            (sch.cols[item.col].len >= 128
+#ifdef MVDB_TYPED_BULK_VECTOR_ONLY
+             || (bulk_vector_output && sch.cols[item.col].len >= 16)
+#endif
+            );
       });
 #else
       constexpr bool use_typed_json = true;
@@ -446,6 +457,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
       std::string encoded_row;
       JsonRowWriter row_writer(encoded_row);
       auto encode_typed_json_row = [&](const Row& row, const Candidate* candidate = nullptr) -> const std::string& {
+        MVDB_JSON_RESPONSE_COUNT(typed_rows);
         encoded_row.clear();encoded_row+='[';
         for(size_t j=0;j<items.size();++j) {
           if(j)encoded_row+=',';
@@ -458,11 +470,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
 #endif
 #if !defined(MVDB_ENABLE_TYPED_JSON) || defined(MVDB_TYPED_WIDE_VECTOR_ONLY)
       auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
+        MVDB_JSON_RESPONSE_COUNT(dom_rows);
         Json cells = Json::array();
-#ifdef MVDB_ENABLE_DOM_ROW_RESERVE
-        // Experimental capacity reservation; row values and serialization stay unchanged.
-        cells.get_ref<Json::array_t&>().reserve(items.size());
-#endif
         for (const auto& item : items) {
           const Value& value = row.vals[item.col];
           if (!item.is_distance) {

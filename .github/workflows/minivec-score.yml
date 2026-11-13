@@ -4,6 +4,11 @@ on:
     branches: [codex/round2-score-20261111, codex/round2-optimize-20261112]
   workflow_dispatch:
     inputs:
+      bulk_typed:
+        description: Confirm bounded bulk vector output against the delivered PGO baseline
+        type: boolean
+        required: false
+        default: false
       regression_ablation:
         description: Compare isolated regression fixes against the delivered four-feature PGO build
         type: boolean
@@ -50,7 +55,7 @@ jobs:
           path: protocol-results/
           retention-days: 90
   paired-performance:
-    if: ${{ !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
+    if: ${{ !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -74,6 +79,22 @@ jobs:
         with:
           name: regression-ablation
           path: regression-ablation-results/
+          retention-days: 90
+  bulk-typed-confirmation:
+    if: ${{ inputs.bulk_typed || contains(github.event.head_commit.message, '[bulk-typed]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Bulk vector output guards, independent PGO and paired protection cases
+        run: bash minivec/tools/ci_bulk_typed_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: bulk-typed-confirmation
+          path: bulk-typed-confirmation-results/
           retention-days: 90
   standard-performance:
     if: ${{ contains(github.event.head_commit.message, '[standard]') }}

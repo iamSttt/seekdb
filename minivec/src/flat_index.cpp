@@ -586,28 +586,6 @@ bool FlatIndex::equal_ordinals(size_t column,int64_t value,
   *ordinals=posting_ordinals_.data()+offset;
   *count=length;
   return true;
-#elif defined(MVDB_ENABLE_EQUALITY_FASTPATH)
-  if(!ready_)throw std::runtime_error("flat vector index is not ready");
-  if(!ordinals || !count)return false;
-  *ordinals=nullptr;*count=0;
-  if(fd_>=0 || (count_ && !posting_budget_))return false;
-  if(!count_)return true;
-  // Share the same two entries, LRU and construction budget as range queries.
-  // Compressed values are distinct: one lower_bound identifies the complete
-  // equality run; its next start replaces a second binary search.
-  IntegerPosting* posting=integer_posting(column,read_value);
-  if(!posting)return false;
-  const int64_t* begin=posting->values.get();
-  const int64_t* end=begin+posting->value_count;
-  const int64_t* first=std::lower_bound(begin,end,value);
-  if(first==end || *first!=value)return true;
-  const size_t position=static_cast<size_t>(first-begin);
-  const size_t left=posting->starts ? size_t(posting->starts[position]) : position;
-  const size_t right=posting->starts ?
-      (position+1==posting->value_count ? count_ : size_t(posting->starts[position+1])) :
-      static_cast<size_t>(std::upper_bound(first,end,value)-begin);
-  *ordinals=posting->ordinals.get()+left;*count=right-left;
-  return true;
 #else
   IntegerRange range;
   range.has_lower=range.has_upper=true;range.lower=range.upper=value;
