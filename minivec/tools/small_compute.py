@@ -72,6 +72,24 @@ def check_insert_copy_plan(items, reference, count):
     require(items == insert_copy_plan(reference, count), 'INSERT fixed plan/order differs')
 
 
+HIGHEST_PRIMARY_FAMILY = 'highest_primary24_v1'
+
+
+def highest_primary_plan(reference, count):
+    """Independent EE-primary screen: EE12 + retained8 + retained protection4."""
+    require(reference in ('ee', 'retained') and type(count) is int and count in (1, 2),
+            'unknown highest-primary plan')
+    specs = [('standard10k', 6 if reference == 'ee' else 4)]
+    if reference == 'retained': specs.append(('spill_high_q16' if count == 1 else 'wide768', 2))
+    return [{'scenario': name, 'seed': SEED, 'pair_index': index,
+             'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline']}
+            for name, pairs in specs for index in range(pairs)]
+
+
+def check_highest_primary_plan(items, reference, count):
+    require(items == highest_primary_plan(reference, count), 'highest-primary fixed plan/order differs')
+
+
 def thread_control_plan():
     """Eight standard10k pairs, interleaving both policies and both orders."""
     items = []
@@ -484,6 +502,8 @@ def main():
                    help='separate eight-pair default/single-thread diagnostic, imported binaries only')
     p.add_argument('--matched-insert-roots', action='store_true',
                    help='separate four-pair standard10k screen per CPU, using matched root builds')
+    p.add_argument('--highest-primary-reference', choices=('ee', 'retained'),
+                   help='independent highest_primary24_v1: EE six or retained four defaults plus two protection pairs')
     p.add_argument('--memory-max'); p.add_argument('--swap-max')
     p.add_argument('--timeout', type=float, default=120)
     p.add_argument('--case-timeout', type=float, default=1800)
@@ -495,7 +515,16 @@ def main():
         require(value is None or value == 'max' or (value.isdigit() and int(value) >= 0), 'limit must be bytes or max')
     require(not args.protection_only or args.db_cpu_count == 2, 'protection plan requires two DB CPUs')
     cases = PROTECTION_CASES if args.protection_only else CASES
-    if args.matched_insert_roots:
+    if args.highest_primary_reference:
+        require(not args.matched_insert_roots and not args.insert_thread_control and
+                not args.insert_copy_reference and not args.protection_only and args.allow_version_contrast and
+                args.query_mode == 'exact' and args.cpu_quota_us == args.db_cpu_count * 100000 and
+                args.cpu_period_us == 100000 and args.memory_max == '2147483648' and args.swap_max == '0',
+                'highest-primary requires its fixed exact/CPU/2GiB/swap0 version-contrast plan')
+        items = highest_primary_plan(args.highest_primary_reference, args.db_cpu_count)
+        check_highest_primary_plan(items, args.highest_primary_reference, args.db_cpu_count)
+        cases = tuple(dict.fromkeys(item['scenario'] for item in items))
+    elif args.matched_insert_roots:
         require(not args.insert_thread_control and not args.insert_copy_reference and not args.protection_only and
                 args.allow_version_contrast and args.query_mode == 'exact' and
                 args.cpu_quota_us == args.db_cpu_count * 100000 and args.cpu_period_us == 100000 and
@@ -515,19 +544,21 @@ def main():
         cases = tuple(dict.fromkeys(item['scenario'] for item in items))
     else:
         items = plan(cases); check_plan(items, cases)
-    args.ingest_telemetry = bool(args.insert_copy_reference or args.insert_thread_control or args.matched_insert_roots)
+    args.ingest_telemetry = bool(args.insert_copy_reference or args.insert_thread_control or args.matched_insert_roots or args.highest_primary_reference)
     expected_pairs = len(items)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.plan_only:
         preview = {'status': 'plan_only_not_executed', 'pairs': items, 'expected_pairs': expected_pairs, 'query_mode_policy': args.query_mode}
         if args.matched_insert_roots: preview['matched_insert_roots'] = True
+        if args.highest_primary_reference:
+            preview.update(measurement_family=HIGHEST_PRIMARY_FAMILY, highest_primary_reference=args.highest_primary_reference)
         save(args.output, preview); return
     require(sys.platform.startswith('linux') and args.identities and args.launcher, 'Linux, identities and launcher required')
     source = args.tools.resolve(); sys.path.insert(0, str(source))
     base, delta, writes, projection = [importlib.import_module(name) for name in
         ('benchmark_iteration', 'benchmark_index_delta', 'benchmark_write_query', 'benchmark_projection')]
     ids = identities(args.identities.resolve(), args.allow_version_contrast)
-    if args.insert_thread_control or args.matched_insert_roots:
+    if args.insert_thread_control or args.matched_insert_roots or args.highest_primary_reference:
         require(all(item['environment'] == {} for item in ids.values()), 'diagnostic identities must have no hidden overrides')
     require(all(os.access(item['binary'], os.X_OK) for item in ids.values()), 'validated binaries must be executable')
     launcher = args.launcher.resolve(); require(os.access(launcher, os.X_OK), 'launcher must be executable')
@@ -541,6 +572,8 @@ def main():
         'insert_copy_reference': args.insert_copy_reference,
         'insert_thread_control': args.insert_thread_control,
         'matched_insert_roots': args.matched_insert_roots,
+        'highest_primary_reference': args.highest_primary_reference,
+        'measurement_family': HIGHEST_PRIMARY_FAMILY if args.highest_primary_reference else None,
         'comparison_kind': 'whole_version_diagnostic' if args.allow_version_contrast else 'same_binary_environment_control',
         'identities': ids, 'identity_record_sha256': sha(args.identities), 'launcher_sha256': sha(launcher),
         'taskset': {'path': str(taskset), 'sha256': sha(taskset)}, 'db_cpu': args.db_cpu,
@@ -571,6 +604,8 @@ def main():
         report['limitations'].append('Ingest task faults/context switches are live-task boundary counters, not all exited threads or isolated allocator/syscall costs.')
     if args.matched_insert_roots:
         report['limitations'][3] = 'Matched-root INSERT screen: four standard10k AB/BA pairs at this CPU count, one seed, no environment override. Build equivalence must be established by the separate preparation proof; no adoption or score claim.'
+    if args.highest_primary_reference:
+        report['limitations'][3] = 'Highest-primary screen: six EE default pairs or four retained default plus two protection pairs at this CPU count. One seed, no automatic adoption or score conversion. EE is a verified original-source rebuild, not the recovered official executable.'
     parent, current_pair, failure = CGROOT / ('minivec-report-' + uuid.uuid4().hex), None, None
     try:
         parent.mkdir()
@@ -590,14 +625,14 @@ def main():
                                              else ids[role]['environment'])
                     if args.insert_thread_control:
                         partial.update(effective_environment=dict(effective_environment), thread_control_policy=entry['policy'])
-                    elif args.matched_insert_roots:
+                    elif args.matched_insert_roots or args.highest_primary_reference:
                         partial['effective_environment'] = dict(effective_environment)
                     with environment(effective_environment), Group(parent, args, partial['cgroup']) as group:
                         args.command_prefix = [str(launcher), str(group.path), str(taskset), '--cpu-list', ','.join(map(str, args.db_cpus))]
                         binary = Path(ids[role]['binary'])
                         require(sha(binary) == ids[role]['binary_sha256'], 'binary changed before run')
                         with command_adapter(base, projection, args.command_prefix, binary, group.path, partial['adapter'], args.db_cpus,
-                                             expected_environment=effective_environment if args.insert_thread_control or args.matched_insert_roots else None,
+                                             expected_environment=effective_environment if args.insert_thread_control or args.matched_insert_roots or args.highest_primary_reference else None,
                                              ingest_task_counters=args.insert_thread_control):
                             if name == 'wide768':
                                 args.repetitions = 3
@@ -624,7 +659,8 @@ def main():
         require(len(report['pairs']) == expected_pairs, 'incomplete plan')
         keys = ('scenario', 'seed', 'pair_index', 'order', 'policy') if args.insert_thread_control else ('scenario', 'seed', 'pair_index', 'order')
         measured_plan = [{key: pair[key] for key in keys} for pair in report['pairs']]
-        if args.matched_insert_roots: check_matched_insert_plan(measured_plan, args.db_cpu_count)
+        if args.highest_primary_reference: check_highest_primary_plan(measured_plan, args.highest_primary_reference, args.db_cpu_count)
+        elif args.matched_insert_roots: check_matched_insert_plan(measured_plan, args.db_cpu_count)
         elif args.insert_thread_control: check_thread_control_plan(measured_plan)
         elif args.insert_copy_reference: check_insert_copy_plan(measured_plan, args.insert_copy_reference, args.db_cpu_count)
         else: check_plan(measured_plan, cases)

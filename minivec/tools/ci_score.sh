@@ -7,6 +7,9 @@ cd "$repo"
 # Preserve an explicitly empty FEATURE_FLAGS for an unselected-feature build.
 if [[ -z ${FEATURE_FLAGS+x} ]]; then FEATURE_FLAGS='-DMVDB_ENABLE_SPILL_FILTER -DMVDB_ENABLE_TYPED_JSON -DMVDB_TYPED_WIDE_VECTOR_ONLY -DMVDB_MULTI_POSTING_REUSE_ONLY';fi
 export FEATURE_FLAGS
+if [[ "${MVDB_HIGHEST_PRIMARY_SCREEN:-0}" = 1 && ( "${MVDB_INSERT_COPY_SCREEN:-0}" = 1 || "${MVDB_SMALL_BRIDGE:-0}" = 1 || "${MVDB_FINAL_PERFORMANCE:-0}" = 1 ) ]]; then
+  echo 'Highest-primary screen cannot be combined with another performance plan' >&2;exit 2
+fi
 if [[ "${MVDB_INSERT_COPY_SCREEN:-0}" = 1 && ( "${MVDB_SMALL_BRIDGE:-0}" = 1 || "${MVDB_FINAL_PERFORMANCE:-0}" = 1 ) ]]; then
   echo 'INSERT screen cannot be combined with another performance plan' >&2;exit 2
 fi
@@ -61,6 +64,37 @@ docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
 # Historical checksum-header regression only. Active db.cpp uses retained CRC.
 bash minivec/tools/ci_crc_checks.sh --unit
+# Candidate-specific exact-code oracle, before paying for the root PGO build.
+# These source fixtures supplement the actual-image checks below.
+for mode in normal sanitized; do
+  quantizer_options=(-O3)
+  if [[ "$mode" == sanitized ]]; then
+    quantizer_options=(-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all -no-pie)
+  fi
+  g++ "${feature_flags[@]}" "${quantizer_options[@]}" -std=c++17 -pthread -Iminivec/src \
+    minivec/tests/test_cached_quantizer.cpp minivec/src/flat_index.cpp -o "$scratch/cached-quantizer-$mode"
+  ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 \
+    "$scratch/cached-quantizer-$mode" 2>&1 | tee "$MINIVEC_REPORTS/cached-quantizer-$mode.log"
+done
+g++ "${feature_flags[@]}" -O3 -std=c++17 -pthread -DMVDB_ENABLE_BLOCK_QUANT_SCALE -Iminivec/src \
+  minivec/tests/test_cached_quantizer.cpp minivec/src/flat_index.cpp -o "$scratch/cached-quantizer-block-scale"
+timeout 180 "$scratch/cached-quantizer-block-scale" 2>&1 | tee "$MINIVEC_REPORTS/cached-quantizer-block-scale.log"
+python3 - <<'PYQUANTIZER'
+import json,re
+from pathlib import Path
+root=Path('protocol-results')
+result={'schema_version':1}
+for mode in ('normal','sanitized','block-scale'):
+    log=(root/('cached-quantizer-'+mode+'.log')).read_text()
+    counts=re.findall(r'^cached_quantizer_checks=(\d+)$',log,re.M)
+    if len(counts)!=1 or int(counts[0])<1 or log.splitlines().count('cached_quantizer=PASS')!=1:
+        raise SystemExit('Cached quantizer oracle incomplete: '+mode)
+    result[mode+'_checks']=int(counts[0])
+    result[mode+'_pass']=True
+if result['normal_checks']!=result['sanitized_checks']:
+    raise SystemExit('Cached quantizer normal/sanitized inventories differ')
+(root/'cached-quantizer-equivalence.json').write_text(json.dumps(result,indent=2)+'\n')
+PYQUANTIZER
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain --build-arg "FEATURE_FLAGS=$FEATURE_FLAGS" -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
 docker image inspect "$IMAGE" > protocol-results/image-inspect.json
@@ -216,6 +250,7 @@ report = {
     'source_image_sanitizer_feature_selection_shared': True,
     'image_binary_sha256': image_binary_sha,
     'insert_owned_copy_checks': insert_checks,
+    'cached_quantizer_equivalence': json.loads(Path('protocol-results/cached-quantizer-equivalence.json').read_text()),
     'source_binary_sha256': Path('protocol-results/source-binary-sha256.txt').read_text().split()[0],
     'image_id': Path('protocol-results/image-id.txt').read_text().strip(),
     'scope': 'current-checkout build and regression verification; not formal scoring',
@@ -224,6 +259,7 @@ report = {
         'root_docker_build': True,
         'ieee_crc_byte_oracle_normal_and_sanitized': True,
         'insert_owned_copy_normal_and_sanitized': True,
+        'cached_quantizer_code_equivalence_normal_and_sanitized': True,
         'image_official_handshake_and_public_cases': True,
         'source_official_handshake_and_public_cases': True,
         'live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill': True,
@@ -301,4 +337,19 @@ r['insert_copy_screen']={'status':'pending','expected_pairs':24,'completed_pairs
 p.write_text(json.dumps(r,indent=2)+'\n')
 PYINSERTPENDING
   bash minivec/tools/ci_insert_copy_root.sh "$scratch/image-binary" "$(cat protocol-results/image-id.txt)"
+fi
+
+if [ "${MVDB_HIGHEST_PRIMARY_SCREEN:-0}" = 1 ]; then
+  cp protocol-results/verification-summary.json protocol-results/root-gates-summary.json
+  python3 - <<'PYHIGHESTPENDING'
+import json
+from pathlib import Path
+p=Path('protocol-results/verification-summary.json')
+r=json.loads(p.read_bytes())
+r['passed']=False
+r['checks']['actual_root_highest_primary_24_pairs']=False
+r['highest_primary_screen']={'status':'pending','measurement_family':'highest_primary24_v1','expected_pairs':24,'completed_pairs':0}
+p.write_text(json.dumps(r,indent=2)+'\n')
+PYHIGHESTPENDING
+  bash minivec/tools/ci_highest_primary.sh "$scratch/image-binary" "$(cat protocol-results/image-id.txt)"
 fi
