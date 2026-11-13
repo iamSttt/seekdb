@@ -4,6 +4,11 @@ on:
     branches: [codex/round2-score-20261111, codex/round2-optimize-20261112]
   workflow_dispatch:
     inputs:
+      small_bridge:
+        description: Build and gate actual root image, then run 12 one-CPU and 8 two-CPU pairs
+        type: boolean
+        required: false
+        default: false
       small_compute:
         description: Run 12 single-CPU pairs using the verified submitted-source binary
         type: boolean
@@ -55,6 +60,7 @@ jobs:
     timeout-minutes: 60
     env:
       MVDB_FINAL_PERFORMANCE: ${{ contains(github.event.head_commit.message, '[final-perf]') && '1' || '0' }}
+      MVDB_SMALL_BRIDGE: ${{ (inputs.small_bridge || contains(github.event.head_commit.message, '[small-bridge]')) && '1' || '0' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -73,7 +79,7 @@ jobs:
           path: protocol-results/
           retention-days: 90
   paired-performance:
-    if: ${{ !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
+    if: ${{ !inputs.small_bridge && !contains(github.event.head_commit.message, '[small-bridge]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:

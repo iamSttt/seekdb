@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""12 paired single-CPU diagnostics with explicit program identity; no score claim."""
+"""Bounded one/two-CPU paired diagnostics with explicit identity; no score claim."""
 import argparse
 from contextlib import contextmanager
 import hashlib
@@ -18,6 +18,7 @@ import time
 import uuid
 
 CASES = ('standard10k', 'resident30k', 'filter60k', 'spill_high_q1', 'spill_high_q16', 'wide768')
+PROTECTION_CASES = ('standard10k', 'resident30k', 'spill_high_q16', 'wide768')
 SEED = 7319
 CGROOT = Path('/sys/fs/cgroup')
 FILES = ('cpu.max', 'cpu.stat', 'memory.max', 'memory.swap.max', 'memory.current',
@@ -44,16 +45,42 @@ def save(path, value):
     tmp.replace(path)
 
 
-def plan():
+def plan(cases=CASES):
     # AB followed by BA within each unchanged workload: four runs A B B A.
     return [{'scenario': name, 'seed': SEED, 'pair_index': index,
              'order': ['baseline', 'candidate'] if index == 0 else ['candidate', 'baseline']}
-            for name in CASES for index in range(2)]
+            for name in cases for index in range(2)]
 
 
-def check_plan(items):
-    require(items == plan(), 'expected exactly six fixed workloads, one seed, two AB/BA pairs each')
-    require(len({(p['scenario'], p['seed'], p['pair_index']) for p in items}) == 12, 'duplicate pair')
+def check_plan(items, cases=CASES):
+    require(cases in (CASES, PROTECTION_CASES), 'unknown fixed plan')
+    require(items == plan(cases), 'expected fixed workloads, one seed, two AB/BA pairs each')
+    require(len({(p['scenario'], p['seed'], p['pair_index']) for p in items}) == 2 * len(cases), 'duplicate pair')
+
+
+def cpu_set(text):
+    # /proc reports adjacent CPUs as a range; taskset accepts either spelling.
+    require(isinstance(text, str) and text, 'empty CPU list')
+    result = set()
+    for part in text.split(','):
+        require(re.fullmatch(r'[0-9]+(?:-[0-9]+)?', part) is not None, 'invalid CPU list')
+        ends = part.split('-'); first = int(ends[0]); last = int(ends[-1])
+        require(0 <= first <= last <= 1048575, 'invalid CPU range')
+        current = set(range(first, last + 1))
+        require(not result.intersection(current), 'duplicate CPU in list')
+        result.update(current)
+    return result
+
+
+def select_cpus(affinity, count, first=None):
+    allowed = sorted(set(affinity))
+    require(count in (1, 2) and allowed, 'unsupported CPU count or empty affinity')
+    if first is None: first = allowed[0]
+    require(first in allowed, 'DB CPU must be in inherited allowed set')
+    index = allowed.index(first)
+    chosen = allowed[index:index + count]
+    require(len(chosen) == count, 'not enough inherited CPUs for requested DB affinity')
+    return chosen
 
 
 def pointer(value, keys):
@@ -232,7 +259,8 @@ def command_adapter(base, projection, prefix, binary, group, trace, db_cpu=None)
         require(actual_exe == binary.resolve(), 'actual process executable is not declared DB')
         allowed = next(line.split(':', 1)[1].strip() for line in Path(f'/proc/{pid}/status').read_text().splitlines()
                        if line.startswith('Cpus_allowed_list:'))
-        require(db_cpu is None or allowed == str(db_cpu), 'database affinity differs from requested one CPU')
+        expected = {db_cpu} if isinstance(db_cpu, int) else set(db_cpu or [])
+        require(db_cpu is None or cpu_set(allowed) == expected, 'database affinity differs from requested CPUs')
         trace.setdefault('ready_memberships', []).append({'pid': pid, 'members': sorted(members), 'driver_pid': os.getpid(),
                                                         'actual_exe': str(actual_exe), 'cpus_allowed_list': allowed})
 
@@ -360,7 +388,9 @@ def main():
     p.add_argument('--allow-version-contrast', action='store_true')
     p.add_argument('--cpu-quota-us', type=int, default=100000)
     p.add_argument('--cpu-period-us', type=int, default=100000)
-    p.add_argument('--db-cpu', type=int, help='one CPU from inherited driver affinity; default minimum allowed CPU')
+    p.add_argument('--db-cpu', type=int, help='first CPU from inherited affinity; default minimum allowed CPU')
+    p.add_argument('--db-cpu-count', type=int, choices=(1, 2), default=1)
+    p.add_argument('--protection-only', action='store_true', help='four fixed workloads, eight pairs; requires two DB CPUs')
     p.add_argument('--memory-max'); p.add_argument('--swap-max')
     p.add_argument('--timeout', type=float, default=120)
     p.add_argument('--case-timeout', type=float, default=1800)
@@ -370,10 +400,13 @@ def main():
     require(all(math.isfinite(v) and v > 0 for v in (args.timeout, args.case_timeout)), 'finite positive timeouts required')
     for value in (args.memory_max, args.swap_max):
         require(value is None or value == 'max' or (value.isdigit() and int(value) >= 0), 'limit must be bytes or max')
-    items = plan(); check_plan(items)
+    require(not args.protection_only or args.db_cpu_count == 2, 'protection plan requires two DB CPUs')
+    cases = PROTECTION_CASES if args.protection_only else CASES
+    items = plan(cases); check_plan(items, cases)
+    expected_pairs = len(items)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.plan_only:
-        save(args.output, {'status': 'plan_only_not_executed', 'pairs': items, 'expected_pairs': 12}); return
+        save(args.output, {'status': 'plan_only_not_executed', 'pairs': items, 'expected_pairs': expected_pairs}); return
     require(sys.platform.startswith('linux') and args.identities and args.launcher, 'Linux, identities and launcher required')
     source = args.tools.resolve(); sys.path.insert(0, str(source))
     base, delta, writes, projection = [importlib.import_module(name) for name in
@@ -382,15 +415,16 @@ def main():
     require(all(os.access(item['binary'], os.X_OK) for item in ids.values()), 'validated binaries must be executable')
     launcher = args.launcher.resolve(); require(os.access(launcher, os.X_OK), 'launcher must be executable')
     taskset = Path(shutil.which('taskset') or '/nonexistent-taskset').resolve()
-    require(taskset.is_file() and os.access(taskset, os.X_OK), 'taskset required for DB-only one-CPU affinity')
+    require(taskset.is_file() and os.access(taskset, os.X_OK), 'taskset required for DB-only affinity')
     affinity = sorted(os.sched_getaffinity(0))
-    if args.db_cpu is None: args.db_cpu = min(affinity)
-    require(args.db_cpu in affinity, 'DB CPU must be in inherited allowed set')
+    args.db_cpus = select_cpus(affinity, args.db_cpu_count, args.db_cpu)
+    args.db_cpu = args.db_cpus[0]
     report = {'status': 'running', 'kind': 'small_compute_diagnostic', 'official_score': None,
-        'official_binary_identity_known': False, 'expected_pairs': 12, 'plan': items, 'pairs': [],
+        'official_binary_identity_known': False, 'expected_pairs': expected_pairs, 'plan': items, 'pairs': [],
         'comparison_kind': 'whole_version_diagnostic' if args.allow_version_contrast else 'same_binary_environment_control',
         'identities': ids, 'identity_record_sha256': sha(args.identities), 'launcher_sha256': sha(launcher),
         'taskset': {'path': str(taskset), 'sha256': sha(taskset)}, 'db_cpu': args.db_cpu,
+        'db_cpus': args.db_cpus, 'db_cpu_count': args.db_cpu_count, 'protection_only': args.protection_only,
         'requested_limits': {k: getattr(args, k) for k in ('cpu_quota_us', 'cpu_period_us', 'memory_max', 'swap_max')},
         'cleared_inherited_runtime_environment': {key: os.environ[key] for key in ENV_KEYS if key in os.environ},
         'host': {'platform': platform.platform(), 'driver_affinity': sorted(os.sched_getaffinity(0))},
@@ -400,8 +434,8 @@ def main():
             Path(sys.modules[projection.Session.__module__].__file__).resolve(), base.PROTOCOL_CHECK / 'config.json'}},
         'workloads': [], 'limitations': [
             'Diagnostic only: official resource envelope not assumed. Missing memory/swap limits remain inherited; ancestor constraints are retained.',
-            'DB has aggregate quota1 plus one-CPU affinity; both are recorded and affinity is checked after each ready. Driver affinity is unchanged; driver/oracle stay outside DB cgroup but share host resources.',
-            'The same rebuilt PGO executable uses the two explicitly recorded environments; not a new algorithm or official binary proof. Serial disables startup probe and fanout; no-fanout raises the adaptive row threshold and retains startup calibration.',
+            'DB quota and selected affinity are explicit; affinity is checked after every ready. Driver affinity is unchanged; driver/oracle stay outside DB cgroup but share host resources.',
+            'Comparison kind and both binary/source/environment identities are explicit. A version contrast includes compiler/layout effects; neither comparison proves the official binary identity.',
             'Two AB/BA pairs at one fixed seed screen only. No confidence interval, score conversion or automatic adoption.',
             'Cgroup totals include DB restart verification, filesystem page cache and static launcher; request timers exclude independent oracle work.',
             'Ready timing includes membership/executable/affinity evidence reads. Projection phase snapshots are outside individual request timers.',
@@ -416,7 +450,7 @@ def main():
         require(not (parent / 'cgroup.procs').read_text().strip(), 'private parent unexpectedly populated')
         (parent / 'cgroup.subtree_control').write_text('+cpu +memory +io')
         report['driver_cgroup'] = Path('/proc/self/cgroup').read_text().strip()
-        for name in CASES:
+        for name in cases:
             work = workload(name, base, writes, projection)
             report['workloads'].append(workload_identity(name, work, base))
             for entry in (v for v in items if v['scenario'] == name):
@@ -426,10 +460,10 @@ def main():
                     partial = {'cgroup': {}, 'adapter': {}}
                     current_pair[role] = partial
                     with environment(ids[role]['environment']), Group(parent, args, partial['cgroup']) as group:
-                        args.command_prefix = [str(launcher), str(group.path), str(taskset), '--cpu-list', str(args.db_cpu)]
+                        args.command_prefix = [str(launcher), str(group.path), str(taskset), '--cpu-list', ','.join(map(str, args.db_cpus))]
                         binary = Path(ids[role]['binary'])
                         require(sha(binary) == ids[role]['binary_sha256'], 'binary changed before run')
-                        with command_adapter(base, projection, args.command_prefix, binary, group.path, partial['adapter'], args.db_cpu):
+                        with command_adapter(base, projection, args.command_prefix, binary, group.path, partial['adapter'], args.db_cpus):
                             if name == 'wide768':
                                 args.repetitions = 3
                                 projection.one_run(binary, work, args, partial)
@@ -450,8 +484,8 @@ def main():
                 compare(current_pair)
                 report['pairs'].append(current_pair); report['summary'] = summary(report['pairs']); save(args.output, report)
             require(workload_identity(name, work, base) == report['workloads'][-1], 'workload mutated during paired runs')
-        require(len(report['pairs']) == 12, 'incomplete plan')
-        check_plan([{key: pair[key] for key in ('scenario', 'seed', 'pair_index', 'order')} for pair in report['pairs']])
+        require(len(report['pairs']) == expected_pairs, 'incomplete plan')
+        check_plan([{key: pair[key] for key in ('scenario', 'seed', 'pair_index', 'order')} for pair in report['pairs']], cases)
         report['status'] = 'passed'
     except BaseException as exc:
         failure = exc
