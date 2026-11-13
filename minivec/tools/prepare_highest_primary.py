@@ -131,7 +131,7 @@ def prepare_highest(repo, binary, image, out):
         'environment': {}}
     save(out / 'ee-identities.json', {'baseline': highest, 'candidate': ids['candidate']})
     save(out / 'highest-primary-binding-proof.json', {'status': 'verified',
-        'experiment_id':'tighter-certificate-highest-primary24',
+        'experiment_id':'quarter-plus-margin-highest-primary24',
         'acceptance_policy':policy,
         'measurement_family': HIGHEST_PRIMARY_FAMILY, 'primary_reference': 'ee',
         'candidate_source_commit': current['source_commit'], 'candidate_binary_sha256': current['binary_sha256'],
