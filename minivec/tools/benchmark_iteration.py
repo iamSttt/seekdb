@@ -289,12 +289,22 @@ def one_run(binary, workload, args):
             session.start()
             phases["startup"] = perf_counter() - started
             phases["create_table"] = request(workload["create"])[0]
+            if getattr(args, 'ingest_telemetry', False): snapshot('before_ingest')
             ingest = 0.0
+            ingest_parts = {'begin': 0.0, 'insert': 0.0, 'commit': 0.0}
             for sql, count in workload["inserts"]:
-                ingest += request("BEGIN;")[0]
-                ingest += request(sql, affected=count)[0]
-                ingest += request("COMMIT;")[0]
+                begin = request('BEGIN;')[0]
+                inserted = request(sql, affected=count)[0]
+                committed = request('COMMIT;')[0]
+                ingest += begin + inserted + committed
+                ingest_parts['begin'] += begin
+                ingest_parts['insert'] += inserted
+                ingest_parts['commit'] += committed
             phases["ingest"] = ingest
+            if getattr(args, 'ingest_telemetry', False):
+                # Subtotals are deliberately outside phase_seconds: do not add
+                # them again to measured_lifecycle or first-lifecycle totals.
+                result['ingest_request_seconds'] = ingest_parts
             snapshot("after_ingest")
             phases["index_build"] = request("CREATE VECTOR INDEX docs_v ON docs(v);")[0]
             snapshot("after_index_build")

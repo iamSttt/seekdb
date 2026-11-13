@@ -4,6 +4,11 @@ on:
     branches: [codex/round2-score-20261111, codex/round2-optimize-20261112]
   workflow_dispatch:
     inputs:
+      insert_copy:
+        description: One actual root build, 24 exact low-resource pairs versus retained and imported highest programs
+        type: boolean
+        required: false
+        default: false
       highest_compare:
         description: Rebuild historical best-score root and compare retained/CRC programs on one runner
         type: boolean
@@ -66,6 +71,7 @@ jobs:
     env:
       MVDB_FINAL_PERFORMANCE: ${{ contains(github.event.head_commit.message, '[final-perf]') && '1' || '0' }}
       MVDB_SMALL_BRIDGE: ${{ (inputs.small_bridge || contains(github.event.head_commit.message, '[small-bridge]')) && '1' || '0' }}
+      MVDB_INSERT_COPY_SCREEN: ${{ (inputs.insert_copy || contains(github.event.head_commit.message, '[insert-copy]')) && '1' || '0' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -82,9 +88,10 @@ jobs:
         with:
           name: root-image-validation
           path: protocol-results/
+          include-hidden-files: true
           retention-days: 90
   paired-performance:
-    if: ${{ !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_bridge && !contains(github.event.head_commit.message, '[small-bridge]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
+    if: ${{ !inputs.insert_copy && !contains(github.event.head_commit.message, '[insert-copy]') && !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_bridge && !contains(github.event.head_commit.message, '[small-bridge]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -108,6 +115,7 @@ jobs:
         with:
           name: highest-compare
           path: protocol-results/highest-compare/
+          include-hidden-files: true
           retention-days: 90
   small-compute:
     if: ${{ inputs.small_compute || contains(github.event.head_commit.message, '[small-compute]') }}

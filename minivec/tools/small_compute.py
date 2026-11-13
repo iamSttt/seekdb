@@ -58,6 +58,20 @@ def check_plan(items, cases=CASES):
     require(len({(p['scenario'], p['seed'], p['pair_index']) for p in items}) == 2 * len(cases), 'duplicate pair')
 
 
+def insert_copy_plan(reference, count):
+    """Separate frozen screen: 16 direct retained pairs + 8 historical guards."""
+    require(reference in ('retained', 'ee') and count in (1, 2), 'unknown INSERT screen')
+    specs = [('standard10k', 6 if reference == 'retained' else 4)]
+    if reference == 'retained': specs.append(('spill_high_q16' if count == 1 else 'wide768', 2))
+    return [{'scenario': name, 'seed': SEED, 'pair_index': index,
+             'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline']}
+            for name, pairs in specs for index in range(pairs)]
+
+
+def check_insert_copy_plan(items, reference, count):
+    require(items == insert_copy_plan(reference, count), 'INSERT fixed plan/order differs')
+
+
 def cpu_set(text):
     # /proc reports adjacent CPUs as a range; taskset accepts either spelling.
     require(isinstance(text, str) and text, 'empty CPU list')
@@ -407,6 +421,8 @@ def main():
     p.add_argument('--db-cpu', type=int, help='first CPU from inherited affinity; default minimum allowed CPU')
     p.add_argument('--db-cpu-count', type=int, choices=(1, 2), default=1)
     p.add_argument('--protection-only', action='store_true', help='four fixed workloads, eight pairs; requires two DB CPUs')
+    p.add_argument('--insert-copy-reference', choices=('retained', 'ee'),
+                   help='separate fixed 24-pair INSERT screen, never changes the historical bridge plan')
     p.add_argument('--memory-max'); p.add_argument('--swap-max')
     p.add_argument('--timeout', type=float, default=120)
     p.add_argument('--case-timeout', type=float, default=1800)
@@ -418,7 +434,14 @@ def main():
         require(value is None or value == 'max' or (value.isdigit() and int(value) >= 0), 'limit must be bytes or max')
     require(not args.protection_only or args.db_cpu_count == 2, 'protection plan requires two DB CPUs')
     cases = PROTECTION_CASES if args.protection_only else CASES
-    items = plan(cases); check_plan(items, cases)
+    if args.insert_copy_reference:
+        require(not args.protection_only and args.allow_version_contrast and args.query_mode == 'exact',
+                'INSERT screen requires exact version contrast and its own fixed plan')
+        items = insert_copy_plan(args.insert_copy_reference, args.db_cpu_count)
+        cases = tuple(dict.fromkeys(item['scenario'] for item in items))
+    else:
+        items = plan(cases); check_plan(items, cases)
+    args.ingest_telemetry = bool(args.insert_copy_reference)
     expected_pairs = len(items)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.plan_only:
@@ -437,6 +460,7 @@ def main():
     args.db_cpu = args.db_cpus[0]
     report = {'status': 'running', 'kind': 'small_compute_diagnostic', 'official_score': None,
         'official_binary_identity_known': False, 'query_mode_policy': args.query_mode, 'expected_pairs': expected_pairs, 'plan': items, 'pairs': [],
+        'insert_copy_reference': args.insert_copy_reference,
         'comparison_kind': 'whole_version_diagnostic' if args.allow_version_contrast else 'same_binary_environment_control',
         'identities': ids, 'identity_record_sha256': sha(args.identities), 'launcher_sha256': sha(launcher),
         'taskset': {'path': str(taskset), 'sha256': sha(taskset)}, 'db_cpu': args.db_cpu,
@@ -460,6 +484,8 @@ def main():
             'Iteration keeps its existing first/second/last TopK oracle, all restart IDs and sampled vectors; write-query and projection retain their stronger full oracles.',
             'Base iteration errors may not expose partial phase timers; adapter preserves transport count, stderr, cgroup evidence and preceding completed side.']}
     save(args.output, report)
+    if args.insert_copy_reference:
+        report['limitations'][3] = 'INSERT screen: six retained and four historical default pairs per CPU, two retained protection pairs per selected case, one fixed seed. Screening only, no statistical floor, score conversion or automatic adoption.'
     parent, current_pair, failure = CGROOT / ('minivec-report-' + uuid.uuid4().hex), None, None
     try:
         parent.mkdir()
@@ -501,7 +527,9 @@ def main():
                 report['pairs'].append(current_pair); report['summary'] = summary(report['pairs']); save(args.output, report)
             require(workload_identity(name, work, base) == report['workloads'][-1], 'workload mutated during paired runs')
         require(len(report['pairs']) == expected_pairs, 'incomplete plan')
-        check_plan([{key: pair[key] for key in ('scenario', 'seed', 'pair_index', 'order')} for pair in report['pairs']], cases)
+        measured_plan = [{key: pair[key] for key in ('scenario', 'seed', 'pair_index', 'order')} for pair in report['pairs']]
+        if args.insert_copy_reference: check_insert_copy_plan(measured_plan, args.insert_copy_reference, args.db_cpu_count)
+        else: check_plan(measured_plan, cases)
         report['status'] = 'passed'
     except BaseException as exc:
         failure = exc

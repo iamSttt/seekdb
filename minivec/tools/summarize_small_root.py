@@ -4,23 +4,26 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-from small_compute import CASES, PROTECTION_CASES, check_plan, cpu_set, require, sha
+from small_compute import CASES, PROTECTION_CASES, check_plan, check_insert_copy_plan, insert_copy_plan, cpu_set, require, sha
 
 
-def verify_measurement(data, count, cases, identity_sha, identities):
-    require(data.get('status') == 'passed' and data.get('expected_pairs') == len(cases) * 2 and
-            data.get('completed_pairs') == len(cases) * 2 and len(data['pairs']) == len(cases) * 2,
+def verify_measurement(data, count, cases, identity_sha, identities, insert_reference=None):
+    expected = len(insert_copy_plan(insert_reference, count)) if insert_reference else len(cases) * 2
+    require(data.get('insert_copy_reference') == insert_reference, 'measurement plan family differs')
+    require(data.get('status') == 'passed' and data.get('expected_pairs') == expected and
+            data.get('completed_pairs') == expected and len(data['pairs']) == expected,
             'missing or failed plan')
     require(data['comparison_kind'] == 'whole_version_diagnostic', 'expected explicit version contrast')
     require(data['identity_record_sha256'] == identity_sha, 'identity record changed')
     require(data['db_cpu_count'] == count and len(set(data['db_cpus'])) == count and
-            data['protection_only'] == (count == 2), 'DB affinity/plan differs')
+            data['protection_only'] == (count == 2 and not insert_reference), 'DB affinity/plan differs')
     require(data['requested_limits']['cpu_quota_us'] == count * 100000 and
             data['requested_limits']['cpu_period_us'] == 100000, 'quota/period differs')
     require(data['query_mode_policy'] == 'exact' and data['requested_limits']['memory_max'] == '2147483648' and
             data['requested_limits']['swap_max'] == '0', 'root diagnostic mode/memory plan differs')
-    check_plan([{key: p[key] for key in ('scenario', 'seed', 'pair_index', 'order')}
-                for p in data['pairs']], cases)
+    measured_plan = [{key: p[key] for key in ('scenario', 'seed', 'pair_index', 'order')} for p in data['pairs']]
+    if insert_reference: check_insert_copy_plan(measured_plan, insert_reference, count)
+    else: check_plan(measured_plan, cases)
     for role in ('baseline', 'candidate'):
         for key in ('binary_sha256', 'source_commit', 'evidence_sha256', 'environment'):
             require(data['identities'][role][key] == identities[role][key], 'measurement identity differs')
@@ -62,7 +65,7 @@ def verify_measurement(data, count, cases, identity_sha, identities):
                 require(item['actual_exe'] == data['identities'][role]['binary'], 'actual executable differs')
             phases = run['adapter']['phase_cgroups']
             require(len(phases) == (14 if pair['scenario'] == 'wide768' else
-                                    15 if pair['scenario'].startswith('spill_') else 7), 'phase telemetry incomplete')
+                                    15 if pair['scenario'].startswith('spill_') else 8 if insert_reference else 7), 'phase telemetry incomplete')
             for phase in phases:
                 require(phase['memory.max'] == '2147483648' and phase['memory.swap.max'] == '0', 'phase memory/swap cap differs')
                 require(not phase.get('task_read_errors') and not phase.get('native_tasks_error'), 'task telemetry incomplete')

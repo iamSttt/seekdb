@@ -7,6 +7,9 @@ cd "$repo"
 # Preserve an explicitly empty FEATURE_FLAGS for an unselected-feature build.
 if [[ -z ${FEATURE_FLAGS+x} ]]; then FEATURE_FLAGS='-DMVDB_ENABLE_SPILL_FILTER -DMVDB_ENABLE_TYPED_JSON -DMVDB_TYPED_WIDE_VECTOR_ONLY -DMVDB_MULTI_POSTING_REUSE_ONLY';fi
 export FEATURE_FLAGS
+if [[ "${MVDB_INSERT_COPY_SCREEN:-0}" = 1 && ( "${MVDB_SMALL_BRIDGE:-0}" = 1 || "${MVDB_FINAL_PERFORMANCE:-0}" = 1 ) ]]; then
+  echo 'INSERT screen cannot be combined with another performance plan' >&2;exit 2
+fi
 read -r -a feature_flags <<< "$FEATURE_FLAGS"
 for flag in "${feature_flags[@]}"; do
   case "$flag" in
@@ -56,7 +59,7 @@ git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec
 lscpu > protocol-results/lscpu.txt
 docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
-# Verify the byte-compatible storage checksum before the more expensive build.
+# Historical checksum-header regression only. Active db.cpp uses retained CRC.
 bash minivec/tools/ci_crc_checks.sh --unit
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain --build-arg "FEATURE_FLAGS=$FEATURE_FLAGS" -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
@@ -96,6 +99,19 @@ MVDB_QUERY_THREADS=2 python3 minivec/tests/topk_bounds.py --binary "$scratch/ima
 # Native tests above include all eight staged-WAL cases. Run them explicitly
 # again under sanitizers, without weakening error or durability assertions.
 reports="$PWD/protocol-results"
+
+# Source-level const-AST, destination-type, rollback and capacity ownership.
+# These fixtures supplement, never replace, actual-image JSON gates above.
+for mode in normal sanitized; do
+  insert_options=(-O2)
+  if [[ "$mode" == sanitized ]]; then
+    insert_options=(-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all -no-pie)
+  fi
+  g++ "${feature_flags[@]}" "${insert_options[@]}" -std=c++17 -pthread -Iminivec/src \
+    minivec/tests/test_insert_owned_copy.cpp minivec/src/{db,exec,sql,value,flat_index}.cpp -o "$scratch/insert-owned-copy-$mode"
+  ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 \
+    "$scratch/insert-owned-copy-$mode" 2>&1 | tee "$reports/insert-owned-copy-$mode.log"
+done
 
 # AST ownership must survive destroyed SQL input, including worker failures.
 g++ "${feature_flags[@]}" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie -Iminivec/src minivec/tests/test_sql.cpp minivec/src/sql.cpp minivec/src/value.cpp -o "$scratch/sql-san"
@@ -157,7 +173,7 @@ if [ "${MVDB_FINAL_PERFORMANCE:-0}" = 1 ]; then
     "$(cat protocol-results/image-id.txt)"
 fi
 python3 - <<'PYSUMMARY'
-import json, os, shlex
+import json, os, re, shlex
 from pathlib import Path
 utf8=json.loads(Path('protocol-results/image-binary-utf8.json').read_text())
 expected_utf8={(raw,dimension,path) for raw in ['ff','c080','eda080','e4b8','f4908080','80']
@@ -167,6 +183,13 @@ if (utf8.get('status')!='passed' or len(utf8['checks'])!=54 or actual_utf8!=expe
         any(check.get('status')!='passed' for check in utf8['checks'])):
     raise SystemExit('Actual image UTF8 atomicity evidence is incomplete')
 image_binary_sha=Path('protocol-results/image-binary-sha256.txt').read_text().split()[0]
+insert_checks={}
+for mode in ('normal','sanitized'):
+    matches=re.findall(r'^PASS INSERT owned-copy (\d+) checks$',
+                       Path('protocol-results/insert-owned-copy-'+mode+'.log').read_text(),re.M)
+    if len(matches)!=1 or int(matches[0])<1:
+        raise SystemExit('INSERT ownership normal/sanitizer evidence is incomplete')
+    insert_checks[mode]=int(matches[0])
 crc_unit=json.loads(Path('protocol-results/crc-checks/unit/summary.json').read_text())
 if (crc_unit.get('status')!='passed' or crc_unit.get('exit_code')!=0 or
         set(crc_unit.get('unit_checks',{}))!={'normal','sanitized'} or
@@ -178,6 +201,7 @@ report = {
     'selected_feature_flags': shlex.split(os.environ['FEATURE_FLAGS']),
     'source_image_sanitizer_feature_selection_shared': True,
     'image_binary_sha256': image_binary_sha,
+    'insert_owned_copy_checks': insert_checks,
     'source_binary_sha256': Path('protocol-results/source-binary-sha256.txt').read_text().split()[0],
     'image_id': Path('protocol-results/image-id.txt').read_text().strip(),
     'scope': 'current-checkout build and regression verification; not formal scoring',
@@ -185,6 +209,7 @@ report = {
     'checks': {
         'root_docker_build': True,
         'ieee_crc_byte_oracle_normal_and_sanitized': True,
+        'insert_owned_copy_normal_and_sanitized': True,
         'image_official_handshake_and_public_cases': True,
         'source_official_handshake_and_public_cases': True,
         'live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill': True,
@@ -246,4 +271,19 @@ r['small_compute']={'status':'pending','expected_pairs':20,'completed_pairs':0}
 p.write_text(json.dumps(r,indent=2)+'\n')
 PYPENDING
   bash minivec/tools/ci_small_root.sh "$scratch/image-binary" "$(cat protocol-results/image-id.txt)"
+fi
+
+if [ "${MVDB_INSERT_COPY_SCREEN:-0}" = 1 ]; then
+  cp protocol-results/verification-summary.json protocol-results/root-gates-summary.json
+  python3 - <<'PYINSERTPENDING'
+import json
+from pathlib import Path
+p=Path('protocol-results/verification-summary.json')
+r=json.loads(p.read_bytes())
+r['passed']=False
+r['checks']['actual_root_insert_copy_24_pairs']=False
+r['insert_copy_screen']={'status':'pending','expected_pairs':24,'completed_pairs':0}
+p.write_text(json.dumps(r,indent=2)+'\n')
+PYINSERTPENDING
+  bash minivec/tools/ci_insert_copy_root.sh "$scratch/image-binary" "$(cat protocol-results/image-id.txt)"
 fi
