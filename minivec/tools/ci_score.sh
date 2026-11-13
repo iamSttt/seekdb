@@ -92,6 +92,7 @@ docker rm "$container"
 sha256sum "$scratch/image-binary" | tee protocol-results/image-binary-sha256.txt
 python3 minivec/tests/json_protocol.py --binary "$scratch/image-binary" --timeout 15 2>&1 | tee protocol-results/image-binary-json.log
 python3 minivec/tests/test_typed_response.py --binary "$scratch/image-binary" --output protocol-results/image-binary-utf8.json 2>&1 | tee protocol-results/image-binary-utf8.log
+python3 minivec/tests/test_jsonl_cursor.py --binary "$scratch/image-binary" --output protocol-results/image-binary-jsonl-cursor.json 2>&1 | tee protocol-results/image-binary-jsonl-cursor.log
 python3 minivec/tests/topk_bounds.py --binary "$scratch/image-binary" 2>&1 | tee protocol-results/image-binary-topk.log
 MVDB_QUERY_THREADS=2 python3 minivec/tests/topk_bounds.py --binary "$scratch/image-binary" 2>&1 | tee protocol-results/image-binary-topk-parallel.log
 
@@ -183,6 +184,19 @@ if (utf8.get('status')!='passed' or len(utf8['checks'])!=54 or actual_utf8!=expe
         any(check.get('status')!='passed' for check in utf8['checks'])):
     raise SystemExit('Actual image UTF8 atomicity evidence is incomplete')
 image_binary_sha=Path('protocol-results/image-binary-sha256.txt').read_text().split()[0]
+cursor=json.loads(Path('protocol-results/image-binary-jsonl-cursor.json').read_text())
+cursor_expected={
+    'fragment_writer_1','fragment_writer_7','fragment_writer_4096','fragment_writer_65536',
+    'large_64k_writer_4096','large_64k_writer_65536',
+    'large_256k_writer_4096','large_256k_writer_65536','vector_insert_writer_65536',
+    'crlf_split','eof_valid_unterminated_no_execute','eof_truncated_json_no_execute',
+    'duplicate_keys_no_execute','malformed_frame_no_execute',
+    'shutdown_same_write_discards_tail','escaped_newline'}
+if (cursor.get('status')!='passed' or cursor.get('binary_sha256')!=image_binary_sha or
+        len(cursor.get('checks',[]))!=len(cursor_expected) or
+        {c.get('name') for c in cursor['checks']}!=cursor_expected or
+        any(c.get('status')!='passed' for c in cursor['checks'])):
+    raise SystemExit('Actual image JSONL framing evidence is incomplete')
 insert_checks={}
 for mode in ('normal','sanitized'):
     matches=re.findall(r'^PASS INSERT owned-copy (\d+) checks$',
@@ -216,6 +230,7 @@ report = {
         'make_test': True,
         'native_spill_cache_budget_writer_and_54_utf8_cases': True,
         'actual_image_54_utf8_atomicity_cases': True,
+        'actual_image_jsonl_cursor_frames': True,
         'selected_spill_and_utf8_asan_ubsan': True,
         'parser_ownership_serial_parallel_and_quantized_bound_asan_ubsan': True,
         'image_binary_json_and_exact_topk_serial_parallel': True,
