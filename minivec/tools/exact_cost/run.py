@@ -11,6 +11,7 @@ def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def need(ok,message):
     if not ok:raise ValueError(message)
 def save(path,data):path.write_text(json.dumps(data,indent=2,allow_nan=False)+'\n')
+def parent_group_name():return 'minivec-report-exact-cost-'+uuid.uuid4().hex
 
 def ready_evidence(session,binary,group,cpus,environment,small):
     pid=session.proc.pid;p=pathlib.Path('/proc')/str(pid)
@@ -79,6 +80,7 @@ def first_cycle(binary,work,report,out,group,prefix,base,small,environment,cpus)
         report['sampled_oracle_indices']=work['oracle_indices']
         report['all_query_responses_compared_to_retained']=False
     finally:
+        report['protocol_process_returncode']=session.proc.poll() if session.proc is not None else None
         session.close();report['stderr_sha256']=sha(stderr);report['stderr_bytes']=stderr.stat().st_size
 
 def summarize_diagnostic(records,requests):
@@ -145,7 +147,7 @@ def main():
     work=base.make_workload(base.FULL_CASES['standard10k'],7319,1000,100,10,query_mode='exact')
     report['workload']={'scenario':'standard10k','rows':10000,'dimension':128,'queries':1000,'batch_size':100,'k':10,
       'seed':7319,'query_mode':'exact','sql_sha256':work['sha256'],'half_equality_filtered':True}
-    parent=small.CGROOT/('minivec-exact-cost-'+uuid.uuid4().hex)
+    parent=small.CGROOT/parent_group_name()
     try:
         parent.mkdir();need(not (parent/'cgroup.procs').read_text().strip(),'parent populated')
         (parent/'cgroup.subtree_control').write_text('+cpu +memory +io')

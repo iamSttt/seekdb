@@ -4,6 +4,8 @@
     "run_syntax",
     "prepare_syntax",
     "preflight_syntax",
+    "launcher_parent_prefix_contract",
+    "rejected_previous_parent_prefix",
     "archive_identity",
     "all20_original_sources",
     "canonical19_match_one_disclosed",
@@ -23,6 +25,6 @@
     "nonzero_unsampled_cpu",
     "ambiguous_anchor"
   ],
-  "count": 21,
+  "count": 23,
   "scope": "pure Python/source preparation only; no Linux DB, C++ compilation or native timing executed"
 }

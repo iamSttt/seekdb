@@ -1,5 +1,5 @@
 """Small pure-Python preparation/reader checks; no compiler or DB execution."""
-import ast, copy, importlib.util, json, pathlib, sys
+import ast, copy, importlib.util, json, pathlib, re, sys
 HERE=pathlib.Path(__file__).resolve().parent
 def module(name):
     spec=importlib.util.spec_from_file_location(name,HERE/(name+'.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
@@ -13,6 +13,12 @@ def main():
         except (ValueError,KeyError):checks.append(name);return
         raise AssertionError(name+' accepted invalid input')
     for name in ('run','prepare','preflight'):ast.parse((HERE/(name+'.py')).read_text());checks.append(name+'_syntax')
+    repo=pathlib.Path(sys.argv[2]).resolve()
+    launcher=(repo/'minivec/tools/cgroup_exec.c').read_text()
+    allowed_prefix=re.search(r'const char prefix\[\]="([^"]+)";',launcher).group(1)
+    proposed='/sys/fs/cgroup/'+run.parent_group_name()
+    ok('launcher_parent_prefix_contract',proposed.startswith(allowed_prefix) and '..' not in proposed)
+    ok('rejected_previous_parent_prefix',not ('/sys/fs/cgroup/minivec-exact-cost-'+'0'*32).startswith(allowed_prefix))
     shadow=pathlib.Path(sys.argv[1]);proof=json.loads((shadow/'source-proof.json').read_text())
     ok('archive_identity',proof['archive_sha256']==prepare.RAW_SHA and proof['retained_binary_sha256']==prepare.R_BINARY)
     ok('all20_original_sources',len(proof['original_source_sha256'])==20)

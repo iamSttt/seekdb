@@ -11,8 +11,8 @@
   },
   {
     "file": "run.py",
-    "bytes": 15593,
-    "sha256": "f06d6814b6c34f1d2b552b1499ce82993d2423b9ae9760a4aff52dd2377b5c83"
+    "bytes": 15753,
+    "sha256": "e5900ce13b57d139ecb04f75d2ebecc3e0339ca2480cd46af3cd88769644a61a"
   },
   {
     "file": "cost_diagnostic.h",
@@ -31,12 +31,12 @@
   },
   {
     "file": "preflight.py",
-    "bytes": 3736,
-    "sha256": "1e782f8981815975139223261fa44f171edfff84ef4c67442889ad5b120b2de5"
+    "bytes": 4208,
+    "sha256": "6f60e6758117f5563a2b0e864650c7f22ff2e4a48a29de7d176f0c13d3968b52"
   },
   {
     "file": "preflight.json",
-    "bytes": 706,
-    "sha256": "6fad836a5a5f59f51edd39bae06b52ab57e5d4bcd28ebee7c937386e5232af00"
+    "bytes": 786,
+    "sha256": "8cae87e2a2640ee349eaaf90334862a33ae8c2637ae667e1b74bc0ebe93f970a"
   }
 ]
