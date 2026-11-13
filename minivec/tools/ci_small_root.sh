@@ -25,6 +25,7 @@ finish() {
 trap finish EXIT
 python3 minivec/tools/prepare_small_root.py --repo "$repo" --binary "$binary" \
   --image "$image" --output "$out/programs" 2>&1 | tee "$out/prepare.log"
+bash minivec/tools/ci_crc_checks.sh --compat "$binary" "$image" "$out/programs/retained"
 cc --version > "$out/launcher-compiler.txt"
 cc -O2 -static minivec/tools/cgroup_exec.c -o "$out/cgroup_exec" 2>&1 | tee "$out/launcher-build.log"
 sha256sum minivec/tools/cgroup_exec.c "$out/cgroup_exec" > "$out/launcher-sha256.txt"
@@ -36,6 +37,7 @@ for cpus in 1 2; do
     --tools "$repo/minivec/tools" --identities "$out/programs/identities.json" \
     --launcher "$out/cgroup_exec" --output "$out/measurements-${cpus}cpu.json" \
     --allow-version-contrast --db-cpu-count "$cpus" "${extra[@]}" \
+    --query-mode exact --memory-max 2147483648 --swap-max 0 \
     --cpu-quota-us "$((cpus * 100000))" --cpu-period-us 100000 --case-timeout 600 \
     2>&1 | tee "$out/measurements-${cpus}cpu.log"
 done

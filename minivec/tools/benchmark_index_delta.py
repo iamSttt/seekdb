@@ -23,7 +23,8 @@ import benchmark_iteration as base
 CASES = ("mixed_small", "same_pk_churn", "over_64_limit")
 
 
-def make_workload(name, seed, rows=10000, dimension=128, queries=8, batch_size=100):
+def make_workload(name, seed, rows=10000, dimension=128, queries=8, batch_size=100, query_mode="mixed"):
+    base.query_mode_for(0, query_mode)
     base.require(name in CASES and rows >= 6400 and queries >= 4, "invalid workload dimensions")
     source = base.make_workload((rows, dimension, 0, 0), seed, 2, batch_size, 10)
     initial = {key: (vector, key % 7) for key, vector in enumerate(source["vectors"])}
@@ -55,7 +56,7 @@ def make_workload(name, seed, rows=10000, dimension=128, queries=8, batch_size=1
             if group is not None:
                 sql += f" WHERE g={group}"
             sql += " ORDER BY d LIMIT 10;"
-            result.append({"sql": sql, "mode": "exact" if index % 2 == 0 else "ann",
+            result.append({"sql": sql, "mode": base.query_mode_for(index, query_mode),
                            "oracle": cached[key]})
         return result
 
@@ -102,13 +103,19 @@ def make_workload(name, seed, rows=10000, dimension=128, queries=8, batch_size=1
             digest.update(operation["sql"].encode())
         for query in cycle["queries"]:
             digest.update(base.encoded({key: query[key] for key in ("sql", "mode")}))
-    return {"create": create, "inserts": inserts, "before": before, "cycles": cycles,
+    return {"query_mode_policy": query_mode, "create": create, "inserts": inserts, "before": before, "cycles": cycles,
             "after": after, "final_model": model, "changed_ids": sorted(changed),
             "sha256": digest.hexdigest(), "rows": rows, "dimension": dimension,
             "mutation_count": sum(len(cycle["operations"]) for cycle in cycles)}
 
 
 def one_run(binary, work, args, result):
+    policy = work.get("query_mode_policy", "mixed")
+    base.require(getattr(args, "query_mode", policy) == policy, "requested/workload query mode differs")
+    for queries in [work["before"], *[cycle["queries"] for cycle in work["cycles"]], work["after"]]:
+        base.require(all(q["mode"] in ("exact", "ann") and (policy != "exact" or q["mode"] == "exact") for q in queries),
+                     "workload query mode differs")
+    result["query_mode_policy"] = policy
     full_started = perf_counter()
     config = json.loads((base.PROTOCOL_CHECK / "config.json").read_text())
     config.update(request_timeout=args.timeout, startup_timeout=args.timeout)
@@ -253,6 +260,7 @@ def main():
     parser.add_argument("--rows", type=int, default=10000)
     parser.add_argument("--dimension", type=int, default=128)
     parser.add_argument("--queries", type=int, default=8)
+    parser.add_argument("--query-mode", choices=("mixed", "exact"), default="mixed")
     parser.add_argument("--batch-size", type=int, default=100)
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--case-timeout", type=float, default=1800)
@@ -299,7 +307,7 @@ def main():
         for case_index, name in enumerate(cases):
             for seed_index, seed in enumerate(args.seeds):
                 started = perf_counter()
-                work = make_workload(name, seed, args.rows, args.dimension, args.queries, args.batch_size)
+                work = make_workload(name, seed, args.rows, args.dimension, args.queries, args.batch_size, args.query_mode)
                 generation = perf_counter() - started
                 for index in range(args.pairs):
                     order = ["baseline", "candidate"]

@@ -63,7 +63,8 @@ def save(path, value):
     temporary.replace(path)
 
 
-def workload(name, seed):
+def workload(name, seed, query_mode="mixed"):
+    require(query_mode in ("exact", "mixed"), "unknown query mode policy")
     count, dimension, width = CASES[name]
     rng = random.Random(seed)
     rows = []
@@ -99,7 +100,8 @@ def workload(name, seed):
                 "columns": columns, "rows": selected if wide else [[row[0]] for row in selected]})
     phases.append({"label": "wide_distance10", "sql": "SELECT id,n,s,v FROM projection ORDER BY L2_DISTANCE(v," + vector_sql(query) + ") LIMIT 10;",
                    "columns": ["id", "n", "s", "v"], "rows": nearest})
-    return {"name": name, "seed": seed, "rows": count, "dimension": dimension, "string_codepoints": width,
+    for phase in phases: phase["search_mode"] = "exact"  # Projection was already exact in the legacy mixed suite.
+    return {"query_mode_policy": query_mode, "search_mode": "exact", "name": name, "seed": seed, "rows": count, "dimension": dimension, "string_codepoints": width,
             "requests": requests, "phases": phases}
 
 
@@ -117,10 +119,11 @@ def verify_value(actual, expected, where):
         require(type(actual) is type(expected) and actual == expected, where + ": scalar value/type differs")
 
 
-def exchange(session, sql, *, expected=None, affected=None):
+def exchange(session, sql, *, expected=None, affected=None, search_mode="exact"):
+    require(search_mode in ("exact", "ann"), "invalid protocol search mode")
     session.sequence += 1
     ident = session.sequence
-    request = {"id": ident, "op": "execute", "sql": sql, "search_mode": "exact"}
+    request = {"id": ident, "op": "execute", "sql": sql, "search_mode": search_mode}
     raw_request = encoded(request) + b"\n"
     started = perf_counter()
     session.send(raw_request)
@@ -143,17 +146,20 @@ def exchange(session, sql, *, expected=None, affected=None):
         require(set(response) == {"id", "ok", "affected_rows"} and
                 type(response["affected_rows"]) is int and response["affected_rows"] == affected,
                 "incorrect affected rows")
-    return {"seconds": seconds, "request_bytes": len(raw_request), "response_bytes": len(raw),
+    return {"search_mode": search_mode, "seconds": seconds, "request_bytes": len(raw_request), "response_bytes": len(raw),
             "response_sha256": hashlib.sha256(raw).hexdigest()}
 
 
 def one_run(binary, work, args, result=None):
+    policy = work.get("query_mode_policy", "mixed")
+    require(getattr(args, "query_mode", policy) == policy and work.get("search_mode", "exact") == "exact",
+            "requested/workload projection mode differs")
     environment = os.environ.copy()
     environment.pop("MVDB_OUT", None)
     environment.pop("MVDB_PROTOCOL", None)
     if result is None:
         result = {}
-    result.update(status="running", phases={}, lifecycle_seconds={})
+    result.update(status="running", query_mode_policy=policy, phases={}, lifecycle_seconds={})
     with tempfile.TemporaryDirectory(prefix="mvdb-projection-") as directory:
         log_path = Path(directory) / "stderr.log"
         with log_path.open("wb") as errors:
@@ -164,11 +170,11 @@ def one_run(binary, work, args, result=None):
                 result["lifecycle_seconds"]["startup"] = perf_counter() - start
                 ingestion = []
                 for sql, affected in work["requests"]:
-                    ingestion.append(exchange(session, sql, affected=affected))
+                    ingestion.append(exchange(session, sql, affected=affected, search_mode=work.get("search_mode", "exact")))
                 result["lifecycle_seconds"]["create_and_insert"] = sum(item["seconds"] for item in ingestion)
                 result["ingest_request_bytes"] = sum(item["request_bytes"] for item in ingestion)
                 for phase in work["phases"]:
-                    samples = [exchange(session, phase["sql"], expected=phase) for _ in range(args.repetitions)]
+                    samples = [exchange(session, phase["sql"], expected=phase, search_mode=phase.get("search_mode", "exact")) for _ in range(args.repetitions)]
                     result["phases"][phase["label"]] = {"requests": samples, "wall_seconds": sum(item["seconds"] for item in samples),
                         "response_bytes": sum(item["response_bytes"] for item in samples), "rows_per_response": len(phase["rows"]),
                         "columns": phase["columns"], "independent_oracle": "every element, exact integer/string/float32 and signed zero"}
@@ -213,6 +219,7 @@ def main():
     parser.add_argument("--seeds", type=int, nargs="+", default=[7319, 8911, 13337])
     parser.add_argument("--pairs", type=int, default=1)
     parser.add_argument("--repetitions", type=int, default=3)
+    parser.add_argument("--query-mode", choices=("mixed", "exact"), default="mixed")
     parser.add_argument("--timeout", type=float, default=60)
     args = parser.parse_args()
     if platform.system() != "Linux":
@@ -234,7 +241,7 @@ def main():
     inputs.mkdir()
     report = {"status": "running", "kind": "wide_projection_screen", "official_score": None,
         "created_utc": datetime.now(timezone.utc).isoformat(), "pairs": [], "workloads": [],
-        "parameters": {"seeds": args.seeds, "pairs_per_seed": args.pairs, "repetitions_per_phase": args.repetitions},
+        "parameters": {"seeds": args.seeds, "pairs_per_seed": args.pairs, "repetitions_per_phase": args.repetitions, "query_mode_policy": args.query_mode},
         "host": {"platform": platform.platform(), "affinity": cpus},
         "environment": {key: os.environ[key] for key in RUNTIME_KEYS if key in os.environ},
         "harness_sha256": sha(Path(__file__)),
@@ -250,13 +257,13 @@ def main():
         for case_index, name in enumerate(args.scenario or DEFAULT_CASES):
             for seed_index, seed in enumerate(args.seeds):
                 start = perf_counter()
-                work = workload(name, seed)
+                work = workload(name, seed, args.query_mode)
                 input_path = inputs / f"{name}-{seed}.jsonl"
                 with input_path.open("wb") as file:
                     for sql, affected in work["requests"]:
-                        file.write(encoded({"sql": sql, "affected_rows": affected}) + b"\n")
+                        file.write(encoded({"sql": sql, "affected_rows": affected, "search_mode": work["search_mode"]}) + b"\n")
                     for phase in work["phases"]:
-                        file.write(encoded({"sql": phase["sql"], "label": phase["label"], "columns": phase["columns"], "expected_rows": len(phase["rows"])}) + b"\n")
+                        file.write(encoded({"sql": phase["sql"], "label": phase["label"], "columns": phase["columns"], "expected_rows": len(phase["rows"]), "search_mode": phase["search_mode"]}) + b"\n")
                 input_hash = sha(input_path)
                 generation = perf_counter() - start
                 report["workloads"].append({"scenario": name, "seed": seed, "rows": work["rows"],

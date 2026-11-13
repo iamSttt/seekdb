@@ -26,6 +26,7 @@
 //     skipped on replay using the LSN stored in the snapshot header.
 // ---------------------------------------------------------------------------
 #include "db.h"
+#include "crc32_ieee.h"
 #include "filter_diagnostics.h"
 #include "flat_index.h"
 #include "quantized_bound.h"
@@ -130,25 +131,11 @@ enum RecKind : uint8_t {
 enum RecFlags : uint8_t { RF_TXN = 1 };  // record belongs to an explicit transaction
 
 // ---------------------------------------------------------------- CRC32 ----
-struct Crc32Table {
-  uint32_t t[256];
-  Crc32Table() {
-    for (uint32_t i = 0; i < 256; ++i) {
-      uint32_t c = i;
-      for (int k = 0; k < 8; ++k) c = (c & 1u) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
-      t[i] = c;
-    }
-  }
-};
-const Crc32Table kCrcTable;
-
 inline uint32_t crc32_upd(uint32_t crc, const void* p, size_t n) {
-  const uint8_t* q = static_cast<const uint8_t*>(p);
-  while (n--) crc = kCrcTable.t[(crc ^ *q++) & 0xFFu] ^ (crc >> 8);
-  return crc;
+  return storage_crc::update(crc, p, n);
 }
 inline uint32_t crc32_of(const void* p, size_t n) {
-  return crc32_upd(0xFFFFFFFFu, p, n) ^ 0xFFFFFFFFu;
+  return storage_crc::checksum(p, n);
 }
 
 // ------------------------------------------------------------ byte IO ------

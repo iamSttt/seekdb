@@ -56,6 +56,8 @@ git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec
 lscpu > protocol-results/lscpu.txt
 docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
+# Verify the byte-compatible storage checksum before the more expensive build.
+bash minivec/tools/ci_crc_checks.sh --unit
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain --build-arg "FEATURE_FLAGS=$FEATURE_FLAGS" -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
 docker image inspect "$IMAGE" > protocol-results/image-inspect.json
@@ -165,6 +167,11 @@ if (utf8.get('status')!='passed' or len(utf8['checks'])!=54 or actual_utf8!=expe
         any(check.get('status')!='passed' for check in utf8['checks'])):
     raise SystemExit('Actual image UTF8 atomicity evidence is incomplete')
 image_binary_sha=Path('protocol-results/image-binary-sha256.txt').read_text().split()[0]
+crc_unit=json.loads(Path('protocol-results/crc-checks/unit/summary.json').read_text())
+if (crc_unit.get('status')!='passed' or crc_unit.get('exit_code')!=0 or
+        set(crc_unit.get('unit_checks',{}))!={'normal','sanitized'} or
+        any(n<34000 for n in crc_unit['unit_checks'].values())):
+    raise SystemExit('CRC normal/sanitizer evidence is incomplete')
 report = {
     'runtime_commit': os.environ['RUNTIME_COMMIT'],
     'image_tag': os.environ['IMAGE'],
@@ -177,6 +184,7 @@ report = {
     'passed': True,
     'checks': {
         'root_docker_build': True,
+        'ieee_crc_byte_oracle_normal_and_sanitized': True,
         'image_official_handshake_and_public_cases': True,
         'source_official_handshake_and_public_cases': True,
         'live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill': True,

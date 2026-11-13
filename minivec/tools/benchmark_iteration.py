@@ -90,7 +90,13 @@ def squared_distance(a, b):
     return math.fsum((float(x) - float(y)) ** 2 for x, y in zip(a, b))
 
 
-def make_workload(spec, seed, queries, batch_size, k):
+def query_mode_for(index, policy="mixed"):
+    require(policy in ("exact", "mixed"), "unknown query mode policy")
+    return "exact" if policy == "exact" or index % 2 == 0 else "ann"
+
+
+def make_workload(spec, seed, queries, batch_size, k, query_mode="mixed"):
+    query_modes = [query_mode_for(index, query_mode) for index in range(queries)]
     rows, dimension, updated_rows, padding = spec[:4]
     group_modulus = spec[4] if len(spec) > 4 else 0
     mixed_filters = bool(spec[5]) if len(spec) > 5 else False
@@ -151,7 +157,8 @@ def make_workload(spec, seed, queries, batch_size, k):
     after = oracles(True) if updated_rows else before
     for sql in sql_queries + ([update] if update else []):
         digest.update(sql.encode())
-    return {"rows": rows, "dimension": dimension, "updated_rows": updated_rows,
+    digest.update(encoded(query_modes))
+    return {"query_mode_policy": query_mode, "query_modes": query_modes, "rows": rows, "dimension": dimension, "updated_rows": updated_rows,
             "padding_bytes": padding, "create": create, "inserts": inserts,
             "queries": sql_queries, "update": update, "before_oracle": before,
             "after_oracle": after, "oracle_indices": oracle_indices,
@@ -221,10 +228,14 @@ def verify_query(response, expected, label):
 
 
 def one_run(binary, workload, args):
+    policy = workload.get("query_mode_policy", "mixed")
+    require(getattr(args, "query_mode", policy) == policy, "requested/workload query mode differs")
+    query_modes = workload.get("query_modes", [query_mode_for(i, policy) for i in range(len(workload["queries"]))])
+    require(query_modes == [query_mode_for(i, policy) for i in range(len(workload["queries"]))], "query mode sequence differs")
     config = json.loads((PROTOCOL_CHECK / "config.json").read_text())
     config["request_timeout"] = args.timeout
     config["startup_timeout"] = args.timeout
-    result = {"phase_seconds": {}, "query": {}, "resource_snapshots": []}
+    result = {"query_mode_policy": policy, "phase_seconds": {}, "query": {}, "resource_snapshots": []}
     digest = hashlib.sha256()
     phases = result["phase_seconds"]
     with tempfile.TemporaryDirectory(prefix="mvdb-iteration-log-") as temporary:
@@ -252,8 +263,8 @@ def one_run(binary, workload, args):
             timings = []
             modes = []
             for index, sql in enumerate(workload["queries"]):
-                # Both default modes promise exact results in this iteration.
-                mode = "exact" if index % 2 == 0 else "ann"
+                # The workload declares the actual transport mode, never a hidden override.
+                mode = query_modes[index]
                 elapsed, response = request(sql, mode=mode)
                 timings.append(elapsed)
                 modes.append(mode)
@@ -364,6 +375,7 @@ def main():
     parser.add_argument("--seeds", type=int, nargs="+", help="default: smoke=7319; full=7319,8911,13337")
     parser.add_argument("--pairs", type=int, help="default: smoke=1; full=5")
     parser.add_argument("--queries", type=int, help="queries per phase; default: smoke=4; full=32")
+    parser.add_argument("--query-mode", choices=("mixed", "exact"), default="mixed")
     parser.add_argument("--batch-size", type=int, default=100)
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--timeout", type=float, default=120, help="per-request/startup timeout seconds")
@@ -394,7 +406,7 @@ def main():
         "kind": "paired_local_iteration_benchmark", "status": "running", "official_score": None,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "suite": args.suite, "seeds": args.seeds, "pairs_per_seed": args.pairs,
-        "queries_per_phase": args.queries, "batch_size": args.batch_size, "k": args.k,
+        "queries_per_phase": args.queries, "query_mode_policy": args.query_mode, "batch_size": args.batch_size, "k": args.k,
         "host": {"platform": platform.platform(), "python": platform.python_version(),
                  "cpu_affinity": sorted(os.sched_getaffinity(0)), "logical_cpus": os.cpu_count()},
         "environment": runtime_environment(),
@@ -416,7 +428,7 @@ def main():
         for case_index, (name, spec) in enumerate(cases.items()):
             for seed_index, seed in enumerate(args.seeds):
                 started = perf_counter()
-                workload = make_workload(spec, seed, args.queries, args.batch_size, args.k)
+                workload = make_workload(spec, seed, args.queries, args.batch_size, args.k, args.query_mode)
                 generation_seconds = perf_counter() - started
                 for pair_index in range(args.pairs):
                     order = ["baseline", "candidate"]

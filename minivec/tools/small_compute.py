@@ -199,6 +199,9 @@ class Group:
                                timeout=False, watchdog_error=None)
             require(all(isinstance(self.record['before'][key], str) for key in
                         ('cpu.stat', 'memory.peak', 'memory.events', 'io.stat')), 'required cgroup telemetry unavailable')
+            for arg, file in (('memory_max', 'memory.max'), ('swap_max', 'memory.swap.max')):
+                wanted = getattr(self.args, arg)
+                require(wanted is None or self.record['before'][file] == wanted, 'actual requested memory/swap cap differs')
             self.timer = threading.Timer(self.args.case_timeout, self.expire)
             self.timer.daemon = True
             self.timer.start()
@@ -271,7 +274,11 @@ def command_adapter(base, projection, prefix, binary, group, trace, db_cpu=None)
         def start(self, *args, **kwargs):
             value = super().start(*args, **kwargs); observed_ready(self); return value
         def request(self, *args, **kwargs):
+            mode = kwargs.get('mode', args[1] if len(args) > 1 else 'exact')
+            require(mode in ('exact', 'ann'), 'invalid forwarded search mode')
             value = super().request(*args, **kwargs)
+            modes = trace.setdefault('completed_request_modes', {})
+            modes[mode] = modes.get(mode, 0) + 1
             trace['completed_transport_requests'] = trace.get('completed_transport_requests', 0) + 1
             return value
         def close(self):
@@ -292,11 +299,14 @@ def command_adapter(base, projection, prefix, binary, group, trace, db_cpu=None)
         return value
 
     counts = {}
-    def exchange(session, sql, *, expected=None, affected=None):
+    def exchange(session, sql, *, expected=None, affected=None, search_mode="exact"):
         label = expected['label'] if expected else None
         if label and counts.get(label, 0) == 0:
             trace.setdefault('phase_cgroups', []).append({'phase': label + '/before', **snapshot(group), **task_snapshot(session.proc.pid)})
-        value = original_exchange(session, sql, expected=expected, affected=affected)
+        value = original_exchange(session, sql, expected=expected, affected=affected, search_mode=search_mode)
+        require(value['search_mode'] == search_mode, 'projection actual mode differs')
+        modes = trace.setdefault('completed_request_modes', {})
+        modes[search_mode] = modes.get(search_mode, 0) + 1
         trace['completed_transport_requests'] = trace.get('completed_transport_requests', 0) + 1
         if label:
             counts[label] = counts.get(label, 0) + 1
@@ -312,10 +322,10 @@ def command_adapter(base, projection, prefix, binary, group, trace, db_cpu=None)
         base.process_snapshot, projection.exchange = original_snapshot, original_exchange
 
 
-def workload(name, base, writes, projection):
-    if name == 'wide768': return projection.workload(name, SEED)
-    if name.startswith('spill_'): return writes.make_workload(name, SEED, cycles=4, batch_size=100)
-    return base.make_workload(base.FULL_CASES[name], SEED, 1000, 100, 10)
+def workload(name, base, writes, projection, query_mode="mixed"):
+    if name == 'wide768': return projection.workload(name, SEED, query_mode=query_mode)
+    if name.startswith('spill_'): return writes.make_workload(name, SEED, cycles=4, batch_size=100, query_mode=query_mode)
+    return base.make_workload(base.FULL_CASES[name], SEED, 1000, 100, 10, query_mode=query_mode)
 
 
 def workload_identity(name, work, base):
@@ -332,6 +342,11 @@ def workload_identity(name, work, base):
         samples = sorted({0, 1, work['rows'] // 2, work['rows'] - 1, max(0, work['updated_rows'] - 1)})
         payload['restart_sample_vectors'] = {key: list(work['updated_vector'] if key < work['updated_rows'] else work['vectors'][key])
                                              for key in samples}
+    payload['query_mode_policy'] = work.get('query_mode_policy', 'mixed')
+    if 'queries' in work:
+        payload['query_modes'] = work.get('query_modes', ['exact' if payload['query_mode_policy'] == 'exact' or i % 2 == 0 else 'ann'
+                                                        for i in range(len(work['queries']))])
+    if name == 'wide768': payload['search_mode'] = work.get('search_mode', 'exact')
     digest = hashlib.sha256(base.encoded(payload)).hexdigest()
     return {'scenario': name, 'seed': SEED, 'sha256': digest, 'generator_sha256': work.get('sha256'),
             'rows': work['rows'], 'dimension': work['dimension']}
@@ -385,6 +400,7 @@ def main():
     p.add_argument('--launcher', type=Path)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--plan-only', action='store_true')
+    p.add_argument('--query-mode', choices=('mixed', 'exact'), default='mixed')
     p.add_argument('--allow-version-contrast', action='store_true')
     p.add_argument('--cpu-quota-us', type=int, default=100000)
     p.add_argument('--cpu-period-us', type=int, default=100000)
@@ -406,7 +422,7 @@ def main():
     expected_pairs = len(items)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.plan_only:
-        save(args.output, {'status': 'plan_only_not_executed', 'pairs': items, 'expected_pairs': expected_pairs}); return
+        save(args.output, {'status': 'plan_only_not_executed', 'pairs': items, 'expected_pairs': expected_pairs, 'query_mode_policy': args.query_mode}); return
     require(sys.platform.startswith('linux') and args.identities and args.launcher, 'Linux, identities and launcher required')
     source = args.tools.resolve(); sys.path.insert(0, str(source))
     base, delta, writes, projection = [importlib.import_module(name) for name in
@@ -420,7 +436,7 @@ def main():
     args.db_cpus = select_cpus(affinity, args.db_cpu_count, args.db_cpu)
     args.db_cpu = args.db_cpus[0]
     report = {'status': 'running', 'kind': 'small_compute_diagnostic', 'official_score': None,
-        'official_binary_identity_known': False, 'expected_pairs': expected_pairs, 'plan': items, 'pairs': [],
+        'official_binary_identity_known': False, 'query_mode_policy': args.query_mode, 'expected_pairs': expected_pairs, 'plan': items, 'pairs': [],
         'comparison_kind': 'whole_version_diagnostic' if args.allow_version_contrast else 'same_binary_environment_control',
         'identities': ids, 'identity_record_sha256': sha(args.identities), 'launcher_sha256': sha(launcher),
         'taskset': {'path': str(taskset), 'sha256': sha(taskset)}, 'db_cpu': args.db_cpu,
@@ -433,7 +449,7 @@ def main():
             Path(sys.modules[base.Session.__module__].__file__).resolve(),
             Path(sys.modules[projection.Session.__module__].__file__).resolve(), base.PROTOCOL_CHECK / 'config.json'}},
         'workloads': [], 'limitations': [
-            'Diagnostic only: official resource envelope not assumed. Missing memory/swap limits remain inherited; ancestor constraints are retained.',
+            'Diagnostic only: requested one/two-CPU and memory/swap limits are explicit, not a verified official resource envelope. Ancestor constraints are retained.',
             'DB quota and selected affinity are explicit; affinity is checked after every ready. Driver affinity is unchanged; driver/oracle stay outside DB cgroup but share host resources.',
             'Comparison kind and both binary/source/environment identities are explicit. A version contrast includes compiler/layout effects; neither comparison proves the official binary identity.',
             'Two AB/BA pairs at one fixed seed screen only. No confidence interval, score conversion or automatic adoption.',
@@ -451,7 +467,7 @@ def main():
         (parent / 'cgroup.subtree_control').write_text('+cpu +memory +io')
         report['driver_cgroup'] = Path('/proc/self/cgroup').read_text().strip()
         for name in cases:
-            work = workload(name, base, writes, projection)
+            work = workload(name, base, writes, projection, args.query_mode)
             report['workloads'].append(workload_identity(name, work, base))
             for entry in (v for v in items if v['scenario'] == name):
                 current_pair = dict(entry)

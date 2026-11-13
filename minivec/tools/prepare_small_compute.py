@@ -105,6 +105,8 @@ def prepare(repo, archive, out, candidate_policy='serial'):
         'minivec/tools/ci_small_compute.sh', 'minivec/tools/cgroup_exec.c',
         'minivec/tools/ci_small_root.sh', 'minivec/tools/prepare_small_root.py',
         'minivec/tools/summarize_small_root.py', 'minivec/tools/ci_score.sh',
+        'minivec/tools/ci_crc_checks.sh', 'minivec/tests/check_crc_persistence.py',
+        'minivec/tests/crc_persistence_fixture.cpp',
         'minivec/tools/benchmark_iteration.py', 'minivec/tools/benchmark_index_delta.py',
         'minivec/tools/benchmark_write_query.py', 'minivec/tools/benchmark_projection.py',
         'minivec/tests/json_protocol.py', 'protocol_check/_transport.py', 'protocol_check/config.json')

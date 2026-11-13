@@ -28,7 +28,8 @@ RESIDENT_CASES = ("resident_compound_q1", "resident_compound_q16")
 CASES = SPILL_CASES + RESIDENT_CASES
 
 
-def make_workload(name, seed, cycles=4, batch_size=100):
+def make_workload(name, seed, cycles=4, batch_size=100, query_mode="mixed"):
+    base.query_mode_for(0, query_mode)
     base.require(name in CASES and cycles > 0, "invalid write/query workload")
     resident = name in RESIDENT_CASES
     rows, dimension, padding = (10000, 128, 0) if resident else (5000, 128, 8192)
@@ -64,7 +65,7 @@ def make_workload(name, seed, cycles=4, batch_size=100):
                     ((value[1] == 1 and value[2] == 7) if resident else (not low or value[1] == 7)))[:10]
             predicate = "g=1 AND h=7" if resident else "g=7" if low else "g>=0"
             sql = f"SELECT id,L2_DISTANCE(v,{base.vector_literal(vector)}) AS d FROM docs WHERE {predicate} ORDER BY d LIMIT 10;"
-            result.append({"sql": sql, "mode": "ann" if (index + stage) % 2 else "exact",
+            result.append({"sql": sql, "mode": base.query_mode_for(index + stage, query_mode),
                            "oracle": expected[vector_index]})
         return result
 
@@ -98,7 +99,7 @@ def make_workload(name, seed, cycles=4, batch_size=100):
     for step in steps:
         digest.update(b"BEGIN;COMMIT;")
         digest.update(step["operations"][0]["sql"].encode())
-    work = {"create": create, "inserts": inserts, "before": before, "cycles": steps,
+    work = {"query_mode_policy": query_mode, "create": create, "inserts": inserts, "before": before, "cycles": steps,
             "after": after, "final_model": model, "changed_ids": sorted(changed),
             "reads_per_write": reads,
             "padding_bytes": padding, "rows": rows, "dimension": dimension,
@@ -119,6 +120,7 @@ def main():
     parser.add_argument("--seeds", type=int, nargs="+", default=[7319, 8911, 13337])
     parser.add_argument("--pairs", type=int, default=1)
     parser.add_argument("--cycles", type=int, default=4)
+    parser.add_argument("--query-mode", choices=("mixed", "exact"), default="mixed")
     parser.add_argument("--batch-size", type=int, default=100)
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--case-timeout", type=float, default=1800)
@@ -183,7 +185,7 @@ def main():
     try:
         for case_index, name in enumerate(cases):
             for seed_index, seed in enumerate(args.seeds):
-                started = perf_counter();work = make_workload(name, seed, args.cycles, args.batch_size)
+                started = perf_counter();work = make_workload(name, seed, args.cycles, args.batch_size, args.query_mode)
                 generation = perf_counter() - started
                 for index in range(args.pairs):
                     order = ["baseline", "candidate"]
