@@ -13,3 +13,6 @@
 /STDIO_PROTOCOL.md -text
 /mysqltest/** -text
 /protocol_check/** -text
+# Frozen standalone proof/measurement package retains exact handoff bytes.
+/minivec/tools/tighter_bound/** -text
+/validation/iteration5-tighter*review.md -text

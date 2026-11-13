@@ -80,7 +80,7 @@ jobs:
   validate:
     # Highest-primary uses this single current root build and imports both
     # reference executables; its marker excludes the separate performance jobs.
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (inputs.highest_primary || contains(github.event.head_commit.message, '[highest-primary]') || (!inputs.matched_insert_roots && !contains(github.event.head_commit.message, '[matched-insert-roots]') && !inputs.insert_thread_control && !contains(github.event.head_commit.message, '[insert-thread-control]') && !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (inputs.highest_primary || contains(github.event.head_commit.message, '[highest-primary]') || (!inputs.matched_insert_roots && !contains(github.event.head_commit.message, '[matched-insert-roots]') && !inputs.insert_thread_control && !contains(github.event.head_commit.message, '[insert-thread-control]') && !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -107,7 +107,7 @@ jobs:
           include-hidden-files: true
           retention-days: 90
   paired-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (!inputs.matched_insert_roots && !contains(github.event.head_commit.message, '[matched-insert-roots]') && !inputs.insert_thread_control && !contains(github.event.head_commit.message, '[insert-thread-control]') && !inputs.insert_copy && !contains(github.event.head_commit.message, '[insert-copy]') && !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_bridge && !contains(github.event.head_commit.message, '[small-bridge]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (!inputs.matched_insert_roots && !contains(github.event.head_commit.message, '[matched-insert-roots]') && !inputs.insert_thread_control && !contains(github.event.head_commit.message, '[insert-thread-control]') && !inputs.insert_copy && !contains(github.event.head_commit.message, '[insert-copy]') && !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_bridge && !contains(github.event.head_commit.message, '[small-bridge]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -117,7 +117,7 @@ jobs:
       - name: Fixed compiler baseline and candidate paired measurement
         run: bash minivec/tools/ci_iteration.sh
   highest-compare:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.highest_compare || contains(github.event.head_commit.message, '[highest-compare]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.highest_compare || contains(github.event.head_commit.message, '[highest-compare]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -134,7 +134,7 @@ jobs:
           include-hidden-files: true
           retention-days: 90
   insert-thread-control:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.insert_thread_control || contains(github.event.head_commit.message, '[insert-thread-control]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.insert_thread_control || contains(github.event.head_commit.message, '[insert-thread-control]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -151,7 +151,7 @@ jobs:
           include-hidden-files: true
           retention-days: 90
   matched-insert-roots:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.matched_insert_roots || contains(github.event.head_commit.message, '[matched-insert-roots]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.matched_insert_roots || contains(github.event.head_commit.message, '[matched-insert-roots]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -168,7 +168,7 @@ jobs:
           include-hidden-files: true
           retention-days: 90
   small-compute:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.small_compute || contains(github.event.head_commit.message, '[small-compute]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.small_compute || contains(github.event.head_commit.message, '[small-compute]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -186,7 +186,7 @@ jobs:
           path: small-compute-results/
           retention-days: 90
   regression-ablation:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.regression_ablation || contains(github.event.head_commit.message, '[regression-ablation]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.regression_ablation || contains(github.event.head_commit.message, '[regression-ablation]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
@@ -202,7 +202,7 @@ jobs:
           path: regression-ablation-results/
           retention-days: 90
   bulk-typed-confirmation:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.bulk_typed || contains(github.event.head_commit.message, '[bulk-typed]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.bulk_typed || contains(github.event.head_commit.message, '[bulk-typed]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
@@ -218,7 +218,7 @@ jobs:
           path: bulk-typed-confirmation-results/
           retention-days: 90
   bulk-guard-confirmation:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.bulk_guard || contains(github.event.head_commit.message, '[bulk-guard]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.bulk_guard || contains(github.event.head_commit.message, '[bulk-guard]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -234,7 +234,7 @@ jobs:
           path: bulk-guard-confirmation-results/
           retention-days: 90
   standard-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[standard]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[standard]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -244,7 +244,7 @@ jobs:
       - name: Representative 10k workload and isolated LTO comparison
         run: bash minivec/tools/ci_standard.sh
   hotpath-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[hotpath]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[hotpath]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -254,7 +254,7 @@ jobs:
       - name: Exact-query hot path and boundary paired measurement
         run: bash minivec/tools/ci_hotpath.sh
   round2-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[round2]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[round2]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
@@ -264,7 +264,7 @@ jobs:
       - name: Separate parser and residual-bound experiments
         run: bash minivec/tools/ci_round2.sh
   dot-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[dot]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[dot]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -274,7 +274,7 @@ jobs:
       - name: Integrated exact integer-dot comparison
         run: bash minivec/tools/ci_dot.sh
   pgo-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[pgo]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[pgo]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
@@ -284,7 +284,7 @@ jobs:
       - name: Profile-guided build, correctness and paired measurement
         run: bash minivec/tools/ci_pgo.sh
   dot-avx2-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[dot-avx2]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[dot-avx2]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
@@ -294,7 +294,7 @@ jobs:
       - name: Forced AVX2 integer dispatcher and dot ablation
         run: bash minivec/tools/ci_dot_avx2.sh
   report-a-performance:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-a]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-a]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -304,7 +304,7 @@ jobs:
       - name: Report I05 I08 isolated comparisons and expanded matrix
         run: bash minivec/tools/ci_report_stage_a.sh
   report-b-hotpaths:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-b]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-b]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -318,7 +318,7 @@ jobs:
           path: report-b-results/
           retention-days: 90
   report-b-storage:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-b]') || contains(github.event.head_commit.message, '[storage-report]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-b]') || contains(github.event.head_commit.message, '[storage-report]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -332,7 +332,7 @@ jobs:
           path: storage-report-results/
           retention-days: 90
   pgo-matrix:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[pgo-matrix]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[pgo-matrix]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -346,7 +346,7 @@ jobs:
           path: pgo-matrix-results/
           retention-days: 90
   report-b-quantization:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-b]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-b]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -360,7 +360,7 @@ jobs:
           path: quant-scale-results/
           retention-days: 90
   report-c-parser:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-c]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-c]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -376,7 +376,7 @@ jobs:
           path: parser-reuse-results/
           retention-days: 90
   report-c-projection:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-c]') || contains(github.event.head_commit.message, '[projection-report]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-c]') || contains(github.event.head_commit.message, '[projection-report]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -390,7 +390,7 @@ jobs:
           path: projection-report-results/
           retention-days: 90
   report-c-filter:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-c]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-c]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -404,7 +404,7 @@ jobs:
           path: filter-report-results/
           retention-days: 90
   parser-pgo-confirmation:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[feature-confirm]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[feature-confirm]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -418,7 +418,7 @@ jobs:
           path: parser-confirmation-results/
           retention-days: 90
   typed-pgo-confirmation:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[feature-confirm]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[feature-confirm]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -432,7 +432,7 @@ jobs:
           path: typed-confirmation-results/
           retention-days: 90
   selective-quantization:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[selective-scale]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[selective-scale]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -446,7 +446,7 @@ jobs:
           path: selective-scale-results/
           retention-days: 90
   spill-pgo-confirmation:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[feature-confirm]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[feature-confirm]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -460,7 +460,7 @@ jobs:
           path: spill-confirmation-results/
           retention-days: 90
   storage-lifecycle-gates:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[storage-gates]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[storage-gates]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -474,7 +474,7 @@ jobs:
           path: storage-report-results/
           retention-days: 90
   filter-fixed-thread-repeat:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[filter-repeat]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[filter-repeat]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -488,7 +488,7 @@ jobs:
           path: filter-repeat-results/
           retention-days: 90
   typed-pgo-atomicity:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[typed-gates]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[typed-gates]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -502,7 +502,7 @@ jobs:
           path: typed-confirmation-results/
           retention-days: 90
   report-integration:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-integration]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-integration]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -518,7 +518,7 @@ jobs:
           path: integration-report-results/
           retention-days: 90
   output-guard-ablation:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.output_guard || contains(github.event.head_commit.message, '[output-guard]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.output_guard || contains(github.event.head_commit.message, '[output-guard]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -534,7 +534,7 @@ jobs:
           path: output-guard-results/
           retention-days: 90
   six-direction-finish:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.six_finish || contains(github.event.head_commit.message, '[report-i06-complete]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.six_finish || contains(github.event.head_commit.message, '[report-i06-complete]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -554,7 +554,7 @@ jobs:
             filter-confirmation-results/
           retention-days: 90
   filter-reuse-confirmation:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.filter_reuse || contains(github.event.head_commit.message, '[filter-reuse]')))) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.filter_reuse || contains(github.event.head_commit.message, '[filter-reuse]'))))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -572,7 +572,7 @@ jobs:
             filter-reuse-confirmation-results/
           retention-days: 90
   exact-cost-diagnostic:
-    if: ${{ !contains(github.event.head_commit.message, '[quant-batch-prototype]') && (contains(github.event.head_commit.message, '[exact-cost]')) }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (contains(github.event.head_commit.message, '[exact-cost]'))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -589,7 +589,7 @@ jobs:
           include-hidden-files: true
           retention-days: 90
   quantized-batch-prototype:
-    if: ${{ contains(github.event.head_commit.message, '[quant-batch-prototype]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (contains(github.event.head_commit.message, '[quant-batch-prototype]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -604,4 +604,25 @@ jobs:
           name: quantized-batch-prototype
           path: quant-batch-results/
           include-hidden-files: true
+          retention-days: 90
+  tighter-bound-prototype:
+    if: ${{ contains(github.event.head_commit.message, '[tighter-bound-prototype]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Check isolated prototype shell
+        run: bash -n minivec/tools/tighter_bound/ci_prototype.sh
+      - name: Run fixed standalone certificate checks and microbenchmark
+        run: bash minivec/tools/tighter_bound/ci_prototype.sh --repo "$GITHUB_WORKSPACE" --output "$GITHUB_WORKSPACE/tighter-bound-results"
+      - name: Preserve all outputs including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tighter-bound-prototype-results
+          path: tighter-bound-results/
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 90
