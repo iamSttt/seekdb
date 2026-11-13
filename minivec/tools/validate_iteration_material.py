@@ -83,6 +83,44 @@ def check_artifact(root, artifact, path_key='path'):
     require(path.is_relative_to(root), 'artifact path escapes repository')
     require(hashlib.sha256(path.read_bytes()).hexdigest() == digest, 'artifact hash mismatch: '+name)
 
+def check_attachment_excerpt(root, entry):
+    """Verify raw UTF-8 source, one-based inclusive line ranges and inline text.
+
+    This is an attachment representation, never a new chat turn. The user
+    manifest continues to pin the complete original source hash.
+    """
+    # This maintenance exception is restricted to the one archived report;
+    # actual chat messages must retain their full inline content.
+    require(entry['id'] == 'user-report', 'only user-report may use attachment excerpts')
+    require(entry['role'] == 'user' and entry.get('source_kind') == 'user_supplied_document',
+            'attachment excerpt must retain user-supplied document attribution')
+    require(entry.get('is_new_user_message') is False,
+            'attachment excerpt must not be presented as a new user message')
+    artifact = entry['attachment_original']
+    check_artifact(root, artifact)
+    original = (root / artifact['path']).resolve().read_bytes()
+    original_digest = hashlib.sha256(original).hexdigest()
+    require(entry['original_content_sha256'] == original_digest,
+            'original attachment content hash mismatch')
+    require(type(entry['original_bytes']) is int and entry['original_bytes'] == len(original),
+            'original attachment byte count mismatch')
+    lines = original.decode('utf-8').splitlines(keepends=True)
+    ranges = entry['excerpt_line_ranges']
+    require(isinstance(ranges, list) and ranges, 'attachment excerpt needs line ranges')
+    previous_end = 0
+    retained = []
+    for span in ranges:
+        require(isinstance(span, list) and len(span) == 2 and all(type(x) is int for x in span),
+                'excerpt range must contain two integer line numbers')
+        first, last = span
+        require(previous_end < first <= last <= len(lines), 'excerpt ranges overlap or are out of bounds')
+        retained.extend(lines[first-1:last])
+        previous_end = last
+    require(''.join(retained) == entry['content'], 'excerpt is not the declared verbatim source ranges')
+    require(hashlib.sha256(entry['content'].encode('utf-8')).hexdigest() == entry['excerpt_sha256'],
+            'attachment excerpt content hash mismatch')
+    return original_digest
+
 
 def check_structure(record, value):
     """Validate declared pointers and lossless columns/rows shape recursively."""
@@ -126,6 +164,7 @@ def validate(root):
     require(isinstance(messages, list) and messages, 'messages must be a nonempty array')
     by_id = {entry['id']: entry for entry in messages}
     require(len(by_id) == len(messages), 'duplicate message IDs')
+    preserved_user_hashes = {}
     for entry in messages:
         require(isinstance(entry['id'], str) and entry['id'], 'invalid message ID')
         require(entry['role'] in ('user', 'assistant'), 'invalid role')
@@ -133,9 +172,17 @@ def validate(root):
         if 'sha256' in entry:
             require(hashlib.sha256(entry['content'].encode('utf-8')).hexdigest() == entry['sha256'],
                     'message content hash mismatch')
+        if entry.get('content_type') == 'verbatim_attachment_excerpt':
+            digest = check_attachment_excerpt(root, entry)
+        else:
+            require(not any(k in entry for k in ('attachment_original', 'original_content_sha256',
+                                                 'excerpt_sha256', 'excerpt_line_ranges')),
+                    'attachment excerpt fields require explicit content_type')
+            digest = hashlib.sha256(entry['content'].encode('utf-8')).hexdigest()
+        if entry['role'] == 'user':
+            preserved_user_hashes[entry['id']] = digest
     user_hashes = record['provenance']['user_content_sha256']
-    require(user_hashes == {entry['id']: hashlib.sha256(entry['content'].encode('utf-8')).hexdigest()
-                           for entry in messages if entry['role'] == 'user'},
+    require(user_hashes == preserved_user_hashes,
             'user preservation manifest mismatch')
     for direction in record['adopted_directions'] + record.get('direction_status', []):
         require(by_id[direction['source_message']]['role'] == direction['origin_role'] == 'user', 'direction source must be user')

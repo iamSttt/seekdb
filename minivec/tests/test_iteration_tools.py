@@ -299,6 +299,109 @@ class MaterialTests(unittest.TestCase):
         self.record["messages"][0]["sha256"] = hashlib.sha256(b"different attachment").hexdigest()
         self.rejected()
 
+    def attachment_excerpt(self):
+        original = "Proposed a test.\r\nOmitted attachment context.\r\n原始附件末行。\r\n".encode("utf-8")
+        (self.root / "attachment.md").write_bytes(original)
+        digest = hashlib.sha256(original).hexdigest()
+        excerpt = "Proposed a test.\r\n原始附件末行。\r\n"
+        message = self.record["messages"][0]
+        message.update(id="user-report", source_kind="user_supplied_document",
+                       content_type="verbatim_attachment_excerpt", is_new_user_message=False,
+                       content=excerpt, excerpt_sha256=hashlib.sha256(excerpt.encode()).hexdigest(),
+                       original_content_sha256=digest, original_bytes=len(original),
+                       attachment_original={"path": "attachment.md", "sha256": digest},
+                       excerpt_line_ranges=[[1, 1], [3, 3]])
+        self.record["provenance"]["user_content_sha256"] = {"user-report": digest}
+        self.record["adopted_directions"][0]["source_message"] = "user-report"
+        return message, original
+
+    def test_attachment_excerpt_reconstructs_utf8_crlf_and_preserves_original_manifest(self):
+        message, original = self.attachment_excerpt()
+        self.assertNotEqual(message["excerpt_sha256"], message["original_content_sha256"])
+        data = self.save()
+        material.validate(self.root)
+        self.assertEqual((self.root / "attachment.md").read_bytes(), original)
+        self.assertEqual((self.root / "conversation.json").read_bytes(), data)
+
+    def test_attachment_excerpt_rejects_changed_omitted_original_bytes_or_missing_original(self):
+        _, original = self.attachment_excerpt()
+        self.save()
+        (self.root / "attachment.md").write_bytes(original.replace(b"Omitted", b"Altered"))
+        with self.assertRaises(ValueError):
+            material.validate(self.root)
+        (self.root / "attachment.md").unlink()
+        with self.assertRaises(OSError):
+            material.validate(self.root)
+
+    def test_attachment_excerpt_paraphrase_rejected_even_with_new_inline_hash(self):
+        message, _ = self.attachment_excerpt()
+        message["content"] = message["content"].replace("Proposed", "Invented")
+        message["excerpt_sha256"] = hashlib.sha256(message["content"].encode()).hexdigest()
+        self.rejected()
+
+    def test_attachment_excerpt_each_digest_and_byte_count_is_checked(self):
+        message, _ = self.attachment_excerpt()
+        good = copy.deepcopy(self.record)
+        for field, value in (("original_content_sha256", "0" * 64),
+                             ("excerpt_sha256", "0" * 64),
+                             ("original_bytes", message["original_bytes"] + 1),
+                             ("original_bytes", True)):
+            with self.subTest(field=field, value=value):
+                bad = copy.deepcopy(good)
+                bad["messages"][0][field] = value
+                self.rejected(bad)
+
+    def test_attachment_excerpt_ranges_must_be_exact_ordered_nonoverlapping_integer_lines(self):
+        self.attachment_excerpt()
+        good = copy.deepcopy(self.record)
+        for ranges in ([], None, [[0, 1]], [[1, 4]], [[2, 1]], [[True, 1]],
+                       [[1.0, 1]], [[1]], [[3, 3], [1, 1]], [[1, 1], [1, 3]],
+                       [[1, 2], [3, 3]]):
+            with self.subTest(ranges=ranges):
+                bad = copy.deepcopy(good)
+                bad["messages"][0]["excerpt_line_ranges"] = ranges
+                self.rejected(bad)
+
+    def test_attachment_excerpt_requires_explicit_attachment_and_nonchat_attribution(self):
+        self.attachment_excerpt()
+        good = copy.deepcopy(self.record)
+        for field, value in (("role", "assistant"), ("source_kind", "current_chat_exact_excerpt"),
+                             ("content_type", "full_original"), ("is_new_user_message", True),
+                             ("is_new_user_message", 0)):
+            with self.subTest(field=field, value=value):
+                bad = copy.deepcopy(good)
+                bad["messages"][0][field] = value
+                self.rejected(bad)
+
+    def test_real_chat_cannot_switch_to_attachment_excerpt_by_relabeling_source_kind(self):
+        message, _ = self.attachment_excerpt()
+        message["id"] = "u"
+        self.record["adopted_directions"][0]["source_message"] = "u"
+        self.record["provenance"]["user_content_sha256"] = {"u": message["original_content_sha256"]}
+        self.rejected()
+
+    def test_attachment_excerpt_parent_escape_rejected_with_matching_original_hash(self):
+        message, original = self.attachment_excerpt()
+        (self.root.parent / "outside-report.md").write_bytes(original)
+        message["attachment_original"]["path"] = "../outside-report.md"
+        self.rejected()
+
+    def test_attachment_excerpt_rehashing_original_does_not_bypass_preserved_user_manifest(self):
+        message, original = self.attachment_excerpt()
+        changed = original.replace(b"Omitted", b"Altered")
+        (self.root / "attachment.md").write_bytes(changed)
+        digest = hashlib.sha256(changed).hexdigest()
+        message["attachment_original"]["sha256"] = digest
+        message["original_content_sha256"] = digest
+        message["original_bytes"] = len(changed)
+        self.rejected()  # The unchanged user-source manifest still pins the original.
+
+    def test_attachment_excerpt_newline_conversion_rejected_even_with_new_inline_hash(self):
+        message, _ = self.attachment_excerpt()
+        message["content"] = message["content"].replace("\r\n", "\n")
+        message["excerpt_sha256"] = hashlib.sha256(message["content"].encode()).hexdigest()
+        self.rejected()
+
     def test_wrong_quote_or_pointer_cannot_be_made_valid_by_matching_text_elsewhere(self):
         direction = self.record["adopted_directions"][0]
         # Both messages contain this text; only the declared user's own message

@@ -433,9 +433,19 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         return std::sqrt(squared);
       };
 #ifdef MVDB_ENABLE_TYPED_JSON
+#ifdef MVDB_TYPED_WIDE_VECTOR_ONLY
+      // Experimental boundary, not a proven optimal threshold. Choose once per
+      // SELECT; distance-only/scalar projections retain the original DOM path.
+      const bool use_typed_json = std::any_of(items.begin(), items.end(), [&](const Item& item) {
+        return !item.is_distance && sch.cols[item.col].type == Type::VECTOR &&
+            sch.cols[item.col].len >= 128;
+      });
+#else
+      constexpr bool use_typed_json = true;
+#endif
       std::string encoded_row;
       JsonRowWriter row_writer(encoded_row);
-      auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) -> const std::string& {
+      auto encode_typed_json_row = [&](const Row& row, const Candidate* candidate = nullptr) -> const std::string& {
         encoded_row.clear();encoded_row+='[';
         for(size_t j=0;j<items.size();++j) {
           if(j)encoded_row+=',';
@@ -445,7 +455,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         }
         encoded_row+=']';return encoded_row;
       };
-#else
+#endif
+#if !defined(MVDB_ENABLE_TYPED_JSON) || defined(MVDB_TYPED_WIDE_VECTOR_ONLY)
       auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
         Json cells = Json::array();
         for (const auto& item : items) {
@@ -495,7 +506,12 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           }
         };
         auto render = [&](const Row& row) {
+#ifdef MVDB_ENABLE_TYPED_JSON
+          if (json_response && use_typed_json) return std::string(encode_typed_json_row(row));
+#endif
+#if !defined(MVDB_ENABLE_TYPED_JSON) || defined(MVDB_TYPED_WIDE_VECTOR_ONLY)
           if (json_response) return encode_json_row(row);
+#endif
           std::string text;
           for(size_t j=0;j<items.size();++j) {
             if(j)text+='\t';
@@ -766,7 +782,15 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         Row scratch;
         const Row& r = t->read_row(slot, scratch);
         if (json_response) {
+#ifdef MVDB_ENABLE_TYPED_JSON
+          if (use_typed_json) {
+            append_json_row(encode_typed_json_row(r, &c));
+            continue;
+          }
+#endif
+#if !defined(MVDB_ENABLE_TYPED_JSON) || defined(MVDB_TYPED_WIDE_VECTOR_ONLY)
           append_json_row(encode_json_row(r, &c));
+#endif
           continue;
         }
         std::vector<std::string> row;

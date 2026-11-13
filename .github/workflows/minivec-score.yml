@@ -316,3 +316,19 @@ jobs:
           name: report-integration
           path: integration-report-results/
           retention-days: 90
+  output-guard-ablation:
+    if: ${{ contains(github.event.head_commit.message, '[output-guard]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Same-host PGO spill-only broad and guarded projection comparisons
+        run: bash minivec/tools/ci_output_guard.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: output-guard-ablation
+          path: output-guard-results/
+          retention-days: 90

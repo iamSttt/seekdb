@@ -2,6 +2,8 @@
 *.sh text eol=lf
 # Evidence digests must be identical in Windows and Linux checkouts.
 /validation/iteration3-*.json text eol=lf
+# This attachment's digest pins exact original bytes, including line endings.
+/validation/iteration3-user-report-original.md -text
 # Preserve upstream fixtures byte for byte.
 /STDIO_PROTOCOL.md -text
 /mysqltest/** -text
