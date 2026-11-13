@@ -18,7 +18,6 @@
 
 #include "db.h"
 #include "exec.h"
-#include "query_startup_policy.h"
 #include "sql.h"
 #include "../third_party/json.hpp"
 
@@ -417,7 +416,6 @@ int main(int argc, char** argv) {
   sigaction(SIGTERM, &action, nullptr);
   sigaction(SIGINT, &action, nullptr);
 
-  configure_query_startup_affinity();
   Database db;
   std::string err;
   if (!db.open(data_dir, &err)) {

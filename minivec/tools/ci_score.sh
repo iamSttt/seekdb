@@ -51,9 +51,6 @@ PYREPORT
 }
 trap dump_reports EXIT
 
-python3 -B minivec/tests/check_query_startup_policy.py --source minivec/src \
-  --output protocol-results/query-startup-policy.json
-
 git rev-parse HEAD > protocol-results/runtime-commit.txt
 git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec/Makefile minivec/tests minivec/tools/ci_score.sh minivec/tools/ci_final_performance.sh minivec/tools/pgo/train.cpp minivec/tools/pgo/run-training.sh STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > protocol-results/input-sha256.txt
 lscpu > protocol-results/lscpu.txt
@@ -168,9 +165,6 @@ if (utf8.get('status')!='passed' or len(utf8['checks'])!=54 or actual_utf8!=expe
         any(check.get('status')!='passed' for check in utf8['checks'])):
     raise SystemExit('Actual image UTF8 atomicity evidence is incomplete')
 image_binary_sha=Path('protocol-results/image-binary-sha256.txt').read_text().split()[0]
-startup=json.loads(Path('protocol-results/query-startup-policy.json').read_bytes())
-if startup.get('status')!='passed' or startup.get('case_count')!=11 or len(startup.get('cases',[]))!=11:
-    raise SystemExit('Startup affinity compatibility checks are incomplete')
 report = {
     'runtime_commit': os.environ['RUNTIME_COMMIT'],
     'image_tag': os.environ['IMAGE'],
@@ -183,7 +177,6 @@ report = {
     'passed': True,
     'checks': {
         'root_docker_build': True,
-        'startup_affinity_and_explicit_override_11_cases': True,
         'image_official_handshake_and_public_cases': True,
         'source_official_handshake_and_public_cases': True,
         'live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill': True,
