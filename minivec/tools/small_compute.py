@@ -25,7 +25,7 @@ FILES = ('cpu.max', 'cpu.stat', 'memory.max', 'memory.swap.max', 'memory.current
          'memory.peak', 'memory.events', 'memory.events.local', 'io.stat', 'cgroup.events', 'cgroup.procs')
 ENV_KEYS = ('MVDB_PROTOCOL', 'MVDB_OUT', 'MVDB_SINGLE_THREAD', 'MVDB_QUERY_THREADS',
             'MVDB_QUERY_FANOUT_ROWS', 'MVDB_WAKE_US_OVERRIDE', 'MVDB_PARSE_THREADS',
-            'MVDB_ANN_PROBE_PERCENT', 'MVDB_ANN_OFF')
+            'MVDB_ANN_PROBE_PERCENT', 'MVDB_ANN_OFF', 'MVDB_BATCH8_TRACE')
 
 
 def require(ok, message):

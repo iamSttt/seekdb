@@ -1,0 +1,32 @@
+{
+  "status": "prospective_policy_before_new_database_candidate_results",
+  "authorship": "assistant test decision implementing user's clear improvement over approximately 3000 requirement",
+  "scope": "New database candidates after batch8 prototype; does not relabel older experiments",
+  "highest_formal_reference_commit": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "highest_formal_observed_E": 3014.419039,
+  "reference_limit": "The comparison executable is an audited rebuild from that source, not a recovered official executable.",
+  "primary_screen": {
+    "plan": "Existing highest_primary24_v1, six EE default pairs per CPU quota (1 and 2), four retained default pairs per CPU plus two protection pairs per CPU",
+    "memory_max_bytes": 2147483648,
+    "swap_max_bytes": 0,
+    "EE_each_CPU_separately": {
+      "first_lifecycle_wall_median_candidate_over_baseline_max": 0.95,
+      "first_lifecycle_CPU_median_candidate_over_baseline_max": 0.95,
+      "first_lifecycle_CPU_metric": "first_lifecycle_cpu_to_before_shutdown_usec; ends before shutdown, whereas first lifecycle wall includes shutdown request time",
+      "query_1000_wall_median_candidate_over_baseline_max": 0.90,
+      "query_1000_CPU_median_candidate_over_baseline_max": 0.90,
+      "each_primary_metric_strictly_faster_pairs_min": 5,
+      "each_primary_metric_AB_and_BA_median_strictly_below": 1.0
+    },
+    "protection": "Keep existing retained default, wide768 and spill-high-q16 guard measurements and all adverse pairs. No improvement in one case offsets a regression in another. Review tiny first-query absolute times explicitly; no post-result threshold change.",
+    "correctness": "Root image's real executable, exact ranking, protocol, durability and boundary tests must pass before timing is interpretable.",
+    "decision": "Passing allows independent confirmation only, not release or official submission. If candidate helps an isolated case but misses clear-gain criteria, retain evidence without recommending a formal attempt."
+  },
+  "confirmation": {
+    "required": true,
+    "conditions": "Fresh runner and root image build, independently generated benchmark seed and same declared CPU/memory limits; freeze exact inventory and checks before execution.",
+    "criteria": "Require the same primary wall/CPU improvement thresholds and protection decisions. Preserve every pair and build identity, including failures."
+  },
+  "score_inference": "These local criteria justify an expectation, not a numerical score forecast or a guarantee. Official workload, hardware and score normalization remain incompletely known.",
+  "official_submission_by_assistant": false
+}

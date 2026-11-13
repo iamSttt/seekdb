@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 from statistics import median
 from small_compute import counters, highest_primary_plan, HIGHEST_PRIMARY_FAMILY, require, sha
-from prepare_highest_primary import verify_root_gates
+from prepare_highest_primary import verify_root_gates, verify_batch8_policy
 from summarize_small_root import verify_measurement
 
 TOOLS = {'minivec/tools/small_compute.py', 'minivec/tools/benchmark_iteration.py',
@@ -91,8 +91,12 @@ def collect(out, reports, image, binary, exit_code):
         require(proof['root_gate_summary_sha256'] == sha(gates_path), 'root gate binding differs')
         result.update(candidate_source_commit=proof['source_commit'], candidate_image_id=image,
                       candidate_binary_sha256=proof['binary_sha256'])
+        policy=verify_batch8_policy(reports.parent)
+        require(proof['root_input_sha256'].get(policy['path'])==policy['sha256'], 'policy omitted from root input proof')
+        result['acceptance_policy']=policy
         binding = json.loads((programs / 'highest-primary-binding-proof.json').read_bytes())
-        require(binding['status'] == 'verified' and binding['measurement_family'] == HIGHEST_PRIMARY_FAMILY and
+        require(binding['status'] == 'verified' and binding.get('experiment_id')=='batch8-avx2-highest-primary24' and binding.get('acceptance_policy')==policy and
+                binding['measurement_family'] == HIGHEST_PRIMARY_FAMILY and
                 binding['primary_reference'] == 'ee' and binding['quantizer_gate'] == quantizer and binding['current_root_proof_sha256'] == sha(programs / 'root-proof.json') and
                 binding['ee_import_proof_sha256'] == sha(programs / 'ee/proof.json') and
                 binding['candidate_source_commit'] == proof['source_commit'] and

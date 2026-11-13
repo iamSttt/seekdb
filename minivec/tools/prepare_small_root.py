@@ -8,7 +8,7 @@ import shutil
 from prepare_small_compute import prepare, digest, git, FLAGS, save, require
 
 
-def prepare_root(repo, binary, image, out):
+def prepare_root(repo, binary, image, out, *, expected_flags=None, required_inputs=()):
     require(not out.exists(), 'refuse overwrite')
     require(re.fullmatch('sha256:[0-9a-f]{64}', image) is not None, 'full image ID required')
     reports = repo / 'protocol-results'
@@ -19,7 +19,9 @@ def prepare_root(repo, binary, image, out):
     require(root.get('passed') is True and len(root['checks']) >= 16 and
             all(value is True for value in root['checks'].values()), 'root gates not all passed')
     require(root['runtime_commit'] == revision, 'root gate commit differs from checkout')
-    require(root['selected_feature_flags'] == FLAGS, 'root features differ from retained policy')
+    selected = FLAGS if expected_flags is None else list(expected_flags)
+    require(selected in (FLAGS, FLAGS + ['-DMVDB_ENABLE_BATCH8_QUANTIZED']), 'unsupported explicit root feature policy')
+    require(root['selected_feature_flags'] == selected, 'root features differ from explicit candidate policy')
     require(root['image_id'] == image == (reports / 'image-id.txt').read_text().strip(), 'root image mismatch')
     require(root['image_binary_sha256'] == program_sha ==
             (reports / 'image-binary-sha256.txt').read_text().split()[0], 'actual root binary mismatch')
@@ -35,11 +37,15 @@ def prepare_root(repo, binary, image, out):
         require(digest((repo / name).read_bytes()) == expected and
                 digest(git(repo, 'show', revision + ':' + name)) == expected, 'root input differs from Git: ' + name)
         inputs[name] = expected
-    expected_paths = git(repo, 'ls-files', '-z', 'Dockerfile', '.dockerignore', 'minivec/src',
+    expected_paths = git(repo, 'ls-files', '-z', 'Dockerfile', '.dockerignore',
+        'validation/iteration5-batch8-clear-gain-policy.json', 'minivec/src',
         'minivec/third_party', 'minivec/Makefile', 'minivec/tests', 'minivec/tools/ci_score.sh',
+        'minivec/tools/batch8_native_isa_probe.cpp', 'minivec/tools/prepare_highest_primary.py',
+        'minivec/tools/summarize_highest_primary.py', 'minivec/tools/ci_highest_primary.sh',
         'minivec/tools/ci_final_performance.sh', 'minivec/tools/pgo/train.cpp',
         'minivec/tools/pgo/run-training.sh', 'STDIO_PROTOCOL.md', 'protocol_check', 'mysqltest').decode().split('\0')
     require(set(inputs) == set(filter(None, expected_paths)), 'root input inventory incomplete')
+    require(set(required_inputs) <= set(inputs), 'new candidate header/tests/tools missing from Git-bound input inventory')
 
     out.mkdir(parents=True)
     retained = prepare(repo, repo / 'validation/iteration4-bulk-loop-raw.zip', out / 'retained')

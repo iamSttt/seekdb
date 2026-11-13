@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Reusable Linux validation entry: verify this checkout, never infer a formal score.
 set -euo pipefail
-unset MVDB_PROTOCOL MVDB_OUT
+unset MVDB_PROTOCOL MVDB_OUT MVDB_BATCH8_TRACE
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$repo"
 # Preserve an explicitly empty FEATURE_FLAGS for an unselected-feature build.
-if [[ -z ${FEATURE_FLAGS+x} ]]; then FEATURE_FLAGS='-DMVDB_ENABLE_SPILL_FILTER -DMVDB_ENABLE_TYPED_JSON -DMVDB_TYPED_WIDE_VECTOR_ONLY -DMVDB_MULTI_POSTING_REUSE_ONLY';fi
+if [[ -z ${FEATURE_FLAGS+x} ]]; then FEATURE_FLAGS='-DMVDB_ENABLE_SPILL_FILTER -DMVDB_ENABLE_TYPED_JSON -DMVDB_TYPED_WIDE_VECTOR_ONLY -DMVDB_MULTI_POSTING_REUSE_ONLY -DMVDB_ENABLE_BATCH8_QUANTIZED';fi
 export FEATURE_FLAGS
 if [[ "${MVDB_HIGHEST_PRIMARY_SCREEN:-0}" = 1 && ( "${MVDB_INSERT_COPY_SCREEN:-0}" = 1 || "${MVDB_SMALL_BRIDGE:-0}" = 1 || "${MVDB_FINAL_PERFORMANCE:-0}" = 1 ) ]]; then
   echo 'Highest-primary screen cannot be combined with another performance plan' >&2;exit 2
@@ -16,7 +16,7 @@ fi
 read -r -a feature_flags <<< "$FEATURE_FLAGS"
 for flag in "${feature_flags[@]}"; do
   case "$flag" in
-    -DMVDB_ENABLE_SPILL_FILTER|-DMVDB_ENABLE_TYPED_JSON|-DMVDB_TYPED_WIDE_VECTOR_ONLY|-DMVDB_MULTI_POSTING_REUSE_ONLY) ;;
+    -DMVDB_ENABLE_SPILL_FILTER|-DMVDB_ENABLE_TYPED_JSON|-DMVDB_TYPED_WIDE_VECTOR_ONLY|-DMVDB_MULTI_POSTING_REUSE_ONLY|-DMVDB_ENABLE_BATCH8_QUANTIZED) ;;
     *) echo "Unsupported retained FEATURE_FLAGS entry: $flag" >&2;exit 2;;
   esac
 done
@@ -58,10 +58,40 @@ PYREPORT
 trap dump_reports EXIT
 
 git rev-parse HEAD > protocol-results/runtime-commit.txt
-git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec/Makefile minivec/tests minivec/tools/ci_score.sh minivec/tools/ci_final_performance.sh minivec/tools/pgo/train.cpp minivec/tools/pgo/run-training.sh STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > protocol-results/input-sha256.txt
+git ls-files -z Dockerfile .dockerignore validation/iteration5-batch8-clear-gain-policy.json minivec/src minivec/third_party minivec/Makefile minivec/tests minivec/tools/ci_score.sh minivec/tools/batch8_native_isa_probe.cpp minivec/tools/prepare_highest_primary.py minivec/tools/summarize_highest_primary.py minivec/tools/ci_highest_primary.sh minivec/tools/ci_final_performance.sh minivec/tools/pgo/train.cpp minivec/tools/pgo/run-training.sh STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > protocol-results/input-sha256.txt
 lscpu > protocol-results/lscpu.txt
 docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
+# AVX2-only experiment: acquire a matching environment before ANY DB/PGO.
+if [[ " ${feature_flags[*]} " == *" -DMVDB_ENABLE_BATCH8_QUANTIZED "* ]]; then
+  compiler_image='gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818'
+  set +e
+  docker run --rm --platform linux/amd64 --network none --read-only --tmpfs /tmp:rw,size=64m \
+    -v "$repo:/src:ro" -v "$scratch:/out:rw" "$compiler_image" \
+    bash -c 'g++ -O2 -std=c++17 "$@" -I/src/minivec/src /src/minivec/tools/batch8_native_isa_probe.cpp -o /out/batch8-native-isa-probe && /out/batch8-native-isa-probe' \
+    -- "${feature_flags[@]}" > protocol-results/batch8-environment.json 2> protocol-results/batch8-environment.log
+  probe_status=$?
+  set -e
+  printf '%s\n' "$probe_status" > protocol-results/batch8-environment-exit-code.txt
+  docker image inspect "$compiler_image" > protocol-results/batch8-probe-compiler-image.json
+  if [[ -f "$scratch/batch8-native-isa-probe" ]]; then
+    cp "$scratch/batch8-native-isa-probe" protocol-results/batch8-native-isa-probe
+    sha256sum protocol-results/batch8-native-isa-probe > protocol-results/batch8-native-isa-probe.sha256
+  fi
+  if [[ "$probe_status" != 0 ]]; then
+    # Exactly 78 means a completed, unsupported ISA probe. Compile/tool errors
+    # remain failures; they are not permission to retry on another host.
+    if [[ "$probe_status" == 78 ]]; then
+      python3 - <<'PYUNSUPPORTED'
+import json
+from pathlib import Path
+r=json.loads(Path('protocol-results/batch8-environment.json').read_bytes())
+assert r['status']=='unsupported_native_isa' and r['database_runs']==r['pgo_builds']==r['performance_pairs']==0
+PYUNSUPPORTED
+    fi
+    exit "$probe_status"
+  fi
+fi
 # Historical checksum-header regression only. Active db.cpp uses retained CRC.
 bash minivec/tools/ci_crc_checks.sh --unit
 # Historical rejected batch encoder oracle, isolated in a test-only header.
@@ -95,6 +125,19 @@ if result['normal_checks']!=result['sanitized_checks']:
     raise SystemExit('Cached quantizer normal/sanitized inventories differ')
 (root/'cached-quantizer-equivalence.json').write_text(json.dumps(result,indent=2)+'\n')
 PYQUANTIZER
+# New global batch bound oracle. Compiler flags match selected root features.
+if [[ " ${feature_flags[*]} " == *" -DMVDB_ENABLE_BATCH8_QUANTIZED "* ]]; then
+  for mode in normal sanitized; do
+    batch_options=(-O3)
+    if [[ "$mode" == sanitized ]]; then
+      batch_options=(-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all -no-pie)
+    fi
+    g++ "${feature_flags[@]}" "${batch_options[@]}" -std=c++17 -pthread -Iminivec/src \
+      minivec/tests/test_batch8_bound.cpp -o "$scratch/batch8-bound-$mode"
+    ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 \
+      "$scratch/batch8-bound-$mode" 2>&1 | tee "$MINIVEC_REPORTS/batch8-bound-$mode.log"
+  done
+fi
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain --build-arg "FEATURE_FLAGS=$FEATURE_FLAGS" -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
 docker image inspect "$IMAGE" > protocol-results/image-inspect.json
@@ -130,6 +173,11 @@ python3 minivec/tests/test_jsonl_cursor.py --binary "$scratch/image-binary" --ou
 python3 minivec/tests/topk_bounds.py --binary "$scratch/image-binary" 2>&1 | tee protocol-results/image-binary-topk.log
 MVDB_QUERY_THREADS=2 python3 minivec/tests/topk_bounds.py --binary "$scratch/image-binary" 2>&1 | tee protocol-results/image-binary-topk-parallel.log
 
+
+if [[ " ${feature_flags[*]} " == *" -DMVDB_ENABLE_BATCH8_QUANTIZED "* ]]; then
+  python3 minivec/tests/test_batch8_db.py --binary "$scratch/image-binary" \
+    --output protocol-results/image-binary-batch8.json 2>&1 | tee protocol-results/image-binary-batch8.log
+fi
 
 # Native tests above include all eight staged-WAL cases. Run them explicitly
 # again under sanitizers, without weakening error or durability assertions.
@@ -283,6 +331,14 @@ report = {
                     'WAL fixture injects short/failed writes; not fdatasync or allocation failure.',
                     'ASan leak detection disabled; memory-safety and undefined-behavior checks enabled.']
 }
+if '-DMVDB_ENABLE_BATCH8_QUANTIZED' in report['selected_feature_flags']:
+    import sys
+    sys.path.insert(0,'minivec/tools')
+    from prepare_highest_primary import verify_batch8_evidence
+    batch=verify_batch8_evidence(Path('protocol-results'),image_binary_sha)
+    report['batch8_evidence']=batch
+    report['checks']['batch8_bound_normal_and_sanitized']=True
+    report['checks']['actual_image_batch8_dispatch_and_oracle']=True
 if '-DMVDB_MULTI_POSTING_REUSE_ONLY' in report['selected_feature_flags']:
     for mode in ('normal', 'sanitized'):
         if 'PASS ' not in Path('protocol-results/filter-reuse-' + mode + '.log').read_text():
