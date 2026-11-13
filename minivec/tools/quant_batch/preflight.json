@@ -1,0 +1,11 @@
+{
+  "status": "pure_python_preflight_passed",
+  "range_bound_checks": 131074,
+  "independent_lane_model_rows": 112,
+  "reference_byte_binding": "passed",
+  "native_compilations": 0,
+  "native_executions": 0,
+  "database_runs": 0,
+  "pgo_builds": 0,
+  "limitations": "Python arithmetic model and syntax only; native C++, SIMD code generation and timing remain unexecuted."
+}
