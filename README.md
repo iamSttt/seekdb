@@ -12,7 +12,9 @@
 
 [第一轮优化实测报告](docs/ITERATION_20261112.md)记录 255 对实验、收益和回退决定：35k/50k 及少量 UPDATE 有明显收益，默认 10k 查询仍基本持平；LTO 和追加微调均未保留。**6000 分尚未验证，没有新的正式提测。**
 
-[第二轮记录](docs/ITERATION2_20261112.md)保存630对追加实验及回退决定。当前交付采用上一轮运行源码＋默认构建期PGO；[最终同镜像验证与105对测试](https://github.com/iamSttt/seekdb/actions/runs/43247796185)全部通过。相对上一轮保留版本，默认查询加速比1.014600×，生命周期1.011108×；落盘及50k重启查询回退也如实保留。6000分尚未经过正式评测验证。
+[第二轮记录](docs/ITERATION2_20261112.md)保存630对追加实验及当时的回退决定；其105对与旧二进制属于历史版本，不代表本轮构建。
+
+本轮逐项处理用户报告中的20个方向，当前实施、关闭理由、来源审计及未解决问题见[20项状态与提测准备](docs/REPORT_20_DIRECTIONS.md)。I06增删改delta通过专项测试但因后续查询代价保持关闭；I07、受限I14与按用户反馈调整的I17门控已通过实际根镜像120对验证并有条件保留；普通查询接近持平，30k/60k和16维负面边界详见该报告。正式提测只由用户操作，尚无本轮正式得分。
 
 ## 构建和运行
 
@@ -58,9 +60,9 @@ python3 minivec/tests/image_interactive.py --image minivec --output protocol-res
 
 CI会构建根镜像，测试源码和镜像的公开用例、保持stdin打开的交互、退出/恢复、COMMIT后SIGKILL、精确TopK、线程池/跨表spill/WAL故障及sanitizer。公开用例与本地回归不计算正式E，也不包含隐藏用例。
 
-选用的运行核心 `4d8de37` 已通过[完整门禁](https://github.com/iamSttt/seekdb/actions/runs/43226783666)，源码/镜像公开用例各20/20；另有[追加候选的门禁与负结果](https://github.com/iamSttt/seekdb/actions/runs/43229668934)。详细范围及 SHA256 见本轮报告。工作流支持手动 dispatch，并对独立优化分支 push 自动验证；指定提交标记选择配对性能任务。
+当前受测运行源码 `311b45ffed1a957f8ebd71d0ead9320b1232298c` 已通过[实际根镜像门禁与120对验证](https://github.com/iamSttt/seekdb/actions/runs/43350596233)，准确镜像/程序SHA与负面样本见[当前摘要](validation/iteration3-retained-final.json)。最后的文档和材料提交不改变受测构建输入；不能将其称为又跑了一次120对。工作流支持手动dispatch及优化分支push验证。
 
-回退后完整交付树 `20eac01` 也已通过[最终门禁](https://github.com/iamSttt/seekdb/actions/runs/43232155090)，包含新增回归和 27 项工具测试；镜像程序与已测运行核心逐字节相同。
+第一轮历史门禁：运行核心 `4d8de37` 通过[当时验证](https://github.com/iamSttt/seekdb/actions/runs/43226783666)，公开用例各20/20；回退后交付树 `20eac01` 通过[当时最终门禁](https://github.com/iamSttt/seekdb/actions/runs/43232155090)。这些旧二进制结论不代表当前四宏版本。
 
 旧SQL文本适配器仅供引擎回归：`--protocol sql`或`MVDB_PROTOCOL=sql`；`minivec/run.sh`与harness显式选该模式，不能替代JSONL准入。
 

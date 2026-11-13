@@ -1,4 +1,4 @@
-这是 I15 PGO 的独立实验工具。方向来自用户报告，具体实现由 assistant 编写。同源隔离实验已在 `502931da5b1e9804212e25efe029f4b9f253bc96` 完成；工具专用 Dockerfile 仍默认 `ENABLE_PGO=0`。根 Dockerfile 现默认启用 PGO，最终组合恢复上一轮运行源码，直接性能结论见 [第二轮记录](../../../docs/ITERATION2_20261112.md)。历史隔离数据与最终组合不能混用。
+这是 I15 PGO 的独立实验工具。方向来自用户报告，具体实现由 assistant 编写。同源隔离实验已在 `502931da5b1e9804212e25efe029f4b9f253bc96` 完成；工具专用 Dockerfile 仍默认 `ENABLE_PGO=0`。根Dockerfile默认启用原PGO；[第二轮记录](../../../docs/ITERATION2_20261112.md)描述当时恢复旧源码的历史选择，当前四宏组合及实际镜像120对见[20项状态](../../../docs/REPORT_20_DIRECTIONS.md)。第三轮六构建矩阵仍保留原PGO、不加入LTO或spill扩展训练；历史隔离数据不能替代当前构建证据。
 
 依赖仅为 Linux、Docker、Git、Bash、Python 3 和常见 coreutils/findutils。编译与训练在现有固定镜像 `gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818` 中完成，C++ helper 只依赖已有 `json.hpp`。无需下载安装包，Docker RUN 网络禁用。Python 仅用于构建外的已有协议验证与基准。
 

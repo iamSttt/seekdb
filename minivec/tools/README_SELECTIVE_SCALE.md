@@ -1,13 +1,19 @@
 # I11 selective-scale experiment
 
+The later confirmation completed 105 paired comparisons plus 3 A/A controls.
+Outlier cases improved, but coordinate-dispersed and low16 cases regressed, so
+this experiment remains disabled. See [results](../../validation/iteration3-selective-scale.json)
+and the [current 20-direction decisions](../../docs/REPORT_20_DIRECTIONS.md).
+The original hypotheses below describe the experiment design, not pending work.
+
 `MVDB_BLOCK_SCALE_SELECTIVE` is an independent, default-off experiment. It only
 has an effect together with `MVDB_ENABLE_BLOCK_QUANT_SCALE`. The production
-Dockerfile and defaults are unchanged. No default adoption or score gain is
+Dockerfile and defaults were unchanged by this I11 experiment. No I11 default adoption or score gain is
 claimed by this change.
 
 The candidate admits local scales only for dimension >= 128 and when at least
 80% of the **actual rows** have a block scale at most one quarter of the global
-scale. The 128/80%/4x thresholds are conservative hypotheses for the next
+scale. The 128/80%/4x thresholds were conservative hypotheses used in the
 experiment, not measured optimal thresholds or a guarantee of improvement.
 The existing eight-scale, per-worker cache, code and overall memory limits also
 apply. Short final blocks are weighted by their row count. The implementation
