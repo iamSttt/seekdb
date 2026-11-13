@@ -1,0 +1,80 @@
+{
+  "status": "awaiting_external_ci_restore",
+  "date_asia_shanghai": "2026-11-13",
+  "repository": "https://github.com/iamSttt/seekdb",
+  "branch": "codex/round2-optimize-20261112",
+  "experiment_implementation_commit": "d961d257231f8d6e5af20657866fccdf38af5889",
+  "manual_dispatch_entry_commit": "7cc9b9af85ecb2010d8153d639d3741eb9ebdf94",
+  "dispatch_response": {
+    "http_status": 422,
+    "message": "Actions has been disabled for this repository."
+  },
+  "repository_state": {
+    "archived": false,
+    "disabled": false
+  },
+  "current_credential_capabilities": {
+    "admin": false,
+    "maintain": false,
+    "push": true,
+    "pull": true
+  },
+  "actions_settings_read": {
+    "http_status": 403,
+    "result": "missing repository Actions policy permission"
+  },
+  "actions_setting_changed_by_assistant": false,
+  "user_input_requested": "Repository administrator restores Actions or provides an alternate Linux test environment.",
+  "output_guard_database_pairs_executed": 0,
+  "production_feature_switches_changed": false,
+  "next_steps": [
+    "After Actions is restored, run the output_guard workflow input on the chosen exact commit.",
+    "Extract 18 reports; analyze with the mandatory --candidate-commit full SHA argument.",
+    "Choose I07 only or guarded I07/I14 using every positive and negative sample; patches are not decisions.",
+    "Only after selection, apply the matching feature patch and final-performance patch together.",
+    "Run actual-image gates and 117 paired measurements; future PGO builds need their own binary binding."
+  ],
+  "official_new_score": null,
+  "draft_inventory": [
+    {
+      "name": "analyze_output_guard.py",
+      "bytes": 22080,
+      "sha256": "d7ba19798d881dd81fdbc6f3b889ca0b020452e50a8f68147cc21a645ac904ed"
+    },
+    {
+      "name": "enable_retained_features_A-spill.patch",
+      "bytes": 22743,
+      "sha256": "579101701452a02ac77fea11039e6df2fa42293cb64b8b3d26022b06747fd8d3"
+    },
+    {
+      "name": "enable_retained_features_B-guard.patch",
+      "bytes": 22908,
+      "sha256": "16685ca5a98667b84dfbff1fb8195f314a605119664cd0d8d64531b99622dc86"
+    },
+    {
+      "name": "final-performance-current-baseline.patch",
+      "bytes": 13865,
+      "sha256": "41f2c0f35adf84ba6ab6d22c1b7991a06964c546b6c9782650949bbb079d493e"
+    },
+    {
+      "name": "output-guard-static-validation.json",
+      "bytes": 4777,
+      "sha256": "84893b673191619edf711d8e577104680e2d0e224746aaa83673731a174dfa71"
+    },
+    {
+      "name": "final-performance-static-validation.json",
+      "bytes": 1510,
+      "sha256": "fdc784904525a27f1bb1a551dafbd0d3ee140b4da9dae486d9c42b452396ec75"
+    },
+    {
+      "name": "final-performance-collector-validation.json",
+      "bytes": 352,
+      "sha256": "e5d29ce8f1fbf7a5f0de5d63707040db44c356b50018430bad0efd496854c50c"
+    },
+    {
+      "name": "ci-score-collector-validation.json",
+      "bytes": 1962,
+      "sha256": "dfd9f2f1761e206d5fb1bdb4ec5a7231cb283a79142fe69ad3c7734b75ba7ac3"
+    }
+  ]
+}
