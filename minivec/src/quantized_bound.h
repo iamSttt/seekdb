@@ -1,9 +1,6 @@
 #pragma once
 #include "distance.h"
 #include "quantized_scale.h"
-#if defined(MVDB_ENABLE_BATCH8_QUANTIZED) && defined(MVDB_SIMD_BOUND_X86)
-#include "quantized_batch8.h"
-#endif
 #include <memory>
 #include <algorithm>
 #include <vector>
@@ -223,37 +220,6 @@ class QuantizedQueryBound {
   }
  public:
   bool enabled() const {return enabled_;}
-#if defined(MVDB_BATCH8_GLOBAL_SCAN)
-  // Resolve once when selecting a scan, never inside the ordinary row loop.
-  bool batch8_supported() const {
-    if(!enabled_)return false;
-    if(kernel_==quantized_detail::distance_avx2)return true;
-#if defined(MVDB_BATCH8_ALLOW_NATIVE_AVX512) && !defined(MVDB_DISABLE_AVX512_QUANTIZED)
-    // Disabled by default. Requires a separately accepted native-AVX512
-    // baseline versus AVX2-batch micro/control and real DB validation.
-    if(kernel_==quantized_detail::distance_avx512)return true;
-#endif
-    return false;
-  }
-  const char* batch8_row_isa() const {
-    if(kernel_==quantized_detail::distance_avx2)return "avx2";
-#if !defined(MVDB_DISABLE_AVX512_QUANTIZED)
-    if(kernel_==quantized_detail::distance_avx512)return "avx512";
-#endif
-    return "unsupported";
-  }
-  bool batch8_cap_usable(double threshold) const {
-    if(!enabled_ || !std::isfinite(threshold) || threshold<0)return false;
-    if(!cached_ || threshold!=cached_threshold_)update_cap(threshold);
-    return usable_cap_;
-  }
-  void compute_batch8(const int8_t* rows,uint32_t* out) const {
-    quantized_batch8::compute(rows,n_,query_data_,n_,out);
-  }
-  bool reject_precomputed(uint32_t distance,double threshold) const {
-    return batch8_cap_usable(threshold) && static_cast<double>(distance)>cap_;
-  }
-#endif
   const std::vector<int8_t>& coded_query() const {return query_;}
 #if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
   bool local_scales() const {return local_;}

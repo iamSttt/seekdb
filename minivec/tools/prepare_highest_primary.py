@@ -23,11 +23,10 @@ ROOT_GATES = {
     'full_binary_json_ubsan', 'index_budget_and_resident_update_asan_ubsan',
     'compound_reuse_diagnostic_and_sanitizer',
     'cached_quantizer_code_equivalence_normal_and_sanitized',
-    'batch8_bound_normal_and_sanitized', 'actual_image_batch8_dispatch_and_oracle',
     'tighter_certificate_normal_and_sanitized', 'actual_image_tighter_certificate_oracle'}
 
 
-BATCH8_FLAGS = FLAGS + ['-DMVDB_ENABLE_BATCH8_QUANTIZED']
+CANDIDATE_FLAGS = FLAGS  # Isolated tighter certificate; original native ISA dispatch.
 BATCH8_POLICY_PATH = 'validation/iteration5-batch8-clear-gain-policy.json'
 BATCH8_POLICY_SHA256 = 'adda2853849fbc6ac2697047d890665b3484e3028f2f1dfbff114cae8254ecde'
 BATCH8_POLICY_BYTES = 2661
@@ -48,13 +47,11 @@ def verify_batch8_policy(repo):
     return {'path':BATCH8_POLICY_PATH,'sha256':BATCH8_POLICY_SHA256,'bytes':BATCH8_POLICY_BYTES}
 
 
-BATCH8_REQUIRED_INPUTS = {
+CANDIDATE_REQUIRED_INPUTS = {
     BATCH8_POLICY_PATH,
     'minivec/tools/verify_tighter_root.py', 'minivec/tests/test_tighter_certificate.cpp',
     'minivec/tests/test_tighter_certificate_db.py', 'minivec/tools/tighter_bound/make_fixtures.py',
     'minivec/tools/tighter_bound/reference_distance.h',
-    'minivec/src/quantized_batch8.h', 'minivec/tests/test_batch8_bound.cpp',
-    'minivec/tests/test_batch8_db.py', 'minivec/tools/batch8_native_isa_probe.cpp',
     'minivec/tools/prepare_highest_primary.py', 'minivec/tools/summarize_highest_primary.py',
     'minivec/tools/ci_highest_primary.sh'}
 
@@ -95,8 +92,6 @@ def verify_root_gates(reports):
     from verify_tighter_root import verify_tighter_evidence
     tighter=verify_tighter_evidence(reports,gates['image_binary_sha256'])
     require(gates.get('tighter_certificate_evidence')==tighter,'tighter certificate root binding differs')
-    batch8=verify_batch8_evidence(reports,gates['image_binary_sha256'])
-    require(gates.get('batch8_evidence')==batch8,'batch8 gate/root summary binding differs')
     path = reports / 'cached-quantizer-equivalence.json'
     details = json.loads(path.read_bytes())
     require(details.get('schema_version') == 1 and
@@ -114,13 +109,13 @@ def verify_root_gates(reports):
                 'quantizer log/JSON differs')
         hashes[log.name] = sha(log); counts.append(count)
     require(counts[0] == counts[1], 'normal/sanitized quantizer count differs')
-    return {'checks_per_mode': counts[0], 'file_sha256': hashes, 'batch8':batch8, 'tighter_certificate':tighter}
+    return {'checks_per_mode': counts[0], 'file_sha256': hashes, 'tighter_certificate':tighter}
 
 
 def prepare_highest(repo, binary, image, out):
     policy=verify_batch8_policy(repo)
     quantizer = verify_root_gates(repo / 'protocol-results')
-    current = prepare_root(repo, binary, image, out, expected_flags=BATCH8_FLAGS, required_inputs=BATCH8_REQUIRED_INPUTS)
+    current = prepare_root(repo, binary, image, out, expected_flags=CANDIDATE_FLAGS, required_inputs=CANDIDATE_REQUIRED_INPUTS)
     program, proof, evidence = verified_ee(repo)
     directory = out / 'ee'; directory.mkdir()
     (directory / 'minivec').write_bytes(program); (directory / 'minivec').chmod(0o755)
@@ -136,7 +131,7 @@ def prepare_highest(repo, binary, image, out):
         'environment': {}}
     save(out / 'ee-identities.json', {'baseline': highest, 'candidate': ids['candidate']})
     save(out / 'highest-primary-binding-proof.json', {'status': 'verified',
-        'experiment_id':'batch8-tighter-certificate-highest-primary24',
+        'experiment_id':'tighter-certificate-highest-primary24',
         'acceptance_policy':policy,
         'measurement_family': HIGHEST_PRIMARY_FAMILY, 'primary_reference': 'ee',
         'candidate_source_commit': current['source_commit'], 'candidate_binary_sha256': current['binary_sha256'],

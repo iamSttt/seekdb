@@ -42,26 +42,6 @@ namespace {
 
 using Json = nlohmann::json;
 
-#if defined(MVDB_BATCH8_GLOBAL_SCAN)
-bool batch8_trace_enabled() {
-  static const bool enabled=[] {
-    const char* value=std::getenv("MVDB_BATCH8_TRACE");
-    return value && std::strcmp(value,"1")==0;
-  }();
-  return enabled;
-}
-// Optional execution evidence from this same binary, outside the scan loop.
-// Completed loop bounds give the count without a counter in the hot path.
-void trace_batch8(const char* path,unsigned worker,size_t first,size_t last,
-                 size_t begin,size_t end,size_t dimension,size_t k,const char* row_isa) {
-  std::fprintf(stderr,"MVDB_BATCH8_TRACE {\"path\":\"%s\",\"worker\":%u,"
-      "\"first\":%zu,\"last\":%zu,\"batch_begin\":%zu,\"batch_end\":%zu,"
-      "\"batches\":%zu,\"dimension\":%zu,\"k\":%zu,"
-      "\"row_isa\":\"%s\",\"batch_isa\":\"avx2\"}\n",
-      path,worker,first,last,begin,end,(end-begin)/8,dimension,k,row_isa);
-}
-#endif
-
 // Above this Top-K the per-half heaps would cost more than the scan they save.
 constexpr size_t kFanoutTopKMax = 1024;
 
@@ -634,14 +614,6 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 k<=kFanoutTopKMax && query_workload_fanout(view.count,view.dimension,k,view.quantized!=nullptr);
             QueryCostObservation scan_cost(view.count,view.dimension,k,view.quantized!=nullptr,fanout,
                 !approximate && bounded && !st.order_desc && k>=1 && k<=kFanoutTopKMax);
-#if defined(MVDB_BATCH8_GLOBAL_SCAN)
-            // An ANN request whose probe falls back is still outside this
-            // experiment. Global scale only; no new metadata or invalidation.
-            const bool batch8_candidate=!ann_mode && !approximate && bounded &&
-                !st.order_desc && k>=1 && k<=1024 && k<view.count/8 &&
-                !view.quantization_scales.present();
-            const bool batch8_trace=batch8_candidate && batch8_trace_enabled();
-#endif
             if(fanout) {
               std::vector<Candidate> halves[2];
               halves[0].reserve(k);halves[1].reserve(k);
@@ -667,40 +639,6 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 const QuantizedQueryBound quantized(query,dimension,
                     view.quantized ? view.quantization_step : 0,view.quantization_scales);
                 std::vector<Candidate>& heap=halves[worker];
-#if defined(MVDB_BATCH8_GLOBAL_SCAN)
-                if(batch8_candidate && quantized.batch8_supported()) {
-                  // Each half keeps its original ordinal span, heap and bound.
-                  const auto exact_ordinal=[&](size_t i) {
-                    const float* row=view.rows[i];
-                    if(heap.size()==k && bound.definitely_greater(row,query,heap.front().distance))return;
-                    Candidate c;c.pk=view.keys[i];c.distance=distance_squared(row,query,dimension);
-                    keep(heap,std::move(c));
-                  };
-                  const auto old_ordinal=[&](size_t i) {
-                    if(heap.size()==k && quantized.definitely_greater(
-                        view.quantized+i*dimension,heap.front().distance,i))return;
-                    exact_ordinal(i);
-                  };
-                  size_t i=first;
-                  // Do not stage any integer distances while filling the heap.
-                  for(;i<last && heap.size()<k;++i)old_ordinal(i);
-                  const size_t batch_begin=i;
-                  uint32_t staged[8];
-                  for(;last-i>=8;i+=8) {
-                    if(!quantized.batch8_cap_usable(heap.front().distance))break;
-                    quantized.compute_batch8(view.quantized+i*dimension,staged);
-                    for(size_t j=0;j<8;++j) {
-                      // The heap may shrink its threshold after EVERY row.
-                      if(!quantized.reject_precomputed(staged[j],heap.front().distance))exact_ordinal(i+j);
-                    }
-                  }
-                  if(batch8_trace)trace_batch8("fanout",worker,first,last,batch_begin,i,
-                                               dimension,k,quantized.batch8_row_isa());
-                  // Short tail or unusable current cap: original row behavior.
-                  for(;i<last;++i)old_ordinal(i);
-                  return;
-                }
-#endif
 #if defined(MVDB_PILOT_COUNT) && MVDB_PILOT_COUNT > 0
                 const size_t pilots=std::min<size_t>(MVDB_PILOT_COUNT,last-first);
                 const auto pilot_at=[&](size_t j) {
@@ -794,25 +732,6 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   if(!scan_ordinal(i))break;
                 }
 #else
-#if defined(MVDB_BATCH8_GLOBAL_SCAN)
-              } else if(batch8_candidate && quantized.batch8_supported()) {
-                size_t i=0;
-                for(;i<view.count && result.size()<k;++i)scan_ordinal(i);
-                const size_t batch_begin=i;
-                uint32_t staged[8];
-                for(;view.count-i>=8;i+=8) {
-                  if(!quantized.batch8_cap_usable(result.front().distance))break;
-                  quantized.compute_batch8(view.quantized+i*view.dimension,staged);
-                  for(size_t j=0;j<8;++j) {
-                    MVDB_FILTER_COUNT(vector_visits);
-                    if(!quantized.reject_precomputed(staged[j],result.front().distance))
-                      consider(view.keys[i+j],view.rows[i+j],view.dimension);
-                  }
-                }
-                if(batch8_trace)trace_batch8("serial",0,0,view.count,batch_begin,i,
-                                             view.dimension,k,quantized.batch8_row_isa());
-                for(;i<view.count;++i)scan_ordinal(i);
-#endif
               } else if(quantized.enabled()) {
                 for(size_t i=0;i<view.count;++i)
                   if(!scan_ordinal(i))break;

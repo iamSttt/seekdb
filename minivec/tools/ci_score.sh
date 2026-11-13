@@ -5,7 +5,7 @@ unset MVDB_PROTOCOL MVDB_OUT MVDB_BATCH8_TRACE
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$repo"
 # Preserve an explicitly empty FEATURE_FLAGS for an unselected-feature build.
-if [[ -z ${FEATURE_FLAGS+x} ]]; then FEATURE_FLAGS='-DMVDB_ENABLE_SPILL_FILTER -DMVDB_ENABLE_TYPED_JSON -DMVDB_TYPED_WIDE_VECTOR_ONLY -DMVDB_MULTI_POSTING_REUSE_ONLY -DMVDB_ENABLE_BATCH8_QUANTIZED';fi
+if [[ -z ${FEATURE_FLAGS+x} ]]; then FEATURE_FLAGS='-DMVDB_ENABLE_SPILL_FILTER -DMVDB_ENABLE_TYPED_JSON -DMVDB_TYPED_WIDE_VECTOR_ONLY -DMVDB_MULTI_POSTING_REUSE_ONLY';fi
 export FEATURE_FLAGS
 if [[ "${MVDB_HIGHEST_PRIMARY_SCREEN:-0}" = 1 && ( "${MVDB_INSERT_COPY_SCREEN:-0}" = 1 || "${MVDB_SMALL_BRIDGE:-0}" = 1 || "${MVDB_FINAL_PERFORMANCE:-0}" = 1 ) ]]; then
   echo 'Highest-primary screen cannot be combined with another performance plan' >&2;exit 2
@@ -16,7 +16,7 @@ fi
 read -r -a feature_flags <<< "$FEATURE_FLAGS"
 for flag in "${feature_flags[@]}"; do
   case "$flag" in
-    -DMVDB_ENABLE_SPILL_FILTER|-DMVDB_ENABLE_TYPED_JSON|-DMVDB_TYPED_WIDE_VECTOR_ONLY|-DMVDB_MULTI_POSTING_REUSE_ONLY|-DMVDB_ENABLE_BATCH8_QUANTIZED) ;;
+    -DMVDB_ENABLE_SPILL_FILTER|-DMVDB_ENABLE_TYPED_JSON|-DMVDB_TYPED_WIDE_VECTOR_ONLY|-DMVDB_MULTI_POSTING_REUSE_ONLY) ;;
     *) echo "Unsupported retained FEATURE_FLAGS entry: $flag" >&2;exit 2;;
   esac
 done
