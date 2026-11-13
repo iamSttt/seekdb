@@ -401,7 +401,7 @@ def main():
         'workloads': [], 'limitations': [
             'Diagnostic only: official resource envelope not assumed. Missing memory/swap limits remain inherited; ancestor constraints are retained.',
             'DB has aggregate quota1 plus one-CPU affinity; both are recorded and affinity is checked after each ready. Driver affinity is unchanged; driver/oracle stay outside DB cgroup but share host resources.',
-            'Default comparison uses one rebuilt PGO executable with original environment versus QUERY_THREADS=1; not a new algorithm or official binary proof.',
+            'The same rebuilt PGO executable uses the two explicitly recorded environments; not a new algorithm or official binary proof. Serial disables startup probe and fanout; no-fanout raises the adaptive row threshold and retains startup calibration.',
             'Two AB/BA pairs at one fixed seed screen only. No confidence interval, score conversion or automatic adoption.',
             'Cgroup totals include DB restart verification, filesystem page cache and static launcher; request timers exclude independent oracle work.',
             'Ready timing includes membership/executable/affinity evidence reads. Projection phase snapshots are outside individual request timers.',

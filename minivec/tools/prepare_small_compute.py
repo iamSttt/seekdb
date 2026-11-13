@@ -47,7 +47,10 @@ def save(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf8', newline='\n')
 
 
-def prepare(repo, archive, out):
+def prepare(repo, archive, out, candidate_policy='serial'):
+    policies = {'serial': {'MVDB_QUERY_THREADS': '1'},
+                'no-fanout': {'MVDB_QUERY_FANOUT_ROWS': '9223372036854775807'}}
+    require(candidate_policy in policies, 'unknown query policy')
     require(not out.exists(), 'refuse overwrite')
     require(archive.stat().st_size == ARCHIVE_BYTES and digest(archive.read_bytes()) == ARCHIVE_SHA,
             'retained artifact bytes differ')
@@ -119,13 +122,13 @@ def prepare(repo, archive, out):
         'harness_commit': revision, 'harness_file_sha256': tools, 'harness_matches_git': harness_matches_git,
         'scope': 'Reuses previously audited immutable PGO bytes. This import verifies archive, selected member hashes, complete engine/training source and Git identity; it does not repeat PGO training or its historical performance tests.',
         'official_binary_sha256': None, 'official_image_identity_proven': False,
-        'new_pgo_builds': 0, 'new_database_tests': 0}
+        'candidate_policy': candidate_policy, 'new_pgo_builds': 0, 'new_database_tests': 0}
     save(out / 'provenance.json', evidence)
     item = {'binary': target.name, 'binary_sha256': BINARY_SHA, 'source_commit': COMMIT,
         'evidence_file': 'provenance.json', 'evidence_sha256': digest((out / 'provenance.json').read_bytes()),
         'evidence_binary_pointer': ['binary_sha256'], 'evidence_commit_pointer': ['source_commit']}
     save(out / 'identities.json', {'baseline': dict(item, environment={}),
-                                  'candidate': dict(item, environment={'MVDB_QUERY_THREADS': '1'})})
+                                  'candidate': dict(item, environment=policies[candidate_policy])})
     return evidence
 
 
@@ -134,8 +137,9 @@ def main():
     for name in ('repo', 'archive', 'output'): parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--allow-uncommitted-harness', action='store_true',
                         help='local import check only; does not run a database')
+    parser.add_argument('--candidate-policy', choices=['serial', 'no-fanout'], default='serial')
     args = parser.parse_args()
-    evidence = prepare(args.repo.resolve(), args.archive.resolve(), args.output.resolve())
+    evidence = prepare(args.repo.resolve(), args.archive.resolve(), args.output.resolve(), args.candidate_policy)
     require(args.allow_uncommitted_harness or evidence['harness_matches_git'], 'measurement harness differs from Git')
     print(json.dumps({'status': 'verified', 'source_commit': COMMIT, 'binary_sha256': BINARY_SHA,
                       'harness_matches_git': evidence['harness_matches_git'], 'new_database_tests': 0}))

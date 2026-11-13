@@ -9,6 +9,11 @@ on:
         type: boolean
         required: false
         default: false
+      small_compute_policy:
+        description: Single-query-thread control or retain startup calibration without fanout
+        type: choice
+        options: [serial, no-fanout]
+        default: serial
       bulk_guard:
         description: Confirm short-circuited bulk admission with 192 paired runs
         type: boolean
@@ -81,11 +86,13 @@ jobs:
     if: ${{ inputs.small_compute || contains(github.event.head_commit.message, '[small-compute]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      MVDB_SMALL_COMPUTE_POLICY: ${{ inputs.small_compute_policy || (contains(github.event.head_commit.message, '[no-fanout]') && 'no-fanout' || 'serial') }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
-      - name: Submitted-source program, default versus serial query policy, 12 pairs
+      - name: Submitted-source program, default versus declared query policy, 12 pairs
         run: bash minivec/tools/ci_small_compute.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()

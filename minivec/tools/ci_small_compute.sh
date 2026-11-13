@@ -43,6 +43,7 @@ git rev-parse HEAD > "$out/harness-commit.txt"
 lscpu > "$out/lscpu.txt"
 python3 minivec/tools/prepare_small_compute.py --repo "$repo" \
   --archive "$repo/validation/iteration4-bulk-loop-raw.zip" --output "$out/retained" \
+  --candidate-policy "${MVDB_SMALL_COMPUTE_POLICY:-serial}" \
   2>&1 | tee "$out/prepare.log"
 # Only this tiny launcher is compiled. The measured database is imported by
 # immutable hash and source proof; there is no new database or PGO build.
