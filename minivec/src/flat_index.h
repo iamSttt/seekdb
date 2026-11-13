@@ -72,6 +72,17 @@ class FlatIndex {
   // single-column construction allowance; no additional budget is reserved.
   bool scan_integer_equal(size_t column,int64_t value,
       const std::function<int64_t(uint64_t)>& read_value,const Visitor& visitor);
+#if defined(MVDB_MULTI_POSTING_REUSE_ONLY) && !defined(MVDB_DISABLE_MULTI_POSTING)
+  // Only successful, nonempty compound scans admit later compound reuse.
+  // Later SQL projection/encoding failures are outside this scan's lifetime.
+  // This belongs to the physical index: invalidation resets the data version.
+  bool compound_filter_seen() const {return compound_filter_seen_;}
+  void note_compound_filter() {compound_filter_seen_=true;}
+  // First-query single-column candidate algorithm. It uses a dense posting in
+  // the existing cache slot/budget; no second legacy allocation set is kept.
+  bool scan_first_integer_equal(size_t column,int64_t value,
+      const std::function<int64_t(uint64_t)>& read_value,const Visitor& visitor);
+#endif
   // Same posting list, returned as row ordinals into a ResidentView instead of
   // through a visitor: the caller walks the borrowed payload pointers itself
   // and therefore never materialises a row just to test an equality term.
@@ -163,6 +174,9 @@ class FlatIndex {
   };
   std::array<IntegerPosting,2> postings_;
   uint64_t posting_clock_=0;
+#ifdef MVDB_MULTI_POSTING_REUSE_ONLY
+  bool compound_filter_seen_=false;
+#endif
   IntegerPosting* integer_posting(size_t column,
       const std::function<int64_t(uint64_t)>& read_value);
   std::pair<size_t,size_t> posting_span(const IntegerPosting& posting,

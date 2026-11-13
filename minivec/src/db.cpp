@@ -2254,6 +2254,37 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
         chosen.column=term.col;extend(chosen.range,term);have_plan=true;
       }
     } else {
+#ifdef MVDB_MULTI_POSTING_REUSE_ONLY
+      if(!table.vector_index->compound_filter_seen()) {
+        // Protect a new data version's first compound filter. No sampling or
+        // multi-column selection is performed until a nonempty scan finishes
+        // successfully. A single condition never enters this new branch.
+        bool matched=false;
+        const FlatIndex::Visitor first_visit=[&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
+          MVDB_FILTER_COUNT(vector_visits);
+          if(slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
+            throw std::runtime_error("stale first-filter slot");
+          Row scratch;
+          if(!row_matches(predicate,table.read_row(static_cast<size_t>(slot),scratch)))return true;
+          matched=true;return cb(pk,vector,dimension);
+        };
+        bool scanned=false,admitted=true;
+        for(const RCond& term:predicate.c) {
+          if(term.op!=static_cast<uint8_t>(Cond::EQ) ||
+             term.vt!=static_cast<uint8_t>(Type::BIGINT))continue;
+          scanned=table.vector_index->scan_first_integer_equal(term.col,term.lit->i,
+              [&](uint64_t slot) {
+                Row scratch;
+                return table.read_row(static_cast<size_t>(slot),scratch).vals[term.col].i;
+              },first_visit);
+          admitted=scanned;
+          break;
+        }
+        if(!scanned)table.vector_index->scan(first_visit);
+        if(matched && admitted)table.vector_index->note_compound_filter();
+        return;
+      }
+#endif
       std::vector<Plan> plans;
       for(const RCond& term:predicate.c) {
         if(!supported(term))continue;

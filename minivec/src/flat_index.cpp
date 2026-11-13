@@ -735,6 +735,57 @@ bool FlatIndex::scan_integer_equal(size_t column,int64_t value,
   }
   return true;
 }
+#if defined(MVDB_MULTI_POSTING_REUSE_ONLY) && !defined(MVDB_DISABLE_MULTI_POSTING)
+bool FlatIndex::scan_first_integer_equal(size_t column,int64_t value,
+    const std::function<int64_t(uint64_t)>& read_value,const Visitor& visitor) {
+  if(!ready_)throw std::runtime_error("flat vector index is not ready");
+  if(fd_>=0 || (count_ && count_>posting_budget_/(2*sizeof(int64_t)+sizeof(uint32_t))))return false;
+  if(!count_)return true;
+  MVDB_FILTER_COLUMN(posting_lookups,column);
+  IntegerPosting* selected=nullptr;
+  for(auto& posting:postings_)if(posting.ready && posting.column==column && !posting.starts) {
+    selected=&posting;MVDB_FILTER_COLUMN(posting_hits,column);break;
+  }
+  if(!selected) {
+    // The first compound query uses the former dense sorted single-column
+    // candidate algorithm. Release any earlier single-query cache before its
+    // 8N input + 4N ordinals + 8N output allocation peak; the shared limit is 20N.
+    for(auto& posting:postings_) {
+      if(posting.ready)MVDB_FILTER_COLUMN(posting_evictions,posting.column);
+      posting=IntegerPosting{};
+    }
+    MVDB_FILTER_COLUMN(posting_build_attempts,column);
+    std::unique_ptr<int64_t[]> unsorted(new(std::nothrow) int64_t[count_]);
+    std::unique_ptr<uint32_t[]> ordinals(new(std::nothrow) uint32_t[count_]);
+    std::unique_ptr<int64_t[]> sorted(new(std::nothrow) int64_t[count_]);
+    if(!unsorted || !ordinals || !sorted)return false;
+    for(size_t i=0;i<count_;++i) {
+      unsorted[i]=read_value(slots_[i]);ordinals[i]=static_cast<uint32_t>(i);
+    }
+    std::sort(ordinals.get(),ordinals.get()+count_,[&](uint32_t a,uint32_t b) {
+      return unsorted[a]<unsorted[b] || (unsorted[a]==unsorted[b] && a<b);
+    });
+    for(size_t i=0;i<count_;++i)sorted[i]=unsorted[ordinals[i]];
+    unsorted.reset();
+    IntegerPosting built;
+    built.values=std::move(sorted);built.ordinals=std::move(ordinals);
+    built.column=column;built.value_count=count_;built.bytes=count_*(sizeof(int64_t)+sizeof(uint32_t));
+    if(++posting_clock_==0)posting_clock_=1;
+    built.last_used=posting_clock_;built.ready=true;
+    postings_[0]=std::move(built);
+    MVDB_FILTER_COLUMN(posting_builds,column);
+    selected=&postings_[0];
+  }
+  IntegerRange range;range.has_lower=range.has_upper=true;
+  range.lower=range.upper=value;
+  const auto span=posting_span(*selected,range);
+  for(size_t j=span.first;j<span.second;++j) {
+    const size_t ordinal=selected->ordinals[j];
+    if(!visitor(keys_[ordinal],slots_[ordinal],row_at(ordinal),dimension_))break;
+  }
+  return true;
+}
+#endif
 void FlatIndex::scan(const Visitor& visitor) const {
   if(!ready_)throw std::runtime_error("flat vector index is not ready");
   if(fd_<0) {

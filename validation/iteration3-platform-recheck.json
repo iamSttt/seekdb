@@ -1,0 +1,35 @@
+{
+  "observed_utc": "2026-11-13T01:29:00Z",
+  "observation_time_precision": "minute",
+  "method": "Authenticated visible results table and DOM snapshot using browser UI",
+  "source": "https://open.oceanbase.com/train/TestRecord?questionId=600081",
+  "submission_count": 7,
+  "latest_record_time_as_displayed": "2026-11-12 19:52",
+  "branch": "2026-competition-round2",
+  "commit": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "mysql_gate": "通过；此项为准入条件，不计排名分",
+  "performance_raw_E": 3014.419039,
+  "performance_detail": "性能评测完成；原始指标 E = 3014.419039",
+  "agent_prompt_score": null,
+  "prompt_detail": "Prompt结果无效、待复核、超出平台0–100范围或缺少材料摘要，本项不参与排名；未截断或换算本地分数。",
+  "T": null,
+  "B": null,
+  "M": null,
+  "current_candidate_submitted": false,
+  "current_candidate_formal_score": null,
+  "available_detail_controls": "Copy icons only; no drill-down link shown in the result table.",
+  "limitations": [
+    "The combined Prompt message does not identify which failure branch occurred.",
+    "The old commit score cannot be attributed to the new baseline or optimization branch.",
+    "No screenshot or credential-bearing repository URL is archived.",
+    "No new rules version was inspected in this recheck."
+  ],
+  "organizer_information_needed": [
+    "Exact evaluator rule/version and whether the 0–100 display constraint is active.",
+    "Resolved submission commit, image digest and material paths, byte counts and SHA-256.",
+    "Material parsing/schema errors or missing-summary field, if any.",
+    "Each review status, raw dimensions and failure references, if available.",
+    "Performance T/B/M definitions and measured values, workload sizes and write/query split."
+  ],
+  "organizer_contacted": false
+}

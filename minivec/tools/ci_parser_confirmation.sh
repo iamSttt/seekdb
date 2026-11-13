@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Same-source whole-request confirmation under the original production PGO.
-# CONFIRM_FEATURE=parser (default), typed, combined, spill, delta, or filter.
+# CONFIRM_FEATURE=parser (default), typed, combined, spill, delta, filter, or filter-reuse.
 # filter compares baseline cache-disabled to current candidate defaults.
+# filter-reuse keeps that baseline and enables the experimental repeated-query gate.
 # Optional PARSER_CONFIRM_O3=1 also runs 15 standard pairs without PGO.
 set -euo pipefail
 unset MVDB_PROTOCOL MVDB_OUT MVDB_SINGLE_THREAD MVDB_QUERY_THREADS MVDB_PARSE_THREADS
@@ -12,7 +13,7 @@ revision=$(git rev-parse HEAD)
 export CONFIRM_FEATURE=${CONFIRM_FEATURE:-parser}
 export FEATURE_CORRECTNESS_ONLY=${FEATURE_CORRECTNESS_ONLY:-0}
 case "$FEATURE_CORRECTNESS_ONLY" in 0|1) ;; *) echo 'FEATURE_CORRECTNESS_ONLY must be 0 or 1' >&2;exit 2;;esac
-case "$CONFIRM_FEATURE" in parser|typed|combined|spill|delta|filter) ;; *) echo 'CONFIRM_FEATURE must be parser, typed, combined, spill, delta, or filter' >&2;exit 2;;esac
+case "$CONFIRM_FEATURE" in parser|typed|combined|spill|delta|filter|filter-reuse) ;; *) echo 'CONFIRM_FEATURE must be parser, typed, combined, spill, delta, filter, or filter-reuse' >&2;exit 2;;esac
 out="$repo/$CONFIRM_FEATURE-confirmation-results"
 test ! -e "$out"
 mkdir -p "$out/build-input"
@@ -71,12 +72,16 @@ flags={'parser':['-DMVDB_ENABLE_TOKEN_REUSE'],
        'combined':['-DMVDB_ENABLE_TOKEN_REUSE','-DMVDB_ENABLE_TYPED_JSON'],
        'spill':['-DMVDB_ENABLE_SPILL_FILTER'],
        'delta':['-DMVDB_ENABLE_INDEX_DELTA'],
-       'filter':[]}[feature]
-baseline_flags=['-DMVDB_DISABLE_MULTI_POSTING'] if feature=='filter' else []
+       'filter':[],
+       'filter-reuse':['-DMVDB_MULTI_POSTING_REUSE_ONLY']}[feature]
+baseline_flags=['-DMVDB_DISABLE_MULTI_POSTING'] if feature in ('filter','filter-reuse') else []
 profile_compile='g++ $flags -fprofile-generate=/pgo -fprofile-update=atomic src/*.cpp -o /minivec;'
 if production.count(profile_compile)!=1:raise SystemExit('profile generation command changed')
 profile_proof=profile_compile+' \\\n         sha256sum /minivec > /training/instrumented-binary-sha256.txt;'
 proof_source=production.replace(profile_compile,profile_proof)
+effective='flags="$flags $FEATURE_FLAGS";'
+if proof_source.count(effective)!=1:raise SystemExit('root feature-flag expansion changed')
+proof_source=proof_source.replace(effective,effective+' \\\n    printf \'%s\\n\' "$flags" > /training/effective-flags.txt;')
 for role,role_flags in [('baseline',baseline_flags),('candidate',flags)]:
     replacement=needle[:-1]+(' '+' '.join(role_flags) if role_flags else '')+"'"
     text=proof_source.replace(needle,replacement)
@@ -88,6 +93,7 @@ def tree(root):
             for path in sorted(root.rglob('*')) if path.is_file()}
 inputs={'source_commit':os.environ['PARSER_CONFIRM_REVISION'],
         'feature':feature,'candidate_flags':flags,'baseline_flags':baseline_flags,
+        'root_feature_flags_override':'','feature_flags_isolated':True,
         'engine_source':tree(snapshot/'minivec/src'),
         'third_party':tree(snapshot/'minivec/third_party'),
         'training_source':{name:hashlib.sha256((snapshot/'minivec/tools/pgo'/name).read_bytes()).hexdigest()
@@ -95,7 +101,7 @@ inputs={'source_commit':os.environ['PARSER_CONFIRM_REVISION'],
         'dockerfiles':tree(out/'build-input'),
         'training_seed':2026111201,'evaluation_seeds':[7319,8911,13337],
         'candidate_only_flag':' '.join(flags),
-        'common_proof_only_command':'sha256sum of the instrumented binary before original training',
+        'common_proof_only_command':'record effective compiler flags and sha256sum of the instrumented binary before original training',
         'default_pgo_standard':{'pairs_per_seed':5,'queries_per_phase':1000},
         'pgo_boundaries':{'scenarios':(['low16','update10','spill'] if feature=='spill'
                                        else ['low16','filter60k','update10','spill']),
@@ -120,7 +126,7 @@ for variant in "${variants[@]}"; do
   started=$(date +%s%N)
   # Independent profile generation for each role; no cached RUN or reused gcda.
   docker build --no-cache --network none --platform linux/amd64 --progress=plain \
-    --build-arg ENABLE_PGO="$pgo" --target build \
+    --build-arg ENABLE_PGO="$pgo" --build-arg FEATURE_FLAGS= --target build \
     -f "$out/build-input/Dockerfile.$role" -t "$image" "$snapshot" 2>&1 | tee "$target/build.log"
   stopped=$(date +%s%N)
   printf '{"nanoseconds":%s,"pgo_enabled":%s,"status":"passed"}\n' "$((stopped-started))" "$pgo" > "$target/build-cost.json"
@@ -129,7 +135,7 @@ for variant in "${variants[@]}"; do
   docker cp "$container:/minivec" "$target/minivec"
   docker cp "$container:/src/src" "$target/built-source"
   docker cp "$container:/src/third_party" "$target/built-third-party"
-  for name in train.cpp run-training.sh; do docker cp "$container:/training/$name" "$target/training/$name";done
+  for name in train.cpp run-training.sh effective-flags.txt; do docker cp "$container:/training/$name" "$target/training/$name";done
   if [[ "$pgo" == 1 ]]; then
     docker cp "$container:/pgo" "$target/training/profile-data"
     for name in corpus corpus-sha256.txt profile-sha256.txt verification.jsonl instrumented-binary-sha256.txt; do
@@ -148,7 +154,7 @@ done
 
 cd "$snapshot"
 python3 - <<'PY'
-import hashlib,json,os,platform,subprocess,sys,time
+import hashlib,json,os,platform,shlex,subprocess,sys,time
 from pathlib import Path
 out=Path(os.environ['PARSER_CONFIRM_OUT']);snapshot=Path(os.environ['PARSER_CONFIRM_SNAPSHOT'])
 inputs=json.loads((out/'build-input.json').read_text())
@@ -157,6 +163,9 @@ if os.environ['PARSER_CONFIRM_O3']=='1':variants+=['baseline-o3','candidate-o3']
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def tree(root):return {str(p.relative_to(root)):sha(p) for p in sorted(root.rglob('*')) if p.is_file()}
 def save(name,data):(out/name).write_text(json.dumps(data,indent=2,allow_nan=False)+'\n')
+common_flags=shlex.split('-O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc')
+if inputs.get('root_feature_flags_override')!='' or inputs.get('feature_flags_isolated') is not True:
+    raise RuntimeError('feature builds did not explicitly override root FEATURE_FLAGS')
 evidence={}
 for variant in variants:
     target=out/variant;training=target/'training'
@@ -166,7 +175,13 @@ for variant in variants:
         raise RuntimeError(variant+': third-party source differs from snapshot')
     if {name:sha(training/name) for name in inputs['training_source']}!=inputs['training_source']:
         raise RuntimeError(variant+': training source changed')
+    effective_flags=shlex.split((training/'effective-flags.txt').read_text())
+    expected_flags=common_flags+inputs[variant.split('-')[0]+'_flags']
+    if effective_flags!=expected_flags:
+        raise RuntimeError(variant+': effective compiler flags leaked another feature')
     item={'binary_sha256':sha(target/'minivec'),
+          'effective_common_flags':effective_flags,
+          'effective_flags_sha256':sha(training/'effective-flags.txt'),
           'source_sha256':tree(target/'built-source'),
           'dockerfile_sha256':sha(out/'build-input'/('Dockerfile.'+variant.split('-')[0])),
           'image_id':json.loads((target/'image.json').read_text())[0]['Id'],
@@ -206,6 +221,7 @@ if evidence['baseline-pgo']['training_corpus_sha256']!=evidence['candidate-pgo']
 context={'source_commit':inputs['source_commit'],'compiler':'pinned GCC13.3 O3 static',
          'feature':inputs['feature'],'candidate_flags':inputs['candidate_flags'],
          'baseline_flags':inputs['baseline_flags'],
+         'root_feature_flags_override':'','feature_flags_isolated':True,
          'candidate_only_flag':inputs['candidate_only_flag'],
          'profile_generate_flags':['-fprofile-generate=/pgo','-fprofile-update=atomic'],
          'profile_use_flags':['-fprofile-use=/pgo','-Werror=missing-profile','-Werror=coverage-mismatch'],

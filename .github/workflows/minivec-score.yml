@@ -14,6 +14,11 @@ on:
         type: boolean
         required: false
         default: false
+      filter_reuse:
+        description: Run 30 paired write-query tests for delayed multi-filter reuse
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: read
 jobs:
@@ -34,7 +39,7 @@ jobs:
           if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
           if [ -d protocol-results ]; then find protocol-results -name "*.stderr.log" -exec tail -30 {} \;; fi
   paired-performance:
-    if: ${{ !inputs.output_guard && !inputs.six_finish && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
+    if: ${{ !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -362,4 +367,22 @@ jobs:
             delta-confirmation-results/
             spill-confirmation-results/
             filter-confirmation-results/
+          retention-days: 90
+  filter-reuse-confirmation:
+    if: ${{ inputs.filter_reuse || contains(github.event.head_commit.message, '[filter-reuse]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: First-query legacy filtering and repeated-query cache confirmation
+        run: bash minivec/tools/ci_filter_lifecycle_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: filter-reuse-confirmation
+          path: |
+            filter-lifecycle-confirmation-results/
+            filter-reuse-confirmation-results/
           retention-days: 90

@@ -1,6 +1,7 @@
 # Fixed compiler; build-time oracle-checked PGO. Release contains only the database.
 FROM gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818 AS build
 ARG ENABLE_PGO=1
+ARG FEATURE_FLAGS="-DMVDB_ENABLE_SPILL_FILTER -DMVDB_ENABLE_TYPED_JSON -DMVDB_TYPED_WIDE_VECTOR_ONLY"
 WORKDIR /src
 COPY minivec/src ./src
 COPY minivec/third_party ./third_party
@@ -8,6 +9,7 @@ COPY minivec/tools/pgo/train.cpp /training/train.cpp
 COPY minivec/tools/pgo/run-training.sh /training/run-training.sh
 RUN set -eu; \
     flags='-O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc'; \
+    flags="$flags $FEATURE_FLAGS"; \
     case "$ENABLE_PGO" in \
       0) g++ $flags src/*.cpp -o /minivec ;; \
       1) g++ -O2 -std=c++17 -Ithird_party /training/train.cpp -o /training/train; \

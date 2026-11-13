@@ -70,7 +70,8 @@ profile_compile='g++ $flags -fprofile-generate=/pgo -fprofile-update=atomic src/
 profile_use='g++ $flags -fprofile-use=/pgo -Werror=missing-profile -Werror=coverage-mismatch src/*.cpp -o /minivec'
 continuation=' '+chr(92)+'\n'
 proof=(continuation+'         cp /minivec /training/instrumented-minivec;'+continuation+
-       '         sha256sum /minivec > /training/instrumented-binary-sha256.txt;')
+       '         sha256sum /minivec > /training/instrumented-binary-sha256.txt;'+continuation+
+       '         printf "%s\\n" "$flags" > /training/effective-compiler-flags.txt;')
 compiler='gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818'
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def tree(root):return {p.relative_to(root).as_posix():sha(p) for p in sorted(root.rglob('*')) if p.is_file()}
@@ -97,6 +98,7 @@ for role,expected_flags in flags_by_role.items():
     roles[role]={'source_commit':os.environ['OUTPUT_GUARD_'+snapshot_role.upper()+'_REVISION'],
                  'snapshot_role':snapshot_role,
                  'feature_flags':expected_flags,
+                 'root_feature_flags_override':'',
                  'engine_source':tree(snapshot/'minivec/src'),
                  'third_party':tree(snapshot/'minivec/third_party'),
                  'training_source':{name:sha(snapshot/'minivec/tools/pgo'/name)
@@ -117,7 +119,9 @@ inputs={'kind':'same-host-output-guard-ablation','feature':'output-guard-ablatio
         'harness_source':{directory:tree(scratch/'candidate'/directory)
                           for directory in ['minivec/tests','minivec/tools','protocol_check']},
         'proof_only_commands':['copy instrumented binary before original training',
-                               'sha256sum instrumented binary before original training'],
+                               'sha256sum instrumented binary before original training',
+                               'record actual engine compiler flags before original training'],
+        'root_feature_flags_override':'',
         'evaluation_seeds':[7319,8911,13337],
         'candidate_order':['spill','broad','guard'],
         'measurement_schedule':{'outer_order':['plan','seed','candidate'],
@@ -147,7 +151,7 @@ for role in baseline spill broad guard; do
   started=$(date +%s%N)
   # Independent PGO from each role's own source and original training generator.
   docker build --no-cache --network none --platform linux/amd64 --progress=plain \
-    --build-arg ENABLE_PGO=1 --target build \
+    --build-arg ENABLE_PGO=1 --build-arg FEATURE_FLAGS= --target build \
     -f "$out/build-input/Dockerfile.$role" -t "$image" "$scratch/$snapshot_role" 2>&1 | tee "$target/build.log"
   stopped=$(date +%s%N)
   printf '{"nanoseconds":%s,"pgo_enabled":true,"status":"passed"}\n' "$((stopped-started))" > "$target/build-cost.json"
@@ -158,7 +162,7 @@ for role in baseline spill broad guard; do
   docker cp "$container:/src/third_party" "$target/built-third-party"
   docker cp "$container:/pgo" "$target/training/profile-data"
   for name in train.cpp run-training.sh corpus corpus-sha256.txt profile-sha256.txt \
-      verification.jsonl instrumented-binary-sha256.txt instrumented-minivec; do
+      verification.jsonl instrumented-binary-sha256.txt instrumented-minivec effective-compiler-flags.txt; do
     docker cp "$container:/training/$name" "$target/training/$name"
   done
   for threads in 1 2; do
@@ -189,7 +193,7 @@ g++ -O2 -std=c++17 -I"$scratch/candidate/minivec/src" \
 # Common, committed candidate harness; binaries still come from their own builds.
 cd "$scratch/candidate"
 python3 - <<'PY'
-import hashlib,json,os,platform,re,subprocess,sys,time
+import hashlib,json,os,platform,re,shlex,subprocess,sys,time
 from pathlib import Path
 out=Path(os.environ['OUTPUT_GUARD_OUT']);scratch=Path(os.environ['OUTPUT_GUARD_SCRATCH'])
 inputs=json.loads((out/'build-input.json').read_text())
@@ -240,7 +244,13 @@ for role,source in inputs['roles'].items():
     responses={p.name:sha(p) for p in sorted(training.glob('responses-*.jsonl'))}
     if len(responses)!=6 or {check['actual_file'] for check in oracle}!=set(responses):
         raise RuntimeError(variant+': training response evidence is incomplete')
+    effective_flags=shlex.split((training/'effective-compiler-flags.txt').read_text())
+    common_flags=shlex.split('-O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc')
+    if effective_flags!=common_flags+source['feature_flags'] or source['root_feature_flags_override']!='':
+        raise RuntimeError(variant+': actual compiler flags differ from declared role; inherited defaults are forbidden')
     evidence[role]={'source_commit':source['source_commit'],'feature_flags':source['feature_flags'],
+                    'root_feature_flags_override':'','effective_compiler_flags':effective_flags,
+                    'effective_compiler_flags_sha256':sha(training/'effective-compiler-flags.txt'),
                     'binary_sha256':runtime['minivec'],'source_sha256':tree(target/'built-source'),
                     'build_dockerfile_sha256':source['build_dockerfile_sha256'],
                     'image_id':json.loads((target/'image.json').read_text())[0]['Id'],
@@ -255,6 +265,7 @@ context={'kind':inputs['kind'],'feature':inputs['feature'],
          'baseline_commit':inputs['roles']['baseline']['source_commit'],
          'candidate_commit':inputs['roles']['guard']['source_commit'],
          'harness_commit':inputs['harness_commit'],'candidate_flags_by_role':inputs['candidate_flags_by_role'],
+         'root_feature_flags_override':inputs['root_feature_flags_override'],
          'same_source_comparison':False,'source_differences':inputs['source_differences'],
          'compiler':inputs['compiler_image'],'profile_source_proof':evidence,
          'profile_generate_flags':['-fprofile-generate=/pgo','-fprofile-update=atomic'],

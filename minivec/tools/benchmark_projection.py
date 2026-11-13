@@ -4,6 +4,10 @@
 Timing ends at receipt of the complete JSONL line. JSON parsing and every-element
 oracle checks run after that timer. This is transport/engine wall time, not an
 isolated serializer microbenchmark and not an official score.
+
+The default suite remains wide768/many16. Explicit wide128 uses the same
+1024 rows and 96-codepoint strings as wide768 to screen the guard boundary;
+one tested boundary does not establish gains for every dimension above it.
 """
 import argparse
 from datetime import datetime, timezone
@@ -22,7 +26,9 @@ from time import perf_counter
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
 from json_protocol import Session, require, strict_json
 
-CASES = {"wide768": (1024, 768, 96), "many16": (8192, 16, 256)}
+DEFAULT_CASES = ("wide768", "many16")
+CASES = {"wide768": (1024, 768, 96), "many16": (8192, 16, 256),
+         "wide128": (1024, 128, 96)}
 LOW, HIGH = -(1 << 63), (1 << 63) - 1
 F32_MAX = float.fromhex("0x1.fffffep127")
 F32_TINY = float.fromhex("0x1p-149")
@@ -240,7 +246,7 @@ def main():
     save(args.output, report)
     pair = None
     try:
-        for case_index, name in enumerate(args.scenario or CASES):
+        for case_index, name in enumerate(args.scenario or DEFAULT_CASES):
             for seed_index, seed in enumerate(args.seeds):
                 start = perf_counter()
                 work = workload(name, seed)
