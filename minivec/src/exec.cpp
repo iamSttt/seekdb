@@ -270,14 +270,6 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           return false;
         }
       }
-      // Keep the public AST reusable. A VECTOR destination only needs the
-      // independently owned float payload; its quoted spelling would otherwise
-      // be copied here and immediately discarded by storage validation.
-      const auto own_value = [](const Column& column, const Value& literal) {
-        if (column.type == Type::VECTOR && literal.type == Type::VECTOR)
-          return Value::ofVec(literal.v);
-        return literal;
-      };
       int64_t n = 0;
       for (auto& row : st.rows) {
         if (row.size() != pos.size()) {
@@ -286,18 +278,14 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           return false;
         }
         if (pos.size() == sch.cols.size() && st.columns.empty()) {
-          std::vector<Value> owned;
-          owned.reserve(row.size());
-          for (size_t k = 0; k < row.size(); ++k)
-            owned.push_back(own_value(sch.cols[k], row[k]));
-          if (!db.insert(st.table, std::move(owned), err, code)) {
+          if (!db.insert(st.table, row, err, code)) {
             return false;
           }
         } else {
           std::vector<Value> full(sch.cols.size());
           std::vector<uint8_t> filled(sch.cols.size(), 0);
           for (size_t k = 0; k < pos.size(); ++k) {
-            full[pos[k]] = own_value(sch.cols[pos[k]], row[k]);
+            full[pos[k]] = row[k];
             filled[pos[k]] = 1;
           }
           for (size_t k = 0; k < full.size(); ++k) {
@@ -307,7 +295,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   return false;
             }
           }
-          if (!db.insert(st.table, std::move(full), err, code)) {
+          if (!db.insert(st.table, full, err, code)) {
             return false;
           }
         }

@@ -72,6 +72,27 @@ def check_insert_copy_plan(items, reference, count):
     require(items == insert_copy_plan(reference, count), 'INSERT fixed plan/order differs')
 
 
+def thread_control_plan():
+    """Eight standard10k pairs, interleaving both policies and both orders."""
+    items = []
+    for index in range(4):
+        for policy in (('default', 'single') if index % 2 == 0 else ('single', 'default')):
+            forward = (index % 2 == 0) == (policy == 'default')
+            items.append({'scenario': 'standard10k', 'seed': SEED, 'pair_index': index,
+                          'order': ['baseline', 'candidate'] if forward else ['candidate', 'baseline'],
+                          'policy': policy})
+    return items
+
+
+def check_thread_control_plan(items):
+    require(items == thread_control_plan(), 'thread-control fixed plan/order/policy differs')
+
+
+def thread_control_environment(policy):
+    require(policy in ('default', 'single'), 'unknown thread-control policy')
+    return {} if policy == 'default' else {'MVDB_PARSE_THREADS': '1', 'MVDB_QUERY_THREADS': '1'}
+
+
 def cpu_set(text):
     # /proc reports adjacent CPUs as a range; taskset accepts either spelling.
     require(isinstance(text, str) and text, 'empty CPU list')
@@ -155,20 +176,29 @@ def resource_delta(before, after):
                               for dev, fields in ia.items()}}
 
 
-def task_snapshot(pid):
+def task_snapshot(pid, extended=False):
     result = {'pid': pid, 'native_tasks': [], 'clock_ticks_per_second': os.sysconf('SC_CLK_TCK')}
     try:
         for path in sorted((Path('/proc') / str(pid) / 'task').iterdir(), key=lambda p: int(p.name)):
             try:
                 fields = (path / 'stat').read_text().rsplit(')', 1)[1].split()
-                allowed = next(line.split(':', 1)[1].strip() for line in (path / 'status').read_text().splitlines()
-                               if line.startswith('Cpus_allowed_list:'))
-                result['native_tasks'].append({'tid': int(path.name), 'main': int(path.name) == pid,
+                status_lines = (path / 'status').read_text().splitlines()
+                allowed = next(line.split(':', 1)[1].strip() for line in status_lines if line.startswith('Cpus_allowed_list:'))
+                task = {'tid': int(path.name), 'main': int(path.name) == pid,
                     'cpu_ticks': int(fields[11]) + int(fields[12]), 'starttime_ticks': int(fields[19]),
-                    'last_processor': int(fields[36]), 'cpus_allowed_list': allowed})
+                    'last_processor': int(fields[36]), 'cpus_allowed_list': allowed}
+                if extended:
+                    task.update(minflt=int(fields[7]), majflt=int(fields[9]))
+                    for key in ('voluntary_ctxt_switches', 'nonvoluntary_ctxt_switches'):
+                        task[key] = int(next(line.split(':', 1)[1].strip() for line in status_lines if line.startswith(key + ':')))
+                    require(all(task[key] >= 0 for key in ('minflt', 'majflt', 'voluntary_ctxt_switches',
+                                                          'nonvoluntary_ctxt_switches')), 'negative task counter')
+                result['native_tasks'].append(task)
             except (OSError, ValueError, IndexError, StopIteration) as exc:
                 result.setdefault('task_read_errors', []).append({'tid': path.name, 'error': str(exc)})
     except OSError as exc: result['native_tasks_error'] = str(exc)
+    if extended:
+        result['extended_counter_scope'] = 'Point-in-time live native tasks; exited task counters are not recovered. Match TID and starttime across boundaries.'
     return result
 
 
@@ -257,7 +287,8 @@ class Group:
 
 
 @contextmanager
-def command_adapter(base, projection, prefix, binary, group, trace, db_cpu=None):
+def command_adapter(base, projection, prefix, binary, group, trace, db_cpu=None,
+                    expected_environment=None, ingest_task_counters=False):
     """Scoped constructor hooks; no source edit and no wrapper survives a run."""
     original_base, original_projection, original_snapshot, original_exchange = (
         base.Session, projection.Session, base.process_snapshot, projection.exchange)
@@ -278,8 +309,19 @@ def command_adapter(base, projection, prefix, binary, group, trace, db_cpu=None)
                        if line.startswith('Cpus_allowed_list:'))
         expected = {db_cpu} if isinstance(db_cpu, int) else set(db_cpu or [])
         require(db_cpu is None or cpu_set(allowed) == expected, 'database affinity differs from requested CPUs')
-        trace.setdefault('ready_memberships', []).append({'pid': pid, 'members': sorted(members), 'driver_pid': os.getpid(),
-                                                        'actual_exe': str(actual_exe), 'cpus_allowed_list': allowed})
+        observation = {'pid': pid, 'members': sorted(members), 'driver_pid': os.getpid(),
+                       'actual_exe': str(actual_exe), 'cpus_allowed_list': allowed}
+        if expected_environment is not None:
+            actual = {}
+            for item in Path(f'/proc/{pid}/environ').read_bytes().split(b'\0'):
+                key, separator, value = item.partition(b'=')
+                if separator and key.decode('utf8', errors='replace') in ENV_KEYS:
+                    name = key.decode('utf8')
+                    require(name not in actual, 'duplicate actual runtime environment key')
+                    actual[name] = value.decode('utf8')
+            require(actual == expected_environment, 'actual DB runtime environment differs from thread-control policy')
+            observation['runtime_environment'] = actual
+        trace.setdefault('ready_memberships', []).append(observation)
 
     class Lifecycle(original_base):
         def __init__(self, *args, **kwargs):
@@ -309,7 +351,9 @@ def command_adapter(base, projection, prefix, binary, group, trace, db_cpu=None)
 
     def process_snapshot(session, phase):
         value = original_snapshot(session, phase)
-        trace.setdefault('phase_cgroups', []).append({'phase': phase, **snapshot(group), **task_snapshot(session.proc.pid)})
+        extended = ingest_task_counters and phase in ('before_ingest', 'after_ingest')
+        trace.setdefault('phase_cgroups', []).append({'phase': phase, **snapshot(group),
+                                                     **task_snapshot(session.proc.pid, extended=extended)})
         return value
 
     counts = {}
@@ -399,7 +443,8 @@ def summary(pairs):
         require(set(b) == set(c), 'phase set mismatch')
         for k in b:
             require(math.isfinite(b[k]) and math.isfinite(c[k]) and b[k] >= 0 and c[k] > 0, 'invalid phase timer')
-            out.setdefault(p['scenario'], {}).setdefault(k, []).append({
+            name = p['scenario'] + '/' + p['policy'] if 'policy' in p else p['scenario']
+            out.setdefault(name, {}).setdefault(k, []).append({
                 'pair_index': p['pair_index'], 'order': p['order'], 'baseline_seconds': b[k], 'candidate_seconds': c[k],
                 'baseline_over_candidate': b[k] / c[k], 'candidate_slower': c[k] > b[k]})
     return {name: {phase: {'raw_pairs': rows, 'median_baseline_over_candidate': median(r['baseline_over_candidate'] for r in rows),
@@ -423,6 +468,8 @@ def main():
     p.add_argument('--protection-only', action='store_true', help='four fixed workloads, eight pairs; requires two DB CPUs')
     p.add_argument('--insert-copy-reference', choices=('retained', 'ee'),
                    help='separate fixed 24-pair INSERT screen, never changes the historical bridge plan')
+    p.add_argument('--insert-thread-control', action='store_true',
+                   help='separate eight-pair default/single-thread diagnostic, imported binaries only')
     p.add_argument('--memory-max'); p.add_argument('--swap-max')
     p.add_argument('--timeout', type=float, default=120)
     p.add_argument('--case-timeout', type=float, default=1800)
@@ -434,14 +481,20 @@ def main():
         require(value is None or value == 'max' or (value.isdigit() and int(value) >= 0), 'limit must be bytes or max')
     require(not args.protection_only or args.db_cpu_count == 2, 'protection plan requires two DB CPUs')
     cases = PROTECTION_CASES if args.protection_only else CASES
-    if args.insert_copy_reference:
+    if args.insert_thread_control:
+        require(not args.insert_copy_reference and not args.protection_only and args.allow_version_contrast and
+                args.query_mode == 'exact' and args.db_cpu_count == 1 and args.cpu_quota_us == args.cpu_period_us == 100000 and
+                args.memory_max == '2147483648' and args.swap_max == '0', 'thread control requires its fixed exact/1CPU/2GiB/swap0 plan')
+        items = thread_control_plan(); check_thread_control_plan(items)
+        cases = ('standard10k',)
+    elif args.insert_copy_reference:
         require(not args.protection_only and args.allow_version_contrast and args.query_mode == 'exact',
                 'INSERT screen requires exact version contrast and its own fixed plan')
         items = insert_copy_plan(args.insert_copy_reference, args.db_cpu_count)
         cases = tuple(dict.fromkeys(item['scenario'] for item in items))
     else:
         items = plan(cases); check_plan(items, cases)
-    args.ingest_telemetry = bool(args.insert_copy_reference)
+    args.ingest_telemetry = bool(args.insert_copy_reference or args.insert_thread_control)
     expected_pairs = len(items)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.plan_only:
@@ -451,6 +504,8 @@ def main():
     base, delta, writes, projection = [importlib.import_module(name) for name in
         ('benchmark_iteration', 'benchmark_index_delta', 'benchmark_write_query', 'benchmark_projection')]
     ids = identities(args.identities.resolve(), args.allow_version_contrast)
+    if args.insert_thread_control:
+        require(all(item['environment'] == {} for item in ids.values()), 'thread control identities must have no hidden overrides')
     require(all(os.access(item['binary'], os.X_OK) for item in ids.values()), 'validated binaries must be executable')
     launcher = args.launcher.resolve(); require(os.access(launcher, os.X_OK), 'launcher must be executable')
     taskset = Path(shutil.which('taskset') or '/nonexistent-taskset').resolve()
@@ -461,6 +516,7 @@ def main():
     report = {'status': 'running', 'kind': 'small_compute_diagnostic', 'official_score': None,
         'official_binary_identity_known': False, 'query_mode_policy': args.query_mode, 'expected_pairs': expected_pairs, 'plan': items, 'pairs': [],
         'insert_copy_reference': args.insert_copy_reference,
+        'insert_thread_control': args.insert_thread_control,
         'comparison_kind': 'whole_version_diagnostic' if args.allow_version_contrast else 'same_binary_environment_control',
         'identities': ids, 'identity_record_sha256': sha(args.identities), 'launcher_sha256': sha(launcher),
         'taskset': {'path': str(taskset), 'sha256': sha(taskset)}, 'db_cpu': args.db_cpu,
@@ -486,6 +542,9 @@ def main():
     save(args.output, report)
     if args.insert_copy_reference:
         report['limitations'][3] = 'INSERT screen: six retained and four historical default pairs per CPU, two retained protection pairs per selected case, one fixed seed. Screening only, no statistical floor, score conversion or automatic adoption.'
+    if args.insert_thread_control:
+        report['limitations'][3] = 'Thread control: four default and four single-thread standard10k pairs, interleaved policies, two AB and two BA per policy, one seed. Explicit parse/query=1 on both sides under single policy; not an adoption or scoring experiment.'
+        report['limitations'].append('Ingest task faults/context switches are live-task boundary counters, not all exited threads or isolated allocator/syscall costs.')
     parent, current_pair, failure = CGROOT / ('minivec-report-' + uuid.uuid4().hex), None, None
     try:
         parent.mkdir()
@@ -498,14 +557,20 @@ def main():
             for entry in (v for v in items if v['scenario'] == name):
                 current_pair = dict(entry)
                 for role in entry['order']:
-                    print(name, entry['pair_index'], role, flush=True)
+                    print(name, entry.get('policy', ''), entry['pair_index'], role, flush=True)
                     partial = {'cgroup': {}, 'adapter': {}}
                     current_pair[role] = partial
-                    with environment(ids[role]['environment']), Group(parent, args, partial['cgroup']) as group:
+                    effective_environment = (thread_control_environment(entry['policy']) if args.insert_thread_control
+                                             else ids[role]['environment'])
+                    if args.insert_thread_control:
+                        partial.update(effective_environment=dict(effective_environment), thread_control_policy=entry['policy'])
+                    with environment(effective_environment), Group(parent, args, partial['cgroup']) as group:
                         args.command_prefix = [str(launcher), str(group.path), str(taskset), '--cpu-list', ','.join(map(str, args.db_cpus))]
                         binary = Path(ids[role]['binary'])
                         require(sha(binary) == ids[role]['binary_sha256'], 'binary changed before run')
-                        with command_adapter(base, projection, args.command_prefix, binary, group.path, partial['adapter'], args.db_cpus):
+                        with command_adapter(base, projection, args.command_prefix, binary, group.path, partial['adapter'], args.db_cpus,
+                                             expected_environment=effective_environment if args.insert_thread_control else None,
+                                             ingest_task_counters=args.insert_thread_control):
                             if name == 'wide768':
                                 args.repetitions = 3
                                 projection.one_run(binary, work, args, partial)
@@ -514,21 +579,25 @@ def main():
                     require(not partial['cgroup']['timeout'] and not partial['cgroup'].get('cleanup_kill_required') and
                             not any(partial['cgroup']['oom_events_delta'].values()), 'timeout, live-process cleanup or OOM observed')
                     require(sha(binary) == ids[role]['binary_sha256'], 'binary changed after run')
-                    partial['declared_environment'] = ids[role]['environment']
+                    partial['declared_environment'] = dict(effective_environment)
                     stderr = partial.get('stderr', partial['adapter'].get('stderr', {}))
                     tail = stderr.get('tail_utf8', stderr.get('tail', ''))
                     partial['thread_policy_observations'] = {
-                        'requested_query_threads': ids[role]['environment'].get('MVDB_QUERY_THREADS', 'automatic'),
+                        'requested_query_threads': effective_environment.get('MVDB_QUERY_THREADS', 'automatic'),
                         'fanout_log_lines': [line for line in tail.splitlines() if 'fanout ' in line],
                         'stderr_complete': not stderr.get('truncated', stderr.get('bytes', 0) > 4096),
                         'task_phase_snapshots': len(partial['adapter'].get('phase_cgroups', [])),
                         'scope': 'Observed decisions and task counters. Nonmain CPU is not exclusively query worker CPU.'}
+                    if args.insert_thread_control:
+                        partial['thread_policy_observations']['requested_parse_threads'] = effective_environment.get('MVDB_PARSE_THREADS', 'automatic')
                 compare(current_pair)
                 report['pairs'].append(current_pair); report['summary'] = summary(report['pairs']); save(args.output, report)
             require(workload_identity(name, work, base) == report['workloads'][-1], 'workload mutated during paired runs')
         require(len(report['pairs']) == expected_pairs, 'incomplete plan')
-        measured_plan = [{key: pair[key] for key in ('scenario', 'seed', 'pair_index', 'order')} for pair in report['pairs']]
-        if args.insert_copy_reference: check_insert_copy_plan(measured_plan, args.insert_copy_reference, args.db_cpu_count)
+        keys = ('scenario', 'seed', 'pair_index', 'order', 'policy') if args.insert_thread_control else ('scenario', 'seed', 'pair_index', 'order')
+        measured_plan = [{key: pair[key] for key in keys} for pair in report['pairs']]
+        if args.insert_thread_control: check_thread_control_plan(measured_plan)
+        elif args.insert_copy_reference: check_insert_copy_plan(measured_plan, args.insert_copy_reference, args.db_cpu_count)
         else: check_plan(measured_plan, cases)
         report['status'] = 'passed'
     except BaseException as exc:

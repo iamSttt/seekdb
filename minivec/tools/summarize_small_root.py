@@ -7,8 +7,13 @@ from pathlib import Path
 from small_compute import CASES, PROTECTION_CASES, check_plan, check_insert_copy_plan, insert_copy_plan, cpu_set, require, sha
 
 
-def verify_measurement(data, count, cases, identity_sha, identities, insert_reference=None):
-    expected = len(insert_copy_plan(insert_reference, count)) if insert_reference else len(cases) * 2
+def verify_measurement(data, count, cases, identity_sha, identities, insert_reference=None, thread_control=False):
+    require(not (insert_reference and thread_control), 'conflicting measurement plans')
+    if thread_control:
+        from small_compute import thread_control_plan, check_thread_control_plan, thread_control_environment
+        require(count == 1 and cases == ('standard10k',), 'thread diagnostic must use one CPU and standard10k')
+    expected = 8 if thread_control else len(insert_copy_plan(insert_reference, count)) if insert_reference else len(cases) * 2
+    require(data.get('insert_thread_control', False) == thread_control, 'thread diagnostic plan differs')
     require(data.get('insert_copy_reference') == insert_reference, 'measurement plan family differs')
     require(data.get('status') == 'passed' and data.get('expected_pairs') == expected and
             data.get('completed_pairs') == expected and len(data['pairs']) == expected,
@@ -21,8 +26,9 @@ def verify_measurement(data, count, cases, identity_sha, identities, insert_refe
             data['requested_limits']['cpu_period_us'] == 100000, 'quota/period differs')
     require(data['query_mode_policy'] == 'exact' and data['requested_limits']['memory_max'] == '2147483648' and
             data['requested_limits']['swap_max'] == '0', 'root diagnostic mode/memory plan differs')
-    measured_plan = [{key: p[key] for key in ('scenario', 'seed', 'pair_index', 'order')} for p in data['pairs']]
-    if insert_reference: check_insert_copy_plan(measured_plan, insert_reference, count)
+    measured_plan = [{key: p[key] for key in ('scenario', 'seed', 'pair_index', 'order') + (('policy',) if thread_control else ())} for p in data['pairs']]
+    if thread_control: check_thread_control_plan(measured_plan)
+    elif insert_reference: check_insert_copy_plan(measured_plan, insert_reference, count)
     else: check_plan(measured_plan, cases)
     for role in ('baseline', 'candidate'):
         for key in ('binary_sha256', 'source_commit', 'evidence_sha256', 'environment'):
@@ -32,7 +38,11 @@ def verify_measurement(data, count, cases, identity_sha, identities, insert_refe
         require(pair.get('all_responses_identical') is True, 'response comparison failed')
         for role in ('baseline', 'candidate'):
             run = pair[role]; group = run['cgroup']
-            require(run['declared_environment'] == {}, 'run environment differs')
+            expected_environment = thread_control_environment(pair['policy']) if thread_control else {}
+            require(run['declared_environment'] == expected_environment, 'run environment differs')
+            if thread_control:
+                require(run['effective_environment'] == expected_environment and
+                        run['thread_control_policy'] == pair['policy'], 'effective thread policy differs')
             require(run['query_mode_policy'] == 'exact', 'actual run mode policy differs')
             modes = run['adapter']['completed_request_modes']
             require(set(modes) == {'exact'} and modes['exact'] > 0 and
@@ -63,9 +73,11 @@ def verify_measurement(data, count, cases, identity_sha, identities, insert_refe
                 require(cpu_set(item['cpus_allowed_list']) == set(data['db_cpus']), 'actual affinity differs')
                 require(item['pid'] in item['members'] and item['driver_pid'] not in item['members'], 'driver not isolated')
                 require(item['actual_exe'] == data['identities'][role]['binary'], 'actual executable differs')
+                if thread_control:
+                    require(item['runtime_environment'] == expected_environment, 'actual process thread environment differs')
             phases = run['adapter']['phase_cgroups']
             require(len(phases) == (14 if pair['scenario'] == 'wide768' else
-                                    15 if pair['scenario'].startswith('spill_') else 8 if insert_reference else 7), 'phase telemetry incomplete')
+                                    15 if pair['scenario'].startswith('spill_') else 8 if insert_reference or thread_control else 7), 'phase telemetry incomplete')
             for phase in phases:
                 require(phase['memory.max'] == '2147483648' and phase['memory.swap.max'] == '0', 'phase memory/swap cap differs')
                 require(not phase.get('task_read_errors') and not phase.get('native_tasks_error'), 'task telemetry incomplete')
