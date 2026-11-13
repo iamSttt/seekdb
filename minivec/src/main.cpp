@@ -430,23 +430,19 @@ int main(int argc, char** argv) {
     try {
       emit_json({{"type","ready"}});
       std::string pending; char input[65536]; bool shutdown=false;
-      size_t searched=0;  // Prefix already checked for a physical newline.
       while (!stopping && !shutdown) {
         const ssize_t count=::read(STDIN_FILENO,input,sizeof(input));
         if (count<0) { if (errno==EINTR) continue; throw std::runtime_error("cannot read request"); }
         if (count==0) break;
         pending.append(input,static_cast<size_t>(count));
         size_t begin=0;
-        for (size_t end=pending.find('\n',searched); end!=std::string::npos;
+        for (size_t end=pending.find('\n',begin); end!=std::string::npos;
              end=pending.find('\n',begin)) {
           shutdown=json_request(db,pending.substr(begin,end-begin),&status);
           begin=end+1;
           if (shutdown) break;
         }
         if (begin) pending.erase(0,begin);
-        // No newline remains in the unconsumed suffix. Search only new bytes
-        // after the next append; begin still marks the entire frame to emit.
-        searched=pending.size();
       }
       if (!shutdown && !pending.empty()) {
         // A truncated JSONL frame is never executed at EOF.
