@@ -1,0 +1,42 @@
+[
+  {
+    "file": "ci_exact_cost.sh",
+    "bytes": 2247,
+    "sha256": "27e2362d13d0c0c5be199d91821c8c06c59ec7ba16f5044b5d9ea33b9410b222"
+  },
+  {
+    "file": "prepare.py",
+    "bytes": 9866,
+    "sha256": "dfafe0b7a610309d0778996c01f94f076ae686266fd5fe00c10fe76dd9d60d90"
+  },
+  {
+    "file": "run.py",
+    "bytes": 15753,
+    "sha256": "e5900ce13b57d139ecb04f75d2ebecc3e0339ca2480cd46af3cd88769644a61a"
+  },
+  {
+    "file": "cost_diagnostic.h",
+    "bytes": 3663,
+    "sha256": "88c26f4aba1651317dcee058b5d24e2b42be93d97b9cc5942ec0fdc490f30a70"
+  },
+  {
+    "file": "timer_overhead.cpp",
+    "bytes": 655,
+    "sha256": "3d0f8134bfcadf6048fb56644b32c246732d7317dcb65d824ecd5cd686a46acb"
+  },
+  {
+    "file": "README.md",
+    "bytes": 3233,
+    "sha256": "f295bd45b529be2ca11e70efc7f050c62e0ac760abbefee2d426e08e8163443d"
+  },
+  {
+    "file": "preflight.py",
+    "bytes": 4208,
+    "sha256": "6f60e6758117f5563a2b0e864650c7f22ff2e4a48a29de7d176f0c13d3968b52"
+  },
+  {
+    "file": "preflight.json",
+    "bytes": 786,
+    "sha256": "8cae87e2a2640ee349eaaf90334862a33ae8c2637ae667e1b74bc0ebe93f970a"
+  }
+]

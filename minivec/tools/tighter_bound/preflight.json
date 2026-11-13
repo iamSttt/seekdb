@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "checks": [
+    "ast:make_fixtures.py",
+    "ast:run_linux.py",
+    "ast:check_preflight.py",
+    "canonical_git_reference",
+    "original_scalar_verbatim_after_remove_only_rescue",
+    "guard_only_after_original_failed_certificate",
+    "strict_runtime_control_masks",
+    "format_guards",
+    "no_production_counter",
+    "shadow_calls_fallback:old",
+    "shadow_oldcert:old",
+    "shadow_rescue:old",
+    "shadow_calls_fallback:new",
+    "shadow_oldcert:new",
+    "shadow_rescue:new"
+  ],
+  "checks_count": 15,
+  "native_compilations": 0,
+  "native_executions": 0,
+  "database_runs": 0,
+  "scope": "source/AST/isolated shadow-insertion checks only"
+}

@@ -78,6 +78,288 @@ struct Tok {
   size_t pos = 0;
 };
 
+#ifdef MVDB_ENABLE_TOKEN_REUSE
+#ifndef MVDB_TOKEN_REUSE_BYTES
+#define MVDB_TOKEN_REUSE_BYTES (256u << 10)
+#endif
+// Owning tokens only: no view into SQL input or a moved small-string buffer.
+// The cap limits retained scratch, not accepted SQL size. Oversized statements
+// use the usual heap working set and release it on exit.
+class TokenBuffer {
+ public:
+  Tok& append() {
+    if(used_==tokens_.size())tokens_.emplace_back();
+    // Fresh slots are default-initialized; cached slots were reset by recycle.
+    return tokens_[used_++];
+  }
+  size_t size() const {return used_;}
+  const Tok& operator[](size_t i) const {return tokens_[i];}
+  void recycle() noexcept {
+    // Trim unused strings after a large-to-small transition, preserving the
+    // token array capacity. Erasing this tail does not allocate or move tokens.
+    if(used_<tokens_.size())tokens_.erase(tokens_.begin()+used_,tokens_.end());
+    constexpr size_t limit=MVDB_TOKEN_REUSE_BYTES;
+    size_t remaining=limit;
+    bool keep=tokens_.capacity()<=remaining/sizeof(Tok);
+    if(keep)remaining-=tokens_.capacity()*sizeof(Tok);
+    for(Tok& token:tokens_) {
+      // Counting SSO capacity again deliberately overestimates retained bytes.
+      const size_t bytes=token.text.capacity()+1;
+      if(bytes>remaining)keep=false;
+      else remaining-=bytes;
+      token.text.clear();token.kind=TK_END;token.quoted=false;token.pos=0;
+    }
+    if(!keep)std::vector<Tok>().swap(tokens_);
+    used_=0;
+  }
+ private:
+  std::vector<Tok> tokens_;
+  size_t used_=0;
+};
+struct TokenCache {TokenBuffer buffer;bool busy=false;};
+thread_local TokenCache token_cache;
+class TokenLease {
+ public:
+  TokenLease() {
+    // Reentrant calls (including allocation hooks) cannot reset outer tokens.
+    if(!token_cache.busy) {token_cache.busy=true;cached_=true;buffer_=&token_cache.buffer;}
+  }
+  ~TokenLease() {
+    buffer_->recycle();
+    if(cached_)token_cache.busy=false;
+  }
+  TokenLease(const TokenLease&)=delete;
+  TokenLease& operator=(const TokenLease&)=delete;
+  TokenBuffer& buffer() {return *buffer_;}
+ private:
+  TokenBuffer local_;
+  TokenBuffer* buffer_=&local_;
+  bool cached_=false;
+};
+Tok& append_token(TokenBuffer* out) {return out->append();}
+#endif
+
+#ifdef MVDB_ENABLE_TOKEN_REUSE
+void tokenize(const std::string& s, TokenBuffer* out) {
+  size_t i = 0, n = s.size();
+  while (i < n) {
+    unsigned char c = (unsigned char)s[i];
+    if (is_space(c)) {
+      ++i;
+      continue;
+    }
+    // comments (the caller strips them, but parse_sql may be called directly)
+    if (c == '-' && i + 1 < n && s[i + 1] == '-') {
+      while (i < n && s[i] != '\n') ++i;
+      continue;
+    }
+    if (c == '#') {
+      while (i < n && s[i] != '\n') ++i;
+      continue;
+    }
+    if (c == '/' && i + 1 < n && s[i + 1] == '*') {
+      size_t end = s.find("*/", i + 2);
+      if (end == std::string::npos) throw_err(1064, "unterminated block comment");
+      i = end + 2;
+      continue;
+    }
+    const size_t start = i;
+
+    // Fast path: a quoted literal with no escape sequence and no doubled quote
+    // is copied in one pass instead of being rebuilt byte by byte.
+    if (c == '\'' || c == '"') {
+      const char q = (char)c;
+      // memchr hands the scan to the vectorised libc search instead of walking
+      // the literal one byte at a time.
+      const char* hit = static_cast<const char*>(
+          std::memchr(s.data() + i + 1, q, n - i - 1));
+      if (hit != nullptr) {
+        const size_t j = static_cast<size_t>(hit - s.data());
+        bool simple = true;
+        if (std::memchr(s.data() + i + 1, '\\', j - i - 1) != nullptr) simple = false;
+        else if (j + 1 < n && s[j + 1] == q) simple = false;
+        if (simple) {
+          Tok& t=append_token(out);
+          t.kind = TK_STR;
+          t.text.assign(s, i + 1, j - i - 1);
+          t.pos = start;
+          i = j + 1;
+          continue;
+        }
+      }
+    }
+
+
+    // --- quoted string -----------------------------------------------------
+    if (c == '\'' || c == '"') {
+      const char q = (char)c;
+      Tok& t=append_token(out);
+      std::string& v=t.text;
+      ++i;
+      bool closed = false;
+      while (i < n) {
+        char ch = s[i];
+        if (ch == '\\' && i + 1 < n) {
+          char e = s[i + 1];
+          i += 2;
+          switch (e) {
+            case 'n': v.push_back('\n'); break;
+            case 't': v.push_back('\t'); break;
+            case 'r': v.push_back('\r'); break;
+            case '0': v.push_back('\0'); break;
+            case 'b': v.push_back('\b'); break;
+            case 'Z': v.push_back('\x1a'); break;
+            case '\\': v.push_back('\\'); break;
+            case '\'': v.push_back('\''); break;
+            case '"': v.push_back('"'); break;
+            case '%': v.push_back('%'); break;
+            case '_': v.push_back('_'); break;
+            default: v.push_back(e); break;
+          }
+          continue;
+        }
+        if (ch == q) {
+          if (i + 1 < n && s[i + 1] == q) {  // '' escape
+            v.push_back(q);
+            i += 2;
+            continue;
+          }
+          ++i;
+          closed = true;
+          break;
+        }
+        v.push_back(ch);
+        ++i;
+      }
+      if (!closed) throw_err(1064, "unterminated string literal");
+      t.kind = TK_STR;
+      t.pos = start;
+      continue;
+    }
+
+    // --- backtick identifier ----------------------------------------------
+    if (c == '`') {
+      Tok& t=append_token(out);
+      std::string& v=t.text;
+      ++i;
+      bool closed = false;
+      while (i < n) {
+        char ch = s[i];
+        if (ch == '`') {
+          if (i + 1 < n && s[i + 1] == '`') {
+            v.push_back('`');
+            i += 2;
+            continue;
+          }
+          ++i;
+          closed = true;
+          break;
+        }
+        v.push_back(ch);
+        ++i;
+      }
+      if (!closed) throw_err(1064, "unterminated quoted identifier");
+      t.kind = TK_IDENT;
+      t.quoted = true;
+      t.pos = start;
+      continue;
+    }
+
+    // --- bare vector literal: [1, 2, -3.5] ---------------------------------
+    if (c == '[') {
+      int depth = 0;
+      size_t j = i;
+      bool closed = false;
+      for (; j < n; ++j) {
+        if (s[j] == '[') ++depth;
+        else if (s[j] == ']') {
+          if (--depth == 0) {
+            closed = true;
+            break;
+          }
+        }
+      }
+      if (!closed) throw_err(1064, "unterminated vector literal '['");
+      Tok& t=append_token(out);
+      t.kind = TK_VEC;
+      t.text.assign(s, i + 1, j - i - 1);
+      t.pos = start;
+      i = j + 1;
+      continue;
+    }
+
+    // --- number ------------------------------------------------------------
+    if (is_digit(c) || (c == '.' && i + 1 < n && is_digit((unsigned char)s[i + 1]))) {
+      bool is_num = false;
+      while (i < n && is_digit((unsigned char)s[i])) ++i;
+      if (i < n && s[i] == '.') {
+        is_num = true;
+        ++i;
+        while (i < n && is_digit((unsigned char)s[i])) ++i;
+      }
+      if (i < n && (s[i] == 'e' || s[i] == 'E')) {
+        size_t k = i + 1;
+        if (k < n && (s[k] == '+' || s[k] == '-')) ++k;
+        if (k < n && is_digit((unsigned char)s[k])) {
+          while (k < n && is_digit((unsigned char)s[k])) ++k;
+          i = k;
+          is_num = true;
+        }
+      }
+      Tok& t=append_token(out);
+      t.kind = is_num ? TK_NUM : TK_INT;
+      t.text.assign(s, start, i - start);
+      t.pos = start;
+      continue;
+    }
+
+    // --- identifier --------------------------------------------------------
+    if (is_ident_start(c)) {
+      while (i < n && is_ident_char((unsigned char)s[i])) ++i;
+      Tok& t=append_token(out);
+      t.kind = TK_IDENT;
+      t.text.assign(s, start, i - start);
+      t.pos = start;
+      continue;
+    }
+
+    // --- punctuation -------------------------------------------------------
+    if (i + 1 < n) {
+      const char a = s[i], b = s[i + 1];
+      bool two = false;
+      std::string op;
+      if ((a == '<' && (b == '=' || b == '>')) || (a == '>' && b == '=') ||
+          (a == '!' && b == '=') ||
+          (a == '|' && b == '|') || (a == '&' && b == '&')) {
+        op.push_back(a);
+        op.push_back(b);
+        two = true;
+      }
+      if (two) {
+        Tok& t=append_token(out);
+        t.kind = TK_PUNCT;
+        t.text = std::move(op);
+        t.pos = start;
+        i += 2;
+        continue;
+      }
+    }
+    if (std::strchr("(),.=<>*+-/;", (int)c) != nullptr && c < 0x80) {
+      Tok& t=append_token(out);
+      t.kind = TK_PUNCT;
+      t.text.assign(1, (char)c);
+      t.pos = start;
+      ++i;
+      continue;
+    }
+    throw_err(1064, std::string("unexpected character '") + (char)c + "' in SQL");
+  }
+  Tok& end=append_token(out);
+  end.kind = TK_END;
+  end.pos = n;
+}
+
+#else
 void tokenize(const std::string& s, std::vector<Tok>* out) {
   size_t i = 0, n = s.size();
   while (i < n) {
@@ -308,6 +590,8 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
   out->push_back(std::move(end));
 }
 
+#endif
+
 // ------------------------------------------------------------ value helpers --
 
 // Parses "1, 2.5, -3e2" into floats. Strict: rejects empty elements, trailing
@@ -419,8 +703,13 @@ struct LiteralJob {
 
 class Parser {
  public:
+#ifdef MVDB_ENABLE_TOKEN_REUSE
+  Parser(const std::string& sql, const TokenBuffer& toks)
+      : sql_(sql), t_(toks), i_(0) {}
+#else
   Parser(const std::string& sql, std::vector<Tok> toks)
       : sql_(sql), t_(std::move(toks)), i_(0) {}
+#endif
 
   void run(Statement* st);
 
@@ -480,7 +769,11 @@ class Parser {
   void parse_cond_group(Statement* st, int depth);
 
   const std::string& sql_;
+#ifdef MVDB_ENABLE_TOKEN_REUSE
+  const TokenBuffer& t_;
+#else
   std::vector<Tok> t_;
+#endif
   size_t i_;
 };
 
@@ -1183,7 +1476,8 @@ void Parser::parse_where(Statement* st) { parse_cond_group(st, 0); }
 
 // ---------------------------------------------------------------- parse_sql --
 
-bool parse_sql(const std::string& sql, Statement* out, std::string* err, int* err_code) {
+bool parse_sql(const std::string& sql, Statement* out, std::string* err, int* err_code,
+               bool retain_raw) {
   Statement local_stmt;
   std::string local_err;
   int local_code = 0;
@@ -1192,14 +1486,22 @@ bool parse_sql(const std::string& sql, Statement* out, std::string* err, int* er
   int* code = err_code ? err_code : &local_code;
 
   *st = Statement();
-  st->raw = sql;
+  if(retain_raw)st->raw = sql;
   e->clear();
   *code = 0;
 
   try {
+#ifdef MVDB_ENABLE_TOKEN_REUSE
+    TokenLease lease;
+    TokenBuffer& toks=lease.buffer();
+    tokenize(sql, &toks);
+    // Workers finish (also on an exception) before p/lease can be destroyed.
+    Parser p(sql, toks);
+#else
     std::vector<Tok> toks;
     tokenize(sql, &toks);
     Parser p(sql, std::move(toks));
+#endif
     p.run(st);
     return true;
   } catch (const ParseError& pe) {

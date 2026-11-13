@@ -1,0 +1,21 @@
+{
+  "status": "prepared_not_executed",
+  "reference_commit": "ebd6d25f27ad1a32fa92d84bcd571ae86b55394e",
+  "reference_git_path": "minivec/src/distance.h",
+  "reference_sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+  "prototype_manifest_sha256": "26efc5b88c733e7a40ed0644a985b0853da1559213325ef458f2a7f75d702749",
+  "compensated_header_sha256": "8cb12b2cf9c4c76d87099584a46f6e82e429b12448c7c0a7ff902317ba10585c",
+  "test_sha256": "421f18da3f8817dfed53ea16fa7043504b96bca91f9e43a70e00529a5fc14d5d",
+  "oracle_sha256": "a159c84b49ad4a2c018aa208677cd67143395d362ce214fa7a34db83adcd3608",
+  "oracle_cases": 7842,
+  "micro_data_sha256": "f290d0686747aad93165428148ba26f169c6f6d7c9497262de2c73bd52776296",
+  "tighter_candidate_imported": false,
+  "batch8_imported": false,
+  "algorithm_modified": false,
+  "prior_evidence_scope": "Original frozen manifest and independent review report native/DB zero; no compensated-result artifact located in this workspace or linked in current conversation material. This is not a remote-run inventory.",
+  "old_review_test_note": "Independent review precedes the additive exception-mask tests; final frozen test SHA is bound separately.",
+  "native_compilations": 0,
+  "native_executions": 0,
+  "database_runs": 0,
+  "pgo_builds": 0
+}

@@ -1,0 +1,333 @@
+{
+  "commit": "a5a892bd9abe12ecbff01ada5a248c880acc58af",
+  "run_id": 43323025043,
+  "job_id": 131548310566,
+  "summary": {
+    "wide768": {
+      "narrow_top10": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.071568028268118,
+        "min_baseline_over_candidate": 1.004725820912511,
+        "max_baseline_over_candidate": 1.1417316900386059
+      },
+      "wide_top10": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.4139833539492768,
+        "min_baseline_over_candidate": 1.3917965867969009,
+        "max_baseline_over_candidate": 1.4430047150398209
+      },
+      "narrow_large4096": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.430515221281297,
+        "min_baseline_over_candidate": 1.1775768842157253,
+        "max_baseline_over_candidate": 1.4458780164630438
+      },
+      "wide_large4096": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.4295721937643877,
+        "min_baseline_over_candidate": 1.4136344652225112,
+        "max_baseline_over_candidate": 1.4680860287092243
+      },
+      "narrow_all": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.3141622700274727,
+        "min_baseline_over_candidate": 1.2327961828964917,
+        "max_baseline_over_candidate": 1.5685966222925198
+      },
+      "wide_all": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.398001159631516,
+        "min_baseline_over_candidate": 1.3911623631420125,
+        "max_baseline_over_candidate": 1.4017792611125632
+      },
+      "wide_distance10": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.2422095271854703,
+        "min_baseline_over_candidate": 1.1664686966621673,
+        "max_baseline_over_candidate": 1.284458382705187
+      }
+    },
+    "many16": {
+      "narrow_top10": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.0207258601449578,
+        "min_baseline_over_candidate": 0.9945779922926147,
+        "max_baseline_over_candidate": 1.1315244456142945
+      },
+      "wide_top10": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.058096610896737,
+        "min_baseline_over_candidate": 1.0278557066852552,
+        "max_baseline_over_candidate": 1.0861251025714793
+      },
+      "narrow_large4096": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.3789886542005534,
+        "min_baseline_over_candidate": 1.348675403834215,
+        "max_baseline_over_candidate": 1.4029502437046533
+      },
+      "wide_large4096": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.2294464833909475,
+        "min_baseline_over_candidate": 1.2096490508823488,
+        "max_baseline_over_candidate": 1.2331117905456999
+      },
+      "narrow_all": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.407131773468868,
+        "min_baseline_over_candidate": 1.2414692124980413,
+        "max_baseline_over_candidate": 1.413852798675995
+      },
+      "wide_all": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.2024252087824798,
+        "min_baseline_over_candidate": 1.17897171189815,
+        "max_baseline_over_candidate": 1.3533870913266504
+      },
+      "wide_distance10": {
+        "pairs": 3,
+        "median_baseline_over_candidate": 1.045474157005388,
+        "min_baseline_over_candidate": 0.9150949895957289,
+        "max_baseline_over_candidate": 1.2499808990128014
+      }
+    }
+  },
+  "correctness": {
+    "base": {
+      "status": "passed",
+      "checks": [
+        {
+          "malformed_hex": "ff",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "ff",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "ff",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "c080",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "c080",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "c080",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "eda080",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "eda080",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "eda080",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "e4b8",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "e4b8",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "e4b8",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "f4908080",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "f4908080",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "f4908080",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "80",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "80",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "80",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        }
+      ],
+      "scope": "18 malformed stored UTF-8 response failures followed by valid requests; not performance"
+    },
+    "typed": {
+      "status": "passed",
+      "checks": [
+        {
+          "malformed_hex": "ff",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "ff",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "ff",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "c080",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "c080",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "c080",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "eda080",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "eda080",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "eda080",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "e4b8",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "e4b8",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "e4b8",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "f4908080",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "f4908080",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "f4908080",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "80",
+          "path": "ORDER BY id LIMIT 10",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "80",
+          "path": "unbounded",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        },
+        {
+          "malformed_hex": "80",
+          "path": "ORDER BY id LIMIT 4096",
+          "valid_prefix_bytes": 90000,
+          "status": "passed"
+        }
+      ],
+      "scope": "18 malformed stored UTF-8 response failures followed by valid requests; not performance"
+    }
+  },
+  "limits": [
+    "Three seeds x one pair is screening only; retain negative results and confirm wins.",
+    "Wall time: request write through complete response-line receipt; parsing/oracle are excluded.",
+    "Includes transport, projection and ORDER BY work; it is not serializer-only CPU time.",
+    "Same host and warm shared cache, fixed phase order, no official memory/IO scoring.",
+    "Full projected values are checked independently for every response, not just compared across binaries."
+  ],
+  "decision": "PGO confirmation; still default off"
+}

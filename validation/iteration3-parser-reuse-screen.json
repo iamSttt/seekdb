@@ -1,0 +1,576 @@
+{
+  "commit": "c33cd273f958a0ba85ebfa30620404dcfb26c1f2",
+  "run_id": 43321938508,
+  "job_id": 131544549055,
+  "scope": "I13 parser microbenchmark, not full database/official performance",
+  "checks": [
+    {
+      "variant": "baseline",
+      "test": "sql",
+      "parse_threads": "1"
+    },
+    {
+      "variant": "baseline",
+      "test": "sql",
+      "parse_threads": "2"
+    },
+    {
+      "variant": "baseline",
+      "test": "parser_reuse",
+      "parse_threads": "1"
+    },
+    {
+      "variant": "baseline",
+      "test": "parser_reuse",
+      "parse_threads": "2"
+    },
+    {
+      "variant": "candidate",
+      "test": "sql",
+      "parse_threads": "1"
+    },
+    {
+      "variant": "candidate",
+      "test": "sql",
+      "parse_threads": "2"
+    },
+    {
+      "variant": "candidate",
+      "test": "parser_reuse",
+      "parse_threads": "1"
+    },
+    {
+      "variant": "candidate",
+      "test": "parser_reuse",
+      "parse_threads": "2"
+    },
+    {
+      "variant": "tiny_cache",
+      "test": "sql",
+      "parse_threads": "1"
+    },
+    {
+      "variant": "tiny_cache",
+      "test": "sql",
+      "parse_threads": "2"
+    },
+    {
+      "variant": "tiny_cache",
+      "test": "parser_reuse",
+      "parse_threads": "1"
+    },
+    {
+      "variant": "tiny_cache",
+      "test": "parser_reuse",
+      "parse_threads": "2"
+    },
+    {
+      "variant": "sanitizer",
+      "test": "sql",
+      "parse_threads": "1"
+    },
+    {
+      "variant": "sanitizer",
+      "test": "sql",
+      "parse_threads": "2"
+    },
+    {
+      "variant": "sanitizer",
+      "test": "parser_reuse",
+      "parse_threads": "1"
+    },
+    {
+      "variant": "sanitizer",
+      "test": "parser_reuse",
+      "parse_threads": "2"
+    },
+    {
+      "variant": "baseline",
+      "test": "json_protocol",
+      "parse_threads": "default"
+    },
+    {
+      "variant": "candidate",
+      "test": "json_protocol",
+      "parse_threads": "default"
+    }
+  ],
+  "context": {
+    "baseline_sql_commit": "9aa18865c85bd74578f9e408438dcd29e7247728",
+    "candidate_commit": "c33cd273f958a0ba85ebfa30620404dcfb26c1f2",
+    "compiler": "pinned GCC13.3 O3 static, PGO off equally",
+    "baseline_scope": "Historical sql.cpp only; all remaining source is identical current checkout.",
+    "baseline_sql_sha256": "ad3748983ae2da41216504bcad648e1cdef1cf13b4959755669cedf9fecd21fd",
+    "candidate_sql_sha256": "9aff425726495cfa6ab396d08bf61e3484cde5e2a64356f461291e4e18699cd6",
+    "cpu_affinity": [
+      0,
+      1
+    ],
+    "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+    "binary_sha256": {
+      "baseline-allocations": "6d4218ce649a191e99d11e69c7cba1e48d109390f92f5045aedafcf40dc33cdb",
+      "baseline-timing": "04f949ea849929719bcd5547ef305d2ba57b86ebde5dc554cbdcaf5e59c7a573",
+      "baseline.bin": "2afaf6b65e9d69447180891b05ede4a750851b87d47edd5a45d721404e2ab54b",
+      "candidate-allocations": "33d968d4643f42861fb50346188fc48abf526559be6566daecbe409d91991f32",
+      "candidate-timing": "d8c450dce946d3741ee76e08728a13799a5f598606136bf846afe157d4984f04",
+      "candidate.bin": "5a9109c7f87295bea742482bddbcd7b2c065292b173bfce089f1f279642aca4c"
+    },
+    "limitations": [
+      "Parser microbenchmark, not end-to-end database or official score.",
+      "Timing executables do not contain allocation hooks; counters use separate executables.",
+      "new/delete counters exclude internal libc malloc calls and allocator headers.",
+      "256 KiB retained scratch per calling thread; transient parse/AST memory is not capped.",
+      "Worker tests use one ParsePool caller; concurrent SELECT tests prove TLS isolation, not concurrent batch INSERT safety.",
+      "ASan leak detection disabled for the existing deliberately process-lived ParsePool."
+    ]
+  },
+  "timing_summary": [
+    {
+      "parse_threads": 1,
+      "case": "short_select",
+      "pairs": 5,
+      "speedups": [
+        1.1353826955251949,
+        1.1519137737896807,
+        1.1501628217894244,
+        1.1548591435452487,
+        1.1508078991035722
+      ],
+      "median_speedup": 1.1508078991035722
+    },
+    {
+      "parse_threads": 1,
+      "case": "vector128",
+      "pairs": 5,
+      "speedups": [
+        1.0709657451844161,
+        1.079369976039952,
+        1.0777029971142256,
+        1.0622994231984073,
+        1.075006496045584
+      ],
+      "median_speedup": 1.075006496045584
+    },
+    {
+      "parse_threads": 1,
+      "case": "escaped",
+      "pairs": 5,
+      "speedups": [
+        1.2077924184700226,
+        1.177409998677474,
+        1.2012520521706218,
+        1.211430513526747,
+        1.1870279338908083
+      ],
+      "median_speedup": 1.2012520521706218
+    },
+    {
+      "parse_threads": 1,
+      "case": "insert32",
+      "pairs": 5,
+      "speedups": [
+        1.0394221998794313,
+        1.0399542071643386,
+        1.042962868050282,
+        1.030441765878984,
+        1.045504328264702
+      ],
+      "median_speedup": 1.0399542071643386
+    },
+    {
+      "parse_threads": 1,
+      "case": "oversized_insert",
+      "pairs": 5,
+      "speedups": [
+        1.0077465865889714,
+        1.0054366970287159,
+        1.0069467694170446,
+        1.008822123806324,
+        1.007348862253079
+      ],
+      "median_speedup": 1.007348862253079
+    },
+    {
+      "parse_threads": 1,
+      "case": "syntax_error",
+      "pairs": 5,
+      "speedups": [
+        1.1044404309747828,
+        1.054063603801231,
+        1.0544004746933993,
+        1.0878373939998687,
+        1.063227083556291
+      ],
+      "median_speedup": 1.063227083556291
+    },
+    {
+      "parse_threads": 2,
+      "case": "short_select",
+      "pairs": 5,
+      "speedups": [
+        1.1565015648827592,
+        1.1609743922371132,
+        1.136600461472529,
+        1.1382140382218482,
+        1.147674767693021
+      ],
+      "median_speedup": 1.147674767693021
+    },
+    {
+      "parse_threads": 2,
+      "case": "vector128",
+      "pairs": 5,
+      "speedups": [
+        1.073418961997451,
+        1.063827554174868,
+        1.0642061394342213,
+        1.0690601880883437,
+        1.0682004887906476
+      ],
+      "median_speedup": 1.0682004887906476
+    },
+    {
+      "parse_threads": 2,
+      "case": "escaped",
+      "pairs": 5,
+      "speedups": [
+        1.2066215264542564,
+        1.2141685345887714,
+        1.2148228650017288,
+        1.2154004046750992,
+        1.201851158834285
+      ],
+      "median_speedup": 1.2141685345887714
+    },
+    {
+      "parse_threads": 2,
+      "case": "insert32",
+      "pairs": 5,
+      "speedups": [
+        1.0302595331024569,
+        1.0399263323241832,
+        1.0325595925077895,
+        1.0352866190148535,
+        1.0343970334742654
+      ],
+      "median_speedup": 1.0343970334742654
+    },
+    {
+      "parse_threads": 2,
+      "case": "oversized_insert",
+      "pairs": 5,
+      "speedups": [
+        1.0124824364440852,
+        1.0014476673369972,
+        0.9969523165345359,
+        1.0031167732289707,
+        1.0009237039110939
+      ],
+      "median_speedup": 1.0014476673369972
+    },
+    {
+      "parse_threads": 2,
+      "case": "syntax_error",
+      "pairs": 5,
+      "speedups": [
+        1.0202252331067065,
+        1.0625518359055466,
+        1.0226454575830288,
+        1.0255589837776729,
+        1.0675683894380583
+      ],
+      "median_speedup": 1.0255589837776729
+    }
+  ],
+  "allocation_counts": [
+    {
+      "parse_threads": 1,
+      "baseline": {
+        "case": "short_select",
+        "iterations": 4000,
+        "elapsed_ns": 7083062,
+        "checksum": 8000,
+        "instrumented": true,
+        "new_calls": 28000,
+        "requested_bytes": 7776000,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "short_select",
+        "iterations": 4000,
+        "elapsed_ns": 6620577,
+        "checksum": 8000,
+        "instrumented": true,
+        "new_calls": 8000,
+        "requested_bytes": 832000,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 3.5
+    },
+    {
+      "parse_threads": 1,
+      "baseline": {
+        "case": "vector128",
+        "iterations": 1000,
+        "elapsed_ns": 4004692,
+        "checksum": 9000,
+        "instrumented": true,
+        "new_calls": 9000,
+        "requested_bytes": 4209000,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "vector128",
+        "iterations": 1000,
+        "elapsed_ns": 3676108,
+        "checksum": 9000,
+        "instrumented": true,
+        "new_calls": 3000,
+        "requested_bytes": 1536000,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 3.0
+    },
+    {
+      "parse_threads": 1,
+      "baseline": {
+        "case": "escaped",
+        "iterations": 2000,
+        "elapsed_ns": 3700814,
+        "checksum": 13000,
+        "instrumented": true,
+        "new_calls": 22000,
+        "requested_bytes": 4500000,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "escaped",
+        "iterations": 2000,
+        "elapsed_ns": 3046349,
+        "checksum": 13000,
+        "instrumented": true,
+        "new_calls": 6000,
+        "requested_bytes": 602000,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 3.6666666666666665
+    },
+    {
+      "parse_threads": 1,
+      "baseline": {
+        "case": "insert32",
+        "iterations": 80,
+        "elapsed_ns": 6500381,
+        "checksum": 15560,
+        "instrumented": true,
+        "new_calls": 14560,
+        "requested_bytes": 11589980,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "insert32",
+        "iterations": 80,
+        "elapsed_ns": 6276002,
+        "checksum": 15560,
+        "instrumented": true,
+        "new_calls": 11280,
+        "requested_bytes": 6901870,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 1.2907801418439717
+    },
+    {
+      "parse_threads": 1,
+      "baseline": {
+        "case": "oversized_insert",
+        "iterations": 4,
+        "elapsed_ns": 5818075,
+        "checksum": 17096,
+        "instrumented": true,
+        "new_calls": 7816,
+        "requested_bytes": 7504608,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "oversized_insert",
+        "iterations": 4,
+        "elapsed_ns": 5804309,
+        "checksum": 17096,
+        "instrumented": true,
+        "new_calls": 7816,
+        "requested_bytes": 7504608,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 1.0
+    },
+    {
+      "parse_threads": 1,
+      "baseline": {
+        "case": "syntax_error",
+        "iterations": 1000,
+        "elapsed_ns": 2775412,
+        "checksum": 44096,
+        "instrumented": true,
+        "new_calls": 10000,
+        "requested_bytes": 1353000,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "syntax_error",
+        "iterations": 1000,
+        "elapsed_ns": 2480020,
+        "checksum": 44096,
+        "instrumented": true,
+        "new_calls": 2000,
+        "requested_bytes": 59000,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 5.0
+    },
+    {
+      "parse_threads": 2,
+      "baseline": {
+        "case": "short_select",
+        "iterations": 4000,
+        "elapsed_ns": 6933442,
+        "checksum": 8000,
+        "instrumented": true,
+        "new_calls": 28000,
+        "requested_bytes": 7776000,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "short_select",
+        "iterations": 4000,
+        "elapsed_ns": 5875111,
+        "checksum": 8000,
+        "instrumented": true,
+        "new_calls": 8000,
+        "requested_bytes": 832000,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 3.5
+    },
+    {
+      "parse_threads": 2,
+      "baseline": {
+        "case": "vector128",
+        "iterations": 1000,
+        "elapsed_ns": 4074713,
+        "checksum": 9000,
+        "instrumented": true,
+        "new_calls": 9000,
+        "requested_bytes": 4209000,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "vector128",
+        "iterations": 1000,
+        "elapsed_ns": 3678352,
+        "checksum": 9000,
+        "instrumented": true,
+        "new_calls": 3000,
+        "requested_bytes": 1536000,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 3.0
+    },
+    {
+      "parse_threads": 2,
+      "baseline": {
+        "case": "escaped",
+        "iterations": 2000,
+        "elapsed_ns": 3735368,
+        "checksum": 13000,
+        "instrumented": true,
+        "new_calls": 22000,
+        "requested_bytes": 4500000,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "escaped",
+        "iterations": 2000,
+        "elapsed_ns": 3006194,
+        "checksum": 13000,
+        "instrumented": true,
+        "new_calls": 6000,
+        "requested_bytes": 602000,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 3.6666666666666665
+    },
+    {
+      "parse_threads": 2,
+      "baseline": {
+        "case": "insert32",
+        "iterations": 80,
+        "elapsed_ns": 8555436,
+        "checksum": 15560,
+        "instrumented": true,
+        "new_calls": 14640,
+        "requested_bytes": 11591260,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "insert32",
+        "iterations": 80,
+        "elapsed_ns": 8328251,
+        "checksum": 15560,
+        "instrumented": true,
+        "new_calls": 11360,
+        "requested_bytes": 6903150,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 1.2887323943661972
+    },
+    {
+      "parse_threads": 2,
+      "baseline": {
+        "case": "oversized_insert",
+        "iterations": 4,
+        "elapsed_ns": 4024419,
+        "checksum": 17096,
+        "instrumented": true,
+        "new_calls": 7820,
+        "requested_bytes": 7504672,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "oversized_insert",
+        "iterations": 4,
+        "elapsed_ns": 3978233,
+        "checksum": 17096,
+        "instrumented": true,
+        "new_calls": 7820,
+        "requested_bytes": 7504672,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 1.0
+    },
+    {
+      "parse_threads": 2,
+      "baseline": {
+        "case": "syntax_error",
+        "iterations": 1000,
+        "elapsed_ns": 2770854,
+        "checksum": 44096,
+        "instrumented": true,
+        "new_calls": 10000,
+        "requested_bytes": 1353000,
+        "retained_delta_bytes": 0
+      },
+      "candidate": {
+        "case": "syntax_error",
+        "iterations": 1000,
+        "elapsed_ns": 2391164,
+        "checksum": 44096,
+        "instrumented": true,
+        "new_calls": 2000,
+        "requested_bytes": 59000,
+        "retained_delta_bytes": 0
+      },
+      "allocation_call_ratio": 5.0
+    }
+  ],
+  "decision": "proceed to full-request PGO confirmation; default off"
+}

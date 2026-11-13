@@ -1,0 +1,34 @@
+{
+  "scope": "Historical evidence only, not validation of this quarter-plus-margin candidate",
+  "parent_half_source_manifest_sha256": "259b4cc06b2b5aaa0baf0680f5d60a4eacde48b26ea3225580fe250af66b761e",
+  "parent_half_header_sha256": "bdcc9e587677b91c0e57a0da8dd63eda7160c62fb9121e22cf5db19d243bf7c7",
+  "reused_oracle": {
+    "source": "work/tighter-bound-prototype-raw/results/oracle.bin",
+    "bytes": 11425564,
+    "sha256": "74e1b99088943e073b5f4821844aabc7001a500ae2af9ef0c7dc309d8ed6262e",
+    "fixture_generator_reexecuted_during_preparation": false
+  },
+  "prior_root_oracle_failure": {
+    "run_id": 43516543657,
+    "commit": "d767915b4aa816cb2720947ffcbe681819aa6036",
+    "status": "verified_tool_oracle_semantics_error_no_performance_measurement",
+    "audit_path": "inherited-tighter-only-attempt1-audit.json",
+    "audit_sha256": "d8cb059de309cb5206eabd389aef6fcd818898c6d66e7f5d40b491576b5da570",
+    "raw": {
+      "path": "validation/iteration5-tighter-only-attempt1-raw.zip",
+      "bytes": 194553,
+      "sha256": "a586c2cd6b65291250f4a374be8d052c22d4d279abdc4090033d0675a3503d77"
+    },
+    "interpretation": "Projected L2 sqrt oracle error, not a performance result; original failed audit remains unchanged."
+  },
+  "this_draft": {
+    "native_compilations": 0,
+    "native_executions": 0,
+    "database_runs": 0,
+    "pgo_builds": 0,
+    "performance_pairs": 0,
+    "ci_runs": 0
+  },
+  "old_micro_results_imported_as_new": false,
+  "current_half_production_source_changed": false
+}

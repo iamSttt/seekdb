@@ -30,6 +30,82 @@ static std::vector<int64_t> ids(const std::string& text) {
   while(std::getline(in,line))if(!line.empty())result.push_back(std::stoll(line));
   return result;
 }
+static void insert_copy_regressions(Database& db) {
+  query(db,"CREATE TABLE insert_copies(id BIGINT PRIMARY KEY,s VARCHAR(64),v VECTOR(3))",false);
+  std::string err,out;int code=0;
+  const std::string spelling=" [0x1p0, +2, -0] ";
+  Statement st;
+  assert(parse_sql("INSERT INTO insert_copies VALUES (1,'"+spelling+"','"+spelling+
+                   "'),(2,'a\\nb''c','[3,4,5]')",&st,&err,&code,false));
+  auto unchanged=[&]() {
+    assert(st.rows.size()==2 && st.rows[0].size()==3);
+    assert(st.rows[0][1].type==Type::VECTOR && st.rows[0][1].s==spelling);
+    assert(st.rows[0][2].type==Type::VECTOR && st.rows[0][2].s==spelling);
+    assert(st.rows[0][2].v==std::vector<float>({1,2,0}) && std::signbit(st.rows[0][2].v[2]));
+    assert(st.rows[1][1].s=="a\nb'c" && st.rows[1][2].s=="[3,4,5]");
+  };
+  // The executable AST can be reused after both success and rollback. Only the
+  // row owned by Database is normalised; VECTOR text stays in the public AST.
+  query(db,"BEGIN",false);
+  assert(execute_json(db,st,&out,&err,&code));unchanged();
+  query(db,"ROLLBACK",false);
+  assert(db.table("insert_copies")->live_count()==0);
+  assert(execute_json(db,st,&out,&err,&code));unchanged();
+  assert(!execute_json(db,st,&out,&err,&code) && code==1062);unchanged();
+
+  Statement mapped;
+  assert(parse_sql("INSERT INTO insert_copies(v,id,s) VALUES ('[-0,0x1p-149,+1.5]',3,' [1, 2] ')",
+                   &mapped,&err,&code,false));
+  assert(execute_json(db,mapped,&out,&err,&code));
+  assert(mapped.rows[0][0].s=="[-0,0x1p-149,+1.5]" && mapped.rows[0][2].s==" [1, 2] ");
+  std::string nul_sql="INSERT INTO insert_copies(s,v,id) VALUES ('x";
+  nul_sql.push_back('\0');nul_sql+="y','[0,0,0]',4)";
+  assert(parse_sql(nul_sql,&mapped,&err,&code,false));
+  nul_sql.assign(nul_sql.size(),'z');
+  assert(execute_json(db,mapped,&out,&err,&code));
+  assert(mapped.rows[0][0].s==std::string("x\0y",3));
+
+  // A later row failing dimension validation must roll back the preceding row
+  // both in autocommit and inside an explicit transaction, and remain reusable.
+  Statement bad;
+  assert(parse_sql("INSERT INTO insert_copies VALUES (5,'kept','[1,2,3]'),(6,'bad','[1,2]')",
+                   &bad,&err,&code,false));
+  for(bool explicit_txn:{false,true}) {
+    if(explicit_txn)query(db,"BEGIN",false);
+    for(int attempt=0;attempt<2;++attempt) {
+      assert(!execute_json(db,bad,&out,&err,&code) && code==1264 && out.empty());
+      assert(db.table("insert_copies")->live_count()==4);
+      assert(db.table("insert_copies")->pk_pos.count(5)==0);
+      assert(bad.rows[0][2].s=="[1,2,3]" && bad.rows[1][2].s=="[1,2]");
+    }
+    if(explicit_txn)query(db,"ROLLBACK",false);
+  }
+  for(const char* invalid:{
+      "INSERT INTO insert_copies VALUES (5,[1,2,3],'[0,0,0]')",
+      "INSERT INTO insert_copies VALUES (5,'valid','not a vector')"}) {
+    assert(parse_sql(invalid,&bad,&err,&code,false));
+    assert(!execute_json(db,bad,&out,&err,&code) && code==1264);
+  }
+  // The same normalised representation must survive the existing WAL path.
+  const std::string path=db.data_directory();db.close();assert(db.open(path,&err));
+  size_t seen=0;
+  db.scan("insert_copies",{},[&](const Row& row) {
+    ++seen;const int64_t id=row.vals[0].i;
+    assert(row.vals[1].type==Type::VARCHAR && row.vals[2].type==Type::VECTOR);
+    assert(row.vals[2].s.empty() && row.vals[2].v.size()==3);
+    if(id==1) {
+      assert(row.vals[1].s==spelling && row.vals[2].v==std::vector<float>({1,2,0}));
+      assert(std::signbit(row.vals[2].v[2]));
+    } else if(id==2)assert(row.vals[1].s=="a\nb'c");
+    else if(id==3) {
+      assert(row.vals[1].s==" [1, 2] " && std::signbit(row.vals[2].v[0]));
+      assert(row.vals[2].v[1]==std::numeric_limits<float>::denorm_min() && row.vals[2].v[2]==1.5f);
+    } else {assert(id==4 && row.vals[1].s==std::string("x\0y",3));}
+    return true;
+  });
+  assert(seen==4);unchanged();
+  std::cout<<"PASS INSERT copy ownership, column mapping, VARCHAR spelling, failure rollback and WAL replay\n";
+}
 static void distance_regressions(Database& db) {
   auto check_order=[&](const std::string& table,const std::vector<float>& first,
                        const std::vector<float>& second,const std::vector<int64_t>& expected) {
@@ -80,6 +156,31 @@ static void distance_regressions(Database& db) {
   assert(distance_squared(a.data(),b.data(),1)==std::ldexp(1.0,-46));
   assert(distance_squared(nullptr,nullptr,0)==0);
 }
+static void json_encoding_failure_regression(Database& db) {
+  Column id;id.name="id";id.type=Type::BIGINT;id.is_primary=true;
+  Column text;text.name="s";text.type=Type::VARCHAR;text.len=16;
+  std::string err,out;int code=0;
+  assert(db.create_table("encoding_failure",{id,text},&err,&code));
+  assert(db.insert("encoding_failure",{Value::ofInt(1),Value::ofStr("first")},&err,&code));
+  assert(db.insert("encoding_failure",{Value::ofInt(2),Value::ofStr("second")},&err,&code));
+  // Inject corrupt payload through the internal table API, never the protocol.
+  // The first row has already been encoded when the second row's UTF-8 fails.
+  db.table("encoding_failure")->rows[1].vals[1].s=std::string(1,static_cast<char>(0xff));
+  for(const char* suffix:{" LIMIT 10",""," LIMIT 4096"}) {
+    Statement st;
+    assert(parse_sql(std::string("SELECT id,s FROM encoding_failure ORDER BY id")+suffix,&st,&err,&code));
+    out="prior response";
+    assert(!execute_json(db,st,&out,&err,&code));
+    assert(out.empty() && code!=0 && !err.empty());
+  }
+  db.table("encoding_failure")->rows[1].vals[1].s="second";
+  Statement st;
+  assert(parse_sql("SELECT id,s FROM encoding_failure ORDER BY id LIMIT 10",&st,&err,&code));
+  assert(execute_json(db,st,&out,&err,&code));
+  assert(nlohmann::json::parse(out).at("rows")==nlohmann::json({{1,"first"},{2,"second"}}));
+  std::cout<<"PASS JSON row reuse rejects invalid UTF-8 without partial response\n";
+}
+
 static void projection_regressions(Database& db) {
   using Json = nlohmann::json;
   const std::string prefix =
@@ -108,13 +209,20 @@ static void projection_regressions(Database& db) {
   query(db, "CREATE TABLE projections(title VARCHAR(16),v VECTOR(2),id BIGINT PRIMARY KEY)", false);
   query(db, "INSERT INTO projections VALUES('nine','[3,0]',9),('two','[-1,0]',2),"
             "('seven','[1,0]',7),('three','[4,0]',3)", false);
-  for (int stage = 0; stage < 3; ++stage) {
+  for (int stage = 0; stage < 4; ++stage) {
     if (stage == 1)
       query(db, "CREATE VECTOR INDEX projections_v ON projections(v)", false);
-    if (stage == 2) {
+    if (stage >= 2) {
       query(db, "BEGIN", false);
       query(db, "UPDATE projections SET title='two' WHERE id=2", false);
-      assert(db.table("projections")->payload_store);
+      assert(!db.table("projections")->payload_store);
+      if(stage == 3) {
+        std::string err;int code=0;
+        Cond id;id.column="id";id.op=Cond::EQ;id.value=Value::ofInt(2);
+        for(int i=0;i<8192 && !db.table("projections")->payload_store;++i)
+          assert(db.update_rows("projections",{id},{{"title",Value::ofStr("two")}},&err,&code)==1);
+        assert(db.table("projections")->payload_store);
+      }
     }
     check("ORDER BY near LIMIT 1", {{2, 1, 5, "two"}});
     check("ORDER BY near DESC LIMIT 4",
@@ -125,7 +233,7 @@ static void projection_regressions(Database& db) {
           {{9, 3, 1, "nine"}, {7, 1, 3, "seven"}, {3, 4, 0, "three"}, {2, 1, 5, "two"}});
     check("ORDER BY near LIMIT 4096",
           {{2, 1, 5, "two"}, {7, 1, 3, "seven"}, {9, 3, 1, "nine"}, {3, 4, 0, "three"}});
-    if (stage == 2) query(db, "ROLLBACK", false);
+    if (stage >= 2) query(db, "ROLLBACK", false);
   }
   std::cout << "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows\n";
 }
@@ -156,7 +264,9 @@ int main(int argc,char** argv) {
   if(argc>1 && std::string(argv[1])=="--stress-topk")return stress_topk();
   char path[]="/tmp/mvdb-query-test-XXXXXX";assert(::mkdtemp(path));
   Database db;std::string err;int code=0;assert(db.open(path,&err));
+  insert_copy_regressions(db);
   distance_regressions(db);
+  json_encoding_failure_regression(db);
   projection_regressions(db);
   Column id;id.name="id";id.type=Type::BIGINT;id.is_primary=true;
   Column n;n.name="n";n.type=Type::BIGINT;

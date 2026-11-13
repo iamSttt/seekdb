@@ -1,0 +1,34 @@
+{
+  "image-binary-sha256.txt": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753  /home/runner/work/_temp/minivec-checks-ie5nJL/image-binary\n",
+  "image-id.txt": "sha256:4c9fc6f89a720d46c4327973af6431cf2e886508e66efa0650d84d9052f0dd0d\n",
+  "runtime-commit.txt": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4\n",
+  "verification-summary.json": {
+    "runtime_commit": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4",
+    "image_tag": "minivec:verify-4d8de37178eb",
+    "image_id": "sha256:4c9fc6f89a720d46c4327973af6431cf2e886508e66efa0650d84d9052f0dd0d",
+    "scope": "current-checkout build and regression verification; not formal scoring",
+    "passed": true,
+    "checks": {
+      "root_docker_build": true,
+      "image_official_handshake_and_public_cases": true,
+      "source_official_handshake_and_public_cases": true,
+      "live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill": true,
+      "make_test": true,
+      "image_binary_json_and_exact_topk_serial_parallel": true,
+      "eight_wal_failure_cases_asan_ubsan": true,
+      "query_pool_both_modes_asan_ubsan": true,
+      "cross_table_spill_asan_ubsan": true,
+      "full_binary_json_ubsan": true,
+      "index_budget_and_resident_update_asan_ubsan": true
+    },
+    "limitations": [
+      "No hidden formal cases or score.",
+      "No new paired performance measurement.",
+      "WAL fixture injects short/failed writes; not fdatasync or allocation failure.",
+      "ASan leak detection disabled; memory-safety and undefined-behavior checks enabled."
+    ]
+  },
+  "source_run": "https://github.com/iamSttt/seekdb/actions/runs/43226783666",
+  "source_job": "https://github.com/iamSttt/seekdb/actions/runs/43226783666/job/131211894758",
+  "context": "This job verifies correctness. Paired performance is recorded separately in iteration-results-20261112.json."
+}

@@ -1,0 +1,63 @@
+{
+  "status": "field_mapping_erratum_after_CI_launch_before_viewing_results",
+  "recorded_by": "assistant",
+  "clock_observed_utc": "2026-11-13T18:41:52Z",
+  "CI_launch_utc_reported_by_coordinator": "2026-11-13T18:38:43Z",
+  "run_id": 43484633651,
+  "candidate_commit": "d22720446c1c068401633daa083b2fe564917fd1",
+  "original_preregistration": {
+    "path": "validation/iteration5-highest-primary24-preregistration.json",
+    "bytes": 10416,
+    "sha256": "a930984922150c82eea6c95fa56679cf7f0fe48ff0e88c72cdb5c36986a46d4d",
+    "unchanged": true
+  },
+  "reason": "The spill harness has query_before_mutations and query_cycle_0..3, not a raw phase named query_before_update. The original preregistration used the wrong raw-field name. This clarification is explicitly after CI launch and is not presented as a change frozen before execution.",
+  "evidence_timing": "No new d227 artifact or measured result was consumed by this recording agent. The coordinator also reported no new raw/result had been seen when requesting this erratum. This statement concerns observation, not whether an unobserved CI phase has already completed.",
+  "scope": {
+    "measurement_family": "highest_primary24_v1",
+    "reference": "retained",
+    "CPU": 1,
+    "scenario": "spill_high_q16",
+    "pairs": 2
+  },
+  "mapping": {
+    "query_before_update_wall_seconds": {
+      "meaning": "Initial pre-mutation query phase only, exactly 16 requests.",
+      "raw_value": "phase_seconds.query_before_mutations",
+      "request_count_source": "len(query.query_before_mutations.per_request_seconds)",
+      "required_request_count": 16
+    },
+    "query_before_update_cpu_usec": {
+      "meaning": "Observed cgroup usage_usec difference from after_index_build through query_before_mutations, covering the same initial 16-query phase.",
+      "start_snapshot": "adapter.phase_cgroups[phase == after_index_build].cpu.stat",
+      "end_snapshot": "adapter.phase_cgroups[phase == query_before_mutations].cpu.stat",
+      "counter": "usage_usec",
+      "operation": "end minus start; must be nonnegative"
+    },
+    "first_query_wall_seconds": {
+      "raw_value": "query.query_before_mutations.per_request_seconds[0]",
+      "meaning": "First request of the initial 16-query phase; no first-request CPU is measured."
+    }
+  },
+  "excluded_from_this_query_guard": [
+    "query_cycle_0",
+    "query_cycle_1",
+    "query_cycle_2",
+    "query_cycle_3"
+  ],
+  "retained_reporting": "All four cycle query phases, their positive and negative timings and CPU observations, and the complete 80-query aggregate remain in the independent analysis. Complete lifecycle stage wall and full-cgroup CPU guards still cover the full run. No cycle observation is deleted or relabelled as initial-query data.",
+  "unchanged": [
+    "Original preregistration bytes and SHA",
+    "All thresholds and decision order",
+    "The fixed 24 pairs, source, workload, CPU/memory/swap limits and pair orders",
+    "EE and retained default-query mappings",
+    "Wide seven-phase aggregate protection mapping",
+    "R remains selected; no automatic adoption or formal submission"
+  ],
+  "forbidden_interpretations": [
+    "Do not replace the initial-query guard with the full 80-query aggregate.",
+    "Do not claim this field-name clarification was committed before CI launch.",
+    "Do not invent first-request CPU or pure spill-ingest CPU."
+  ],
+  "reader_requirement": "Bind this erratum independently by exact SHA together with the unchanged original plan, run and candidate commit. Verify actual initial-phase request count and snapshot order from the raw artifact before supplying numerical screen inputs."
+}

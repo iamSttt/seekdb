@@ -1,0 +1,47 @@
+{
+  "image-binary-sha256.txt": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753  /home/runner/work/_temp/minivec-checks-51z7nN/image-binary\n",
+  "image-id.txt": "sha256:f69a56314a3d4ec49453e49d0caaf7a4beed83e2f1bf9f1c5c86ce2f79b9d9b7\n",
+  "runtime-commit.txt": "20eac01a0d6df6ce04284bb66107006f9d2c66da\n",
+  "verification-summary.json": {
+    "runtime_commit": "20eac01a0d6df6ce04284bb66107006f9d2c66da",
+    "image_tag": "minivec:verify-20eac01a0d6d",
+    "image_id": "sha256:f69a56314a3d4ec49453e49d0caaf7a4beed83e2f1bf9f1c5c86ce2f79b9d9b7",
+    "scope": "current-checkout build and regression verification; not formal scoring",
+    "passed": true,
+    "checks": {
+      "root_docker_build": true,
+      "image_official_handshake_and_public_cases": true,
+      "source_official_handshake_and_public_cases": true,
+      "live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill": true,
+      "make_test": true,
+      "image_binary_json_and_exact_topk_serial_parallel": true,
+      "eight_wal_failure_cases_asan_ubsan": true,
+      "query_pool_both_modes_asan_ubsan": true,
+      "cross_table_spill_asan_ubsan": true,
+      "full_binary_json_ubsan": true,
+      "index_budget_and_resident_update_asan_ubsan": true
+    },
+    "limitations": [
+      "No hidden formal cases or score.",
+      "No new paired performance measurement.",
+      "WAL fixture injects short/failed writes; not fdatasync or allocation failure.",
+      "ASan leak detection disabled; memory-safety and undefined-behavior checks enabled."
+    ]
+  },
+  "binary_identical_to_4d8de": true,
+  "ci_url": "https://github.com/iamSttt/seekdb/actions/runs/43232155090",
+  "job_id": 131229989840,
+  "source_run": "https://github.com/iamSttt/seekdb/actions/runs/43232155090",
+  "source_job": "https://github.com/iamSttt/seekdb/actions/runs/43232155090/job/131229989840",
+  "selected_runtime_equivalence": {
+    "reference_commit": "4d8de37178eb3d5f36e9df04f8c80740ddfdfba4",
+    "git_diff_empty_for": [
+      "Dockerfile",
+      ".dockerignore",
+      "minivec/src",
+      "minivec/third_party"
+    ],
+    "image_binary_matches_reference_sha256": "9b437a1bb0b431690ce5c12e477087898ca7ef0986e1a87c9a6ff468f8a3a753"
+  },
+  "context": "Final selected tree with expanded regression tests and attributed evidence; later delivery changes are documentation/evidence only."
+}

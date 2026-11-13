@@ -2,6 +2,7 @@
 #pragma once
 #include <cstdio>
 #include <functional>
+#include <list>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -14,6 +15,10 @@
 namespace mvdb {
 
 struct PayloadStore;
+struct RowUndoImage;
+#ifdef MVDB_ENABLE_INDEX_DELTA
+struct IndexDelta;
+#endif
 class QuantizedQueryBound;
 
 struct TableSchema {
@@ -37,12 +42,29 @@ struct Table {
   int64_t next_rid = 1;
   bool has_index = false;
   std::shared_ptr<FlatIndex> vector_index;
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  // Experimental INSERT/UPDATE/DELETE delta. Its reserved allowance is charged to the
+  // same global index budget; no state is persisted to snapshot or WAL.
+  std::shared_ptr<IndexDelta> index_delta;
+  size_t index_delta_budget = 0;
+#endif
+  void invalidate_vector_index() {
+    vector_index.reset();
+#ifdef MVDB_ENABLE_INDEX_DELTA
+    // The index borrows floats retained by these owners: discard it first.
+    index_delta.reset();
+    index_delta_budget = 0;
+#endif
+  }
   // Large row payloads spill to a rebuildable, unlinked file in /data. The
   // primary-key and row-slot metadata remain resident.
   std::string storage_dir;
   std::shared_ptr<PayloadStore> payload_store;
   std::vector<uint64_t> payload_offsets;
   uint64_t payload_bytes = 0;
+  // Weak registrations let a later spill migrate active in-memory Undo images
+  // before it releases borrowed payloads. Expired registrations are pruned.
+  std::list<std::weak_ptr<RowUndoImage>> resident_undo;
 
   size_t live_count() const;
   const Row& read_row(size_t slot, Row& scratch) const;
@@ -139,6 +161,7 @@ class Database {
   std::string dir_;
   std::unordered_map<std::string, Table> tables_;
   std::vector<Undo> undo_;
+  uint64_t undo_image_bytes_ = 0;
   bool txn_active_ = false;
   uint64_t txn_wal_start_ = 0, txn_lsn_start_ = 0;
   bool stmt_active_ = false, stmt_implicit_ = false;

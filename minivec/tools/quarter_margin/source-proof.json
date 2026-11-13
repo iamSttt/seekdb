@@ -1,0 +1,19 @@
+{
+  "source_commit": "ebd6d25f27ad1a32fa92d84bcd571ae86b55394e",
+  "source_git_path": "minivec/src/distance.h",
+  "reference_sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+  "candidate_sha256": "cfd6d6a2b111b2f9c72081bd33ba481343d375adb3b01405077e88516875284a",
+  "canonical_git_bytes": true,
+  "native_executions": 0,
+  "production_files_modified": false,
+  "reference_git_blob": "f84605a1dce46e539cbbae820a71acb57fe4ad07",
+  "experiment_id": "quarter-plus-margin-standalone-v1",
+  "parent_half_header_sha256": "bdcc9e587677b91c0e57a0da8dd63eda7160c62fb9121e22cf5db19d243bf7c7",
+  "candidate_factor": "0.25L+0x1p-30L",
+  "candidate_factor_exact": "268435457/1073741824",
+  "oracle_sha256": "74e1b99088943e073b5f4821844aabc7001a500ae2af9ef0c7dc309d8ed6262e",
+  "oracle_bytes": 11425564,
+  "oracle_cases": 6748,
+  "scope": "Standalone unexecuted alternative, not combined with current half certificate",
+  "fenv_scope": "Unchanged controls; extra final multiplication may set FE_INEXACT; no sticky-status equivalence claim"
+}

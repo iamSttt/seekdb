@@ -1,0 +1,24 @@
+{
+  "source_commit": "e020fdeb67dd8b64b77f0f8c2905f137f0112bba",
+  "source": "Immutable exported source, SHA256 plus Git blob independently replayed against formal-six-code-audit.json",
+  "files": {
+    "distance.h": {
+      "git_blob": "f84605a1dce46e539cbbae820a71acb57fe4ad07",
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+      "bytes": 17386,
+      "mode": "100644"
+    },
+    "quantized_scale.h": {
+      "git_blob": "16acd91e49dcaec8b841dd2694ca3a6039af0338",
+      "sha256": "e7450de5f5bc217213757b62a80e0e259e3df2ca52b20e4d64cd547e5c2a8321",
+      "bytes": 638,
+      "mode": "100644"
+    },
+    "quantized_bound.h": {
+      "git_blob": "11beb6bfddc79358105ca8470eacf0ba22e22327",
+      "sha256": "5a7b4a1f533515e13b331c8f59be9222a3b8202346d751dbf17267846bb56cdb",
+      "bytes": 13230,
+      "mode": "100644"
+    }
+  }
+}

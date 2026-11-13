@@ -1,0 +1,15 @@
+{
+  "status": "generated_independent_oracle",
+  "cases": 6748,
+  "kinds": {
+    "0": 6558,
+    "1": 180,
+    "2": 10
+  },
+  "maximum_dimension": 262144,
+  "bytes": 11425564,
+  "sha256": "74e1b99088943e073b5f4821844aabc7001a500ae2af9ef0c7dc309d8ed6262e",
+  "seed": "0x6c42b9e173",
+  "oracle": "Python arbitrary signed integers in units 2^-149; exact squares and sum; Fraction to binary64 once",
+  "native_executions": 0
+}

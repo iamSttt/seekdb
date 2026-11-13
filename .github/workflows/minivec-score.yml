@@ -1,20 +1,632 @@
 name: MiniVectorDB score validation
 on:
   push:
-    branches: [codex/round2-score-20261111]
+    branches: [codex/round2-score-20261111, codex/round2-optimize-20261112]
   workflow_dispatch:
+    inputs:
+      highest_primary:
+        description: One actual root build, EE-primary defaults and retained protection in 24 exact pairs
+        type: boolean
+        required: false
+        default: false
+      matched_insert_roots:
+        description: Two original matched R2 N2 root PGO builds and eight default-policy pairs
+        type: boolean
+        required: false
+        default: false
+      insert_thread_control:
+        description: Import existing R/N and diagnose thread sensitivity in eight pairs without rebuilding
+        type: boolean
+        required: false
+        default: false
+      insert_copy:
+        description: One actual root build, 24 exact low-resource pairs versus retained and imported highest programs
+        type: boolean
+        required: false
+        default: false
+      highest_compare:
+        description: Rebuild historical best-score root and compare retained/CRC programs on one runner
+        type: boolean
+        required: false
+        default: false
+      small_bridge:
+        description: Build and gate actual root image, then run 12 one-CPU and 8 two-CPU pairs
+        type: boolean
+        required: false
+        default: false
+      small_compute:
+        description: Run 12 single-CPU pairs using the verified submitted-source binary
+        type: boolean
+        required: false
+        default: false
+      small_compute_policy:
+        description: Single-query-thread control or retain startup calibration without fanout
+        type: choice
+        options: [serial, no-fanout]
+        default: serial
+      bulk_guard:
+        description: Confirm short-circuited bulk admission with 192 paired runs
+        type: boolean
+        required: false
+        default: false
+      bulk_typed:
+        description: Confirm bounded bulk vector output against the delivered PGO baseline
+        type: boolean
+        required: false
+        default: false
+      regression_ablation:
+        description: Compare isolated regression fixes against the delivered four-feature PGO build
+        type: boolean
+        required: false
+        default: false
+      output_guard:
+        description: Run the 63-pair output guard comparison
+        type: boolean
+        required: false
+        default: false
+      six_finish:
+        description: Run mixed index delta and write-query lifecycle confirmation
+        type: boolean
+        required: false
+        default: false
+      filter_reuse:
+        description: Run 30 paired write-query tests for delayed multi-filter reuse
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: read
 jobs:
   validate:
+    # Highest-primary uses this single current root build and imports both
+    # reference executables; its marker excludes the separate performance jobs.
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (inputs.highest_primary || contains(github.event.head_commit.message, '[highest-primary]') || (!inputs.matched_insert_roots && !contains(github.event.head_commit.message, '[matched-insert-roots]') && !inputs.insert_thread_control && !contains(github.event.head_commit.message, '[insert-thread-control]') && !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]'))))) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 60
+    env:
+      MVDB_HIGHEST_PRIMARY_SCREEN: ${{ (inputs.highest_primary || contains(github.event.head_commit.message, '[highest-primary]')) && '1' || '0' }}
+      MVDB_FINAL_PERFORMANCE: ${{ contains(github.event.head_commit.message, '[final-perf]') && '1' || '0' }}
+      MVDB_SMALL_BRIDGE: ${{ (inputs.small_bridge || contains(github.event.head_commit.message, '[small-bridge]')) && '1' || '0' }}
+      MVDB_INSERT_COPY_SCREEN: ${{ (inputs.insert_copy || contains(github.event.head_commit.message, '[insert-copy]')) && '1' || '0' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Engine, Docker, official protocol and paired benchmark
+        with:
+          fetch-depth: 0
+      - name: Engine, Docker and official protocol
         run: bash minivec/tools/ci_score.sh
       - name: Show diagnostic reports
         if: always()
         run: |
           if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
           if [ -d protocol-results ]; then find protocol-results -name "*.stderr.log" -exec tail -30 {} \;; fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: root-image-validation
+          path: protocol-results/
+          include-hidden-files: true
+          retention-days: 90
+  paired-performance:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (!inputs.matched_insert_roots && !contains(github.event.head_commit.message, '[matched-insert-roots]') && !inputs.insert_thread_control && !contains(github.event.head_commit.message, '[insert-thread-control]') && !inputs.insert_copy && !contains(github.event.head_commit.message, '[insert-copy]') && !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_bridge && !contains(github.event.head_commit.message, '[small-bridge]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Fixed compiler baseline and candidate paired measurement
+        run: bash minivec/tools/ci_iteration.sh
+  highest-compare:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.highest_compare || contains(github.event.head_commit.message, '[highest-compare]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Historical root build and direct exact low-resource comparisons
+        run: bash minivec/tools/ci_highest_compare.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: highest-compare
+          path: protocol-results/highest-compare/
+          include-hidden-files: true
+          retention-days: 90
+  insert-thread-control:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.insert_thread_control || contains(github.event.head_commit.message, '[insert-thread-control]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Same-runner R N default and single-thread diagnostic without rebuilding
+        run: bash minivec/tools/ci_insert_thread_control.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: insert-thread-control
+          path: insert-thread-control-results/
+          include-hidden-files: true
+          retention-days: 90
+  matched-insert-roots:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.matched_insert_roots || contains(github.event.head_commit.message, '[matched-insert-roots]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Matched original R2 N2 root builds actual-image gates and eight pairs
+        run: bash minivec/tools/ci_matched_insert_roots.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: matched-insert-roots
+          path: matched-insert-root-results/
+          include-hidden-files: true
+          retention-days: 90
+  small-compute:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.small_compute || contains(github.event.head_commit.message, '[small-compute]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      MVDB_SMALL_COMPUTE_POLICY: ${{ inputs.small_compute_policy || (contains(github.event.head_commit.message, '[no-fanout]') && 'no-fanout' || 'serial') }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Submitted-source program, default versus declared query policy, 12 pairs
+        run: bash minivec/tools/ci_small_compute.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: small-compute
+          path: small-compute-results/
+          retention-days: 90
+  regression-ablation:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.regression_ablation || contains(github.event.head_commit.message, '[regression-ablation]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Isolated PGO candidates, unchanged-program controls and benefit guards
+        run: bash minivec/tools/ci_regression_ablation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: regression-ablation
+          path: regression-ablation-results/
+          retention-days: 90
+  bulk-typed-confirmation:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.bulk_typed || contains(github.event.head_commit.message, '[bulk-typed]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Bulk vector output guards, independent PGO and paired protection cases
+        run: bash minivec/tools/ci_bulk_typed_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: bulk-typed-confirmation
+          path: bulk-typed-confirmation-results/
+          retention-days: 90
+  bulk-guard-confirmation:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.bulk_guard || contains(github.event.head_commit.message, '[bulk-guard]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Short-circuited bulk admission, 150 candidate pairs and 42 same-program controls
+        run: bash minivec/tools/ci_bulk_guard_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: bulk-guard-confirmation
+          path: bulk-guard-confirmation-results/
+          retention-days: 90
+  standard-performance:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[standard]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Representative 10k workload and isolated LTO comparison
+        run: bash minivec/tools/ci_standard.sh
+  hotpath-performance:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[hotpath]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Exact-query hot path and boundary paired measurement
+        run: bash minivec/tools/ci_hotpath.sh
+  round2-performance:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[round2]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Separate parser and residual-bound experiments
+        run: bash minivec/tools/ci_round2.sh
+  dot-performance:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[dot]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Integrated exact integer-dot comparison
+        run: bash minivec/tools/ci_dot.sh
+  pgo-performance:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[pgo]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Profile-guided build, correctness and paired measurement
+        run: bash minivec/tools/ci_pgo.sh
+  dot-avx2-performance:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[dot-avx2]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Forced AVX2 integer dispatcher and dot ablation
+        run: bash minivec/tools/ci_dot_avx2.sh
+  report-a-performance:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-a]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Report I05 I08 isolated comparisons and expanded matrix
+        run: bash minivec/tools/ci_report_stage_a.sh
+  report-b-hotpaths:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-b]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Independent query candidates and cgroup resources
+        run: bash minivec/tools/ci_report_stage_b.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-b-hotpaths
+          path: report-b-results/
+          retention-days: 90
+  report-b-storage:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-b]') || contains(github.event.head_commit.message, '[storage-report]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Delta and spilled-filter budgets and failure boundaries
+        run: bash minivec/tools/ci_storage_report.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-b-storage
+          path: storage-report-results/
+          retention-days: 90
+  pgo-matrix:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[pgo-matrix]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Same-source O3 LTO PGO and actual spill training
+        run: bash minivec/tools/ci_pgo_matrix.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: pgo-matrix
+          path: pgo-matrix-results/
+          retention-days: 90
+  report-b-quantization:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-b]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Block scales numeric and budget gates and paired diagnostics
+        run: bash minivec/tools/ci_quant_scale.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-b-quantization
+          path: quant-scale-results/
+          retention-days: 90
+  report-c-parser:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-c]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Bounded owning-token reuse correctness allocations and timings
+        run: bash minivec/tools/ci_parser_reuse.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-c-parser
+          path: parser-reuse-results/
+          retention-days: 90
+  report-c-projection:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-c]') || contains(github.event.head_commit.message, '[projection-report]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Wide typed output and mid-response UTF8 failures
+        run: bash minivec/tools/ci_projection_report.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-c-projection
+          path: projection-report-results/
+          retention-days: 90
+  report-c-filter:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-c]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Filter factorial confirmation and separately instrumented mechanisms
+        run: bash minivec/tools/ci_filter_report.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-c-filter
+          path: filter-report-results/
+          retention-days: 90
+  parser-pgo-confirmation:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[feature-confirm]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Owning-token reuse under independent original PGO profiles
+        run: CONFIRM_FEATURE=parser bash minivec/tools/ci_parser_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: parser-pgo-confirmation
+          path: parser-confirmation-results/
+          retention-days: 90
+  typed-pgo-confirmation:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[feature-confirm]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Typed JSON output under independent original PGO profiles
+        run: CONFIRM_FEATURE=typed bash minivec/tools/ci_parser_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: typed-pgo-confirmation
+          path: typed-confirmation-results/
+          retention-days: 90
+  selective-quantization:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[selective-scale]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Selective block-scale gates and whole-request confirmation
+        run: bash minivec/tools/ci_selective_scale.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: selective-quantization
+          path: selective-scale-results/
+          retention-days: 90
+  spill-pgo-confirmation:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[feature-confirm]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Spilled scalar cache PGO whole-request and selective workload confirmation
+        run: CONFIRM_FEATURE=spill bash minivec/tools/ci_parser_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: spill-pgo-confirmation
+          path: spill-confirmation-results/
+          retention-days: 90
+  storage-lifecycle-gates:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[storage-gates]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Spilled cache rollback slot-reuse and existing storage gates
+        run: STORAGE_CORRECTNESS_ONLY=1 bash minivec/tools/ci_storage_report.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: storage-lifecycle-gates
+          path: storage-report-results/
+          retention-days: 90
+  filter-fixed-thread-repeat:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[filter-repeat]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Interleaved fixed-thread factorial and identical-binary controls
+        run: bash minivec/tools/ci_filter_repeat.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: filter-fixed-thread-repeat
+          path: filter-repeat-results/
+          retention-days: 90
+  typed-pgo-atomicity:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[typed-gates]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: PGO binary UTF8 failure atomicity with source and profile proof
+        run: CONFIRM_FEATURE=typed FEATURE_CORRECTNESS_ONLY=1 bash minivec/tools/ci_parser_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: typed-pgo-atomicity
+          path: typed-confirmation-results/
+          retention-days: 90
+  report-integration:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (contains(github.event.head_commit.message, '[report-integration]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Retained baseline versus integrated spill cache and typed output
+        run: bash minivec/tools/ci_report_integration.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: report-integration
+          path: integration-report-results/
+          retention-days: 90
+  output-guard-ablation:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.output_guard || contains(github.event.head_commit.message, '[output-guard]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Same-host PGO spill-only broad and guarded projection comparisons
+        run: bash minivec/tools/ci_output_guard.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: output-guard-ablation
+          path: output-guard-results/
+          retention-days: 90
+  six-direction-finish:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.six_finish || contains(github.event.head_commit.message, '[report-i06-complete]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Mixed mutation delta and complete filter write-query lifecycles
+        run: bash minivec/tools/ci_index_delta_complete.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: six-direction-finish
+          path: |
+            six-direction-results/
+            delta-confirmation-results/
+            spill-confirmation-results/
+            filter-confirmation-results/
+          retention-days: 90
+  filter-reuse-confirmation:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (!contains(github.event.head_commit.message, '[exact-cost]') && (!inputs.highest_primary && !contains(github.event.head_commit.message, '[highest-primary]') && (inputs.filter_reuse || contains(github.event.head_commit.message, '[filter-reuse]'))))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: First-query legacy filtering and repeated-query cache confirmation
+        run: bash minivec/tools/ci_filter_lifecycle_confirmation.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: filter-reuse-confirmation
+          path: |
+            filter-lifecycle-confirmation-results/
+            filter-reuse-confirmation-results/
+          retention-days: 90
+  exact-cost-diagnostic:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (!contains(github.event.head_commit.message, '[quant-batch-prototype]') && (contains(github.event.head_commit.message, '[exact-cost]'))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Isolated retained-source cost diagnosis; no release candidate
+        run: bash minivec/tools/exact_cost/ci_exact_cost.sh --repo "$GITHUB_WORKSPACE" --output "$GITHUB_WORKSPACE/exact-cost-results"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: exact-cost-diagnostic
+          path: exact-cost-results/
+          include-hidden-files: true
+          retention-days: 90
+  quantized-batch-prototype:
+    if: ${{ !contains(github.event.head_commit.message, '[tighter-bound-prototype]') && (contains(github.event.head_commit.message, '[quant-batch-prototype]')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Isolated integer batch oracle and microbenchmark
+        run: bash minivec/tools/quant_batch/ci_prototype.sh --repo "$GITHUB_WORKSPACE" --output "$GITHUB_WORKSPACE/quant-batch-results"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: quantized-batch-prototype
+          path: quant-batch-results/
+          include-hidden-files: true
+          retention-days: 90
+  tighter-bound-prototype:
+    if: ${{ contains(github.event.head_commit.message, '[tighter-bound-prototype]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PROTOTYPE_SOURCE: ${{ contains(github.event.head_commit.message, '[compensated-distance]') && 'minivec/tools/compensated_distance' || contains(github.event.head_commit.message, '[quarter-margin]') && 'minivec/tools/quarter_margin' || 'minivec/tools/tighter_bound' }}
+      PROTOTYPE_OUTPUT: ${{ contains(github.event.head_commit.message, '[compensated-distance]') && 'compensated-distance-results' || contains(github.event.head_commit.message, '[quarter-margin]') && 'quarter-margin-results' || 'tighter-bound-results' }}
+      PROTOTYPE_ARTIFACT: ${{ contains(github.event.head_commit.message, '[compensated-distance]') && 'compensated-distance-prototype-results' || contains(github.event.head_commit.message, '[quarter-margin]') && 'quarter-margin-prototype-results' || 'tighter-bound-prototype-results' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Check isolated prototype shell
+        run: bash -n "$PROTOTYPE_SOURCE/ci_prototype.sh"
+      - name: Run fixed standalone certificate checks and microbenchmark
+        run: bash "$PROTOTYPE_SOURCE/ci_prototype.sh" --repo "$GITHUB_WORKSPACE" --output "$GITHUB_WORKSPACE/$PROTOTYPE_OUTPUT"
+      - name: Preserve all outputs including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ env.PROTOTYPE_ARTIFACT }}
+          path: ${{ env.PROTOTYPE_OUTPUT }}/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 90

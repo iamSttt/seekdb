@@ -1,0 +1,178 @@
+{
+  "status": "verified_eligible_for_user_controlled_formal_trial_with_disclosed_tradeoffs",
+  "source_commit": "311b45ffed1a957f8ebd71d0ead9320b1232298c",
+  "historical_baseline_commit": "969ecca98f817ecdef9b0c378fc99a0d6cef510d",
+  "github_run_id": 43350596233,
+  "github_job_id": 131640444280,
+  "github_artifact_id": 14003554316,
+  "github_artifact_sha256": "3d337ee6392ba7e2034ceff0c1c62d4f134597924a949fb5d66dc9b39db9e3bc",
+  "verified_pairs": 120,
+  "root_gate_checks": 17,
+  "actual_image_utf8_cases": 54,
+  "proof": {
+    "selected_feature_flags": [
+      "-DMVDB_ENABLE_SPILL_FILTER",
+      "-DMVDB_ENABLE_TYPED_JSON",
+      "-DMVDB_TYPED_WIDE_VECTOR_ONLY",
+      "-DMVDB_MULTI_POSTING_REUSE_ONLY"
+    ],
+    "candidate_source_files_verified": 137,
+    "compiler_image": "gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818",
+    "candidate_image_id": "sha256:7fe1ef955f9a36d4da29e31583e483d775062694be2badabcd172bcafa68eb9f",
+    "candidate_binary_sha256": "acddca115ab183bfc6419e27c9e3383cfd1a9046e3897e5ea516cd7bc0f29f54",
+    "proof_limit": "CI recorded actual-image extraction/cmp and passed source/image/sanitizer gates; this analysis does not rebuild the image or rerun oracles.",
+    "baseline": {
+      "source_files_verified": 27,
+      "image_id": "sha256:794b77ff82c595c92ef941f11ce827c178987f4e4fcad0ee568e06fee79ae877",
+      "binary_sha256": "d17b15103110159038b56b7b2b534e9f8b4523784e454afa4019e9d2b92fce00",
+      "profile_limit": "Original committed default-PGO Dockerfile and build log are retained; this final helper does not export individual gcda/corpus hashes."
+    }
+  },
+  "lifecycle_overview": {
+    "standard10k": {
+      "baseline_median_ms": 507.97307399977853,
+      "candidate_median_ms": 509.8249950023046,
+      "paired_baseline_minus_candidate_median_ms": 4.265187994064945,
+      "median_paired_baseline_over_candidate": 1.0084310126593603,
+      "candidate_slower_pairs": 6,
+      "pairs": 15,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "resident30k": {
+      "baseline_median_ms": 709.8281959998758,
+      "candidate_median_ms": 703.0595420003465,
+      "paired_baseline_minus_candidate_median_ms": 4.304640999180265,
+      "median_paired_baseline_over_candidate": 1.0062601716537694,
+      "candidate_slower_pairs": 6,
+      "pairs": 15,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "resident50k": {
+      "baseline_median_ms": 1249.283600998865,
+      "candidate_median_ms": 1244.1925069992976,
+      "paired_baseline_minus_candidate_median_ms": -6.09744299583781,
+      "median_paired_baseline_over_candidate": 0.9949328709687347,
+      "candidate_slower_pairs": 8,
+      "pairs": 15,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "low16": {
+      "baseline_median_ms": 108.45853699970576,
+      "candidate_median_ms": 105.65335000160303,
+      "paired_baseline_minus_candidate_median_ms": 2.6839169996719647,
+      "median_paired_baseline_over_candidate": 1.0253739223990699,
+      "candidate_slower_pairs": 3,
+      "pairs": 15,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "filter60k": {
+      "baseline_median_ms": 563.2167289980998,
+      "candidate_median_ms": 568.7750219972258,
+      "paired_baseline_minus_candidate_median_ms": 4.597878997060434,
+      "median_paired_baseline_over_candidate": 1.00801693481522,
+      "candidate_slower_pairs": 5,
+      "pairs": 15,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "update10": {
+      "baseline_median_ms": 274.8674040011565,
+      "candidate_median_ms": 273.8117660020407,
+      "paired_baseline_minus_candidate_median_ms": 1.3015220004035655,
+      "median_paired_baseline_over_candidate": 1.004873805455825,
+      "candidate_slower_pairs": 4,
+      "pairs": 15,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "spill": {
+      "baseline_median_ms": 1749.9295059982387,
+      "candidate_median_ms": 1658.214535000866,
+      "paired_baseline_minus_candidate_median_ms": 94.35584699804167,
+      "median_paired_baseline_over_candidate": 1.0573358087900235,
+      "candidate_slower_pairs": 0,
+      "pairs": 15,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "spill_compound": {
+      "baseline_median_ms": 1970.5853280003112,
+      "candidate_median_ms": 612.4281840001231,
+      "paired_baseline_minus_candidate_median_ms": 1340.2785620010036,
+      "median_paired_baseline_over_candidate": 3.2027331431305153,
+      "candidate_slower_pairs": 0,
+      "pairs": 3,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "spill_high": {
+      "baseline_median_ms": 1950.521471001366,
+      "candidate_median_ms": 617.4005340002395,
+      "paired_baseline_minus_candidate_median_ms": 1335.254442001542,
+      "median_paired_baseline_over_candidate": 3.151842118424328,
+      "candidate_slower_pairs": 0,
+      "pairs": 3,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "wide768": {
+      "baseline_median_ms": 407.41001900028095,
+      "candidate_median_ms": 332.0326849997173,
+      "paired_baseline_minus_candidate_median_ms": 76.12405799955013,
+      "median_paired_baseline_over_candidate": 1.230552104784316,
+      "candidate_slower_pairs": 0,
+      "pairs": 3,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "many16": {
+      "baseline_median_ms": 354.4586619995016,
+      "candidate_median_ms": 352.3054379996893,
+      "paired_baseline_minus_candidate_median_ms": -5.359781999231927,
+      "median_paired_baseline_over_candidate": 0.9847865476341677,
+      "candidate_slower_pairs": 2,
+      "pairs": 3,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    },
+    "wide128": {
+      "baseline_median_ms": 97.3967850001145,
+      "candidate_median_ms": 79.75067099971511,
+      "paired_baseline_minus_candidate_median_ms": 17.646114000399393,
+      "median_paired_baseline_over_candidate": 1.2212660254665748,
+      "candidate_slower_pairs": 0,
+      "pairs": 3,
+      "scope": "Sum of reported timers, not end-to-end wall; excludes untimed oracle/validation/setup."
+    }
+  },
+  "ratio_definition": "paired baseline/candidate time; median of paired ratios is not ratio of independent medians",
+  "important_tradeoffs": {
+    "standard_query_before_restart": [
+      1.0023125145401008,
+      0.9958750346292335
+    ],
+    "resident30k_first_query_phase_ratio": 0.9192372792430461,
+    "resident30k_latency_percent_increase": 8.785840454975746,
+    "filter60k_after_restart_ratio": 0.9792231192737406,
+    "many16_accounted_timer_sum_ratio": 0.98479,
+    "ordinary_default_query": "near flat, not a general speedup",
+    "wide128_large_all_ratios": [
+      1.3336,
+      1.328
+    ],
+    "wide768_large_all_ratios": [
+      1.3091,
+      1.2668
+    ]
+  },
+  "direction_assessment": "19 directions implemented/evaluated or evidence recorded; I01 visible checks complete but detailed fields remain unavailable",
+  "index_delta_default": false,
+  "formal_submission_performed": false,
+  "formal_submission_authorized": false,
+  "target_6000_verified": false,
+  "I01": "Only old ee299adb E=3014.419039 and a combined Prompt failure message are visible; T/B/M and exact failure branch unavailable.",
+  "limitations": [
+    "All120 primary pairs retained; no outlier deletion or weighted formal-score extrapolation.",
+    "Most boundary groups have15 pairs; spill-filter and projection groups have3 pairs each.",
+    "Projection accounted timer sum includes ingest and7 phases, excludes other end-to-end wall time; no projection resource counters.",
+    "Other measured lifecycle excludes restart oracle wall; RSS/IO snapshots are proxies, not official cgroup M/B.",
+    "30k and60k regressions are not dismissed as noise; cause remains unresolved.",
+    "One standard restart pair had different fanout; sensitivity analysis retains a filtered-ANN negative result.",
+    "128d evidence is limited to the measured1024-row wide projection cases, not every dimension or workload.",
+    "Future PGO builds may differ in bytes; tests bind the stated image and binary.",
+    "Material validation is mechanical, not an official Prompt score or independent-authorship certification."
+  ]
+}

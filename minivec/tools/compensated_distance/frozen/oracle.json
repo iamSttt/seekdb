@@ -1,0 +1,10 @@
+{
+  "status": "generated_integer_oracle_fixtures_only",
+  "cases": 7842,
+  "admitted_coordinate_shape_cases": 7808,
+  "bytes": 3816012,
+  "sha256": "a159c84b49ad4a2c018aa208677cd67143395d362ce214fa7a34db83adcd3608",
+  "database_runs": 0,
+  "native_executions": 0,
+  "oracle": "Decode signed binary32 integers in units 2^-149; integer square/sum; integer ties-to-even binary64 rounding; no candidate/reference FP arithmetic."
+}

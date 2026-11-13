@@ -13,5 +13,12 @@ __pycache__/
 /minivec/test_*
 /minivec/profile_query
 /protocol-results/
+/iteration-results/
+/standard-results/
+/hotpath-results/
+/round2-results/
+/dot-results/
+/dot-avx2-results/
+/pgo-results/
 /data/
 /minivec/data/

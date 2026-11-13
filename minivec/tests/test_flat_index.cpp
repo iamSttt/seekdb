@@ -166,8 +166,8 @@ static void quantized_index_regression() {
     }
   };
   const size_t dim=16,count=3;
-  const size_t base=count*(dim*sizeof(float)+16);
-  const size_t postings=count*sizeof(std::pair<int64_t,size_t>),codes=count*dim;
+  const size_t base=count*(sizeof(const float*)+sizeof(int64_t)+sizeof(uint64_t));
+  const size_t postings=count*(2*sizeof(int64_t)+sizeof(uint32_t)),codes=count*dim;
   verify_physical(dim,count,base+postings,false);
   verify_physical(dim,count,base+postings+codes-1,false);
   verify_physical(dim,count,base+postings+codes,true);

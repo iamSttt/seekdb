@@ -2,11 +2,21 @@
 
 单进程C++17数据库，通过stdin/stdout JSONL执行SQL子集，支持事务、WAL恢复和向量检索。未使用SQLite、RocksDB、Faiss、VSAG或HNSWlib实现数据库/索引操作。
 
+本轮小算力诊断与候选验证共44对已完成。单CPU启动策略候选改善10k/30k查询，但双CPU默认查询、宽输出及单CPU一写一查出现退化，因此已撤回。当前28项运行构建输入恢复到已验证的 `c3d421ed0c1f92deaef65cf2a8d28aaa9d477042`，保留原四宏与PGO；没有新的净收益或正式涨分证据，暂不建议因本轮实验再次正式提测。全部正负数据与回退证明见[最新记录](docs/RESUME_20261113.md)。
+
 ## 最新正式结果
 
-2026-11-12 19:52（北京时间）提交 `ee299adb296a2922d01982aa6c5707d37e767b41`：MySQL准入通过，性能原始指标 **E=3014.419039**，Agent Prompt仍显示无效/待复核等泛化提示，未参与排名。
+用户于2026-11-13 18:31提交 `e020fdeb67dd8b64b77f0f8c2905f137f0112bba`。已登录核实：MySQL准入通过，性能原始指标 **E=2937.367246**，较上一ee299adb的3014.419039下降约2.56%；Prompt仍无有效分数，只有合并错误提示。T/B/M与具体失败分支未显示。见[本次正式观察](validation/iteration4-formal-score-observation.json)。这不证明全部下降由代码造成，也不支持承诺6000分。
 
-[技术报告](docs/TECHNICAL_REPORT_20261112.md)记录本次结果、整体架构、正确性边界、性能瓶颈与清理复验；[正式结果记录](validation/formal-ee299adb-20261112.json)保存脱敏字段。该成绩属于已评测的ee299adb，不能视为清理后提交的新正式成绩。两份conversation.json及专属材料工具已按仓库所有者要求移除，当前版本不包含Agent Prompt对话材料。
+[技术报告](docs/TECHNICAL_REPORT_20261112.md)记录上一ee299adb结果、整体架构与当时的清理复验；[旧正式结果记录](validation/formal-ee299adb-20261112.json)保留脱敏字段。历史成绩不能归给后续候选。
+
+本轮从用户指定的 `a90b2b750e40f020793cddefe01d5b66631afc63` 开始，筛选用户报告中的驻留预算、少量 UPDATE、磁盘索引批写与配对测量方向。按用户本轮要求新建 [agent/conversation.json](agent/conversation.json) 及相同根副本：报告与用户原话标为 `user`，实现与实验标为 `assistant`，不导入旧对话历史。`python3 minivec/tools/validate_iteration_material.py` 检查两份字节、大小与来源引用，不代表官方材料评审通过。
+
+[第一轮优化实测报告](docs/ITERATION_20261112.md)记录 255 对实验、收益和回退决定：35k/50k 及少量 UPDATE 有明显收益，默认 10k 查询仍基本持平；LTO 和追加微调均未保留。**6000分尚未验证；本轮正式结果见页首。**
+
+[第二轮记录](docs/ITERATION2_20261112.md)保存630对追加实验及当时的回退决定；其105对与旧二进制属于历史版本，不代表本轮构建。
+
+本轮逐项处理用户报告中的20个方向，当前实施、关闭理由、来源审计及未解决问题见[20项状态与提测准备](docs/REPORT_20_DIRECTIONS.md)。I06增删改delta通过专项测试但因后续查询代价保持关闭；I07、受限I14与按用户反馈调整的I17门控已通过实际根镜像120对验证并有条件保留；普通查询接近持平，30k/60k和16维负面边界详见该报告。正式提测只由用户操作。随后12对单CPU诊断正确性通过：强制单线程改善30k查询，但spill等保护场景退步，未采用。下一轮12对保留启动校准、只禁止查询分拆，以定位代价；现有默认四宏保留，详细正负结果与限制见[恢复记录](docs/RESUME_20261113.md)。
 
 ## 构建和运行
 
@@ -52,7 +62,9 @@ python3 minivec/tests/image_interactive.py --image minivec --output protocol-res
 
 CI会构建根镜像，测试源码和镜像的公开用例、保持stdin打开的交互、退出/恢复、COMMIT后SIGKILL、精确TopK、线程池/跨表spill/WAL故障及sanitizer。公开用例与本地回归不计算正式E，也不包含隐藏用例。
 
-清理候选已通过[本轮CI](https://github.com/iamSttt/seekdb/actions/runs/43219423574)，源码/镜像公开用例各20/20；镜像内程序SHA256与清理前运行核心相同。详细结果见[复验记录](validation/cleanup-ci-20261112.json)。工作流支持手动dispatch，提交分支push不会自动触发。
+当前受测运行源码 `311b45ffed1a957f8ebd71d0ead9320b1232298c` 已通过[实际根镜像门禁与120对验证](https://github.com/iamSttt/seekdb/actions/runs/43350596233)，准确镜像/程序SHA与负面样本见[当前摘要](validation/iteration3-retained-final.json)。最后的文档和材料提交不改变受测构建输入；不能将其称为又跑了一次120对。工作流支持手动dispatch及优化分支push验证。
+
+第一轮历史门禁：运行核心 `4d8de37` 通过[当时验证](https://github.com/iamSttt/seekdb/actions/runs/43226783666)，公开用例各20/20；回退后交付树 `20eac01` 通过[当时最终门禁](https://github.com/iamSttt/seekdb/actions/runs/43232155090)。这些旧二进制结论不代表当前四宏版本。
 
 旧SQL文本适配器仅供引擎回归：`--protocol sql`或`MVDB_PROTOCOL=sql`；`minivec/run.sh`与harness显式选该模式，不能替代JSONL准入。
 

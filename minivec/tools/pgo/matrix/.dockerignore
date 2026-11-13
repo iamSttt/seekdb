@@ -1,0 +1,13 @@
+*
+!Dockerfile.matrix
+!pgo/
+!pgo/train.cpp
+!pgo/train-original.cpp
+!pgo/spill-training.inc
+!pgo/run-training.sh
+!minivec/
+!minivec/src/
+!minivec/src/**
+!minivec/third_party/
+!minivec/third_party/**
+

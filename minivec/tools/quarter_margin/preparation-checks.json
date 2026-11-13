@@ -1,0 +1,20 @@
+{
+  "status": "passed_static_preparation_only",
+  "checks": [
+    "AST:run_linux.py",
+    "AST:check_preflight.py",
+    "AST:make_fixtures.py",
+    "parent_manifest_all_14_members_verified",
+    "seven_reference_test_harness_files_byte_identical",
+    "oracle_binary_and_metadata_byte_identical",
+    "one_executable_expression_change_and_comments_only",
+    "fixed_three_scenarios_four_pairs_512rows_64repetitions_unchanged",
+    "prior_root_failure_audit_exact_copy_not_new_results"
+  ],
+  "checks_count": 9,
+  "native_compilations": 0,
+  "native_executions": 0,
+  "database_runs": 0,
+  "fixture_generation_runs": 0,
+  "CI_runs": 0
+}

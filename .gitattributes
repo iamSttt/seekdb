@@ -1,6 +1,22 @@
 # Keep shell scripts runnable in Linux checkouts from Windows commits.
 *.sh text eol=lf
+# Evidence digests must be identical in Windows and Linux checkouts.
+/validation/iteration3-*.json text eol=lf
+/validation/iteration4-*.json text eol=lf
+/validation/iteration5-*.json text eol=lf
+# Frozen diagnostic receipts preserve their exact byte hashes.
+/minivec/tools/exact_cost/*.json -text
+/minivec/tools/quant_batch/*.json -text
+# This attachment's digest pins exact original bytes, including line endings.
+/validation/iteration3-user-report-original.md -text
 # Preserve upstream fixtures byte for byte.
 /STDIO_PROTOCOL.md -text
 /mysqltest/** -text
 /protocol_check/** -text
+# Frozen standalone proof/measurement package retains exact handoff bytes.
+/minivec/tools/tighter_bound/** -text
+/validation/iteration5-tighter*review.md -text
+# Quarter candidate handoff and reused oracle retain exact frozen bytes.
+/minivec/tools/quarter_margin/** -text
+# Compensated standalone runner and its oracle preserve frozen bytes.
+/minivec/tools/compensated_distance/** -text

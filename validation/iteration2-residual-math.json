@@ -1,0 +1,14 @@
+{
+  "fraction_oracle_pairs": 800,
+  "old_safe_rejections": 1141,
+  "residual_safe_rejections": 1756,
+  "strictly_tighter": 615,
+  "seed": 713147,
+  "dimensions": [
+    16,
+    17,
+    128
+  ],
+  "scope": "Independent Python Fraction model of the candidate formula; not a C++ execution benchmark.",
+  "script_sha256": "741016fc2015d794fe1240c39ac522e38d57d652c56f21657f55641c4f30aca0"
+}

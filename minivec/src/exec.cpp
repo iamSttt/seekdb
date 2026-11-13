@@ -1,9 +1,15 @@
 // exec.cpp — statement execution + MySQL-style table rendering
 #include "exec.h"
+#include "filter_diagnostics.h"
+#include "json_response_diagnostics.h"
 #include "result_sort.h"
 #include "distance.h"
 #include "quantized_bound.h"
 #include "query_pool.h"
+#include "query_cost.h"
+#ifdef MVDB_ENABLE_TYPED_JSON
+#include "json_row_writer.h"
+#endif
 #include "../third_party/json.hpp"
 #include <limits>
 
@@ -16,6 +22,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+#include <type_traits>
+#endif
 
 namespace mvdb {
 
@@ -164,6 +173,10 @@ void render_table(const std::vector<std::string>& headers,
 
 static bool execute_impl(Database& db, const Statement& st, std::string* out, std::string* err,
                          int* code, const OutputSink& sink, bool json_response, bool ann_mode) {
+#ifdef MVDB_FILTER_DIAGNOSTICS
+  FilterDiagnosticScope filter_diagnostics(st.kind==Statement::SELECT || st.kind==Statement::CREATE_INDEX,
+                                          st.conds.size(),static_cast<int>(st.kind));
+#endif
   *code = 0;
   switch (st.kind) {
     case Statement::EMPTY:
@@ -420,7 +433,52 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             : distance2(row.vals[item.col].v, *item.qvec);
         return std::sqrt(squared);
       };
+#ifdef MVDB_ENABLE_TYPED_JSON
+#ifdef MVDB_TYPED_WIDE_VECTOR_ONLY
+      // Experimental boundary, not a proven optimal threshold. Choose once per
+      // SELECT; distance-only/scalar projections retain the original DOM path.
+#ifdef MVDB_TYPED_BULK_VECTOR_ONLY
+      bool use_typed_json = false;
+      for (const Item& item : items) {
+        if (item.is_distance || sch.cols[item.col].type != Type::VECTOR) continue;
+        const int dimension = sch.cols[item.col].len;
+        if (dimension >= 128) {use_typed_json = true;break;} // Preserve the original wide rule.
+        if (dimension < 16) continue;
+        // Only an actual projected 16..127d vector reaches these checks. Keep
+        // small LIMITs and WHERE predicates ahead of the O(1) live-key count.
+        MVDB_JSON_RESPONSE_COUNT(bulk_limit_checks);
+        if (st.limit >= 0 && st.limit < 4096) continue;
+        MVDB_JSON_RESPONSE_COUNT(bulk_condition_checks);
+        if (!st.conds.empty()) continue;
+        MVDB_JSON_RESPONSE_COUNT(bulk_live_key_checks);
+        if (t->pk_pos.size() >= 4096) {use_typed_json = true;break;} // Excludes tombstones.
+      }
+#else
+      const bool use_typed_json = std::any_of(items.begin(), items.end(), [&](const Item& item) {
+        return !item.is_distance && sch.cols[item.col].type == Type::VECTOR &&
+            sch.cols[item.col].len >= 128;
+      });
+#endif
+#else
+      constexpr bool use_typed_json = true;
+#endif
+      std::string encoded_row;
+      JsonRowWriter row_writer(encoded_row);
+      auto encode_typed_json_row = [&](const Row& row, const Candidate* candidate = nullptr) -> const std::string& {
+        MVDB_JSON_RESPONSE_COUNT(typed_rows);
+        encoded_row.clear();encoded_row+='[';
+        for(size_t j=0;j<items.size();++j) {
+          if(j)encoded_row+=',';
+          const auto& item=items[j];
+          if(item.is_distance)row_writer.number(projected_distance(row,item,candidate));
+          else row_writer.value(row.vals[item.col]);
+        }
+        encoded_row+=']';return encoded_row;
+      };
+#endif
+#if !defined(MVDB_ENABLE_TYPED_JSON) || defined(MVDB_TYPED_WIDE_VECTOR_ONLY)
       auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
+        MVDB_JSON_RESPONSE_COUNT(dom_rows);
         Json cells = Json::array();
         for (const auto& item : items) {
           const Value& value = row.vals[item.col];
@@ -434,6 +492,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         }
         return cells.dump();
       };
+#endif
       bool first_json_row = true;
       auto append_json_row = [&](const std::string& row) {
         if (!first_json_row) *out += ',';
@@ -468,7 +527,12 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           }
         };
         auto render = [&](const Row& row) {
+#ifdef MVDB_ENABLE_TYPED_JSON
+          if (json_response && use_typed_json) return std::string(encode_typed_json_row(row));
+#endif
+#if !defined(MVDB_ENABLE_TYPED_JSON) || defined(MVDB_TYPED_WIDE_VECTOR_ONLY)
           if (json_response) return encode_json_row(row);
+#endif
           std::string text;
           for(size_t j=0;j<items.size();++j) {
             if(j)text+='\t';
@@ -521,6 +585,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             if (bounded && !st.order_desc && result.size()==k &&
                 bound_context.definitely_greater(v,order.qvec->data(),result.front().distance))
               return true;
+            MVDB_FILTER_COUNT(exact_distances);
             Candidate c;c.pk=pk;c.distance=distance_squared(v,order.qvec->data(),dim);
             return offer(std::move(c));
           };
@@ -546,7 +611,9 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             // K best rows under (exact distance, primary key), a total order, so
             // the winner set cannot depend on how the span was cut.
             const bool fanout=!approximate && bounded && !st.order_desc && k>=1 &&
-                k<=kFanoutTopKMax && query_fanout_wanted(view.count);
+                k<=kFanoutTopKMax && query_workload_fanout(view.count,view.dimension,k,view.quantized!=nullptr);
+            QueryCostObservation scan_cost(view.count,view.dimension,k,view.quantized!=nullptr,fanout,
+                !approximate && bounded && !st.order_desc && k>=1 && k<=kFanoutTopKMax);
             if(fanout) {
               std::vector<Candidate> halves[2];
               halves[0].reserve(k);halves[1].reserve(k);
@@ -570,14 +637,38 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 // One bound object per half: both cache their current threshold.
                 const DistanceBoundContext bound(dimension);
                 const QuantizedQueryBound quantized(query,dimension,
-                    view.quantized ? view.quantization_step : 0);
+                    view.quantized ? view.quantization_step : 0,view.quantization_scales);
                 std::vector<Candidate>& heap=halves[worker];
+#if defined(MVDB_PILOT_COUNT) && MVDB_PILOT_COUNT > 0
+                const size_t pilots=std::min<size_t>(MVDB_PILOT_COUNT,last-first);
+                const auto pilot_at=[&](size_t j) {
+                  return first+(last-first)/pilots*j+((last-first)%pilots)*j/pilots;
+                };
+                for(size_t j=0;j<pilots;++j) {
+                  const size_t i=pilot_at(j);
+                  Candidate c;c.pk=view.keys[i];c.distance=distance_squared(view.rows[i],query,dimension);
+                  keep(heap,std::move(c));
+                }
+                size_t next_pilot=0;
+#endif
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+                const auto scan_rows=[&](auto use_local) {
+#endif
                 for(size_t i=first;i<last;++i) {
+#if defined(MVDB_PILOT_COUNT) && MVDB_PILOT_COUNT > 0
+                  if(next_pilot<pilots && i==pilot_at(next_pilot)) {++next_pilot;continue;}
+#endif
                   // Integer codes are only a certified rejection filter, taken
                   // against this half's own k-th distance. Every uncertain row
                   // follows the existing float bound and exact kernel.
                   if(quantized.enabled() && heap.size()==k &&
-                     quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance))
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+                     (decltype(use_local)::value ?
+                      quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance,i) :
+                      quantized.definitely_greater_global(view.quantized+i*dimension,heap.front().distance)))
+#else
+                     quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance,i))
+#endif
                     continue;
                   const float* row=view.rows[i];
                   if(heap.size()==k && bound.definitely_greater(row,query,heap.front().distance))
@@ -585,6 +676,11 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   Candidate c;c.pk=view.keys[i];c.distance=distance_squared(row,query,dimension);
                   keep(heap,std::move(c));
                 }
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+                };
+                if(quantized.local_scales())scan_rows(std::true_type{});
+                else scan_rows(std::false_type{});
+#endif
               };
               auto run_half=+[](void* ctx,unsigned worker) {
                 (*static_cast<std::function<void(unsigned)>*>(ctx))(worker);
@@ -594,26 +690,63 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 for(auto& candidate:halves[worker])offer(std::move(candidate));
             } else {
               const QuantizedQueryBound quantized(order.qvec->data(),view.dimension,
-                  bounded && !st.order_desc && view.quantized ? view.quantization_step : 0);
+                  bounded && !st.order_desc && view.quantized ? view.quantization_step : 0,
+                  bounded && !st.order_desc && view.quantized ? view.quantization_scales : QuantizedScaleView{});
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+              const auto scan_rows=[&](auto use_local) {
+#endif
               auto scan_ordinal=[&](size_t i) {
+                MVDB_FILTER_COUNT(vector_visits);
                 // Integer codes are only a certified rejection filter. Every
                 // uncertain row follows the existing float bound/exact path.
                 if(quantized.enabled() && result.size()==k &&
-                   quantized.definitely_greater(view.quantized+i*view.dimension,result.front().distance))
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+                   (decltype(use_local)::value ?
+                    quantized.definitely_greater(view.quantized+i*view.dimension,result.front().distance,i) :
+                    quantized.definitely_greater_global(view.quantized+i*view.dimension,result.front().distance)))
+#else
+                   quantized.definitely_greater(view.quantized+i*view.dimension,result.front().distance,i))
+#endif
                   return true;
                 return consider(view.keys[i],view.rows[i],view.dimension);
               };
               if(approximate) {
                 for(size_t j=0;j<ordinal_count;++j)
                   if(!scan_ordinal(ordinals[j]))break;
+#if defined(MVDB_PILOT_COUNT) && MVDB_PILOT_COUNT > 0
+              } else {
+                // The pilot changes traversal only. Every other ordinal is
+                // still visited exactly once; ties retain canonical PK order.
+                const size_t pilots=bounded && !st.order_desc && k>0 ?
+                    std::min<size_t>(MVDB_PILOT_COUNT,view.count) : 0;
+                const auto pilot_at=[&](size_t j) {
+                  return view.count/pilots*j+(view.count%pilots)*j/pilots;
+                };
+                for(size_t j=0;j<pilots;++j) {
+                  const size_t i=pilot_at(j);
+                  consider(view.keys[i],view.rows[i],view.dimension);
+                }
+                size_t next_pilot=0;
+                for(size_t i=0;i<view.count;++i) {
+                  if(next_pilot<pilots && i==pilot_at(next_pilot)) {++next_pilot;continue;}
+                  if(!scan_ordinal(i))break;
+                }
+#else
               } else if(quantized.enabled()) {
                 for(size_t i=0;i<view.count;++i)
                   if(!scan_ordinal(i))break;
               } else {
                 for(size_t i=0;i<view.count;++i)
                   if(!consider(view.keys[i],view.rows[i],view.dimension))break;
+#endif
               }
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+              };
+              if(quantized.local_scales())scan_rows(std::true_type{});
+              else scan_rows(std::false_type{});
+#endif
             }
+            scan_cost.finish();
           } else {
             // Filtered search: the same certified int8 rejection, with the
             // threshold kept current from the winning heap. Before the heap is
@@ -623,13 +756,14 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 filtered_view.quantized && bounded && !st.order_desc;
             std::unique_ptr<QuantizedQueryBound> filtered_bound;
             if(resident) filtered_bound.reset(new QuantizedQueryBound(order.qvec->data(),
-                filtered_view.dimension,filtered_view.quantization_step));
+                filtered_view.dimension,filtered_view.quantization_step,filtered_view.quantization_scales));
             const bool filtered_reject=resident && filtered_bound->enabled();
             double threshold=std::numeric_limits<double>::infinity();
             auto consider_filtered=[&](int64_t pk,const float* v,size_t dim) {
               if(bounded && !st.order_desc && result.size()==k &&
                  bound_context.definitely_greater(v,order.qvec->data(),result.front().distance))
                 return true;
+              MVDB_FILTER_COUNT(exact_distances);
               Candidate c;c.pk=pk;c.distance=distance_squared(v,order.qvec->data(),dim);
               const bool more=offer(std::move(c));
               if(result.size()==k) threshold=result.front().distance;
@@ -669,7 +803,15 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         Row scratch;
         const Row& r = t->read_row(slot, scratch);
         if (json_response) {
+#ifdef MVDB_ENABLE_TYPED_JSON
+          if (use_typed_json) {
+            append_json_row(encode_typed_json_row(r, &c));
+            continue;
+          }
+#endif
+#if !defined(MVDB_ENABLE_TYPED_JSON) || defined(MVDB_TYPED_WIDE_VECTOR_ONLY)
           append_json_row(encode_json_row(r, &c));
+#endif
           continue;
         }
         std::vector<std::string> row;

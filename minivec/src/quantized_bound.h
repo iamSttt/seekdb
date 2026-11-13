@@ -1,5 +1,8 @@
 #pragma once
 #include "distance.h"
+#include "quantized_scale.h"
+#include <memory>
+#include <algorithm>
 #include <vector>
 
 namespace mvdb {
@@ -146,14 +149,65 @@ inline uint32_t quantized_distance_squared(const int8_t* a,const int8_t* b,size_
 class QuantizedQueryBound {
  public:
   QuantizedQueryBound(const float* query,size_t n,double step):n_(n) {
+    initialize(query,n,step,nullptr);
+  }
+  QuantizedQueryBound(const float* query,size_t n,double step,const QuantizedScaleView& scales)
+      :QuantizedQueryBound(query,n,scales.present() ? 0 : step) {
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && !defined(MVDB_DISABLE_QUANTIZED_BOUND)
+    if(!scales.present())return;
+    local_=true;scales_=scales;
+    const size_t bytes=scale_cache_bytes(n,scales.step_count);
+    if(!bytes || bytes>QuantizedScaleView::query_cache_limit ||
+       bytes>scales.query_cache_bytes || !scales.steps || !scales.row_count ||
+       scales.block_count!=(scales.row_count-1)/QuantizedScaleView::block_rows+1)return;
+    // Exact-size arrays avoid unaccounted vector growth. The parent index has
+    // reserved this whole peak for each of two independent query workers.
+    scale_bounds_.reset(new(std::nothrow) QuantizedQueryBound[scales.step_count]);
+    if(!scale_bounds_)return;
+    scale_codes_.reset(new(std::nothrow) int8_t[n*scales.step_count]);
+    if(!scale_codes_) {scale_bounds_.reset();return;}
+    for(size_t s=0;s<scales.step_count;++s) {
+      auto& bound=scale_bounds_[s];bound.n_=n;
+      bound.initialize(query,n,scales.steps[s],scale_codes_.get()+s*n);
+      enabled_=enabled_ || bound.enabled();
+    }
+#else
+    (void)scales;
+#endif
+  }
+  static size_t scale_cache_bytes(size_t n,size_t steps) {
+    if(n<16 || n>65536 || steps<2 || steps>QuantizedScaleView::max_steps)return 0;
+    return sizeof(QuantizedQueryBound)*(steps+1)+n*steps;
+  }
+  bool definitely_greater(const int8_t* row,double threshold,size_t ordinal) const {
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && !defined(MVDB_DISABLE_QUANTIZED_BOUND)
+    if(local_) {
+      if(!enabled_ || !scale_bounds_ || ordinal>=scales_.row_count)return false;
+      const size_t block=ordinal/QuantizedScaleView::block_rows;
+      if(block>=scales_.block_count)return false;
+      const size_t id=scales_.block_ids[block];
+      return id<scales_.step_count && scale_bounds_[id].definitely_greater(row,threshold);
+    }
+#else
+    (void)ordinal;
+#endif
+    return definitely_greater(row,threshold);
+  }
+ private:
+  QuantizedQueryBound()=default;
+  void initialize(const float* query,size_t n,double step,int8_t* supplied) {
 #if !defined(MVDB_DISABLE_QUANTIZED_BOUND)
     if(!query || n<16 || n>65536 || !quantized_detail::normal_fp_environment() ||
        !quantized_detail::power_of_two(step))return;
     step_squared_=step*step;
     if(!(step_squared_>0) || !std::isfinite(step_squared_))return;
-    try {query_.resize(n);} catch(const std::bad_alloc&) {return;}
+    if(!supplied) {
+      try {query_.resize(n);} catch(const std::bad_alloc&) {return;}
+      supplied=query_.data();
+    }
+    query_data_=supplied;
     for(size_t i=0;i<n;++i) {
-      if(!quantized_detail::encode(query[i],step,&query_[i])) {
+      if(!quantized_detail::encode(query[i],step,&supplied[i])) {
         std::vector<int8_t>().swap(query_);return;
       }
     }
@@ -161,16 +215,45 @@ class QuantizedQueryBound {
     kernel_=quantized_detail::choose_distance();
     enabled_=true;
 #else
-    (void)query;(void)step;
+    (void)query;(void)n;(void)step;(void)supplied;
 #endif
   }
+ public:
   bool enabled() const {return enabled_;}
   const std::vector<int8_t>& coded_query() const {return query_;}
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+  bool local_scales() const {return local_;}
+#endif
   bool definitely_greater(const int8_t* row,double threshold) const {
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+    if(local_)return false; // old callers cannot supply the required ordinal
+#endif
+#if defined(MVDB_ENABLE_BLOCK_QUANT_SCALE) && defined(MVDB_BLOCK_SCALE_SELECTIVE)
+    return definitely_greater_global(row,threshold);
+  }
+  // Internal fast path: caller has selected !local_scales() once outside its
+  // scan loop. Arithmetic is exactly the old global implementation below.
+  bool definitely_greater_global(const int8_t* row,double threshold) const {
+#endif
     if(!enabled_ || !row || !std::isfinite(threshold) || threshold<0)return false;
     if(!cached_ || threshold!=cached_threshold_)update_cap(threshold);
     if(!usable_cap_)return false;
-    return static_cast<double>(kernel_(row,query_.data(),n_))>cap_;
+#if defined(MVDB_QUANTIZED_BLOCK_SIZE) && MVDB_QUANTIZED_BLOCK_SIZE > 0
+    static_assert(MVDB_QUANTIZED_BLOCK_SIZE>=16,"quantized blocks must be at least 16 coordinates");
+    // Each partial sum is an exact nonnegative integer no larger than the full
+    // integer distance. The existing full-dimensional outward-rounded cap is
+    // unchanged, so exceeding it early proves the same strict rejection.
+    // n<=65536 and coordinates in [-127,127] keep the full sum below UINT32_MAX.
+    uint32_t sum=0;
+    for(size_t offset=0;offset<n_;offset+=MVDB_QUANTIZED_BLOCK_SIZE) {
+      const size_t count=std::min<size_t>(MVDB_QUANTIZED_BLOCK_SIZE,n_-offset);
+      sum+=kernel_(row+offset,query_data_+offset,count);
+      if(static_cast<double>(sum)>cap_)return true;
+    }
+    return false;
+#else
+    return static_cast<double>(kernel_(row,query_data_,n_))>cap_;
+#endif
   }
  private:
   void update_cap(double threshold) const {
@@ -195,6 +278,13 @@ class QuantizedQueryBound {
   double step_squared_=0,root_n_=0;
   quantized_detail::Distance kernel_=nullptr;
   std::vector<int8_t> query_;
+  const int8_t* query_data_=nullptr;
+#ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE
+  bool local_=false;
+  QuantizedScaleView scales_;
+  std::unique_ptr<QuantizedQueryBound[]> scale_bounds_;
+  std::unique_ptr<int8_t[]> scale_codes_;
+#endif
   mutable bool cached_=false,usable_cap_=false;
   mutable double cached_threshold_=0,cap_=0;
 };

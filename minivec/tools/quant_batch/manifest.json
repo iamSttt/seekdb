@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "kind": "standalone_batch8_quantized_distance_prototype",
+  "status": "prepared_not_native_tested",
+  "batch_rows": 8,
+  "database_runs": 0,
+  "pgo_builds": 0,
+  "native_compilations": 0,
+  "native_executions": 0,
+  "files": {
+    "batch8.h": {
+      "bytes": 3800,
+      "sha256": "a9d68703ea39e07d0b601be0d01a332fe2723b676c8923c983092cdd7bd91fdf"
+    },
+    "benchmark_batch8.cpp": {
+      "bytes": 4321,
+      "sha256": "f9045efa987db3f537b89993a922bed613e8d562f543cceff43a0dc13d81cc22"
+    },
+    "check_preflight.py": {
+      "bytes": 2057,
+      "sha256": "39d8565466a90562ea63dd3822ac243eccf8cbd73a583f8b748f430034c8628c"
+    },
+    "freeze_manifest.py": {
+      "bytes": 909,
+      "sha256": "77067afad72206f8dedc7861a692009ab3aad66850d033cc617ce0de73dc769f"
+    },
+    "preflight.json": {
+      "bytes": 385,
+      "sha256": "8dddfd4536768cda46e1dfb02906545684c9e67dc3fa08c7005c7f89196fafee"
+    },
+    "PROOF.md": {
+      "bytes": 4022,
+      "sha256": "b77a9d232bdde4737d73004a05f750862f810986789329efecf564410fee924d"
+    },
+    "README.md": {
+      "bytes": 3096,
+      "sha256": "d9b7740ce478d1c722783d9c10072306958b395d1dae7833e334c1caf66cd79c"
+    },
+    "reference/distance.h": {
+      "bytes": 17386,
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9"
+    },
+    "reference/quantized_bound.h": {
+      "bytes": 13230,
+      "sha256": "5a7b4a1f533515e13b331c8f59be9222a3b8202346d751dbf17267846bb56cdb"
+    },
+    "reference/quantized_scale.h": {
+      "bytes": 638,
+      "sha256": "e7450de5f5bc217213757b62a80e0e259e3df2ca52b20e4d64cd547e5c2a8321"
+    },
+    "reference-manifest.json": {
+      "bytes": 894,
+      "sha256": "7797d09198e7fe6fc07b29d2cd748bcc6b044fd2761a4dbea7097e90363bc256"
+    },
+    "run_linux.py": {
+      "bytes": 8881,
+      "sha256": "67c17761436b141e1aa8bf1da9ceac1f93deeb783cfc7956b55738254e6bb54f"
+    },
+    "test_batch8.cpp": {
+      "bytes": 5836,
+      "sha256": "373ea5ae3d00f13a94db327c891337372fe0b3ca6bdbc58ded300c697d8a6813"
+    }
+  }
+}

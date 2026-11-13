@@ -232,6 +232,54 @@ def typed_rows(binary, data, timeout):
         db.shutdown(ident=WIDE_REQUEST_ID)
 
 
+def row_encoding_reuse(binary, data, timeout):
+    low, high = -(1 << 63), (1 << 63) - 1
+    tiny = float.fromhex("0x1p-149")
+    normal = float.fromhex("0x1p-126")
+    largest = float.fromhex("0x1.fffffep+127")
+    adjacent = float.fromhex("0x1.000002p+0")
+    expected = [
+        [low, "首行😀\n\t'\\", [-0.0, tiny]],
+        [0, "", [adjacent, -normal]],
+        [high, "末行", [largest, -largest]],
+    ]
+    with launch(binary, data, timeout) as db:
+        db.execute("CREATE TABLE encoded(id BIGINT PRIMARY KEY,label VARCHAR(80),v VECTOR(2));")
+        db.execute(
+            f"INSERT INTO encoded VALUES({low},'首行😀\\n\\t''\\\\','[-0,1.401298464324817e-45]'),"
+            "(0,'','[1.00000011920928955078125,-1.1754943508222875e-38]'),"
+            f"({high},'末行','[3.4028234663852886e38,-3.4028234663852886e38]');",
+            affected=3)
+        # Both bounded TopK and the external-sort path serialize every row to
+        # an owned string before clearing the shared array for the next row.
+        for suffix in (" LIMIT 10;", ";", " LIMIT 4096;"):
+            ident = "reuse" + suffix
+            db.send_json({"id": ident, "op": "execute", "search_mode": "exact",
+                          "sql": "SELECT id,label,v,L2_DISTANCE(v,'[0,0]') AS d "
+                                 "FROM encoded ORDER BY id" + suffix})
+            response = db.check_response(db.read_json("reused row encoding"), ident, True)
+            require(response["columns"] == ["id", "label", "v", "d"], "reused columns changed")
+            rows = response["rows"]
+            require(len(rows) == len(expected), "reused row count changed")
+            for row, target in zip(rows, expected):
+                require(len(row) == 4 and type(row[0]) is int and row[:3] == target,
+                        f"row changed after buffer reuse: {row!r}")
+                distance = math.sqrt(math.fsum(x * x for x in target[2]))
+                require(type(row[3]) is float and row[3] == distance,
+                        "reused finite distance did not round-trip")
+            require(type(rows[0][2][0]) is float and math.copysign(1.0, rows[0][2][0]) < 0,
+                    "reused vector lost negative zero")
+            require(rows[0][2][1] == tiny and rows[2][2][0] == largest,
+                    "reused vector changed float32 boundary values")
+        db.execute("SELECT label FROM encoded ORDER BY id LIMIT 10;",
+                   columns=["label"], rows=[[row[1]] for row in expected])
+        db.execute("SELECT v,id FROM encoded LIMIT 0;", columns=["v", "id"], rows=[])
+        db.execute("SELECT missing FROM encoded;", ok=False)
+        db.execute("SELECT id FROM encoded ORDER BY id DESC LIMIT 10;",
+                   columns=["id"], rows=[[high], [0], [low]])
+        db.shutdown()
+
+
 def transactions_and_invalid_input(binary, data, timeout):
     columns = ["id", "value"]
     committed = [[1, "original"], [2, "keep"]]
@@ -398,7 +446,7 @@ def main():
         parser.error("--timeout must be finite and positive")
     binary = (args.binary or args.path or Path(__file__).resolve().parents[1] / "minivec").resolve()
     with tempfile.TemporaryDirectory(prefix="mvdb-jsonl-") as directory:
-        for check in (typed_rows, transactions_and_invalid_input, crash_recovery, mode_switch,
+        for check in (typed_rows, row_encoding_reuse, transactions_and_invalid_input, crash_recovery, mode_switch,
                       fragmented_jsonl, parallel_insert_errors, legacy_mode):
             data = Path(directory) / check.__name__
             data.mkdir()

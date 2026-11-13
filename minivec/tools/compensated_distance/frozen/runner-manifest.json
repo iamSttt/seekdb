@@ -1,0 +1,110 @@
+{
+  "status": "prepared_not_executed_backup",
+  "source_algorithm_unchanged": true,
+  "native_compilations": 0,
+  "native_executions": 0,
+  "database_runs": 0,
+  "pgo_builds": 0,
+  "ci_dispatches": 0,
+  "plan": {
+    "scenarios": [
+      "fullmantissa128",
+      "fullmantissa512",
+      "grid128"
+    ],
+    "pairs_each": 4,
+    "total_pairs": 12,
+    "rows": 512,
+    "repetitions": 64,
+    "orders": [
+      "AB",
+      "BA",
+      "AB",
+      "BA"
+    ],
+    "whole_call": true,
+    "counter_instrumented": false
+  },
+  "files": [
+    {
+      "path": "benchmark_compensated_fixed.cpp",
+      "bytes": 3208,
+      "sha256": "8159ce397ecec512148c82b9bd4ec8c51b465534da38548fcca12fd0e5cfa090"
+    },
+    {
+      "path": "comparison.h",
+      "bytes": 721,
+      "sha256": "c8103972d5a63d6beadd4ec3fb8ba0e5114de0a2cdac82c35d0ef969f7b91560"
+    },
+    {
+      "path": "compensated-distance-independent-review.json",
+      "bytes": 1351,
+      "sha256": "40aba4e57be97684263851c3faa0ac928b98bfbe3f7bd80d3405438401c23891"
+    },
+    {
+      "path": "compensated-distance-independent-review.md",
+      "bytes": 4358,
+      "sha256": "fb409f61e26cc7f1d8062775e42270689994580acf6eec8a583e8e86f9369f0e"
+    },
+    {
+      "path": "compensated_distance.h",
+      "bytes": 5658,
+      "sha256": "8cb12b2cf9c4c76d87099584a46f6e82e429b12448c7c0a7ff902317ba10585c"
+    },
+    {
+      "path": "make_fixtures.py",
+      "bytes": 4215,
+      "sha256": "ca91ce0e8c256952363b3a058228c009aef85be10360e0f03c43b8488fa04b17"
+    },
+    {
+      "path": "micro_data.h",
+      "bytes": 1385,
+      "sha256": "f290d0686747aad93165428148ba26f169c6f6d7c9497262de2c73bd52776296"
+    },
+    {
+      "path": "oracle.bin",
+      "bytes": 3816012,
+      "sha256": "a159c84b49ad4a2c018aa208677cd67143395d362ce214fa7a34db83adcd3608"
+    },
+    {
+      "path": "oracle.json",
+      "bytes": 437,
+      "sha256": "4ee3b23c3ff45952740fff14ff44f4b4e82f8aaa716944169b16e58f8703f60a"
+    },
+    {
+      "path": "PROOF.md",
+      "bytes": 8897,
+      "sha256": "850be76e26015d59b3c299cac6f0b50fdad59fe76493a6c482c050cc5d963d3e"
+    },
+    {
+      "path": "prototype-manifest.json",
+      "bytes": 2621,
+      "sha256": "26efc5b88c733e7a40ed0644a985b0853da1559213325ef458f2a7f75d702749"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4210,
+      "sha256": "b6dbad4942bfa3fae1b43793467efd086fdaa3c0aeb6223f34ee65257e2737d4"
+    },
+    {
+      "path": "reference_distance.h",
+      "bytes": 17386,
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9"
+    },
+    {
+      "path": "run_linux.py",
+      "bytes": 10695,
+      "sha256": "80418d0d59f7be725ac46bde8ca01e089a00bb51c8c3d75fd7da2a8e9f3aba51"
+    },
+    {
+      "path": "source-proof.json",
+      "bytes": 1317,
+      "sha256": "8801dfad42480ea0fc8881208568d7cc5da8653a33790f7479318a37c6af556e"
+    },
+    {
+      "path": "test_compensated_distance.cpp",
+      "bytes": 5743,
+      "sha256": "421f18da3f8817dfed53ea16fa7043504b96bca91f9e43a70e00529a5fc14d5d"
+    }
+  ]
+}

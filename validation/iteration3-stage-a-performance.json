@@ -1,0 +1,526 @@
+{
+  "status": "passed",
+  "runtime_commit": "e47cb44695b8e547d2d91cb099c03c030c6f9717",
+  "baseline_commit": "969ecca98f817ecdef9b0c378fc99a0d6cef510d",
+  "run_url": "https://github.com/iamSttt/seekdb/actions/runs/43258067056",
+  "job_id": 131321596550,
+  "total_database_pairs": 66,
+  "all_responses_identical": true,
+  "context": {
+    "baseline_commit": "969ecca98f817ecdef9b0c378fc99a0d6cef510d",
+    "candidate_commit": "e47cb44695b8e547d2d91cb099c03c030c6f9717",
+    "cpu_affinity": [
+      0,
+      1
+    ],
+    "cpu_info": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           48 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  4\nOn-line CPU(s) list:                     0-3\nVendor ID:                               AuthenticAMD\nModel name:                              AMD EPYC 7763 64-Core Processor\nCPU family:                              25\nModel:                                   1\nThread(s) per core:                      2\nCore(s) per socket:                      2\nSocket(s):                               1\nStepping:                                1\nBogoMIPS:                                4890.86\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves user_shstk clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload umip vaes vpclmulqdq rdpid fsrm\nVirtualization:                          AMD-V\nHypervisor vendor:                       Microsoft\nVirtualization type:                     full\nL1d cache:                               64 KiB (2 instances)\nL1i cache:                               64 KiB (2 instances)\nL2 cache:                                1 MiB (2 instances)\nL3 cache:                                32 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-3\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Vulnerable: Safe RET, no microcode\nVulnerability Spec store bypass:         Vulnerable\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Vulnerable: No microcode\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+    "compiler": "pinned GCC13.3.0 O3 static; PGO disabled equally on every side for factor isolation",
+    "binaries": {
+      "baseline": "f61731622d351ce221c9095a1a41f8d265ac112575fd90e94cd7d3777b37e9cd",
+      "posting_only": "acb2bf6fae77730cea756f6225198f2a1757776b34ed74639e5a6b65a3211189",
+      "batch_only": "021ebf01005797ba959366e0990baa3fe100453d793c941c6fa90ca58d3fee99",
+      "combined": "1b62dcd5d13f60e9f432d6287824cac3578df1f90387157f30d4a3792587e797"
+    },
+    "limitations": [
+      "Screening plus paired standard validation, not official scoring.",
+      "Current release uses PGO; this experiment isolates source changes without PGO.",
+      "No omitted negative samples; shared cache and process proxies remain."
+    ]
+  },
+  "scenarios": {
+    "standard/standard10k": {
+      "startup": 0.9742247816559818,
+      "create_table": 0.9961477958010384,
+      "ingest": 1.005216730553803,
+      "index_build": 1.0064705801115743,
+      "query_before_update": 0.9854349766175146,
+      "shutdown": 0.9806691618707919,
+      "restart": 0.9934062043681607,
+      "restart_verification_wall": 0.9930170813545677,
+      "query_after_restart": 0.9865302797486116,
+      "final_shutdown": 0.9769064388729111,
+      "measured_lifecycle": 0.999004183680605,
+      "pairs": 15,
+      "query_first_ratio": 0.9875814825642042,
+      "query_warm_ratio": 0.9854087393823504,
+      "hwm_bytes": {
+        "baseline": 13131776,
+        "candidate": 13135872
+      },
+      "per_seed_query_ratio": {
+        "7319": 0.9854349766175146,
+        "8911": 0.9821614019852406,
+        "13337": 0.9943818443964546
+      }
+    },
+    "matrix/compound": {
+      "startup": 1.229145114440041,
+      "create_table": 1.0083451103315444,
+      "ingest": 1.015029969734584,
+      "index_build": 1.0031438635049592,
+      "query_before_update": 1.860637933877221,
+      "shutdown": 1.002119176811878,
+      "restart": 1.0062119604371758,
+      "restart_verification_wall": 1.0586566783240359,
+      "query_after_restart": 1.89397239185777,
+      "final_shutdown": 0.9941763742460784,
+      "measured_lifecycle": 1.041939015780358,
+      "pairs": 3,
+      "query_first_ratio": 0.8489864829552947,
+      "query_warm_ratio": 2.1634921910567275,
+      "hwm_bytes": {
+        "baseline": 13934592,
+        "candidate": 13938688
+      },
+      "per_seed_query_ratio": {
+        "7319": 1.7795505301275945,
+        "8911": 1.9126537604988512,
+        "13337": 1.860637933877221
+      }
+    },
+    "matrix/compound_reverse": {
+      "startup": 0.8449051893719349,
+      "create_table": 0.9770342587917807,
+      "ingest": 1.0070304898100677,
+      "index_build": 0.998681132493215,
+      "query_before_update": 0.9718137853550973,
+      "shutdown": 1.0039007942952112,
+      "restart": 1.0026037212118906,
+      "restart_verification_wall": 0.9893560164642963,
+      "query_after_restart": 0.9817492905369187,
+      "final_shutdown": 1.0003593193645879,
+      "measured_lifecycle": 1.0028350544113878,
+      "pairs": 3,
+      "query_first_ratio": 0.9639469588043642,
+      "query_warm_ratio": 0.9739898587897294,
+      "hwm_bytes": {
+        "baseline": 13938688,
+        "candidate": 13942784
+      },
+      "per_seed_query_ratio": {
+        "7319": 0.9765197326344236,
+        "8911": 0.9718137853550973,
+        "13337": 0.9613787673826814
+      }
+    },
+    "matrix/alternate_columns": {
+      "startup": 1.1679338690832484,
+      "create_table": 1.0067675988567664,
+      "ingest": 1.005718442222434,
+      "index_build": 1.0059588586380142,
+      "query_before_update": 3.946637058998995,
+      "shutdown": 0.9970679935062402,
+      "restart": 0.9856010605052766,
+      "restart_verification_wall": 0.9914732702462726,
+      "query_after_restart": 3.8127432935659784,
+      "final_shutdown": 1.0528823878420757,
+      "measured_lifecycle": 1.1281397644187088,
+      "pairs": 3,
+      "query_first_ratio": 0.974622061719777,
+      "query_warm_ratio": 4.519653063246898,
+      "hwm_bytes": {
+        "baseline": 13934592,
+        "candidate": 13946880
+      },
+      "per_seed_query_ratio": {
+        "7319": 3.960022772637234,
+        "8911": 3.8826807907384553,
+        "13337": 3.946637058998995
+      }
+    },
+    "matrix/range": {
+      "startup": 0.9276683744058363,
+      "create_table": 0.9904492341857747,
+      "ingest": 0.984489638330663,
+      "index_build": 1.0001598880635838,
+      "query_before_update": 2.663143287878455,
+      "shutdown": 1.1017281429028267,
+      "restart": 1.0011202482498447,
+      "restart_verification_wall": 0.9928184263752917,
+      "query_after_restart": 2.6733788429277974,
+      "final_shutdown": 1.0099841361664477,
+      "measured_lifecycle": 1.051804727638722,
+      "pairs": 3,
+      "query_first_ratio": 0.5247644398629034,
+      "query_warm_ratio": 3.187061781353137,
+      "hwm_bytes": {
+        "baseline": 13938688,
+        "candidate": 13942784
+      },
+      "per_seed_query_ratio": {
+        "7319": 2.673845138517732,
+        "8911": 2.663143287878455,
+        "13337": 2.630937873411565
+      }
+    },
+    "matrix/high_hit": {
+      "startup": 0.7846564310297924,
+      "create_table": 1.0012693208114625,
+      "ingest": 1.0337479828718754,
+      "index_build": 1.0136258611000644,
+      "query_before_update": 1.1764316069954381,
+      "shutdown": 0.9948155035273998,
+      "restart": 1.0202938648393403,
+      "restart_verification_wall": 1.0039922697043184,
+      "query_after_restart": 1.166835072034914,
+      "final_shutdown": 0.481042112892233,
+      "measured_lifecycle": 1.0492581391136226,
+      "pairs": 3,
+      "query_first_ratio": 0.6908016299371009,
+      "query_warm_ratio": 1.2090422396074199,
+      "hwm_bytes": {
+        "baseline": 13938688,
+        "candidate": 13938688
+      },
+      "per_seed_query_ratio": {
+        "7319": 1.1764316069954381,
+        "8911": 1.1630972988807986,
+        "13337": 1.2217920505100823
+      }
+    },
+    "matrix/zero_hit": {
+      "startup": 0.8280053363992284,
+      "create_table": 1.0040965248827671,
+      "ingest": 1.0281199922308177,
+      "index_build": 1.0223482436242013,
+      "query_before_update": 1.9831793700762466,
+      "shutdown": 1.8849687172705782,
+      "restart": 1.0125332307442771,
+      "restart_verification_wall": 0.9923973107380586,
+      "query_after_restart": 2.0166033106016696,
+      "final_shutdown": 0.9508042970860231,
+      "measured_lifecycle": 1.0486478306169125,
+      "pairs": 3,
+      "query_first_ratio": 0.8515995209023245,
+      "query_warm_ratio": 2.325131201663865,
+      "hwm_bytes": {
+        "baseline": 13934592,
+        "candidate": 13938688
+      },
+      "per_seed_query_ratio": {
+        "7319": 1.9833147228965609,
+        "8911": 1.9831793700762466,
+        "13337": 1.966928570638278
+      }
+    },
+    "matrix/small_compound": {
+      "startup": 1.0491423136836682,
+      "create_table": 1.0431569309444473,
+      "ingest": 0.9879435753701085,
+      "index_build": 0.980038182589973,
+      "query_before_update": 1.0189417318161862,
+      "shutdown": 0.9919195473935852,
+      "restart": 1.0494266127967802,
+      "restart_verification_wall": 1.0355916273895136,
+      "query_after_restart": 0.9955115332685975,
+      "final_shutdown": 1.0037866200842531,
+      "measured_lifecycle": 1.0307695227273908,
+      "pairs": 3,
+      "query_first_ratio": 0.9500450072802468,
+      "query_warm_ratio": 1.021743146358682,
+      "hwm_bytes": {
+        "baseline": 2007040,
+        "candidate": 2011136
+      },
+      "per_seed_query_ratio": {
+        "7319": 1.0132776746355707,
+        "8911": 1.0328093073687816,
+        "13337": 1.0189417318161862
+      }
+    },
+    "matrix/spill_compound": {
+      "startup": 0.8386831094148159,
+      "create_table": 0.9928369521837414,
+      "ingest": 1.0247474570029336,
+      "index_build": 1.0633198170714644,
+      "query_before_update": 1.0445002821843483,
+      "shutdown": 1.2939105960017776,
+      "restart": 1.063057788862806,
+      "restart_verification_wall": 0.9397813369342611,
+      "query_after_restart": 1.0667767934507428,
+      "final_shutdown": 1.2973514050727613,
+      "measured_lifecycle": 1.0534501489941597,
+      "pairs": 3,
+      "query_first_ratio": 1.0543453305392612,
+      "query_warm_ratio": 1.0441763467103393,
+      "hwm_bytes": {
+        "baseline": 42196992,
+        "candidate": 42205184
+      },
+      "per_seed_query_ratio": {
+        "7319": 1.0550070655064046,
+        "8911": 1.0445002821843483,
+        "13337": 1.0401041022219895
+      }
+    },
+    "matrix/filter1pct": {
+      "startup": 1.1233688403468371,
+      "create_table": 1.029487764507638,
+      "ingest": 1.0082446854414129,
+      "index_build": 1.0113836950018613,
+      "query_before_update": 2.290631342658917,
+      "shutdown": 0.996230763043997,
+      "restart": 1.0018406251760297,
+      "restart_verification_wall": 0.9931414547027504,
+      "query_after_restart": 2.275228804948357,
+      "final_shutdown": 0.9984012130881575,
+      "measured_lifecycle": 1.0655300304563249,
+      "pairs": 3,
+      "query_first_ratio": 0.4479689341897477,
+      "query_warm_ratio": 2.745889234307838,
+      "hwm_bytes": {
+        "baseline": 13938688,
+        "candidate": 13942784
+      },
+      "per_seed_query_ratio": {
+        "7319": 2.2481500171121356,
+        "8911": 2.292445466219196,
+        "13337": 2.290631342658917
+      }
+    },
+    "matrix/filter10pct": {
+      "startup": 0.9149333086724517,
+      "create_table": 0.985890653903646,
+      "ingest": 0.9932838409367993,
+      "index_build": 0.993206220602158,
+      "query_before_update": 2.156327328419793,
+      "shutdown": 1.8828144410509844,
+      "restart": 0.9738638565884823,
+      "restart_verification_wall": 1.0163128613819057,
+      "query_after_restart": 2.144091592860572,
+      "final_shutdown": 0.9892914632624544,
+      "measured_lifecycle": 1.0423685752781058,
+      "pairs": 3,
+      "query_first_ratio": 0.46066746438090606,
+      "query_warm_ratio": 2.527562917251477,
+      "hwm_bytes": {
+        "baseline": 13938688,
+        "candidate": 13938688
+      },
+      "per_seed_query_ratio": {
+        "7319": 2.156327328419793,
+        "8911": 2.1515163325367985,
+        "13337": 2.1828296988146216
+      }
+    },
+    "matrix/high768_k1": {
+      "startup": 0.8727480640775551,
+      "create_table": 1.2296029556021766,
+      "ingest": 0.9950846072706552,
+      "index_build": 1.015174034129223,
+      "query_before_update": 0.9559076501008198,
+      "shutdown": 0.9771144496954878,
+      "restart": 1.0205747641298046,
+      "restart_verification_wall": 0.9668154308365531,
+      "query_after_restart": 1.0053953149144954,
+      "final_shutdown": 0.9673161443761551,
+      "measured_lifecycle": 0.9817561540301052,
+      "pairs": 3,
+      "query_first_ratio": 1.0162905654064183,
+      "query_warm_ratio": 0.9544725292669881,
+      "hwm_bytes": {
+        "baseline": 44826624,
+        "candidate": 44826624
+      },
+      "per_seed_query_ratio": {
+        "7319": 0.9542967049311174,
+        "8911": 0.9559076501008198,
+        "13337": 1.074138784294578
+      }
+    },
+    "matrix/high768_k100": {
+      "startup": 0.84356240713739,
+      "create_table": 0.9993012991521795,
+      "ingest": 1.000791062923441,
+      "index_build": 1.0012486570065637,
+      "query_before_update": 0.9430929650807398,
+      "shutdown": 1.0466209306055363,
+      "restart": 0.9988252479776351,
+      "restart_verification_wall": 0.9874543817797491,
+      "query_after_restart": 0.9774221367516588,
+      "final_shutdown": 0.9199514752816822,
+      "measured_lifecycle": 0.99183945889092,
+      "pairs": 3,
+      "query_first_ratio": 0.9020096453336791,
+      "query_warm_ratio": 0.9401899797257045,
+      "hwm_bytes": {
+        "baseline": 44822528,
+        "candidate": 44830720
+      },
+      "per_seed_query_ratio": {
+        "7319": 0.9181985885948707,
+        "8911": 0.989891798984337,
+        "13337": 0.9430929650807398
+      }
+    },
+    "matrix/large100k": {
+      "startup": 0.9250244534706478,
+      "create_table": 1.016563571647236,
+      "ingest": 1.0053946955494508,
+      "index_build": 1.0184638959310512,
+      "query_before_update": 1.0447957336017386,
+      "shutdown": 1.0160102199026646,
+      "restart": 1.0081494652443155,
+      "restart_verification_wall": 1.0116435003343938,
+      "query_after_restart": 1.0419662165062176,
+      "final_shutdown": 1.1879168203092456,
+      "measured_lifecycle": 1.0100106335521122,
+      "pairs": 3,
+      "query_first_ratio": 0.9959357953602596,
+      "query_warm_ratio": 1.0443972358691072,
+      "hwm_bytes": {
+        "baseline": 51892224,
+        "candidate": 51892224
+      },
+      "per_seed_query_ratio": {
+        "7319": 1.042499207168843,
+        "8911": 1.0447957336017386,
+        "13337": 1.0487840189965596
+      }
+    },
+    "posting-ablation/compound": {
+      "startup": 1.1905375580294415,
+      "create_table": 0.9900018528409283,
+      "ingest": 0.9925484480137581,
+      "index_build": 1.0073262223007327,
+      "query_before_update": 1.9974625575923837,
+      "shutdown": 0.9373223916964875,
+      "restart": 1.0173300724574745,
+      "restart_verification_wall": 1.0629379070869185,
+      "query_after_restart": 2.0597260606588965,
+      "final_shutdown": 1.0549470700426322,
+      "measured_lifecycle": 1.0509879657686159,
+      "pairs": 3,
+      "query_first_ratio": 0.8066150133753691,
+      "query_warm_ratio": 2.1865478676657095,
+      "hwm_bytes": {
+        "baseline": 13938688,
+        "candidate": 13942784
+      },
+      "per_seed_query_ratio": {
+        "7319": 2.0381632773124734,
+        "8911": 1.9936256214265318,
+        "13337": 1.9974625575923837
+      }
+    },
+    "posting-ablation/alternate_columns": {
+      "startup": 1.1550302965941086,
+      "create_table": 0.9684419102133274,
+      "ingest": 1.0108421506479055,
+      "index_build": 1.0210344295074774,
+      "query_before_update": 4.402994821793605,
+      "shutdown": 0.9326712460345653,
+      "restart": 0.9943966861507788,
+      "restart_verification_wall": 1.00121154506478,
+      "query_after_restart": 4.539332536150227,
+      "final_shutdown": 1.233496254355582,
+      "measured_lifecycle": 1.248233291563733,
+      "pairs": 3,
+      "query_first_ratio": 0.9717609831752498,
+      "query_warm_ratio": 4.747980789970135,
+      "hwm_bytes": {
+        "baseline": 13934592,
+        "candidate": 13938688
+      },
+      "per_seed_query_ratio": {
+        "7319": 4.399824532753739,
+        "8911": 4.402994821793605,
+        "13337": 4.528652057740597
+      }
+    },
+    "posting-ablation/range": {
+      "startup": 1.2107967224861496,
+      "create_table": 1.0322988650904699,
+      "ingest": 1.0402542198312292,
+      "index_build": 0.9923030565603717,
+      "query_before_update": 2.9036783944803237,
+      "shutdown": 0.5116468277761672,
+      "restart": 1.0992801407019257,
+      "restart_verification_wall": 0.9913703968011175,
+      "query_after_restart": 2.905136712443129,
+      "final_shutdown": 1.0500847307074503,
+      "measured_lifecycle": 1.1530650954620023,
+      "pairs": 3,
+      "query_first_ratio": 0.4706939101900017,
+      "query_warm_ratio": 3.214207365075217,
+      "hwm_bytes": {
+        "baseline": 13938688,
+        "candidate": 13938688
+      },
+      "per_seed_query_ratio": {
+        "7319": 2.9036783944803237,
+        "8911": 3.151880894318066,
+        "13337": 2.770092475515845
+      }
+    },
+    "batch-ablation/spill": {
+      "startup": 1.1316413771770704,
+      "create_table": 0.9895983940645915,
+      "ingest": 1.013979477542875,
+      "index_build": 1.0277736636454171,
+      "query_before_update": 1.0099709495092855,
+      "shutdown": 1.212453374789058,
+      "restart": 1.111795740837,
+      "restart_verification_wall": 1.039598173498494,
+      "query_after_restart": 0.9850650555709238,
+      "final_shutdown": 1.2221144898668999,
+      "measured_lifecycle": 1.0388876834172687,
+      "pairs": 3,
+      "query_first_ratio": 1.0360085761143745,
+      "query_warm_ratio": 1.0098218793139708,
+      "hwm_bytes": {
+        "baseline": 47210496,
+        "candidate": 47210496
+      },
+      "per_seed_query_ratio": {
+        "7319": 1.0099709495092855,
+        "8911": 1.0501828458647193,
+        "13337": 1.0056964044692478
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "name": "batch-ablation.json",
+      "sha256": "f441551eed21c55c6426b012c659fe97cc7944ccd3bd7cd468144e2df1feae99",
+      "bytes": 99126
+    },
+    {
+      "name": "context.json",
+      "sha256": "82c42a675eaf9a42209ead1eddb88a5178a4c677acaabadafe4f6d0faacf0d73",
+      "bytes": 4144
+    },
+    {
+      "name": "matrix.json",
+      "sha256": "c10a823718467c1bcbcee5d86fe01bfae46fd7a81070fead01ac8c63a83b1ef6",
+      "bytes": 897824
+    },
+    {
+      "name": "posting-ablation.json",
+      "sha256": "5a640c8a785e207634bb7ff8ab2bf6a9308cc434984ff887eb22f7c899e9195f",
+      "bytes": 282794
+    },
+    {
+      "name": "run-status.json",
+      "sha256": "e5bae08ad41a958dc35b701d078a27d8ee648b203d5d4cc1e401748b16f972d2",
+      "bytes": 36
+    },
+    {
+      "name": "standard.json",
+      "sha256": "0107d0669dbf80beeac4577692275010b7db4f898a389267b73259bf79841653",
+      "bytes": 3799785
+    },
+    {
+      "name": "summary.json",
+      "sha256": "b943e8b878835a1601b745388213563e1e433990d6ca4787c6792dcea96cb6d5",
+      "bytes": 206
+    }
+  ],
+  "raw_log_sha256": "f14657a95528299d67138403d5269365a7ca739db7f6d7560efc6b6e58897057",
+  "limits": [
+    "Same runner O3 without PGO on all sides; current release PGO must be measured separately.",
+    "Matrix/ablation three pairs each are screening, not confirmed stable wins.",
+    "Ratios are median of per-pair baseline/candidate timings, not ratio of medians.",
+    "Process HWM/IO are proxies, not official E/M/B; 6000 not verified."
+  ]
+}

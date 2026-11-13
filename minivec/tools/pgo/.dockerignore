@@ -1,0 +1,11 @@
+*
+!Dockerfile.pgo
+!pgo/
+!pgo/train.cpp
+!pgo/run-training.sh
+!minivec/
+!minivec/src/
+!minivec/src/**
+!minivec/third_party/
+!minivec/third_party/**
+

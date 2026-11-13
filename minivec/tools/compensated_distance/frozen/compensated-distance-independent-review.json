@@ -1,0 +1,39 @@
+{
+  "status": "no_numeric_certification_blocker_found_in_source_review",
+  "native_compilations": 0,
+  "native_executions": 0,
+  "database_runs": 0,
+  "files": {
+    "PROOF.md": {
+      "bytes": 8897,
+      "sha256": "850be76e26015d59b3c299cac6f0b50fdad59fe76493a6c482c050cc5d963d3e"
+    },
+    "compensated_distance.h": {
+      "bytes": 5658,
+      "sha256": "8cb12b2cf9c4c76d87099584a46f6e82e429b12448c7c0a7ff902317ba10585c"
+    },
+    "make_fixtures.py": {
+      "bytes": 4215,
+      "sha256": "ca91ce0e8c256952363b3a058228c009aef85be10360e0f03c43b8488fa04b17"
+    },
+    "test_compensated_distance.cpp": {
+      "bytes": 4711,
+      "sha256": "2418d7cefac49705b2b73c91410ff7512abbe5d6998c1d71f596c8598280619d"
+    },
+    "reference_distance.h": {
+      "bytes": 17386,
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9"
+    },
+    "oracle.bin": {
+      "bytes": 3816012,
+      "sha256": "a159c84b49ad4a2c018aa208677cd67143395d362ce214fa7a34db83adcd3608"
+    }
+  },
+  "primary_math_reference": "https://ogilab.w.waseda.jp/ogita/math/doc/2005_OgRuOi.pdf",
+  "outstanding": [
+    "exception-mask rejection test requested",
+    "native correctness and sanitizer execution",
+    "actual generated-code validation",
+    "cost and fallback regressions; no production adoption"
+  ]
+}
