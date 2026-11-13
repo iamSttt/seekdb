@@ -38,6 +38,12 @@ jobs:
         run: |
           if [ -d protocol-results ]; then find protocol-results -name result.json -exec cat {} \;; fi
           if [ -d protocol-results ]; then find protocol-results -name "*.stderr.log" -exec tail -30 {} \;; fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: root-image-validation
+          path: protocol-results/
+          retention-days: 90
   paired-performance:
     if: ${{ !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
     runs-on: ubuntu-24.04

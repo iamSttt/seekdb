@@ -5,12 +5,12 @@ unset MVDB_PROTOCOL MVDB_OUT
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$repo"
 # Preserve an explicitly empty FEATURE_FLAGS for an unselected-feature build.
-if [[ -z ${FEATURE_FLAGS+x} ]]; then FEATURE_FLAGS='-DMVDB_ENABLE_SPILL_FILTER -DMVDB_ENABLE_TYPED_JSON -DMVDB_TYPED_WIDE_VECTOR_ONLY';fi
+if [[ -z ${FEATURE_FLAGS+x} ]]; then FEATURE_FLAGS='-DMVDB_ENABLE_SPILL_FILTER -DMVDB_ENABLE_TYPED_JSON -DMVDB_TYPED_WIDE_VECTOR_ONLY -DMVDB_MULTI_POSTING_REUSE_ONLY';fi
 export FEATURE_FLAGS
 read -r -a feature_flags <<< "$FEATURE_FLAGS"
 for flag in "${feature_flags[@]}"; do
   case "$flag" in
-    -DMVDB_ENABLE_SPILL_FILTER|-DMVDB_ENABLE_TYPED_JSON|-DMVDB_TYPED_WIDE_VECTOR_ONLY) ;;
+    -DMVDB_ENABLE_SPILL_FILTER|-DMVDB_ENABLE_TYPED_JSON|-DMVDB_TYPED_WIDE_VECTOR_ONLY|-DMVDB_MULTI_POSTING_REUSE_ONLY) ;;
     *) echo "Unsupported retained FEATURE_FLAGS entry: $flag" >&2;exit 2;;
   esac
 done
@@ -135,6 +135,19 @@ g++ "${feature_flags[@]}" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fs
   minivec/src/{db,exec,sql,value,flat_index}.cpp -Wl,--wrap=pread -Wl,--wrap=pwrite -o "$scratch/spill-filter-san"
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 "$scratch/spill-filter-san" 2>&1 | tee "$reports/spill-filter-san.log"
 
+if [[ " ${feature_flags[*]} " == *" -DMVDB_MULTI_POSTING_REUSE_ONLY "* ]]; then
+  for mode in normal sanitized; do
+    reuse_options=(-O2)
+    if [[ "$mode" == sanitized ]]; then
+      reuse_options=(-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -no-pie)
+    fi
+    g++ "${feature_flags[@]}" "${reuse_options[@]}" -std=c++17 -pthread -DMVDB_FILTER_DIAGNOSTICS -Iminivec/src \
+      minivec/tests/test_filter_reuse.cpp minivec/src/{db,exec,sql,value,flat_index}.cpp -o "$scratch/filter-reuse-$mode"
+    ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 \
+      "$scratch/filter-reuse-$mode" 2>&1 | tee "$reports/filter-reuse-$mode.log"
+  done
+fi
+
 # Cleanup must not change any official fixtures or source while tests run.
 git diff --exit-code -- STDIO_PROTOCOL.md protocol_check mysqltest minivec/src minivec/third_party Dockerfile .dockerignore
 if [ "${MVDB_FINAL_PERFORMANCE:-0}" = 1 ]; then
@@ -186,6 +199,11 @@ report = {
                     'WAL fixture injects short/failed writes; not fdatasync or allocation failure.',
                     'ASan leak detection disabled; memory-safety and undefined-behavior checks enabled.']
 }
+if '-DMVDB_MULTI_POSTING_REUSE_ONLY' in report['selected_feature_flags']:
+    for mode in ('normal', 'sanitized'):
+        if 'PASS ' not in Path('protocol-results/filter-reuse-' + mode + '.log').read_text():
+            raise SystemExit('Selected reuse gate lacks diagnostic/sanitizer success evidence')
+    report['checks']['compound_reuse_diagnostic_and_sanitizer'] = True
 if os.environ.get('MVDB_FINAL_PERFORMANCE') == '1':
     performance = json.loads(Path('protocol-results/final-performance/summary.json').read_text())
     if performance.get('status') != 'passed':
