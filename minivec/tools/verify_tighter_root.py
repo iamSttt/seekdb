@@ -2,6 +2,8 @@
 import hashlib
 import importlib.util
 import json
+import math
+import struct
 from pathlib import Path
 import re
 
@@ -50,7 +52,8 @@ def verify_tighter_evidence(reports,binary_sha):
     gate=importlib.util.module_from_spec(spec);spec.loader.exec_module(gate)
     require(len(gate.EXPECTED_CASES)==24,'unexpected actual-image case plan')
     path=reports/'image-binary-tighter-certificate.json';report=read_json(path);checks=report.get('checks',[])
-    require(report.get('schema')==gate.SCHEMA and report.get('status')=='passed' and
+    require(report.get('schema')==gate.SCHEMA=='actual-image-tighter-certificate-v2' and report.get('status')=='passed' and
+            report.get('projection_semantics')==gate.PROJECTION_SEMANTICS and
             report.get('binary_sha256')==binary_sha and report.get('mode')=='exact' and report.get('trace_enabled') is False and
             report.get('expected_cases')==list(gate.EXPECTED_CASES) and report.get('checks_count')==24 and
             [row.get('name') for row in checks]==list(gate.EXPECTED_CASES),'actual image identity/case inventory differs')
@@ -59,6 +62,13 @@ def verify_tighter_evidence(reports,binary_sha):
     expected=gate.expected_checks(repo)
     for actual,want in zip(checks,expected):
         require(actual.get('status')=='passed' and all(actual.get(key)==value for key,value in want.items()),'actual image oracle expectation differs')
+        response=actual.get('raw_response',{})
+        rows=response.get('rows')
+        require(response.get('columns')==['id','d'] and type(rows) is list and
+                all(type(row) is list and len(row)==2 and type(row[0]) is int and type(row[1]) in (int,float) and
+                    math.isfinite(row[1]) for row in rows),'preserved actual response shape differs')
+        require([[row[0],struct.pack('!d',float(row[1])).hex()] for row in rows]==actual.get('actual_rows'),
+                'preserved parsed response differs from normalized actual rows')
         require(actual.get('actual_rows')==want['expected_rows'] and actual.get('actual_sha256')==want['expected_sha256'] and
                 actual.get('session')==f"{want['path']}_d{want['dimension']}",'actual image response bits/TopK differ')
     session_names=[f'{path}_d{dimension}' for dimension in (128,512) for path in ('serial','fanout')]
@@ -80,5 +90,5 @@ def verify_tighter_evidence(reports,binary_sha):
         require(b'MVDB_BATCH8_TRACE ' not in file.read_bytes(),'unexpected algorithm trace enabled');hashes[row['path']]=sha(file)
     hashes[path.name]=sha(path)
     return {'schema_version':1,'checks_per_mode':counts[0],'fixture_cases':6748,'fixture_sha256':ORACLE_SHA,
-            'actual_image_checks':24,'mode':'exact','binary_sha256':binary_sha,'production_header_sha256':PRODUCTION_SHA,
+            'actual_image_checks':24,'mode':'exact','projection_semantics':gate.PROJECTION_SEMANTICS,'binary_sha256':binary_sha,'production_header_sha256':PRODUCTION_SHA,
             'reference_header_sha256':REFERENCE_SHA,'file_sha256':hashes}

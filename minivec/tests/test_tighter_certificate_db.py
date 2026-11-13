@@ -2,6 +2,7 @@
 """Actual-image distance projection and TopK against exact float32 oracle."""
 import argparse
 from contextlib import contextmanager
+from fractions import Fraction
 import hashlib
 import importlib.util
 import json
@@ -16,7 +17,8 @@ EXPECTED_CASES=tuple(f"{path}_d{dimension}_{kind}" for dimension in (128,512)
                      for path in ("serial","fanout") for kind in CASE_KINDS)
 ENV_KEYS=("MVDB_PROTOCOL","MVDB_OUT","MVDB_SINGLE_THREAD","MVDB_QUERY_THREADS","MVDB_QUERY_FANOUT_ROWS",
           "MVDB_WAKE_US_OVERRIDE","MVDB_PARSE_THREADS","MVDB_ANN_PROBE_PERCENT","MVDB_ANN_OFF","MVDB_BATCH8_TRACE")
-SCHEMA="actual-image-tighter-certificate-v1"
+SCHEMA="actual-image-tighter-certificate-v2"
+PROJECTION_SEMANTICS="RN-even binary64 sqrt of canonical squared distance; ranking uses canonical squared distance then primary key"
 
 def require(ok,message):
     if not ok:raise AssertionError(message)
@@ -66,10 +68,36 @@ def fixture(oracle,dimension):
            ("indexed_rescue_filter",zero,1,10),("indexed_near_tie",near,4,1),("indexed_extreme",extreme,None,10)]
     return rows,records,specs
 
+def rounded_sqrt_binary64_bits(value):
+    """Correct RN-even sqrt using only exact rational squared comparisons.
+
+    The input at the DB call site is the already canonical binary64 squared
+    distance. Fraction inputs are also accepted for independent midpoint tests.
+    Find adjacent nonnegative binary64 values around sqrt(s), then compare s
+    with their exact squared midpoint. No host/production sqrt is used.
+    """
+    if isinstance(value,float):require(math.isfinite(value),"nonfinite squared distance")
+    target=Fraction(value)
+    require(target>=0,"negative squared distance")
+    if not target:return "0000000000000000"
+    def dyadic(bits):return Fraction.from_float(struct.unpack('!d',struct.pack('!Q',bits))[0])
+    low=0;high=0x7fefffffffffffff
+    require(dyadic(high)**2>=target,"sqrt beyond finite binary64 range")
+    while low<high:
+        middle=(low+high+1)//2
+        if dyadic(middle)**2<=target:low=middle
+        else:high=middle-1
+    if dyadic(low)**2==target:return f"{low:016x}"
+    require(low<0x7fefffffffffffff,"sqrt successor unavailable")
+    midpoint=(dyadic(low)+dyadic(low+1))/2
+    boundary=midpoint*midpoint
+    rounded=low if target<boundary or (target==boundary and low%2==0) else low+1
+    return f"{rounded:016x}"
+
 def expected_rows(oracle,records,query,group,k):
     ranked=sorted((oracle.canonical_squared(vector,query),key) for key,(category,vector) in records.items()
                   if group is None or category==group)
-    return [[key,double_bits(distance)] for distance,key in ranked[:k]]
+    return [[key,rounded_sqrt_binary64_bits(distance)] for distance,key in ranked[:k]]
 
 def expected_checks(repo):
     oracle=load_oracle(repo);out=[]
@@ -114,18 +142,24 @@ def run_group(oracle,binary,binary_sha,logs,checks,sessions,dimension,path):
                 name=f'{path}_d{dimension}_{kind}';where='' if group is None else f' WHERE grp={group}'
                 sql=f'SELECT id,L2_DISTANCE(embedding,{query.sql}) AS d FROM docs{where} ORDER BY d ASC LIMIT {k};'
                 response=oracle.execute(session,sql,name,mode='exact')
+                expected=expected_rows(oracle,records,query,group,k)
+                # Preserve the parsed original response and both comparison
+                # sides before any validation can raise. main's finally writes
+                # even failed checks; this is not a recreated wire transcript.
+                check={'name':name,'status':'failed','path':path,'dimension':dimension,'kind':kind,'group':group,'k':k,
+                       'mode':'exact','session':key,'raw_response':response,'actual_rows':None,'expected_rows':expected,
+                       'actual_sha256':None,'expected_sha256':digest(expected)}
+                checks.append(check)
                 actual=response.get('rows')
                 require(response.get('columns')==['id','d'] and type(actual) is list and
                         all(type(row) is list and len(row)==2 and type(row[0]) is int and
                             type(row[1]) in (int,float) and math.isfinite(row[1]) for row in actual),'invalid typed response')
                 normalized=[[row[0],double_bits(row[1])] for row in actual]
-                expected=expected_rows(oracle,records,query,group,k)
-                require(normalized==expected,f'{name}: exact projected distance or TopK order mismatch')
+                check.update(actual_rows=normalized,actual_sha256=digest(normalized))
+                require(normalized==expected,f'{name}: exact projected sqrt distance or TopK order mismatch')
                 if kind=='indexed_near_tie':require(normalized[0][0]==oracle.NEAR_WINNER,'late exact tie fixture not exercised')
                 require(len(list((Path('/proc')/str(session.proc.pid)/'task').iterdir()))==threads,'worker lifetime changed')
-                checks.append({'name':name,'status':'passed','path':path,'dimension':dimension,'kind':kind,'group':group,'k':k,
-                               'mode':'exact','session':key,'actual_rows':normalized,'expected_rows':expected,
-                               'actual_sha256':digest(normalized),'expected_sha256':digest(expected)})
+                check['status']='passed'
             session.shutdown()
             require(b'MVDB_BATCH8_TRACE ' not in log.read_bytes(),'timing/algorithm trace unexpectedly enabled')
         finally:session.close()
@@ -136,7 +170,7 @@ def main():
     repo=args.repo.resolve();binary=args.binary.resolve();output=args.output.resolve();output.parent.mkdir(parents=True,exist_ok=True)
     logs=output.parent/(output.stem+'-logs');logs.mkdir(exist_ok=False)
     report={'schema':SCHEMA,'status':'running','binary_sha256':sha(binary),'expected_cases':list(EXPECTED_CASES),'checks':[],'sessions':[],
-            'mode':'exact','trace_enabled':False,'scope':'actual extracted image ELF; exact JSONL projection and TopK, no performance claim',
+            'mode':'exact','trace_enabled':False,'projection_semantics':PROJECTION_SEMANTICS,'scope':'actual extracted image ELF; exact JSONL projection and TopK, no performance claim',
             'fp_scope':'normal process ABI environment; no altered FP controls or per-query CW telemetry',
             'worker_scope':'forced query settings plus observed native task counts; no per-function branch counter',
             'oracle_source_sha256':sha(repo/'minivec/tests/topk_bounds.py'),'transport_source_sha256':sha(repo/'protocol_check/_transport.py')}
@@ -147,7 +181,7 @@ def main():
         require(tuple(row['name'] for row in report['checks'])==EXPECTED_CASES,'case inventory/order differs')
         require(sha(binary)==report['binary_sha256'],'ELF changed during gate')
         report.update(status='passed',checks_count=len(report['checks']))
-        print('PASS actual image tighter certificate oracle: 24 cases, exact distance bits and TopK')
+        print('PASS actual image tighter certificate oracle: 24 cases, exact sqrt projection bits and squared-distance TopK')
     except Exception as exc:
         report.update(status='failed',error=f'{type(exc).__name__}: {exc}');raise
     finally:
