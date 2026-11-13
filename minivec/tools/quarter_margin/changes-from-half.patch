@@ -1,0 +1,23 @@
+--- a/candidate_distance.h
++++ b/candidate_distance.h
+@@ -13,7 +13,7 @@
+ 
+ namespace mvdb {
+ namespace distance_detail {
+-// A failed old certificate may be retried with a proven half-size error.
++// A failed old certificate may be retried with a proven quarter-plus-margin error.
+ // Read controls only; never clear sticky flags or change the environment.
+ inline bool tighter_long_double_environment() {
+ #if defined(__x86_64__) && defined(MVDB_SIMD_BOUND_X86) && \
+@@ -172,9 +172,9 @@
+         neighbors.upper)*0.5L;
+       if(sum-lower>error && upper-sum>error)return result;
+       // Keep the successful original path unchanged. In the verified x87
+-      // environment, halving this normal bound is exact and still conservative.
++      // environment, both rounded products are covered; inexact status may change.
+       if(distance_detail::tighter_long_double_environment()) {
+-        const long double tighter_error=error*0.5L;
++        const long double tighter_error=error*(0.25L+0x1p-30L);
+         if(sum-lower>tighter_error && upper-sum>tighter_error)return result;
+       }
+     }

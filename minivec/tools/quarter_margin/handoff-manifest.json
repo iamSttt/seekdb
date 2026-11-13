@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "experiment_id": "quarter-plus-margin-standalone-v1",
+  "status": "prepared_static_checks_passed_native_unexecuted",
+  "parent_manifest_sha256": "259b4cc06b2b5aaa0baf0680f5d60a4eacde48b26ea3225580fe250af66b761e",
+  "native_compilations": 0,
+  "native_executions": 0,
+  "database_runs": 0,
+  "PGO_builds": 0,
+  "CI_runs": 0,
+  "fixture_generation_runs": 0,
+  "fixed_plan": {
+    "scenarios": [
+      "fullmantissa128",
+      "fullmantissa512",
+      "grid128"
+    ],
+    "pairs_per_scenario": 4,
+    "total_pairs": 12,
+    "orders": [
+      "AB",
+      "BA",
+      "AB",
+      "BA"
+    ],
+    "rows": 512,
+    "repetitions": 64,
+    "baseline": "canonical original, not historical half candidate"
+  },
+  "static_checks": {
+    "preparation": 9,
+    "source_shadow_preflight": 15,
+    "scope": "identity/AST/source/shadow only; no C++ compilation"
+  },
+  "files": [
+    {
+      "path": "benchmark_tighter_bound.cpp",
+      "bytes": 2517,
+      "sha256": "abc46c2eede341f76bc08482621dbfd0ab44b825391fe54ac2b8271a90187ae8",
+      "relation_to_half_parent": "unchanged",
+      "parent_sha256": "abc46c2eede341f76bc08482621dbfd0ab44b825391fe54ac2b8271a90187ae8"
+    },
+    {
+      "path": "candidate.patch",
+      "bytes": 1556,
+      "sha256": "41d7bb86857acf7b5678e1a58e0c00fcef29453333c763fc4777e7b00e6573ca",
+      "relation_to_half_parent": "changed",
+      "parent_sha256": "435f78d4e41bd728b7477750188bcef21f45e001b1a3d9edd713f7648a3e02ea"
+    },
+    {
+      "path": "candidate_distance.h",
+      "bytes": 18392,
+      "sha256": "cfd6d6a2b111b2f9c72081bd33ba481343d375adb3b01405077e88516875284a",
+      "relation_to_half_parent": "changed",
+      "parent_sha256": "bdcc9e587677b91c0e57a0da8dd63eda7160c62fb9121e22cf5db19d243bf7c7"
+    },
+    {
+      "path": "changes-from-half.patch",
+      "bytes": 1098,
+      "sha256": "84a67243c766cca60ee32c2816cb17bb4aec2355b6daa4d017abb43403404aba",
+      "relation_to_half_parent": "added",
+      "parent_sha256": null
+    },
+    {
+      "path": "check_preflight.py",
+      "bytes": 2803,
+      "sha256": "f92b96d30c8d24d0bff9b708cef3f04ed7c4d762fd26ce66314637e13c3e3a86",
+      "relation_to_half_parent": "changed",
+      "parent_sha256": "d1a3d3839c3bbecce42b002119f411d47c47d7e1d8e6c813cf24ac86fb2a0cff"
+    },
+    {
+      "path": "comparison.h",
+      "bytes": 691,
+      "sha256": "155ec585cda279a5f803f7c2c5aca2157650a26bdfd9a709d23fbf76867f909d",
+      "relation_to_half_parent": "unchanged",
+      "parent_sha256": "155ec585cda279a5f803f7c2c5aca2157650a26bdfd9a709d23fbf76867f909d"
+    },
+    {
+      "path": "diagnostic_counts.cpp",
+      "bytes": 2773,
+      "sha256": "bfd1c83ef4e72f5241f87b6ddd05ec7e352713e08717cd50cbe6a3afa0c812b7",
+      "relation_to_half_parent": "unchanged",
+      "parent_sha256": "bfd1c83ef4e72f5241f87b6ddd05ec7e352713e08717cd50cbe6a3afa0c812b7"
+    },
+    {
+      "path": "history.json",
+      "bytes": 1506,
+      "sha256": "87ffe0f206d72c8306dbdde8addc459becb0c7919c1adb23105d1b1b2d4842cc",
+      "relation_to_half_parent": "added",
+      "parent_sha256": null
+    },
+    {
+      "path": "inherited-tighter-only-attempt1-audit.json",
+      "bytes": 17949,
+      "sha256": "d8cb059de309cb5206eabd389aef6fcd818898c6d66e7f5d40b491576b5da570",
+      "relation_to_half_parent": "added",
+      "parent_sha256": null
+    },
+    {
+      "path": "make_fixtures.py",
+      "bytes": 3403,
+      "sha256": "601672b430f18e186ee4105bff07736068acbdd396793aeba8c5dd233621d9df",
+      "relation_to_half_parent": "unchanged",
+      "parent_sha256": "601672b430f18e186ee4105bff07736068acbdd396793aeba8c5dd233621d9df"
+    },
+    {
+      "path": "micro_data.h",
+      "bytes": 1385,
+      "sha256": "f290d0686747aad93165428148ba26f169c6f6d7c9497262de2c73bd52776296",
+      "relation_to_half_parent": "unchanged",
+      "parent_sha256": "f290d0686747aad93165428148ba26f169c6f6d7c9497262de2c73bd52776296"
+    },
+    {
+      "path": "oracle.bin",
+      "bytes": 11425564,
+      "sha256": "74e1b99088943e073b5f4821844aabc7001a500ae2af9ef0c7dc309d8ed6262e",
+      "relation_to_half_parent": "added",
+      "parent_sha256": null
+    },
+    {
+      "path": "oracle.json",
+      "bytes": 421,
+      "sha256": "3ba9ad6f93bc1e5ea9d1222a74e4e77d0d3af8b8fd2f2599fb0a144728651478",
+      "relation_to_half_parent": "added",
+      "parent_sha256": null
+    },
+    {
+      "path": "parent-source-manifest.json",
+      "bytes": 2437,
+      "sha256": "259b4cc06b2b5aaa0baf0680f5d60a4eacde48b26ea3225580fe250af66b761e",
+      "relation_to_half_parent": "added",
+      "parent_sha256": null
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 705,
+      "sha256": "ec8a63589e9c0a33243047b6a0b738d50bdff5bdd8a48fccd406f9a6cca3a12f",
+      "relation_to_half_parent": "unchanged",
+      "parent_sha256": "ec8a63589e9c0a33243047b6a0b738d50bdff5bdd8a48fccd406f9a6cca3a12f"
+    },
+    {
+      "path": "preparation-checks.json",
+      "bytes": 636,
+      "sha256": "788b6bb52c37e3a082d7c4695a1880b16bfc5edb8f6642f6fc7de94ca047dfc5",
+      "relation_to_half_parent": "added",
+      "parent_sha256": null
+    },
+    {
+      "path": "proof-exact-rational.json",
+      "bytes": 3982,
+      "sha256": "e3ee5cbb5830d58d0b1589fbd848b402fb2182de57d597b441691552ffaa5271",
+      "relation_to_half_parent": "added",
+      "parent_sha256": null
+    },
+    {
+      "path": "PROOF.md",
+      "bytes": 7490,
+      "sha256": "0b1da3cdb3e94aa48c79c2cd36ac91ce8de3352ce2b225b4cbd9e0956055d053",
+      "relation_to_half_parent": "added",
+      "parent_sha256": null
+    },
+    {
+      "path": "README.md",
+      "bytes": 3744,
+      "sha256": "3cc0f5f18ceb4ecc3d17909b96a0859ece4ada0199fce0725fd3ce6d55b761b3",
+      "relation_to_half_parent": "changed",
+      "parent_sha256": "cb9d241caa0804bf1f76631f92393dd917133a618bfbf281bf404eae72555f53"
+    },
+    {
+      "path": "reference_distance.h",
+      "bytes": 17386,
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+      "relation_to_half_parent": "unchanged",
+      "parent_sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9"
+    },
+    {
+      "path": "run_linux.py",
+      "bytes": 11171,
+      "sha256": "12a7529e4bb15ed78b077ced6d361421db1972992233d159615d439bec377d2e",
+      "relation_to_half_parent": "changed",
+      "parent_sha256": "5cd610bbc6eb695078119e4ac5c1fad41c4065ea953a25c272b79821f6075870"
+    },
+    {
+      "path": "source-proof.json",
+      "bytes": 1055,
+      "sha256": "6927d8529dfc1a0e062a31b690d3a205e1f6b90eaace6e54ee72648b53821372",
+      "relation_to_half_parent": "changed",
+      "parent_sha256": "dcad98c0267de203894fc647b12de8cffc5dfa259a93e502ba6c4ce8dccafd96"
+    },
+    {
+      "path": "test_tighter_bound.cpp",
+      "bytes": 4971,
+      "sha256": "a65a550700e3b897cdeaf96e180bfcedd94d4f26a356aff640b088ad6a119795",
+      "relation_to_half_parent": "unchanged",
+      "parent_sha256": "a65a550700e3b897cdeaf96e180bfcedd94d4f26a356aff640b088ad6a119795"
+    }
+  ],
+  "source_preparation_script": {
+    "path": "work/prepare_quarter_margin_micro_draft.py",
+    "sha256": "0bb45f3296d38cfb50fdba6faac622fb44821774b6293e8f3d5fa1ad1e4817ba"
+  },
+  "limitations": [
+    "Extra non-power-of-two multiplication may set FE_INEXACT; no sticky-state equivalence claim.",
+    "Whole-call micro is not DB or official performance.",
+    "Historical root oracle failure remains exact in inherited audit and is not reclassified.",
+    "Old half micro outcomes are not copied into new result fields."
+  ]
+}

@@ -16,3 +16,5 @@
 # Frozen standalone proof/measurement package retains exact handoff bytes.
 /minivec/tools/tighter_bound/** -text
 /validation/iteration5-tighter*review.md -text
+# Quarter candidate handoff and reused oracle retain exact frozen bytes.
+/minivec/tools/quarter_margin/** -text

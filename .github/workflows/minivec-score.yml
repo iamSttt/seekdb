@@ -609,20 +609,24 @@ jobs:
     if: ${{ contains(github.event.head_commit.message, '[tighter-bound-prototype]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      PROTOTYPE_SOURCE: ${{ contains(github.event.head_commit.message, '[quarter-margin]') && 'minivec/tools/quarter_margin' || 'minivec/tools/tighter_bound' }}
+      PROTOTYPE_OUTPUT: ${{ contains(github.event.head_commit.message, '[quarter-margin]') && 'quarter-margin-results' || 'tighter-bound-results' }}
+      PROTOTYPE_ARTIFACT: ${{ contains(github.event.head_commit.message, '[quarter-margin]') && 'quarter-margin-prototype-results' || 'tighter-bound-prototype-results' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
       - name: Check isolated prototype shell
-        run: bash -n minivec/tools/tighter_bound/ci_prototype.sh
+        run: bash -n "$PROTOTYPE_SOURCE/ci_prototype.sh"
       - name: Run fixed standalone certificate checks and microbenchmark
-        run: bash minivec/tools/tighter_bound/ci_prototype.sh --repo "$GITHUB_WORKSPACE" --output "$GITHUB_WORKSPACE/tighter-bound-results"
+        run: bash "$PROTOTYPE_SOURCE/ci_prototype.sh" --repo "$GITHUB_WORKSPACE" --output "$GITHUB_WORKSPACE/$PROTOTYPE_OUTPUT"
       - name: Preserve all outputs including failures
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: tighter-bound-prototype-results
-          path: tighter-bound-results/
+          name: ${{ env.PROTOTYPE_ARTIFACT }}
+          path: ${{ env.PROTOTYPE_OUTPUT }}/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 90
