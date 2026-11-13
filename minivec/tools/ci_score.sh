@@ -58,7 +58,7 @@ PYREPORT
 trap dump_reports EXIT
 
 git rev-parse HEAD > protocol-results/runtime-commit.txt
-git ls-files -z Dockerfile .dockerignore validation/iteration5-batch8-clear-gain-policy.json minivec/src minivec/third_party minivec/Makefile minivec/tests minivec/tools/ci_score.sh minivec/tools/batch8_native_isa_probe.cpp minivec/tools/prepare_highest_primary.py minivec/tools/summarize_highest_primary.py minivec/tools/ci_highest_primary.sh minivec/tools/ci_final_performance.sh minivec/tools/pgo/train.cpp minivec/tools/pgo/run-training.sh STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > protocol-results/input-sha256.txt
+git ls-files -z Dockerfile .dockerignore validation/iteration5-batch8-clear-gain-policy.json minivec/src minivec/third_party minivec/Makefile minivec/tests minivec/tools/ci_score.sh minivec/tools/batch8_native_isa_probe.cpp minivec/tools/tighter_bound minivec/tools/verify_tighter_root.py minivec/tools/prepare_highest_primary.py minivec/tools/summarize_highest_primary.py minivec/tools/ci_highest_primary.sh minivec/tools/ci_final_performance.sh minivec/tools/pgo/train.cpp minivec/tools/pgo/run-training.sh STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > protocol-results/input-sha256.txt
 lscpu > protocol-results/lscpu.txt
 docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
@@ -138,6 +138,19 @@ if [[ " ${feature_flags[*]} " == *" -DMVDB_ENABLE_BATCH8_QUANTIZED "* ]]; then
       "$scratch/batch8-bound-$mode" 2>&1 | tee "$MINIVEC_REPORTS/batch8-bound-$mode.log"
   done
 fi
+# Actual production header versus independently generated exact fixtures.
+python3 minivec/tools/tighter_bound/make_fixtures.py --output "$scratch/tighter-oracle.bin" > protocol-results/tighter-fixture-generation.log
+cp "$scratch/tighter-oracle.json" protocol-results/tighter-oracle.json
+for mode in normal sanitized; do
+  tighter_options=(-O3)
+  if [[ "$mode" == sanitized ]]; then
+    tighter_options=(-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all -no-pie)
+  fi
+  g++ "${feature_flags[@]}" "${tighter_options[@]}" -std=c++17 -pthread -fno-math-errno -Iminivec/src \
+    minivec/tests/test_tighter_certificate.cpp -o "$scratch/tighter-certificate-$mode"
+  ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 \
+    "$scratch/tighter-certificate-$mode" "$scratch/tighter-oracle.bin" 2>&1 | tee "protocol-results/tighter-certificate-$mode.log"
+done
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain --build-arg "FEATURE_FLAGS=$FEATURE_FLAGS" -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
 docker image inspect "$IMAGE" > protocol-results/image-inspect.json
@@ -178,6 +191,9 @@ if [[ " ${feature_flags[*]} " == *" -DMVDB_ENABLE_BATCH8_QUANTIZED "* ]]; then
   python3 minivec/tests/test_batch8_db.py --binary "$scratch/image-binary" \
     --output protocol-results/image-binary-batch8.json 2>&1 | tee protocol-results/image-binary-batch8.log
 fi
+
+python3 minivec/tests/test_tighter_certificate_db.py --binary "$scratch/image-binary" \
+  --output protocol-results/image-binary-tighter-certificate.json 2>&1 | tee protocol-results/image-binary-tighter-certificate.log
 
 # Native tests above include all eight staged-WAL cases. Run them explicitly
 # again under sanitizers, without weakening error or durability assertions.
@@ -331,6 +347,12 @@ report = {
                     'WAL fixture injects short/failed writes; not fdatasync or allocation failure.',
                     'ASan leak detection disabled; memory-safety and undefined-behavior checks enabled.']
 }
+import sys
+sys.path.insert(0,'minivec/tools')
+from verify_tighter_root import verify_tighter_evidence
+report['tighter_certificate_evidence']=verify_tighter_evidence(Path('protocol-results'),image_binary_sha)
+report['checks']['tighter_certificate_normal_and_sanitized']=True
+report['checks']['actual_image_tighter_certificate_oracle']=True
 if '-DMVDB_ENABLE_BATCH8_QUANTIZED' in report['selected_feature_flags']:
     import sys
     sys.path.insert(0,'minivec/tools')

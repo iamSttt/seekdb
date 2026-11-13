@@ -95,7 +95,7 @@ def collect(out, reports, image, binary, exit_code):
         require(proof['root_input_sha256'].get(policy['path'])==policy['sha256'], 'policy omitted from root input proof')
         result['acceptance_policy']=policy
         binding = json.loads((programs / 'highest-primary-binding-proof.json').read_bytes())
-        require(binding['status'] == 'verified' and binding.get('experiment_id')=='batch8-avx2-highest-primary24' and binding.get('acceptance_policy')==policy and
+        require(binding['status'] == 'verified' and binding.get('experiment_id')=='batch8-tighter-certificate-highest-primary24' and binding.get('acceptance_policy')==policy and
                 binding['measurement_family'] == HIGHEST_PRIMARY_FAMILY and
                 binding['primary_reference'] == 'ee' and binding['quantizer_gate'] == quantizer and binding['current_root_proof_sha256'] == sha(programs / 'root-proof.json') and
                 binding['ee_import_proof_sha256'] == sha(programs / 'ee/proof.json') and

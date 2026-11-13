@@ -40,7 +40,8 @@ def prepare_root(repo, binary, image, out, *, expected_flags=None, required_inpu
     expected_paths = git(repo, 'ls-files', '-z', 'Dockerfile', '.dockerignore',
         'validation/iteration5-batch8-clear-gain-policy.json', 'minivec/src',
         'minivec/third_party', 'minivec/Makefile', 'minivec/tests', 'minivec/tools/ci_score.sh',
-        'minivec/tools/batch8_native_isa_probe.cpp', 'minivec/tools/prepare_highest_primary.py',
+        'minivec/tools/batch8_native_isa_probe.cpp', 'minivec/tools/tighter_bound',
+        'minivec/tools/verify_tighter_root.py', 'minivec/tools/prepare_highest_primary.py',
         'minivec/tools/summarize_highest_primary.py', 'minivec/tools/ci_highest_primary.sh',
         'minivec/tools/ci_final_performance.sh', 'minivec/tools/pgo/train.cpp',
         'minivec/tools/pgo/run-training.sh', 'STDIO_PROTOCOL.md', 'protocol_check', 'mysqltest').decode().split('\0')

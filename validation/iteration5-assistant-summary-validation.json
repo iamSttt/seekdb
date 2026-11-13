@@ -1,0 +1,35 @@
+{
+  "status": "preview_only_not_applied",
+  "base_bytes": 129775,
+  "base_sha256": "49a333b5b827ffd02c79b1a089acb51f78fd2bb2a66476409fd243e71c25db30",
+  "preview_bytes": 123647,
+  "preview_sha256": "2beaa0c6561de81a4125385d1bf0239f6792f3d87dd1aa1e9dead0ed06d6ff3e",
+  "net_saved_bytes": 6128,
+  "remaining_material_bytes": 7425,
+  "messages_preserved": 152,
+  "user_objects_byte_identical": 49,
+  "assistant_contents_summarized": 33,
+  "all_old_non_content_fields_unchanged": true,
+  "all_experiments_and_artifacts_unchanged": true,
+  "selected_runtime_and_formal_results_unchanged": true,
+  "all_original_top_fields_except_message_contents_unchanged": true,
+  "added_top_field": "assistant_content_archives",
+  "local_check_structure_accepts_new_field": true,
+  "lossless_restore_matches_exact_base": true,
+  "current_repository_read_only_validation": {
+    "bytes": 129775,
+    "sha256": "49a333b5b827ffd02c79b1a089acb51f78fd2bb2a66476409fd243e71c25db30",
+    "messages": 152,
+    "experiments": 60,
+    "remaining_bytes": 1297,
+    "read_only": true,
+    "scope": "mechanical checks only; no official score or authorship judgment"
+  },
+  "archive": {
+    "path": "validation/iteration5-pre-assistant-summary.json",
+    "sha256": "49a333b5b827ffd02c79b1a089acb51f78fd2bb2a66476409fd243e71c25db30",
+    "bytes": 129775
+  },
+  "native_runs": 0,
+  "repository_writes": 0
+}

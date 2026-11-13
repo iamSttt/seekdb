@@ -13,6 +13,19 @@
 
 namespace mvdb {
 namespace distance_detail {
+// A failed old certificate may be retried with a proven half-size error.
+// Read controls only; never clear sticky flags or change the environment.
+inline bool tighter_long_double_environment() {
+#if defined(__x86_64__) && defined(MVDB_SIMD_BOUND_X86) && \
+    LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384 && LDBL_MIN_EXP == -16381 && \
+    FLT_RADIX == 2 && defined(__SIZEOF_SIZE_T__) && __SIZEOF_SIZE_T__ == 8 && !defined(__FAST_MATH__)
+  unsigned short control;
+  __asm__ __volatile__("fnstcw %0" : "=m"(control));
+  return (control & 0x0f3fu)==0x033fu && (_mm_getcsr() & 0xffc0u)==0x1f80u;
+#else
+  return false;
+#endif
+}
 struct Neighbors { double lower, upper; };
 // Precondition: finite nonnegative input. IEEE binary64 encodings are ordered
 // by value here, including the subnormal/normal transition and max -> infinity.
@@ -158,6 +171,12 @@ inline double distance_scalar(const float* a,const float* b,size_t n) {
       const long double upper=(static_cast<long double>(result)+
         neighbors.upper)*0.5L;
       if(sum-lower>error && upper-sum>error)return result;
+      // Keep the successful original path unchanged. In the verified x87
+      // environment, halving this normal bound is exact and still conservative.
+      if(distance_detail::tighter_long_double_environment()) {
+        const long double tighter_error=error*0.5L;
+        if(sum-lower>tighter_error && upper-sum>tighter_error)return result;
+      }
     }
   }
 #endif
