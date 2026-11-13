@@ -4,6 +4,8 @@
 /validation/iteration3-*.json text eol=lf
 /validation/iteration4-*.json text eol=lf
 /validation/iteration5-*.json text eol=lf
+# Frozen diagnostic receipts preserve their exact byte hashes.
+/minivec/tools/exact_cost/*.json -text
 # This attachment's digest pins exact original bytes, including line endings.
 /validation/iteration3-user-report-original.md -text
 # Preserve upstream fixtures byte for byte.

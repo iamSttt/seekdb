@@ -1,0 +1,28 @@
+{
+  "status": "passed",
+  "checks": [
+    "run_syntax",
+    "prepare_syntax",
+    "preflight_syntax",
+    "archive_identity",
+    "all20_original_sources",
+    "canonical19_match_one_disclosed",
+    "only_five_instrumented_sources",
+    "no_pgo_flags",
+    "scalar_unsampled",
+    "balanced_fixture",
+    "missing_record",
+    "wrong_sequence",
+    "missing_metric",
+    "extra_event",
+    "wrong_stride",
+    "negative_event",
+    "unbalanced_scalar",
+    "unbalanced_quant",
+    "sampled_scalar",
+    "nonzero_unsampled_cpu",
+    "ambiguous_anchor"
+  ],
+  "count": 21,
+  "scope": "pure Python/source preparation only; no Linux DB, C++ compilation or native timing executed"
+}
