@@ -4,6 +4,11 @@ on:
     branches: [codex/round2-score-20261111, codex/round2-optimize-20261112]
   workflow_dispatch:
     inputs:
+      highest_compare:
+        description: Rebuild historical best-score root and compare retained/CRC programs on one runner
+        type: boolean
+        required: false
+        default: false
       small_bridge:
         description: Build and gate actual root image, then run 12 one-CPU and 8 two-CPU pairs
         type: boolean
@@ -55,7 +60,7 @@ jobs:
   validate:
     # This diagnostic reuses an already validated binary; it makes no claim
     # about a new root-image build and deliberately avoids another PGO build.
-    if: ${{ !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') }}
+    if: ${{ !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -79,7 +84,7 @@ jobs:
           path: protocol-results/
           retention-days: 90
   paired-performance:
-    if: ${{ !inputs.small_bridge && !contains(github.event.head_commit.message, '[small-bridge]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
+    if: ${{ !inputs.highest_compare && !contains(github.event.head_commit.message, '[highest-compare]') && !inputs.small_bridge && !contains(github.event.head_commit.message, '[small-bridge]') && !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -88,6 +93,22 @@ jobs:
           fetch-depth: 0
       - name: Fixed compiler baseline and candidate paired measurement
         run: bash minivec/tools/ci_iteration.sh
+  highest-compare:
+    if: ${{ inputs.highest_compare || contains(github.event.head_commit.message, '[highest-compare]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Historical root build and direct exact low-resource comparisons
+        run: bash minivec/tools/ci_highest_compare.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: highest-compare
+          path: protocol-results/highest-compare/
+          retention-days: 90
   small-compute:
     if: ${{ inputs.small_compute || contains(github.event.head_commit.message, '[small-compute]') }}
     runs-on: ubuntu-24.04
