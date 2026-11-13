@@ -11,7 +11,7 @@ while (($#)); do
 done
 test -n "$repo" && test -n "$output"
 repo=$(cd "$repo" && pwd)
-source_dir="$repo/minivec/tools/compensated_distance/frozen"
+source_dir="$repo/minivec/tools/compensated_distance/corrected_v2"
 test -f "$source_dir/run_linux.py"
 output=$(realpath -m "$output")
 case "$output/" in "$source_dir/"*) echo 'output overlaps immutable source' >&2; exit 2;; esac
@@ -39,7 +39,7 @@ python3 - "$source_dir" "$output" <<'PY'
 import hashlib,json,sys
 from pathlib import Path
 src,out=map(Path,sys.argv[1:]);raw=(src/'runner-manifest.json').read_bytes()
-assert hashlib.sha256(raw).hexdigest()=='404e2ac0fb136b3cf9d0580575717d795e111ad184d30e0d3c832949e4ffb175','frozen manifest changed'
+assert hashlib.sha256(raw).hexdigest()=='19dfc583d3a40298f119d9b7edd4621fd4e4ea167dde835ec07f82307b819026','frozen manifest changed'
 manifest=json.loads(raw);members=manifest['files']
 assert len(members)==16 and len({x['path'] for x in members})==16,'source inventory differs'
 for item in members:
@@ -49,7 +49,7 @@ for item in members:
 actual={p.relative_to(src).as_posix() for p in src.rglob('*') if p.is_file()}
 assert actual=={x['path'] for x in members}|{'runner-manifest.json'},'unexpected source member'
 (out/'source-manifest.json').write_bytes(raw)
-(out/'source-verification.json').write_text(json.dumps({'status':'verified','members':16,'experiment_id':'compensated-distance-standalone-v1','manifest_sha256':hashlib.sha256(raw).hexdigest(),'ci_wrapper_sha256':hashlib.sha256((src.parent/'ci_prototype.sh').read_bytes()).hexdigest()},indent=2)+'\n')
+(out/'source-verification.json').write_text(json.dumps({'status':'verified','members':16,'experiment_id':'compensated-distance-standalone-counter-v2','manifest_sha256':hashlib.sha256(raw).hexdigest(),'ci_wrapper_sha256':hashlib.sha256((src.parent/'ci_prototype.sh').read_bytes()).hexdigest()},indent=2)+'\n')
 PY
 docker version > "$output/docker-version.txt"
 docker pull --platform linux/amd64 "$image" 2>&1 | tee "$output/tooling-image-pull.log"
@@ -137,7 +137,7 @@ assert (results/'memory-swap-max.txt').read_text().strip()=='0'
 assert summary['affinity']=={'before':[requested],'selected':[requested]}
 assert not summary.get('unavailable_resource_files')
 assert summary['status']=='correctness_and_fixed_micro_completed'
-assert summary['runner_manifest_sha256']=='404e2ac0fb136b3cf9d0580575717d795e111ad184d30e0d3c832949e4ffb175'
+assert summary['runner_manifest_sha256']=='19dfc583d3a40298f119d9b7edd4621fd4e4ea167dde835ec07f82307b819026'
 assert summary['database_runs']==summary['pgo_builds']==0
 assert summary['native_compilation_attempts']==summary['native_compilations_completed']==3
 assert summary['native_execution_attempts']==summary['native_executions_completed']==14
