@@ -7,13 +7,17 @@ from pathlib import Path
 from small_compute import CASES, PROTECTION_CASES, check_plan, check_insert_copy_plan, insert_copy_plan, cpu_set, require, sha
 
 
-def verify_measurement(data, count, cases, identity_sha, identities, insert_reference=None, thread_control=False):
-    require(not (insert_reference and thread_control), 'conflicting measurement plans')
+def verify_measurement(data, count, cases, identity_sha, identities, insert_reference=None, thread_control=False, matched_roots=False):
+    require(sum(bool(x) for x in (insert_reference, thread_control, matched_roots)) <= 1, 'conflicting measurement plans')
     if thread_control:
         from small_compute import thread_control_plan, check_thread_control_plan, thread_control_environment
         require(count == 1 and cases == ('standard10k',), 'thread diagnostic must use one CPU and standard10k')
-    expected = 8 if thread_control else len(insert_copy_plan(insert_reference, count)) if insert_reference else len(cases) * 2
+    if matched_roots:
+        from small_compute import check_matched_insert_plan
+        require(count in (1, 2) and cases == ('standard10k',), 'matched roots require standard10k only')
+    expected = 4 if matched_roots else 8 if thread_control else len(insert_copy_plan(insert_reference, count)) if insert_reference else len(cases) * 2
     require(data.get('insert_thread_control', False) == thread_control, 'thread diagnostic plan differs')
+    require(data.get('matched_insert_roots', False) == matched_roots, 'matched root plan differs')
     require(data.get('insert_copy_reference') == insert_reference, 'measurement plan family differs')
     require(data.get('status') == 'passed' and data.get('expected_pairs') == expected and
             data.get('completed_pairs') == expected and len(data['pairs']) == expected,
@@ -21,13 +25,14 @@ def verify_measurement(data, count, cases, identity_sha, identities, insert_refe
     require(data['comparison_kind'] == 'whole_version_diagnostic', 'expected explicit version contrast')
     require(data['identity_record_sha256'] == identity_sha, 'identity record changed')
     require(data['db_cpu_count'] == count and len(set(data['db_cpus'])) == count and
-            data['protection_only'] == (count == 2 and not insert_reference), 'DB affinity/plan differs')
+            data['protection_only'] == (count == 2 and not insert_reference and not matched_roots), 'DB affinity/plan differs')
     require(data['requested_limits']['cpu_quota_us'] == count * 100000 and
             data['requested_limits']['cpu_period_us'] == 100000, 'quota/period differs')
     require(data['query_mode_policy'] == 'exact' and data['requested_limits']['memory_max'] == '2147483648' and
             data['requested_limits']['swap_max'] == '0', 'root diagnostic mode/memory plan differs')
     measured_plan = [{key: p[key] for key in ('scenario', 'seed', 'pair_index', 'order') + (('policy',) if thread_control else ())} for p in data['pairs']]
-    if thread_control: check_thread_control_plan(measured_plan)
+    if matched_roots: check_matched_insert_plan(measured_plan, count)
+    elif thread_control: check_thread_control_plan(measured_plan)
     elif insert_reference: check_insert_copy_plan(measured_plan, insert_reference, count)
     else: check_plan(measured_plan, cases)
     for role in ('baseline', 'candidate'):
@@ -43,6 +48,7 @@ def verify_measurement(data, count, cases, identity_sha, identities, insert_refe
             if thread_control:
                 require(run['effective_environment'] == expected_environment and
                         run['thread_control_policy'] == pair['policy'], 'effective thread policy differs')
+            if matched_roots: require(run['effective_environment'] == {}, 'matched root effective environment differs')
             require(run['query_mode_policy'] == 'exact', 'actual run mode policy differs')
             modes = run['adapter']['completed_request_modes']
             require(set(modes) == {'exact'} and modes['exact'] > 0 and
@@ -73,11 +79,11 @@ def verify_measurement(data, count, cases, identity_sha, identities, insert_refe
                 require(cpu_set(item['cpus_allowed_list']) == set(data['db_cpus']), 'actual affinity differs')
                 require(item['pid'] in item['members'] and item['driver_pid'] not in item['members'], 'driver not isolated')
                 require(item['actual_exe'] == data['identities'][role]['binary'], 'actual executable differs')
-                if thread_control:
+                if thread_control or matched_roots:
                     require(item['runtime_environment'] == expected_environment, 'actual process thread environment differs')
             phases = run['adapter']['phase_cgroups']
             require(len(phases) == (14 if pair['scenario'] == 'wide768' else
-                                    15 if pair['scenario'].startswith('spill_') else 8 if insert_reference or thread_control else 7), 'phase telemetry incomplete')
+                                    15 if pair['scenario'].startswith('spill_') else 8 if insert_reference or thread_control or matched_roots else 7), 'phase telemetry incomplete')
             for phase in phases:
                 require(phase['memory.max'] == '2147483648' and phase['memory.swap.max'] == '0', 'phase memory/swap cap differs')
                 require(not phase.get('task_read_errors') and not phase.get('native_tasks_error'), 'task telemetry incomplete')
