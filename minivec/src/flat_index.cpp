@@ -13,6 +13,9 @@
 #include <unistd.h>
 
 namespace mvdb {
+#ifdef MVDB_TEST_GLOBAL_MAX_HINT
+GlobalMaxHintDiagnostics global_max_hint_diagnostics;
+#endif
 namespace {
 // Approximate-search width, as a *fraction* of the table rather than a number of
 // partitions: the partition count already scales with the row count, so a fixed
@@ -293,7 +296,19 @@ void FlatIndex::flush_build_block() {
   }
   build_offset_+=bytes;build_used_=0;
 }
-void FlatIndex::finish() {
+bool FlatIndex::wants_global_max_hint() const {
+  static_assert(sizeof(float)==sizeof(uint32_t) && std::numeric_limits<float>::is_iec559 &&
+                std::numeric_limits<float>::radix==2 && std::numeric_limits<float>::digits==24 &&
+                std::numeric_limits<float>::max_exponent==128,
+                "global max hint requires IEEE binary32");
+#if !defined(MVDB_DISABLE_NORM_ORDER) && !defined(MVDB_DISABLE_QUANTIZED_BOUND) && !defined(MVDB_ENABLE_BLOCK_QUANT_SCALE)
+  return !ready_ && !build_failed_ && fd_<0 && expected_>1 && quantized_budget_!=0;
+#else
+  return false;
+#endif
+}
+void FlatIndex::finish(const GlobalMaxHint* hint) {
+  (void)hint;
   if(build_failed_)throw std::runtime_error("flat vector index build failed");
   if(count_!=expected_)throw std::runtime_error("incomplete flat vector index build");
   if(ready_)return;
@@ -320,9 +335,25 @@ void FlatIndex::finish() {
       quantization_scale_budget_=0;quantization_query_cache_bytes_=0;local=false;
     };
 #endif
+    bool supplied=false;
+#if !defined(MVDB_DISABLE_NORM_ORDER) && !defined(MVDB_ENABLE_BLOCK_QUANT_SCALE)
+    if(wants_global_max_hint() && hint && hint->rows==count_ &&
+       hint->dimension==dimension_ && hint->max_abs_bits<0x7f800000u) {
+      float maximum;
+      std::memcpy(&maximum,&hint->max_abs_bits,sizeof(maximum));
+      max_abs=static_cast<double>(maximum);supplied=true;
+#ifdef MVDB_TEST_GLOBAL_MAX_HINT
+      ++global_max_hint_diagnostics.used_hints;
+#endif
+    }
+#endif
+    if(!supplied) {
     for(size_t i=0;i<count_;++i) {
       const float* row=row_at(i);
       for(size_t d=0;d<dimension_;++d) {
+#ifdef MVDB_TEST_GLOBAL_MAX_HINT
+        ++global_max_hint_diagnostics.max_scan_coordinates;
+#endif
         const double magnitude=std::fabs(static_cast<double>(row[d]));
         if(!std::isfinite(magnitude)) {max_abs=magnitude;ok=false;break;}
         max_abs=std::max(max_abs,magnitude);
@@ -344,6 +375,7 @@ void FlatIndex::finish() {
         block_max=0;
       }
 #endif
+    }
     }
     const double step=mvdb::quantization_step(max_abs);
 #ifdef MVDB_ENABLE_BLOCK_QUANT_SCALE

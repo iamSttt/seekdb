@@ -110,6 +110,7 @@ def prepare(repo, archive, out, candidate_policy='serial'):
         'minivec/tools/ci_highest_primary.sh', 'minivec/tools/prepare_highest_primary.py',
         'minivec/tools/summarize_highest_primary.py', '.github/workflows/minivec-score.yml',
         'validation/iteration5-highest-primary24-preregistration.json',
+        'validation/iteration5-norm-maxabs-primary24-preregistration.json',
         'minivec/tools/prepare_highest_compare.py',
         'validation/iteration5-ee299-root-source.zip', 'validation/iteration5-highest-root-raw.zip',
         'minivec/tools/ci_crc_checks.sh', 'minivec/tests/check_crc_persistence.py',

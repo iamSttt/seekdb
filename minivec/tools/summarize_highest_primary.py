@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 from statistics import median
 from small_compute import counters, highest_primary_plan, HIGHEST_PRIMARY_FAMILY, require, sha
-from prepare_highest_primary import verify_root_gates
+from prepare_highest_primary import verify_root_gates, EXPERIMENT_ID, PREREGISTRATION
 from summarize_small_root import verify_measurement
 
 TOOLS = {'minivec/tools/small_compute.py', 'minivec/tools/benchmark_iteration.py',
@@ -79,6 +79,7 @@ def collect(out, reports, image, binary, exit_code):
     result = {'status': 'failed_or_incomplete', 'exit_code': exit_code, 'expected_pairs': 24,
         'completed_pairs': 0, 'measurement_family': HIGHEST_PRIMARY_FAMILY, 'primary_reference': 'ee', 'new_pgo_builds': 1, 'rebuilt_reference_programs': 0,
         'formal_submission': False, 'official_score': None, 'automatic_adoption': False,
+        'experiment_id': EXPERIMENT_ID,
         'standard_comparisons': {}, 'protection_summaries': {}}
     try:
         programs = out / 'programs'
@@ -87,13 +88,18 @@ def collect(out, reports, image, binary, exit_code):
         gates = json.loads(gates_path.read_bytes())
         require(proof['status'] == 'verified' and proof['image_id'] == image and
                 proof['binary_sha256'] == sha(binary) == sha(programs / 'actual-image-minivec'), 'actual root changed')
-        quantizer = verify_root_gates(reports)
+        source_gates = verify_root_gates(reports)
+        prereg_path = reports.parent / PREREGISTRATION
+        preregistration = {'path': PREREGISTRATION, 'bytes': prereg_path.stat().st_size, 'sha256': sha(prereg_path)}
+        result['preregistration'] = preregistration
         require(proof['root_gate_summary_sha256'] == sha(gates_path), 'root gate binding differs')
         result.update(candidate_source_commit=proof['source_commit'], candidate_image_id=image,
                       candidate_binary_sha256=proof['binary_sha256'])
         binding = json.loads((programs / 'highest-primary-binding-proof.json').read_bytes())
         require(binding['status'] == 'verified' and binding['measurement_family'] == HIGHEST_PRIMARY_FAMILY and
-                binding['primary_reference'] == 'ee' and binding['quantizer_gate'] == quantizer and binding['current_root_proof_sha256'] == sha(programs / 'root-proof.json') and
+                binding['primary_reference'] == 'ee' and binding['experiment_id'] == EXPERIMENT_ID and
+                binding['preregistration'] == preregistration and binding['source_equivalence_gates'] == source_gates and
+                binding['current_root_proof_sha256'] == sha(programs / 'root-proof.json') and
                 binding['ee_import_proof_sha256'] == sha(programs / 'ee/proof.json') and
                 binding['candidate_source_commit'] == proof['source_commit'] and
                 binding['candidate_binary_sha256'] == proof['binary_sha256'] and binding['candidate_image_id'] == image and

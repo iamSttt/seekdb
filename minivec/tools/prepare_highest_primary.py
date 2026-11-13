@@ -8,6 +8,8 @@ from prepare_small_compute import require, save
 from prepare_small_root import prepare_root
 from prepare_insert_copy_root import verified_ee, EE, EE_BINARY_SHA, sha
 from small_compute import HIGHEST_PRIMARY_FAMILY
+EXPERIMENT_ID = 'norm-maxabs-fusion-highest-primary24'
+PREREGISTRATION = 'validation/iteration5-norm-maxabs-primary24-preregistration.json'
 
 ROOT_GATES = {
     'root_docker_build', 'ieee_crc_byte_oracle_normal_and_sanitized',
@@ -21,7 +23,8 @@ ROOT_GATES = {
     'query_pool_both_modes_asan_ubsan', 'cross_table_spill_asan_ubsan',
     'full_binary_json_ubsan', 'index_budget_and_resident_update_asan_ubsan',
     'compound_reuse_diagnostic_and_sanitizer',
-    'cached_quantizer_code_equivalence_normal_and_sanitized'}
+    'cached_quantizer_code_equivalence_normal_and_sanitized',
+    'global_max_hint_equivalence_normal_and_sanitized'}
 
 
 def verify_root_gates(reports):
@@ -45,11 +48,37 @@ def verify_root_gates(reports):
                 'quantizer log/JSON differs')
         hashes[log.name] = sha(log); counts.append(count)
     require(counts[0] == counts[1], 'normal/sanitized quantizer count differs')
-    return {'checks_per_mode': counts[0], 'file_sha256': hashes}
+    historical = {'checks_per_mode': counts[0], 'file_sha256': hashes,
+                  'scope': 'rejected cached encoder isolated in test-only header'}
+    path = reports / 'global-max-hint-equivalence.json'
+    details = json.loads(path.read_bytes())
+    require(details.get('schema_version') == 1 and gates.get('global_max_hint_equivalence') == details,
+            'norm/max JSON/root binding differs')
+    hashes = {path.name: sha(path)}
+    counts = []
+    for mode in ('normal', 'sanitized', 'block-scale'):
+        count = details.get(mode + '_checks')
+        require(type(count) is int and count > 0 and details.get(mode + '_pass') is True,
+                'norm/max result count/pass differs')
+        log = reports / ('global-max-hint-' + mode + '.log')
+        text = log.read_text()
+        require(re.findall(r'^global_max_hint_checks=(\d+)$', text, re.M) == [str(count)] and
+                text.splitlines().count('global_max_hint=PASS') == 1, 'norm/max log/JSON differs')
+        hashes[log.name] = sha(log); counts.append(count)
+    require(counts[0] == counts[1], 'normal/sanitized norm/max counts differ')
+    return {'historical_cached_quantizer': historical,
+            'global_max_hint': {'checks_per_mode': counts[0], 'file_sha256': hashes}}
 
 
 def prepare_highest(repo, binary, image, out):
-    quantizer = verify_root_gates(repo / 'protocol-results')
+    source_gates = verify_root_gates(repo / 'protocol-results')
+    prereg_path = repo / PREREGISTRATION
+    declared = json.loads(prereg_path.read_bytes())
+    require(declared.get('experiment_id') == EXPERIMENT_ID and
+            declared.get('measurement_family') == HIGHEST_PRIMARY_FAMILY and
+            declared.get('planned_pairs', {}).get('total') == 24,
+            'norm/max preregistration identity or plan differs')
+    preregistration = {'path': PREREGISTRATION, 'bytes': prereg_path.stat().st_size, 'sha256': sha(prereg_path)}
     current = prepare_root(repo, binary, image, out)
     program, proof, evidence = verified_ee(repo)
     directory = out / 'ee'; directory.mkdir()
@@ -67,11 +96,12 @@ def prepare_highest(repo, binary, image, out):
     save(out / 'ee-identities.json', {'baseline': highest, 'candidate': ids['candidate']})
     save(out / 'highest-primary-binding-proof.json', {'status': 'verified',
         'measurement_family': HIGHEST_PRIMARY_FAMILY, 'primary_reference': 'ee',
+        'experiment_id': EXPERIMENT_ID, 'preregistration': preregistration,
         'candidate_source_commit': current['source_commit'], 'candidate_binary_sha256': current['binary_sha256'],
         'candidate_image_id': image, 'current_root_proof_sha256': sha(out / 'root-proof.json'),
         'ee_import_proof_sha256': sha(directory / 'proof.json'),
         'retained_identity_sha256': sha(out / 'retained-identities.json'),
-        'ee_identity_sha256': sha(out / 'ee-identities.json'), 'quantizer_gate': quantizer,
+        'ee_identity_sha256': sha(out / 'ee-identities.json'), 'source_equivalence_gates': source_gates,
         'new_ee_builds': 0, 'new_pgo_builds': 0,
         'build_count_scope': 'This import step only; the candidate root PGO build precedes import.'})
     return current, proof

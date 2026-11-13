@@ -2078,6 +2078,8 @@ void Database::build_vector_index(Table& table) {
     index->add(row.vals[table.schema.pk_idx].i,slot,vector.data(),vector.size());
 #endif
   };
+  FlatIndex::GlobalMaxHint maximum{0,count,dimension};
+  bool maximum_complete=false;
 #ifndef MVDB_DISABLE_NORM_ORDER
   struct NormSlot { double norm;size_t slot; };
   constexpr size_t norm_metadata_budget=1u<<20;
@@ -2089,17 +2091,36 @@ void Database::build_vector_index(Table& table) {
      count<=(budget-std::min(budget,index->resident_bytes()))/sizeof(NormSlot)) {
     ordered.reset(new(std::nothrow) NormSlot[count]);
     if(ordered) {
+      const bool collect_max=index->wants_global_max_hint();
       size_t used=0;
       for(size_t slot=0;slot<table.rows.size();++slot) {
         if(table.dead[slot])continue;
         double norm=0;
-        for(float value:table.rows[slot].vals[table.schema.vec_idx].v) {
-          const double component=value;norm+=component*component;
+        if(collect_max) {
+          for(float value:table.rows[slot].vals[table.schema.vec_idx].v) {
+            const double component=value;norm+=component*component;
+            // Positive binary32 bit patterns have the same order as magnitude.
+            // NaN/Inf also sort above all finite values and invalidate the hint.
+            uint32_t bits;
+            std::memcpy(&bits,&value,sizeof(bits));
+            maximum.max_abs_bits=std::max(maximum.max_abs_bits,bits&0x7fffffffu);
+#ifdef MVDB_TEST_GLOBAL_MAX_HINT
+            ++global_max_hint_diagnostics.norm_scan_coordinates;
+#endif
+          }
+        } else {
+          for(float value:table.rows[slot].vals[table.schema.vec_idx].v) {
+            const double component=value;norm+=component*component;
+#ifdef MVDB_TEST_GLOBAL_MAX_HINT
+            ++global_max_hint_diagnostics.norm_scan_coordinates;
+#endif
+          }
         }
         if(used==count)throw std::runtime_error("excess flat index norm ordering row");
         ordered[used++]={norm,slot};
       }
       if(used!=count)throw std::runtime_error("incomplete flat index norm ordering");
+      maximum_complete=collect_max && maximum.max_abs_bits<0x7f800000u;
       std::sort(ordered.get(),ordered.get()+count,[](const NormSlot& a,const NormSlot& b) {
         return a.norm<b.norm || (a.norm==b.norm && a.slot<b.slot);
       });
@@ -2116,7 +2137,7 @@ void Database::build_vector_index(Table& table) {
 #ifndef MVDB_DISABLE_NORM_ORDER
   ordered.reset();
 #endif
-  index->finish();
+  index->finish(maximum_complete ? &maximum : nullptr);
   table.vector_index=std::move(index);
 #ifdef MVDB_ENABLE_INDEX_DELTA
   if(!table.vector_index->disk_backed() && count) {

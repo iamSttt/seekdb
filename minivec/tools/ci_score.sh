@@ -95,6 +95,35 @@ if result['normal_checks']!=result['sanitized_checks']:
     raise SystemExit('Cached quantizer normal/sanitized inventories differ')
 (root/'cached-quantizer-equivalence.json').write_text(json.dumps(result,indent=2)+'\n')
 PYQUANTIZER
+# Current norm/max fusion: compare the actual hinted and original index paths.
+for mode in normal sanitized block-scale; do
+  hint_options=(-O3)
+  hint_extra=()
+  if [[ "$mode" == sanitized ]]; then
+    hint_options=(-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all -no-pie)
+  fi
+  if [[ "$mode" == block-scale ]]; then hint_extra=(-DMVDB_ENABLE_BLOCK_QUANT_SCALE); fi
+  g++ "${feature_flags[@]}" "${hint_options[@]}" "${hint_extra[@]}" -DMVDB_TEST_GLOBAL_MAX_HINT -std=c++17 -pthread -Iminivec/src \
+    minivec/tests/test_global_max_hint.cpp minivec/src/{db,exec,sql,value,flat_index}.cpp -o "$scratch/global-max-hint-$mode"
+  ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 180 \
+    "$scratch/global-max-hint-$mode" 2>&1 | tee "$MINIVEC_REPORTS/global-max-hint-$mode.log"
+done
+python3 - <<'PYMAXHINT'
+import json,re
+from pathlib import Path
+root=Path('protocol-results')
+result={'schema_version':1,'scope':'Current norm/max fusion source correctness; diagnostic counters are absent from production.'}
+for mode in ('normal','sanitized','block-scale'):
+    log=(root/('global-max-hint-'+mode+'.log')).read_text()
+    counts=re.findall(r'^global_max_hint_checks=(\d+)$',log,re.M)
+    if len(counts)!=1 or int(counts[0])<1 or log.splitlines().count('global_max_hint=PASS')!=1:
+        raise SystemExit('Global max hint oracle incomplete: '+mode)
+    result[mode+'_checks']=int(counts[0])
+    result[mode+'_pass']=True
+if result['normal_checks']!=result['sanitized_checks']:
+    raise SystemExit('Global max hint normal/sanitized inventories differ')
+(root/'global-max-hint-equivalence.json').write_text(json.dumps(result,indent=2)+'\n')
+PYMAXHINT
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain --build-arg "FEATURE_FLAGS=$FEATURE_FLAGS" -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
 docker image inspect "$IMAGE" > protocol-results/image-inspect.json
@@ -251,6 +280,7 @@ report = {
     'image_binary_sha256': image_binary_sha,
     'insert_owned_copy_checks': insert_checks,
     'cached_quantizer_equivalence': json.loads(Path('protocol-results/cached-quantizer-equivalence.json').read_text()),
+    'global_max_hint_equivalence': json.loads(Path('protocol-results/global-max-hint-equivalence.json').read_text()),
     'source_binary_sha256': Path('protocol-results/source-binary-sha256.txt').read_text().split()[0],
     'image_id': Path('protocol-results/image-id.txt').read_text().strip(),
     'scope': 'current-checkout build and regression verification; not formal scoring',
@@ -260,6 +290,7 @@ report = {
         'ieee_crc_byte_oracle_normal_and_sanitized': True,
         'insert_owned_copy_normal_and_sanitized': True,
         'cached_quantizer_code_equivalence_normal_and_sanitized': True,
+        'global_max_hint_equivalence_normal_and_sanitized': True,
         'image_official_handshake_and_public_cases': True,
         'source_official_handshake_and_public_cases': True,
         'live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill': True,
@@ -278,6 +309,7 @@ report = {
     },
     'sanitizer_quantized_dispatch': 'AVX512 quantized disabled for quantized_bound and index_budget to cover the AVX2 fallback; native and release tests retain default dispatch. Experimental dot/norm runtime was reverted.',
     'limitations': ['No hidden formal cases or score.',
+                    'Cached reciprocal encoder is retained in a test-only header; production uses the original scalar quantizer.',
                     'No new paired performance measurement.',
                     'Feature flags and source equivalence do not imply identical PGO binary hashes across rebuilds.',
                     'WAL fixture injects short/failed writes; not fdatasync or allocation failure.',
