@@ -437,25 +437,28 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
 #ifdef MVDB_TYPED_WIDE_VECTOR_ONLY
       // Experimental boundary, not a proven optimal threshold. Choose once per
       // SELECT; distance-only/scalar projections retain the original DOM path.
-      const bool use_typed_json = std::any_of(items.begin(), items.end(), [&](const Item& item) {
 #ifdef MVDB_TYPED_BULK_VECTOR_ONLY
-        if (item.is_distance || sch.cols[item.col].type != Type::VECTOR) return false;
+      bool use_typed_json = false;
+      for (const Item& item : items) {
+        if (item.is_distance || sch.cols[item.col].type != Type::VECTOR) continue;
         const int dimension = sch.cols[item.col].len;
-        if (dimension >= 128) return true; // Preserve the original wide rule.
-        if (dimension < 16) return false;
+        if (dimension >= 128) {use_typed_json = true;break;} // Preserve the original wide rule.
+        if (dimension < 16) continue;
         // Only an actual projected 16..127d vector reaches these checks. Keep
         // small LIMITs and WHERE predicates ahead of the O(1) live-key count.
         MVDB_JSON_RESPONSE_COUNT(bulk_limit_checks);
-        if (st.limit >= 0 && st.limit < 4096) return false;
+        if (st.limit >= 0 && st.limit < 4096) continue;
         MVDB_JSON_RESPONSE_COUNT(bulk_condition_checks);
-        if (!st.conds.empty()) return false;
+        if (!st.conds.empty()) continue;
         MVDB_JSON_RESPONSE_COUNT(bulk_live_key_checks);
-        return t->pk_pos.size() >= 4096; // The map excludes tombstones.
+        if (t->pk_pos.size() >= 4096) {use_typed_json = true;break;} // Excludes tombstones.
+      }
 #else
+      const bool use_typed_json = std::any_of(items.begin(), items.end(), [&](const Item& item) {
         return !item.is_distance && sch.cols[item.col].type == Type::VECTOR &&
             sch.cols[item.col].len >= 128;
-#endif
       });
+#endif
 #else
       constexpr bool use_typed_json = true;
 #endif
