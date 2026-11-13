@@ -1,6 +1,6 @@
 // g++ -O3 -std=c++17 -pthread -Isrc tests/test_cached_quantizer.cpp src/flat_index.cpp -o test_cached_quantizer
 #include "flat_index.h"
-#include "quantized_bound.h"
+#include "cached_quantizer_candidate.h"
 #include <array>
 #include <cfenv>
 #include <cmath>

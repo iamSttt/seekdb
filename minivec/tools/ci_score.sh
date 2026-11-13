@@ -64,8 +64,8 @@ docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
 # Historical checksum-header regression only. Active db.cpp uses retained CRC.
 bash minivec/tools/ci_crc_checks.sh --unit
-# Candidate-specific exact-code oracle, before paying for the root PGO build.
-# These source fixtures supplement the actual-image checks below.
+# Historical rejected batch encoder oracle, isolated in a test-only header.
+# Production retains scalar encoding; these fixtures also compare index codes.
 for mode in normal sanitized; do
   quantizer_options=(-O3)
   if [[ "$mode" == sanitized ]]; then

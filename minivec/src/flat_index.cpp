@@ -390,8 +390,8 @@ void FlatIndex::finish() {
             (void)use_local;
 #endif
             const float* row=row_at(i);
-            if(!mvdb::quantize_coordinates(row,dimension_,row_step,quantized_.get()+code))return false;
-            code+=dimension_;
+            for(size_t d=0;d<dimension_;++d)
+              if(!mvdb::quantize_coordinate(row[d],row_step,&quantized_[code++]))return false;
           }
           return true;
         };
