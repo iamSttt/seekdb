@@ -10,13 +10,6 @@
 #include <vector>
 
 namespace mvdb {
-#ifdef MVDB_TEST_GLOBAL_MAX_HINT
-// Test-only path counters; not part of any production index object or budget.
-struct GlobalMaxHintDiagnostics {
-  size_t used_hints=0,max_scan_coordinates=0,norm_scan_coordinates=0;
-};
-extern GlobalMaxHintDiagnostics global_max_hint_diagnostics;
-#endif
 // An exact flat index, rebuilt from committed/transaction-visible table rows.
 // Small indexes hold only per-row metadata (PK, slot) plus a non-owning pointer
 // to each row's float32 payload; large ones use a rebuildable fixed-record file
@@ -58,13 +51,7 @@ class FlatIndex {
       ,const int64_t* integer_values=nullptr,size_t integer_count=0
 #endif
       );
-  // One synchronous build's complete norm traversal may supply this statistic.
-  // The caller must cover exactly the borrowed rows with the original double norm
-  // operations, without intervening mutation or floating-point environment change.
-  // It is consumed by finish only; never retained by the index.
-  struct GlobalMaxHint { uint32_t max_abs_bits;size_t rows,dimension; };
-  bool wants_global_max_hint() const;
-  void finish(const GlobalMaxHint* hint=nullptr);
+  void finish();
   void scan(const Visitor& visitor) const;
 #ifdef MVDB_ENABLE_SPILL_FILTER
   // Configure before add(), only for a disk index. Takes up to two columns in
