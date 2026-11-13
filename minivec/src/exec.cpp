@@ -459,6 +459,10 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
 #if !defined(MVDB_ENABLE_TYPED_JSON) || defined(MVDB_TYPED_WIDE_VECTOR_ONLY)
       auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
         Json cells = Json::array();
+#ifdef MVDB_ENABLE_DOM_ROW_RESERVE
+        // Experimental capacity reservation; row values and serialization stay unchanged.
+        cells.get_ref<Json::array_t&>().reserve(items.size());
+#endif
         for (const auto& item : items) {
           const Value& value = row.vals[item.col];
           if (!item.is_distance) {

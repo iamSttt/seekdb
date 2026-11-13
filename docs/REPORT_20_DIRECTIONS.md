@@ -1,5 +1,7 @@
 # 用户报告 20 项优化：实施、取舍与提测准备
 
+后续状态：用户已要求继续优化已知退化，当前实验基线为交付 `e020fdeb67dd8b64b77f0f8c2905f137f0112bba`；下文120对是上一阶段证据。本轮候选默认关闭，结果见 [退化修复实验](REGRESSION_FOLLOWUP_20261113.md)，尚未新增正式提测。
+
 本轮起点为用户指定的 `a90b2b750e40f020793cddefe01d5b66631afc63`。方向来自用户报告，代码实现、实验和本文件分析由 assistant 完成。用户预测和判断按实际消息保存在两份相同的 `conversation.json`；早先三段文字的 assistant 来源审计继续保留，不把转贴改写为个人原创贡献。
 
 保留版本的运行源码提交为 `311b45ffed1a957f8ebd71d0ead9320b1232298c`，实际根镜像的17项门禁、54种UTF8失败原子性检查及120对配对测量均通过，完整产物另经清单与源码哈希核验。保留原PGO，启用spill标量缓存、投影含至少128维向量时的类型化编码、复合过滤重复使用门控；I06及已测退化方案保持关闭。最后的材料和文档提交仅归档证据，不修改受测构建输入。
@@ -25,7 +27,7 @@
 | I13 | 解析/token 分配 | 首轮复制省略保留；token复用已测不采用 | 跳过执行入口不需要的 Statement.raw 复制已保留；本轮 bounded owning-token/TLS 复用有单测、故障、分配微测和同原 PGO 27 对。默认基本持平且 low16 回退，MVDB_ENABLE_TOKEN_REUSE 保持关闭；不能把微基准分配下降当完整查询收益。 | [解析确认](<../validation/iteration3-parser-pgo-confirmation.json>)；[实现](<../minivec/src/sql.cpp>)；[测试](<../minivec/tests/test_parser_reuse.cpp>) |
 | I14 | 减少逐行 JSON DOM | 受限保留 | 全量typed方案曾退化，未通用启用；仅投影含至少128维向量时走typed writer。实际128/768维宽输出含写入计时总和约1.221/1.231倍；16维同类总和0.985，负面保留。128测试只覆盖已测1024行负载，非所有维度的最优阈值证明。 | [63对](../validation/iteration3-output-guard-raw.zip)；[实际镜像120对](../validation/iteration3-retained-final.json) |
 | I15 | O3/LTO/PGO | 原PGO保留 | 固定GCC13.3/O3与原构建期训练；LTO和扩展spill训练未取得稳定净收益。当前四宏镜像另经独立120对验证，不能借旧binary SHA证明新构建。未来PGO重建字节可能不同。 | [六构建矩阵](../validation/iteration3-pgo-matrix.json)；[当前构建](../Dockerfile)；[实际镜像](../validation/iteration3-retained-final.json) |
-| I16 | 材料语义压缩 | 完成 | 保留真实user聊天及来源；报告明确为逐字摘录，完整原件按原始字节归档。最终两份材料相同，129117字节，低于131072上限；原件/摘录与引用哈希校验不等于官方评分。 | [材料](../conversation.json)；[完整原件](../validation/iteration3-user-report-original.md)；[指南](CONVERSATION-GUIDE.md) |
+| I16 | 材料语义压缩 | 完成 | 保留真实user聊天及来源；报告明确为逐字摘录，完整原件按原始字节归档。e020交付时两份材料相同、129117字节；后续退化修复阶段无损归档早期assistant指标表，新增记录仍须低于131072上限；原件/摘录与引用哈希校验不等于官方评分。 | [材料](../conversation.json)；[完整原件](../validation/iteration3-user-report-original.md)；[指南](CONVERSATION-GUIDE.md) |
 | I17 | 本人实验闭环 | 当前反馈链已记录 | 较新用户对读写摊销的判断推动了首查门控，实现/30对及组合120对由assistant执行并记录，保留全部正负。旧三段已定位assistant来源，不计为独立用户贡献；新消息按实际user提交保存，不由哈希认证原创或承诺学习分。 | [来源审计](../validation/iteration3-source-attribution.json)；[当前记录](../conversation.json)；[门控30对](../validation/iteration3-filter-reuse-confirmation-raw.zip) |
 | I18 | 第二场景知识迁移 | 新事前预测→12对实测→用户判断已记录；保留来源限制 | 新的宽字符串spill写查预测、测量后对固定成本摊销的判断已按当前user消息逐字保存；实际实现和测量归assistant。旧spill预测来自早先assistant，不计独立作者证据；新链也不自动证明独立作者认证。收益机制是少做宽行谓词材料化，不能声称物理IO收益或官方涨分。 | [当前预测/反馈](<../conversation.json>)；[写查完整周期](<../validation/iteration3-six-finish-raw.zip>)；[来源审计](<../validation/iteration3-source-attribution.json>) |
 | I19 | 历史原始聊天定位 | 来源调查完成 | 三段原始assistant消息及来源线程已定位；保留用户提交的原字句和角色，同时标明内容原作者。未增加未经证实的原创贡献。 | [来源定位记录](../validation/iteration3-source-attribution.json)；[审计字段](../conversation.json) |

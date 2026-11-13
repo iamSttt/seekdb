@@ -2216,6 +2216,45 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
 #ifndef MVDB_DISABLE_MULTI_POSTING
   FlatIndex::ResidentView filtered_view;
   if(!predicate.c.empty() && table.vector_index->resident_view(&filtered_view)) {
+#ifdef MVDB_ENABLE_EQUALITY_FASTPATH
+    if(predicate.c.size()==1 && predicate.c.front().op==static_cast<uint8_t>(Cond::EQ) &&
+       predicate.c.front().vt==static_cast<uint8_t>(Type::BIGINT)) {
+      const RCond& term=predicate.c.front();
+      const uint32_t* ordinals=nullptr;
+      size_t count=0;
+      MVDB_FILTER_COLUMN(plan_choices,term.col);
+      if(table.vector_index->equal_ordinals(term.col,term.lit->i,
+          [&](uint64_t slot) {
+            Row scratch;
+            return table.read_row(static_cast<size_t>(slot),scratch).vals[term.col].i;
+          },&ordinals,&count)) {
+        const size_t dimension=filtered_view.dimension;
+        const int8_t* codes=filtered_view.quantized;
+        const bool reject=codes && threshold && quantized && quantized->enabled();
+        for(size_t j=0;j<count;++j) {
+          const size_t ordinal=ordinals[j];
+          MVDB_FILTER_COUNT(vector_visits);
+          const uint64_t slot=filtered_view.slots[ordinal];
+          if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[static_cast<size_t>(slot)]))
+            throw std::runtime_error("stale flat vector index slot");
+          if(reject && quantized->definitely_greater(codes+ordinal*dimension,*threshold,ordinal))continue;
+          if(!cb(filtered_view.keys[ordinal],filtered_view.rows[ordinal],dimension))return;
+        }
+      } else {
+        // One failed optional admission must go straight to the exact scan,
+        // never retry the same allocation through the general planner below.
+        table.vector_index->scan([&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
+          MVDB_FILTER_COUNT(vector_visits);
+          if(slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
+            throw std::runtime_error("stale flat vector index slot");
+          Row scratch;
+          if(!row_matches(predicate,table.read_row(static_cast<size_t>(slot),scratch)))return true;
+          return cb(pk,vector,dimension);
+        });
+      }
+      return;
+    }
+#endif
     struct Plan {
       size_t column=0;
       FlatIndex::IntegerRange range;
