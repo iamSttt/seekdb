@@ -83,6 +83,13 @@ struct Fixture {
     assert(db.commit(&error, &code));
     assert(db.table(name)->pk_pos.size() == rows);
   }
+  // Assert metadata was not touched on non-applicable projections. These are
+  // actual execution counters; the test does not call a duplicate selector.
+  void metadata(size_t limit, size_t conditions, size_t live_keys) const {
+    assert(counts.bulk_limit_checks == (bulk_enabled ? limit : 0));
+    assert(counts.bulk_condition_checks == (bulk_enabled ? conditions : 0));
+    assert(counts.bulk_live_key_checks == (bulk_enabled ? live_keys : 0));
+  }
   // The oracle uses fixture values/expected PKs, never the table's read or scan
   // methods. It checks every returned cell, int64 precision and signed zero.
   void check(const std::string& sql, int dimension, const std::vector<int64_t>& expected,
@@ -134,19 +141,29 @@ int main() {
       f.create(name, dimension, 4096);
       const bool typed = dimension == 15 ? false : bulk_enabled;
       f.check("SELECT * FROM " + name + ";", dimension, full, typed);
+      f.metadata(dimension == 15 ? 0 : 1, dimension == 15 ? 0 : 1, dimension == 15 ? 0 : 1);
       f.check("SELECT * FROM " + name + " ORDER BY id LIMIT 4096;", dimension, full, typed);
+      f.metadata(dimension == 15 ? 0 : 1, dimension == 15 ? 0 : 1, dimension == 15 ? 0 : 1);
       if (dimension != 16) assert(f.call("DROP TABLE " + name + ";"));
     }
     // 4095/4096 is tested separately for output LIMIT and actual live keys.
     f.check("SELECT * FROM v16 LIMIT 4095;", 16, ids(4095), false);
+    f.metadata(1, 0, 0);
     f.check("SELECT * FROM v16 ORDER BY id LIMIT 10;", 16, ids(10), false);
+    f.metadata(1, 0, 0);
     f.check("SELECT * FROM v16 LIMIT 0;", 16, {}, false);
+    f.metadata(1, 0, 0);
     f.check("SELECT * FROM v16 WHERE id>=0 LIMIT 4096;", 16, full, false);
+    f.metadata(1, 1, 0);
     f.check("SELECT * FROM v16 WHERE id=0;", 16, {0}, false);
+    f.metadata(1, 1, 0);
     f.check("SELECT id,n,s FROM v16 LIMIT 4096;", 16, full, false, {"id", "n", "s"});
+    f.metadata(0, 0, 0);
     f.check("SELECT v FROM v16 LIMIT 4096;", 16, full, bulk_enabled, {"v"});
+    f.metadata(1, 1, 1);
     const auto distance = "L2_DISTANCE(v," + zero_vector(16) + ")";
     f.check("SELECT id," + distance + " AS d FROM v16 LIMIT 4096;", 16, full, false, {"id", "d"});
+    f.metadata(0, 0, 0);
     // An unprojected vector does not qualify, even when used for sorting.
     auto ranked = full;
     auto squared = [](int64_t key) { double sum=0; for(float x:vector_value(key,16)) sum+=double(x)*double(x); return sum; };
@@ -154,28 +171,39 @@ int main() {
       const double x=squared(a), y=squared(b); return x != y ? x < y : a < b;
     });
     f.check("SELECT id FROM v16 ORDER BY " + distance + " LIMIT 4096;", 16, ranked, false, {"id"});
+    f.metadata(0, 0, 0);
     auto reverse = full; std::reverse(reverse.begin(), reverse.end());
     f.check("SELECT * FROM v16 ORDER BY id DESC LIMIT 4096;", 16, reverse, bulk_enabled);
+    f.metadata(1, 1, 1);
 
     assert(f.call("BEGIN;")); assert(f.call("DELETE FROM v16 WHERE id=4095;"));
     assert(f.db.table("v16")->rows.size() == 4096 && f.db.table("v16")->pk_pos.size() == 4095);
     f.check("SELECT * FROM v16;", 16, ids(4095), false);
+    f.metadata(1, 1, 1);
     f.check("SELECT * FROM v16 LIMIT 4096;", 16, ids(4095), false);
+    f.metadata(1, 1, 1);
     assert(f.call("ROLLBACK;"));
     f.check("SELECT * FROM v16;", 16, full, bulk_enabled);
+    f.metadata(1, 1, 1);
     assert(f.call("DELETE FROM v16 WHERE id=4095;"));
     f.check("SELECT * FROM v16;", 16, ids(4095), false);
+    f.metadata(1, 1, 1);
     assert(f.db.begin(&f.error, &f.code)); f.insert("v16", 4095, 16); assert(f.db.commit(&f.error, &f.code));
     assert(f.db.table("v16")->rows.size() == 4097 && f.db.table("v16")->pk_pos.size() == 4096);
     f.check("SELECT * FROM v16 ORDER BY id LIMIT 4096;", 16, full, bulk_enabled);
+    f.metadata(1, 1, 1);
 
     // The previous >=128 rule must survive: small table, WHERE and LIMIT 1
     // still use typed encoding, while scalar/distance-only projections do not.
     f.create("wide", 128, 2);
     f.check("SELECT * FROM wide WHERE id=1 LIMIT 1;", 128, {1}, true);
+    f.metadata(0, 0, 0);
     f.check("SELECT * FROM wide;", 128, ids(2), true);
+    f.metadata(0, 0, 0);
     f.check("SELECT id FROM wide LIMIT 1;", 128, {0}, false, {"id"});
+    f.metadata(0, 0, 0);
     f.check("SELECT L2_DISTANCE(v," + zero_vector(128) + ") AS d FROM wide LIMIT 1;", 128, {0}, false, {"d"});
+    f.metadata(0, 0, 0);
 
     std::string prefix; prefix.reserve(90000);
     for (size_t i = 0; i < 30000; ++i) prefix += "\xe4\xb8\xad";
@@ -190,7 +218,9 @@ int main() {
         assert(f.out.empty() && f.code != 0 && f.error.find("UTF-8") != std::string::npos);
         assert(f.counts.typed_rows == (bulk_enabled ? 2u : 0u));
         assert(f.counts.dom_rows == (bulk_enabled ? 0u : 2u));
+        f.metadata(1, 1, 1);
         f.check("SELECT * FROM v16 WHERE id=4095;", 16, {4095}, false);
+        f.metadata(1, 1, 0);
       }
     }
   }
