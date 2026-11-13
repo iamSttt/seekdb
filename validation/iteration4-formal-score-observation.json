@@ -1,0 +1,68 @@
+{
+  "observed_utc": "2026-11-13T12:25:00Z",
+  "observation_time_precision": "minute",
+  "method": "Authenticated visible results table and opened result modal using browser UI",
+  "source": "https://open.oceanbase.com/train/TestRecord?questionId=600081",
+  "submission_count": 8,
+  "record_time_as_displayed": "2026-11-13 18:31",
+  "branch": "codex/round2-optimize-20261112",
+  "commit": "e020fdeb67dd8b64b77f0f8c2905f137f0112bba",
+  "submitted_by": "user",
+  "task_status": "执行成功",
+  "mysql_gate": "通过；此项为准入条件，不计排名分",
+  "performance_raw_E": 2937.367246,
+  "performance_detail": "性能评测完成；原始指标 E = 2937.367246",
+  "agent_prompt_score": null,
+  "prompt_detail": "Prompt结果无效、待复核、超出平台0–100范围或缺少材料摘要，本项不参与排名；未截断或换算本地分数。",
+  "T": null,
+  "B": null,
+  "M": null,
+  "image_digest": null,
+  "official_binary_sha256": null,
+  "locked_material_sha256": null,
+  "resolved_material_path": null,
+  "previous_observation": {
+    "source_file": "validation/iteration3-platform-recheck.json",
+    "commit": "ee299adb296a2922d01982aa6c5707d37e767b41",
+    "performance_raw_E": 3014.419039,
+    "new_divided_by_previous": 0.9744389243820722,
+    "percent_change": -2.5561075617927753
+  },
+  "detail_controls": "Only copy icons and result-modal close; no visible performance or Prompt drill-down.",
+  "rules_rechecked": {
+    "source": "https://oceanbase.yuque.com/org-wiki-obtech-vh7w9r/hc3pio/lg8enxlmwg69unt6",
+    "page_time_as_displayed": "11-11 18:25",
+    "performance_workload": {
+      "rows": 10000,
+      "dimensions": 128,
+      "queries": 1000,
+      "top_k": 10,
+      "equality_filter_fraction": 0.5
+    },
+    "resources": "Exact CPU/RAM/IO limits referred to the frozen task package, not specified on this page. The 2 CPU/2 GiB example is explicitly illustrative.",
+    "accounting": "cgroup v2 memory.peak includes file cache; dedicated data-device io.stat; swap disabled; driver and correctness checks excluded. Current local diagnostic is not that isolated official environment.",
+    "prompt_rule": "agent-learning-evidence-v3-unbounded",
+    "prompt_input": "Single UTF-8 JSON object, default agent/conversation.json, at most 131072 bytes, no duplicate keys or non-finite JSON numbers. Internal business fields are not fixed."
+  },
+  "limitations": [
+    "The displayed score decline does not identify a causal code regression or expose per-round variation.",
+    "The combined Prompt message does not identify the failed branch; do not infer a specific missing field or mutate evidence to chase an unknown schema.",
+    "Public unbounded Prompt rules and the platform 0-100 warning differ; the visible message is insufficient to establish which implementation actually ran.",
+    "The public performance formula has normalized ratios, whereas this UI shows values in the thousands. No mapping to the 6000 target has been verified.",
+    "The submitted source can be rebuilt, but no official binary hash was shown; local acdd program identity is not official image identity.",
+    "Credentials, phone number, login code and credential-bearing repository URL are omitted."
+  ],
+  "assistant_formal_submission_performed": false,
+  "organizer_contacted": false,
+  "submitted_git_material_check": {
+    "commit": "e020fdeb67dd8b64b77f0f8c2905f137f0112bba",
+    "default_path": "agent/conversation.json",
+    "root_copy_identical": true,
+    "bytes": 129117,
+    "sha256": "6c5283c43f60e014c28349b1bcde56d8117fd320a744833b10da88074ec7287f",
+    "valid_utf8_json_object": true,
+    "duplicate_keys": false,
+    "nonfinite_numbers": false,
+    "scope": "Git blob mechanical check, not proof platform read these bytes or completed its review."
+  }
+}

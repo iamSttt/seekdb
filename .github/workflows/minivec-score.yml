@@ -4,6 +4,11 @@ on:
     branches: [codex/round2-score-20261111, codex/round2-optimize-20261112]
   workflow_dispatch:
     inputs:
+      small_compute:
+        description: Run 12 single-CPU pairs using the verified submitted-source binary
+        type: boolean
+        required: false
+        default: false
       bulk_guard:
         description: Confirm short-circuited bulk admission with 192 paired runs
         type: boolean
@@ -38,6 +43,9 @@ permissions:
   contents: read
 jobs:
   validate:
+    # This diagnostic reuses an already validated binary; it makes no claim
+    # about a new root-image build and deliberately avoids another PGO build.
+    if: ${{ !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -60,7 +68,7 @@ jobs:
           path: protocol-results/
           retention-days: 90
   paired-performance:
-    if: ${{ !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
+    if: ${{ !inputs.small_compute && !contains(github.event.head_commit.message, '[small-compute]') && !inputs.bulk_guard && !contains(github.event.head_commit.message, '[bulk-guard]') && !inputs.bulk_typed && !contains(github.event.head_commit.message, '[bulk-typed]') && !inputs.regression_ablation && !contains(github.event.head_commit.message, '[regression-ablation]') && !inputs.output_guard && !inputs.six_finish && !inputs.filter_reuse && !contains(github.event.head_commit.message, '[validation-only]') && !contains(github.event.head_commit.message, '[standard]') && !contains(github.event.head_commit.message, '[hotpath]') && !contains(github.event.head_commit.message, '[round2]') && !contains(github.event.head_commit.message, '[dot]') && !contains(github.event.head_commit.message, '[pgo]') && !contains(github.event.head_commit.message, '[dot-avx2]') && !contains(github.event.head_commit.message, '[final-perf]') && !contains(github.event.head_commit.message, '[report-a]') && !contains(github.event.head_commit.message, '[report-b]') && !contains(github.event.head_commit.message, '[pgo-matrix]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -69,6 +77,22 @@ jobs:
           fetch-depth: 0
       - name: Fixed compiler baseline and candidate paired measurement
         run: bash minivec/tools/ci_iteration.sh
+  small-compute:
+    if: ${{ inputs.small_compute || contains(github.event.head_commit.message, '[small-compute]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Submitted-source program, default versus serial query policy, 12 pairs
+        run: bash minivec/tools/ci_small_compute.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: small-compute
+          path: small-compute-results/
+          retention-days: 90
   regression-ablation:
     if: ${{ inputs.regression_ablation || contains(github.event.head_commit.message, '[regression-ablation]') }}
     runs-on: ubuntu-24.04
