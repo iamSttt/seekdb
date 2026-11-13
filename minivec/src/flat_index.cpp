@@ -61,6 +61,11 @@ void transfer(int fd,void* data,size_t bytes,uint64_t offset,bool write) {
   }
 }
 }
+#ifdef MVDB_ENABLE_INDEX_DELTA
+bool FlatIndex::ann_uses_exact_scan() {
+  return ann_disabled() || ann_probe_percent()>=100;
+}
+#endif
 FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t budget)
     :dimension_(dimension),expected_(count) {
   if(!dimension || dimension>(std::numeric_limits<size_t>::max()-16)/sizeof(float))

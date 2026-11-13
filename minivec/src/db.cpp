@@ -76,7 +76,11 @@ struct IndexDelta {
   std::array<size_t,kMaxSlots> slots{};
   std::array<std::shared_ptr<Row>,kMaxSlots> owners;
   std::vector<uint64_t> suppressed;
-  size_t count=0,limit=0,bytes=0;
+  size_t count=0,limit=0,bytes=0,base_slots=0;
+  size_t find(size_t slot) const {
+    for(size_t i=0;i<count;++i)if(slots[i]==slot)return i;
+    return count;
+  }
   bool excludes(size_t slot) const {
     return slot/64<suppressed.size() &&
            (suppressed[slot/64] & (uint64_t(1)<<(slot%64)));
@@ -321,6 +325,11 @@ uint64_t undo_image_bytes(const Row& row) {
 }
 
 void discard_appended_row(Table& table) {
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  // An INSERT may have entered the delta before its metadata/WAL operation
+  // failed. Drop every borrowed view before removing or reusing the tail slot.
+  table.invalidate_vector_index();
+#endif
   if (table.payload_store) table.payload_offsets.pop_back();
   else table.payload_bytes -= row_heap_bytes(table.rows.back());
   table.rows.pop_back();
@@ -444,27 +453,46 @@ void spill_payloads(Table& table, bool force = false) {
 }
 
 #ifdef MVDB_ENABLE_INDEX_DELTA
-// All optional allocations and admission checks precede the first move from
-// the live Row. After that point only noexcept operations remain; bad_alloc
-// before it simply asks the caller to use its ordinary rebuild path.
-bool preserve_index_for_update(Table& table,size_t slot) {
+enum class DeltaMutation { Insert, Replace, Delete };
+
+// The base borrows immutable vector allocations. INSERT keeps its current Row
+// in the table; DELETE leaves that Row there for undo, while suppressing its
+// base entry. Only the first replacement of a base Row needs an extra owner.
+// Allocate and check the full reserved budget before moving from any live Row.
+// A failed optional admission asks the caller to invalidate before mutation.
+bool preserve_index_mutation(Table& table,size_t slot,DeltaMutation mutation) {
   if(!table.vector_index || table.vector_index->disk_backed() ||
      table.payload_store || !table.index_delta_budget)return false;
   auto delta=table.index_delta;
-  if(delta && delta->excludes(slot))return true;
-  if(delta && delta->count==delta->limit)return false;
-  const Row& old=table.rows[slot];
-  size_t retained=sizeof(Row)+2*sizeof(void*)+old.vals.capacity()*sizeof(Value);
-  for(const Value& value:old.vals)
-    retained+=value.s.capacity()+1+value.v.capacity()*sizeof(float);
-  if(retained>table.index_delta_budget)return false;
+  const size_t entry=delta?delta->find(slot):0;
+  if(delta && entry==delta->count && delta->count==delta->limit)return false;
+  // append_row calls us after a successful push. The bitmap covers only slots
+  // present at the first mutation; appended entries cannot occur in the base.
+  const size_t base_slots=delta?delta->base_slots:
+      (mutation==DeltaMutation::Insert?slot:table.rows.size());
+  const bool retain=mutation==DeltaMutation::Replace && slot<base_slots &&
+      (!delta || entry==delta->count || !delta->owners[entry]);
+  size_t retained=0;
+  if(retain) {
+    const Row& old=table.rows[slot];
+    const auto charge=[&](size_t count,size_t width) {
+      if(count>(table.index_delta_budget-retained)/width)return false;
+      retained+=count*width;return true;
+    };
+    if(!charge(1,sizeof(Row)+2*sizeof(void*)) ||
+       !charge(old.vals.capacity(),sizeof(Value)))return false;
+    for(const Value& value:old.vals)
+      if(!charge(value.s.capacity(),1) || !charge(1,1) ||
+         !charge(value.v.capacity(),sizeof(float)))return false;
+  }
   try {
     if(!delta) {
-      delta=std::make_shared<IndexDelta>();
-      const size_t words=table.rows.size()/64+(table.rows.size()%64!=0);
+      const size_t words=base_slots/64+(base_slots%64!=0);
       const size_t fixed=sizeof(IndexDelta)+2*sizeof(void*);
       if(fixed>table.index_delta_budget || words>(table.index_delta_budget-fixed)/sizeof(uint64_t))
         return false;
+      delta=std::make_shared<IndexDelta>();
+      delta->base_slots=base_slots;
       delta->suppressed.assign(words,0);
       delta->bytes=fixed+delta->suppressed.capacity()*sizeof(uint64_t);
       delta->limit=std::min<size_t>(IndexDelta::kMaxSlots,
@@ -472,14 +500,16 @@ bool preserve_index_for_update(Table& table,size_t slot) {
     }
     if(delta->bytes>table.index_delta_budget ||
        retained>table.index_delta_budget-delta->bytes)return false;
-    auto owner=std::make_shared<Row>();
+    std::shared_ptr<Row> owner;
+    if(retain)owner=std::make_shared<Row>();
     static_assert(std::is_nothrow_move_assignable<Row>::value,"Row ownership transfer must not throw");
-    // The original vector allocation moves intact: base index pointers keep
-    // exactly the same addresses. Repeated updates retain only this first Row.
-    *owner=std::move(table.rows[slot]);
-    delta->owners[delta->count]=std::move(owner);
-    delta->slots[delta->count++]=slot;
-    delta->suppressed[slot/64]|=uint64_t(1)<<(slot%64);
+    if(owner) {
+      // Keep exactly the original allocation, even after repeated updates.
+      *owner=std::move(table.rows[slot]);
+      delta->owners[entry]=std::move(owner);
+    }
+    if(entry==delta->count)delta->slots[delta->count++]=slot;
+    if(slot<base_slots)delta->suppressed[slot/64]|=uint64_t(1)<<(slot%64);
     delta->bytes+=retained;
     table.index_delta=std::move(delta);
     return true;
@@ -911,6 +941,10 @@ const Row& Table::read_row(size_t slot, Row& scratch) const {
 }
 
 void Table::append_row(Row row) {
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  // Vector growth moves Rows, but never their nested float allocations.
+  static_assert(std::is_nothrow_move_constructible<Row>::value,"Row relocation must preserve borrowed payloads");
+#endif
   if (payload_store) {
     const uint64_t before = payload_store->end;
     Row meta;
@@ -934,7 +968,11 @@ void Table::append_row(Row row) {
       throw;
     }
   }
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  if(!preserve_index_mutation(*this,rows.size()-1,DeltaMutation::Insert))invalidate_vector_index();
+#else
   invalidate_vector_index();
+#endif
 }
 
 void Table::replace_row(size_t slot, Row row) {
@@ -945,7 +983,7 @@ void Table::replace_row(size_t slot, Row row) {
   } else {
     const uint64_t old_bytes=row_heap_bytes(rows[slot]);
 #ifdef MVDB_ENABLE_INDEX_DELTA
-    if(!preserve_index_for_update(*this,slot))invalidate_vector_index();
+    if(!preserve_index_mutation(*this,slot,DeltaMutation::Replace))invalidate_vector_index();
 #else
     invalidate_vector_index();
 #endif
@@ -1258,7 +1296,12 @@ void Database::apply_insert(const std::string& t, std::vector<Value> vals, int64
     tb.dead.push_back(0);
     const auto [pos, inserted] = tb.pk_pos.try_emplace(key, slot);
     if (!inserted) {
-      if (pos->second < slot) tb.dead[pos->second] = 1;  // replay: last writer wins
+      if (pos->second < slot) {  // replay: last writer wins
+#ifdef MVDB_ENABLE_INDEX_DELTA
+        if(!preserve_index_mutation(tb,pos->second,DeltaMutation::Delete))tb.invalidate_vector_index();
+#endif
+        tb.dead[pos->second] = 1;
+      }
       pos->second = slot;
     }
   } catch (...) {
@@ -1599,7 +1642,9 @@ int64_t Database::delete_rows(const std::string& t, const std::vector<Cond>& con
   Pred pr;
   if (!compile_pred(tb, conds, &pr, err, code)) return -1;
   if (pr.never) return 0;
+#ifndef MVDB_ENABLE_INDEX_DELTA
   tb.invalidate_vector_index();
+#endif
 
   int64_t affected = 0;
   size_t first=0,last=tb.rows.size();
@@ -1650,6 +1695,9 @@ int64_t Database::delete_rows(const std::string& t, const std::vector<Cond>& con
       u.slot = i;
       undo_.push_back(std::move(u));
     }
+#ifdef MVDB_ENABLE_INDEX_DELTA
+    if(!preserve_index_mutation(tb,i,DeltaMutation::Delete))tb.invalidate_vector_index();
+#endif
     tb.dead[i] = 1;
     tb.pk_pos.erase(pk);
     ++affected;
@@ -1974,8 +2022,13 @@ FlatIndex* Database::resident_vector_index(const std::string& t) {
   auto it=tables_.find(t);
   if(it==tables_.end() || !it->second.has_index || it->second.schema.vec_idx<0)return nullptr;
 #ifdef MVDB_ENABLE_INDEX_DELTA
-  // The ANN caller needs current partitions. Keep its established rebuild path.
-  if(it->second.index_delta)it->second.invalidate_vector_index();
+  if(it->second.index_delta) {
+    // Default ANN is exact. Its caller can use the suppressed-base/current-row
+    // merge without rebuilding. Explicit approximate probing still rebuilds
+    // current partitions; never expose stale partition or quantized ordinals.
+    if(FlatIndex::ann_uses_exact_scan())return nullptr;
+    it->second.invalidate_vector_index();
+  }
 #endif
   build_vector_index(it->second);
   return it->second.vector_index.get();
@@ -2090,19 +2143,25 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
   Pred predicate;
   if (!compile_pred(table, conds, &predicate) || predicate.never) return;
 #ifdef MVDB_ENABLE_INDEX_DELTA
-  if(table.index_delta && !conds.empty())table.invalidate_vector_index();
   if(table.index_delta) {
     const auto& delta=*table.index_delta;
     bool more=true;
     table.vector_index->scan([&](int64_t pk,uint64_t slot,const float* vector,size_t dimension) {
+      if(delta.excludes(static_cast<size_t>(slot)))return true;
       if(slot>=table.rows.size() || table.dead[static_cast<size_t>(slot)])
         throw std::runtime_error("stale delta base slot");
-      if(delta.excludes(static_cast<size_t>(slot)))return true;
+      MVDB_FILTER_COUNT(vector_visits);
+      if(!predicate.c.empty() && !row_matches(predicate,table.rows[static_cast<size_t>(slot)]))return true;
       more=cb(pk,vector,dimension);return more;
     });
     if(!more)return;
     for(size_t j=0;j<delta.count;++j) {
-      const Row& row=table.rows[delta.slots[j]];
+      const size_t slot=delta.slots[j];
+      if(slot>=table.rows.size())throw std::runtime_error("stale delta row slot");
+      if(table.dead[slot])continue;
+      MVDB_FILTER_COUNT(vector_visits);
+      const Row& row=table.rows[slot];
+      if(!row_matches(predicate,row))continue;
       const auto& vector=row.vals[table.schema.vec_idx].v;
       if(!cb(row.vals[table.schema.pk_idx].i,vector.data(),vector.size()))return;
     }

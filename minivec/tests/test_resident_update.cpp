@@ -29,6 +29,7 @@ static Cond eq(int64_t key) {
 
 int main() {
   alarm(120);
+  unsetenv("MVDB_ANN_PROBE_PERCENT");unsetenv("MVDB_ANN_OFF");
   char path[]="/tmp/mvdb-resident-update-XXXXXX";assert(mkdtemp(path));
   Database db;std::string error;int code=0;assert(db.open(path,&error));
   Column id;id.name="id";id.type=Type::BIGINT;id.is_primary=true;
@@ -73,8 +74,10 @@ int main() {
   assert(db.table("t")->vector_index && db.table("t")->index_delta);
   FlatIndex::ResidentView view;assert(!db.resident_vector_view("t",&view));
   verify_vectors("t",2);
-  assert(db.resident_vector_index("t")); // Explicit ANN accessor requires a rebuild.
-  assert(!db.table("t")->index_delta && db.resident_vector_view("t",&view));
+  const auto base=db.table("t")->vector_index;
+  assert(!db.resident_vector_index("t")); // Default ANN uses the exact delta merge.
+  assert(db.table("t")->vector_index==base && db.table("t")->index_delta);
+  assert(!db.resident_vector_view("t",&view));
 #else
   assert(!db.table("t")->vector_index);
   FlatIndex::ResidentView view;assert(db.resident_vector_view("t",&view));

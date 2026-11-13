@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Same-source whole-request confirmation under the original production PGO.
-# CONFIRM_FEATURE=parser (default), typed, combined, or spill; no arbitrary flags.
+# CONFIRM_FEATURE=parser (default), typed, combined, spill, delta, or filter.
+# filter compares baseline cache-disabled to current candidate defaults.
 # Optional PARSER_CONFIRM_O3=1 also runs 15 standard pairs without PGO.
 set -euo pipefail
 unset MVDB_PROTOCOL MVDB_OUT MVDB_SINGLE_THREAD MVDB_QUERY_THREADS MVDB_PARSE_THREADS
@@ -11,7 +12,7 @@ revision=$(git rev-parse HEAD)
 export CONFIRM_FEATURE=${CONFIRM_FEATURE:-parser}
 export FEATURE_CORRECTNESS_ONLY=${FEATURE_CORRECTNESS_ONLY:-0}
 case "$FEATURE_CORRECTNESS_ONLY" in 0|1) ;; *) echo 'FEATURE_CORRECTNESS_ONLY must be 0 or 1' >&2;exit 2;;esac
-case "$CONFIRM_FEATURE" in parser|typed|combined|spill) ;; *) echo 'CONFIRM_FEATURE must be parser, typed, combined, or spill' >&2;exit 2;;esac
+case "$CONFIRM_FEATURE" in parser|typed|combined|spill|delta|filter) ;; *) echo 'CONFIRM_FEATURE must be parser, typed, combined, spill, delta, or filter' >&2;exit 2;;esac
 out="$repo/$CONFIRM_FEATURE-confirmation-results"
 test ! -e "$out"
 mkdir -p "$out/build-input"
@@ -68,22 +69,25 @@ feature=os.environ['CONFIRM_FEATURE']
 flags={'parser':['-DMVDB_ENABLE_TOKEN_REUSE'],
        'typed':['-DMVDB_ENABLE_TYPED_JSON'],
        'combined':['-DMVDB_ENABLE_TOKEN_REUSE','-DMVDB_ENABLE_TYPED_JSON'],
-       'spill':['-DMVDB_ENABLE_SPILL_FILTER']}[feature]
-replacement=needle[:-1]+' '+' '.join(flags)+"'"
+       'spill':['-DMVDB_ENABLE_SPILL_FILTER'],
+       'delta':['-DMVDB_ENABLE_INDEX_DELTA'],
+       'filter':[]}[feature]
+baseline_flags=['-DMVDB_DISABLE_MULTI_POSTING'] if feature=='filter' else []
 profile_compile='g++ $flags -fprofile-generate=/pgo -fprofile-update=atomic src/*.cpp -o /minivec;'
 if production.count(profile_compile)!=1:raise SystemExit('profile generation command changed')
 profile_proof=profile_compile+' \\\n         sha256sum /minivec > /training/instrumented-binary-sha256.txt;'
-baseline=production.replace(profile_compile,profile_proof)
-candidate=baseline.replace(needle,replacement)
-if candidate.replace(replacement,needle)!=baseline:
-    raise SystemExit('candidate changed more than the shared engine compiler flags')
-for role,text in [('baseline',baseline),('candidate',candidate)]:
+proof_source=production.replace(profile_compile,profile_proof)
+for role,role_flags in [('baseline',baseline_flags),('candidate',flags)]:
+    replacement=needle[:-1]+(' '+' '.join(role_flags) if role_flags else '')+"'"
+    text=proof_source.replace(needle,replacement)
+    if text.replace(replacement,needle)!=proof_source:
+        raise SystemExit(role+' changed more than the shared engine compiler flags')
     (out/'build-input'/('Dockerfile.'+role)).write_text(text)
 def tree(root):
     return {str(path.relative_to(root)):hashlib.sha256(path.read_bytes()).hexdigest()
             for path in sorted(root.rglob('*')) if path.is_file()}
 inputs={'source_commit':os.environ['PARSER_CONFIRM_REVISION'],
-        'feature':feature,'candidate_flags':flags,
+        'feature':feature,'candidate_flags':flags,'baseline_flags':baseline_flags,
         'engine_source':tree(snapshot/'minivec/src'),
         'third_party':tree(snapshot/'minivec/third_party'),
         'training_source':{name:hashlib.sha256((snapshot/'minivec/tools/pgo'/name).read_bytes()).hexdigest()
@@ -201,6 +205,7 @@ if evidence['baseline-pgo']['training_corpus_sha256']!=evidence['candidate-pgo']
     raise RuntimeError('baseline/candidate trained on different original corpora')
 context={'source_commit':inputs['source_commit'],'compiler':'pinned GCC13.3 O3 static',
          'feature':inputs['feature'],'candidate_flags':inputs['candidate_flags'],
+         'baseline_flags':inputs['baseline_flags'],
          'candidate_only_flag':inputs['candidate_only_flag'],
          'profile_generate_flags':['-fprofile-generate=/pgo','-fprofile-update=atomic'],
          'profile_use_flags':['-fprofile-use=/pgo','-Werror=missing-profile','-Werror=coverage-mismatch'],

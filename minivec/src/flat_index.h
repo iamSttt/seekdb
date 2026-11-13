@@ -101,6 +101,10 @@ class FlatIndex {
   // built without one) and the caller must fall back to the exact scan.
   bool ann_probe(const float* query,size_t probes,
       std::vector<uint32_t>* buffered,const uint32_t** ordinals,size_t* count) const;
+#ifdef MVDB_ENABLE_INDEX_DELTA
+  // Use the same cached policy as partition probing: default 100% or ANN_OFF.
+  static bool ann_uses_exact_scan();
+#endif
   size_t ann_clusters() const {return ann_offsets_.empty() ? 0 : ann_offsets_.size()-1;}
   size_t resident_bytes() const;
   bool disk_backed() const {return fd_>=0;}

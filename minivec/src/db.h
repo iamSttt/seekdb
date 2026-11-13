@@ -43,7 +43,7 @@ struct Table {
   bool has_index = false;
   std::shared_ptr<FlatIndex> vector_index;
 #ifdef MVDB_ENABLE_INDEX_DELTA
-  // Experimental UPDATE-only delta. Its reserved allowance is charged to the
+  // Experimental INSERT/UPDATE/DELETE delta. Its reserved allowance is charged to the
   // same global index budget; no state is persisted to snapshot or WAL.
   std::shared_ptr<IndexDelta> index_delta;
   size_t index_delta_budget = 0;

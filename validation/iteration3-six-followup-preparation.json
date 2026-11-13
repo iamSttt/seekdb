@@ -1,0 +1,50 @@
+{
+  "status": "implementation_and_static_checks_ready_linux_execution_pending",
+  "date_asia_shanghai": "2026-11-13",
+  "root_material_tests_passed": 52,
+  "existing_matrix_tests_passed": 4,
+  "planned_internal_api_gates": 12,
+  "planned_pgo_engine_gates": 18,
+  "planned_pairs": {
+    "I06_mixed_delta": 9,
+    "I07_I18_spill_write_query": 12,
+    "I05_I17_compound_write_query": 6
+  },
+  "new_database_performance_pairs_executed": 0,
+  "entry": "bash minivec/tools/ci_index_delta_complete.sh",
+  "feature_defaults_changed": false,
+  "source_sha256": {
+    "minivec/src/db.cpp": "d7182a6c232afe5d626bedce046f021f91d28847d877366fa3a15e45531d53f1",
+    "minivec/src/db.h": "388b711ff46dc6951cf49e2ff026665f91bad855f7faef6f11182454df134244",
+    "minivec/src/flat_index.cpp": "660db76bcae10f759a9951e63b42758519ec6d146019c7bf5d093f22626339ab",
+    "minivec/src/flat_index.h": "4541bef17f1acb7a0e729a5e87b161df5e699ffc9af7214d220d8c582a89da06",
+    "minivec/tests/test_index_delta.cpp": "7bb2a0311573ff78644d2123f6fb7fd50d04c759cd6578ae84ec526c61d324a0",
+    "minivec/tests/test_index_delta_mutations.cpp": "0817582d887a9ff8c4476b75fc5351e46de34072c72b43fcec787ff6b5c0993e",
+    "minivec/tests/test_resident_update.cpp": "e7f316de92123b7f2f137bc54491f44dea15b065fef9b31cc95f5a1c0750620e",
+    "minivec/tools/benchmark_index_delta.py": "b5ff45b17326213dcc746217817c7689e8535249dff29d67ca9b9c6e989bc006",
+    "minivec/tools/benchmark_write_query.py": "16d03ea8e82a9a339a658b06c4a8cd2a1147f8a37a0ea5da2b13c7252f7abe47",
+    "minivec/tools/ci_index_delta_complete.sh": "ba6b304640a4f84f9471a41fcdd0dda6112bb9b0969a5760ae168dd9917122b1",
+    "minivec/tools/ci_parser_confirmation.sh": "d50991111e26a8e1f2be889c8a0c6eb49017faf861f64032a156046708d3dd01"
+  },
+  "cloud_request": {
+    "user_authorized": true,
+    "environment_configuration": "asenvcfg_base",
+    "requested_utc": "2026-11-13T00:46:45Z",
+    "thread_id": null,
+    "status_at_checkpoint": "creation_tool_has_not_returned_a_task_id",
+    "duplicate_creation_attempted": false
+  },
+  "I01": {
+    "page": "https://open.oceanbase.com/train/TestRecord?questionId=600081",
+    "observed": "logged out; official login opened and handed to user",
+    "new_formal_score": null
+  },
+  "limits": [
+    "Static tooling tests do not establish C++ correctness or speed.",
+    "New user I17 feedback is after historical measurements; I18 write-query prediction precedes the new planned test.",
+    "Prior assistant-origin quotations keep their existing attribution audit.",
+    "Default ANN requests use exact delta merge; explicitly approximate ANN keeps the original rebuild path.",
+    "A future cloud task requires observed creation and actual run artifacts; a request is not a running test."
+  ],
+  "source_sha256_scope": "Git index bytes after text normalization; to be committed with this preparation record."
+}

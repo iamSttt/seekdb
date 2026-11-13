@@ -1,4 +1,5 @@
-// Opt-in UPDATE-only delta correctness and failure tests.
+// Opt-in delta owner lifetime, bounded UPDATE admission and allocation faults.
+// Full mixed mutation/model coverage lives in test_index_delta_mutations.cpp.
 // Link src/{db,exec,sql,value,flat_index}.cpp with
 // -DMVDB_ENABLE_INDEX_DELTA -std=c++17 -pthread. Also run under ASan/UBSan.
 #include "db.h"
@@ -21,8 +22,14 @@
 
 namespace {
 int allocation_failure=-1;
+mvdb::Table* fail_after_append=nullptr;
+size_t fail_after_append_size=0;
+bool append_failure_triggered=false;
 }
 void* operator new(size_t bytes) {
+  if(fail_after_append && fail_after_append->rows.size()==fail_after_append_size) {
+    fail_after_append=nullptr;append_failure_triggered=true;throw std::bad_alloc();
+  }
   if(allocation_failure>=0 && allocation_failure--==0)throw std::bad_alloc();
   if(void* pointer=std::malloc(bytes?bytes:1))return pointer;
   throw std::bad_alloc();
@@ -119,15 +126,15 @@ static void mutation_tests(const std::string& path) {
   assert(!db.end_statement(false,&error,&code));
   assert(!table.vector_index && !table.index_delta);check(db,"t");
   assert(db.rollback(&error,&code));
-  // A predicate uses a freshly built current posting cache, never base values.
+  // Predicates read current rows while the immutable base remains borrowed.
   update(db,2,std::vector<float>(16,1));assert(table.index_delta);
   size_t filtered=0;
   db.scan_vectors("t",{eq(2)},[&](int64_t id,const float* v,size_t dimension) {
     assert(id==2 && dimension==16 && v[0]==1);++filtered;return true;
   });
-  assert(filtered==1 && !table.index_delta && table.vector_index);
+  assert(filtered==1 && table.index_delta && table.vector_index);
   update(db,3,std::vector<float>(16,2));assert(table.index_delta);
-  assert(db.resident_vector_index("t") && !table.index_delta); // ANN accessor rebuild.
+  assert(!db.resident_vector_index("t") && table.index_delta); // Default ANN uses exact merge.
 
   // PK UPDATE is explicitly unsupported by this database. A rejected attempt
   // must leave an already live delta, the original key and transaction intact.
@@ -145,7 +152,8 @@ static void mutation_tests(const std::string& path) {
   assert(old_keys==1 && new_keys==0);check(db,"t");
   assert(db.rollback(&error,&code));check(db,"t");
 
-  // 1024 rows allow ten distinct dirty slots. The eleventh falls back.
+  // Start with a fresh base: 1024 rows admit ten dirty slots, then rebuild.
+  table.invalidate_vector_index();check(db,"t");
   for(int i=0;i<10;++i)update(db,i,std::vector<float>(16,float(i)));
   assert(table.index_delta && table.vector_index);
   update(db,10,std::vector<float>(16,-1));
@@ -154,12 +162,12 @@ static void mutation_tests(const std::string& path) {
   update(db,1,std::vector<float>(16,3));assert(table.index_delta);
   assert(db.begin(&error,&code));
   assert(db.insert("t",{Value::ofInt(2000),Value::ofInt(0),Value::ofVec(values(2000))},&error,&code));
-  assert(!table.index_delta && !table.vector_index);check(db,"t");
+  assert(table.index_delta && table.vector_index);check(db,"t");
   assert(db.rollback(&error,&code));check(db,"t");
   update(db,1,std::vector<float>(16,4));assert(table.index_delta);
   assert(db.begin(&error,&code));
   assert(db.delete_rows("t",{eq(3)},&error,&code)==1);
-  assert(!table.index_delta && !table.vector_index);check(db,"t");
+  assert(table.index_delta && table.vector_index);check(db,"t");
   assert(db.rollback(&error,&code));check(db,"t");
 
   update(db,1,std::vector<float>(16,5));assert(table.index_delta);
@@ -190,6 +198,24 @@ static void allocation_and_budget_tests(const std::string& path) {
     assert(!table.vector_index && !table.index_delta);
     assert(table.rows[1].vals[0].i==1 && table.rows[1].vals[2].v==std::vector<float>(16,9));
   }
+  // INSERT's optional delta has two allocations (owner header and bitmap),
+  // without a retained Row. Reserve the outer row array so injected faults
+  // target those optional allocations, not the underlying INSERT itself.
+  for(int failure=0;failure<2;++failure) {
+    Table table;table.storage_dir=path;table.schema.vec_idx=2;table.rows.reserve(1001);
+    for(int i=0;i<1000;++i) {
+      Row row;row.rid=i;row.vals={Value::ofInt(i),Value::ofInt(0),Value::ofVec(values(i))};
+      table.append_row(std::move(row));
+    }
+    table.vector_index=std::make_shared<FlatIndex>(path,16,1000,4u<<20);
+    for(size_t i=0;i<table.rows.size();++i)table.vector_index->add(i,i,table.rows[i].vals[2].v.data(),16);
+    table.vector_index->finish();table.index_delta_budget=256u<<10;
+    Row appended;appended.rid=1000;
+    appended.vals={Value::ofInt(1000),Value::ofInt(0),Value::ofVec(values(1000))};
+    allocation_failure=failure;table.append_row(std::move(appended));allocation_failure=-1;
+    assert(!table.vector_index && !table.index_delta && table.rows.size()==1001);
+    assert(table.rows.back().vals[0].i==1000 && table.rows.back().vals[2].v==values(1000));
+  }
   Database db;assert(db.open(path,&error));
   Column id;id.name="id";id.type=Type::BIGINT;id.is_primary=true;
   Column text;text.name="s";text.type=Type::VARCHAR;text.len=400000;
@@ -201,10 +227,35 @@ static void allocation_and_budget_tests(const std::string& path) {
   assert(!db.table("wide")->index_delta && !db.table("wide")->vector_index);
   db.close();
 }
+static void appended_metadata_failure(const std::string& path) {
+  Database db;assert(db.open(path,&error));create(db,"t",1024);
+  update(db,1,std::vector<float>(16,9));
+  Table& table=*db.table("t");assert(table.index_delta && table.vector_index);
+  const size_t slot=table.rows.size();const int64_t next_rid=table.next_rid;
+  // Keep row/dead growth and hash rehash out of the injection point. The live
+  // delta already has its metadata, so the first allocation after append is
+  // the new PK node, inside apply_insert's cleanup-protected section.
+  table.rows.reserve(slot+1);table.dead.reserve(slot+1);table.pk_pos.reserve(slot+1);
+  auto appended=std::vector<Value>{Value::ofInt(2000),Value::ofInt(3),Value::ofVec(values(2000))};
+  fail_after_append_size=slot+1;append_failure_triggered=false;fail_after_append=&table;
+  const bool inserted=db.insert("t",std::move(appended),&error,&code);
+  fail_after_append=nullptr;
+  assert(append_failure_triggered && !inserted && code==static_cast<int>(ErrCode::TXN));
+  assert(table.rows.size()==slot && table.dead.size()==slot && !table.pk_pos.count(2000));
+  assert(table.next_rid==next_rid && !table.vector_index && !table.index_delta);
+  assert(table.rows[table.pk_pos.at(1)].vals[2].v==std::vector<float>(16,9));check(db,"t");
+  assert(db.begin(&error,&code));
+  assert(db.insert("t",{Value::ofInt(2000),Value::ofInt(3),Value::ofVec(values(2000))},&error,&code));
+  assert(table.pk_pos.at(2000)==slot);check(db,"t");
+  assert(db.rollback(&error,&code));
+  assert(table.rows.size()==slot && !table.pk_pos.count(2000));check(db,"t");db.close();
+}
 int main() {
   alarm(120);
-  Directory mutations,faults;
+  unsetenv("MVDB_ANN_PROBE_PERCENT");unsetenv("MVDB_ANN_OFF");
+  Directory mutations,faults,metadata_fault;
   mutation_tests(mutations.path);
   allocation_and_budget_tests(faults.path);
-  std::cout<<"PASS experimental UPDATE-only delta owner lifetime, exact merge, invalidation, limits and allocation faults\n";
+  appended_metadata_failure(metadata_fault.path);
+  std::cout<<"PASS experimental delta owner lifetime, exact merge, limits, admission and post-append allocation faults\n";
 }
