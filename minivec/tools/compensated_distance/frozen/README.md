@@ -1,0 +1,21 @@
+# Compensated-distance standalone backup — prepared, not executed
+
+This package leaves the frozen FMA/TwoSum algorithm unchanged. `compensated_distance.h`, its original scalar reference, normal/sanitizer test, fixture generator, 7,842-case exact oracle and proof are byte copies of the earlier prototype. Their fixed SHA-256 values and the original Git reference `ebd6d25f27ad1a32fa92d84bcd571ae86b55394e:minivec/src/distance.h` are recorded in `source-proof.json`. The reference is also byte-identical to the old reference used by tighter-bound; **the tighter candidate is not imported**. There is no batch8 code or production dependency.
+
+The old frozen manifest and independent review report zero native/DB executions, and no compensated-result artifact or current material entry was found locally. This is evidence of an unexecuted local backup, not a claim to have inventoried every remote run. The independent review predates the final additive exception-mask tests; the final frozen test has its own explicit hash. This new package has not been compiled or run natively.
+
+## Future entry and fixed scope
+
+`python3 run_linux.py --output /out/results`
+
+Use the already provisioned immutable GCC 13.3.0 image `gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818` with Python present. The caller must provide Linux x86-64, one CPU affinity plus one CPU quota, 2 GiB memory and zero swap. The runner checks the actual cgroup values before compiling. It installs nothing, creates no Docker image, launches no CI and builds no database or PGO profile. Image identity/inspect must be retained by a future caller; a compiler version string alone does not prove image identity.
+
+The immutable package inventory is verified first. The original generator regenerates the oracle into output, where it must exactly match the frozen 7,842-case binary hash. Original correctness tests run at O3 and under ASan/UBSan O1; positive equal check counts and exact pass markers are required. They include coordinate/shape/boundary fallback and exception-mask rejection. Unsupported ISA/FP state is failed/unsupported, not a pass or an alternative algorithm.
+
+The micro uses the **same byte-identical `micro_data.h` as tighter-bound**: `fullmantissa128`, `fullmantissa512`, `grid128`, 512 vector pairs per case, 64 repetitions per measured arm and exactly four AB/BA/AB/BA pairs per case, 12 total. Both functions are in the same non-PGO compilation with identical strict FP flags, including `-ffp-contract=off`. No parameters are searched and no cases are selected after results.
+
+`old_distance` calls the original `distance_scalar`; `new_distance` calls the entire compensated `distance` wrapper. Both wrappers are noinline/noipa and use the same function-pointer loop. Every candidate call therefore includes all shape, cached ISA availability, FP-control and per-coordinate checks, midpoint certification, and the original scalar work when fallback is needed. The bare SIMD kernel is never timed separately. The cached ISA's first initialization and corpus validation are warmed and untimed; this is a warm whole-call measurement, not cold-start latency.
+
+Before timing, all 512 rows individually match the unchanged exact integer reference. Timed loops have no classification counters or internal timers; a shared checksum prevents dead-code removal and matches both arms. The existing correctness executable's counters are not part of the micro binary. Wall/thread CPU, faults, context switches, absolute pairs, input fingerprints and all negative ratios remain in the result. Partial failures retain command records, logs and prior pairs. Attempts and completed native commands are counted separately; a successful plan is 3 compilations and 14 native executions.
+
+These synthetic scalar-call results cannot establish query CPU share, TopK/filter/storage behavior or official score gain. The late invalid-coordinate and midpoint cases remain correctness fixtures, not added timing scenarios. Do not multiply these future ratios by prior tighter or batch8 results, or infer combined behavior. The current main experiment remains separate; this backup is only a reviewable draft.

@@ -610,9 +610,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      PROTOTYPE_SOURCE: ${{ contains(github.event.head_commit.message, '[quarter-margin]') && 'minivec/tools/quarter_margin' || 'minivec/tools/tighter_bound' }}
-      PROTOTYPE_OUTPUT: ${{ contains(github.event.head_commit.message, '[quarter-margin]') && 'quarter-margin-results' || 'tighter-bound-results' }}
-      PROTOTYPE_ARTIFACT: ${{ contains(github.event.head_commit.message, '[quarter-margin]') && 'quarter-margin-prototype-results' || 'tighter-bound-prototype-results' }}
+      PROTOTYPE_SOURCE: ${{ contains(github.event.head_commit.message, '[compensated-distance]') && 'minivec/tools/compensated_distance' || contains(github.event.head_commit.message, '[quarter-margin]') && 'minivec/tools/quarter_margin' || 'minivec/tools/tighter_bound' }}
+      PROTOTYPE_OUTPUT: ${{ contains(github.event.head_commit.message, '[compensated-distance]') && 'compensated-distance-results' || contains(github.event.head_commit.message, '[quarter-margin]') && 'quarter-margin-results' || 'tighter-bound-results' }}
+      PROTOTYPE_ARTIFACT: ${{ contains(github.event.head_commit.message, '[compensated-distance]') && 'compensated-distance-prototype-results' || contains(github.event.head_commit.message, '[quarter-margin]') && 'quarter-margin-prototype-results' || 'tighter-bound-prototype-results' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

@@ -1,0 +1,66 @@
+{
+  "status": "frozen_experimental_source_only",
+  "files": {
+    "benchmark_compensated.cpp": {
+      "bytes": 4109,
+      "sha256": "a23197bd768e3232b898feaaf3190241449746be533ed4e183914f4c9db33bf4"
+    },
+    "check_preflight.py": {
+      "bytes": 2836,
+      "sha256": "b685c64c0b166e9d6d8f8c4fc6a6256ba578912f647340fef70dcbf0a1a97aa5"
+    },
+    "compensated_distance.h": {
+      "bytes": 5658,
+      "sha256": "8cb12b2cf9c4c76d87099584a46f6e82e429b12448c7c0a7ff902317ba10585c"
+    },
+    "freeze_manifest.py": {
+      "bytes": 1637,
+      "sha256": "69c2cb04ea348fdc15f89e6956f41b0dc38456f6bc9419cc011ec7a2be59415c"
+    },
+    "make_fixtures.py": {
+      "bytes": 4215,
+      "sha256": "ca91ce0e8c256952363b3a058228c009aef85be10360e0f03c43b8488fa04b17"
+    },
+    "oracle.bin": {
+      "bytes": 3816012,
+      "sha256": "a159c84b49ad4a2c018aa208677cd67143395d362ce214fa7a34db83adcd3608"
+    },
+    "oracle.json": {
+      "bytes": 437,
+      "sha256": "4ee3b23c3ff45952740fff14ff44f4b4e82f8aaa716944169b16e58f8703f60a"
+    },
+    "preflight.json": {
+      "bytes": 2933,
+      "sha256": "68509577b2bab798144fd0d27472020799103490ce2fee6c7233d763bf88ff9f"
+    },
+    "PROOF.md": {
+      "bytes": 8897,
+      "sha256": "850be76e26015d59b3c299cac6f0b50fdad59fe76493a6c482c050cc5d963d3e"
+    },
+    "README.md": {
+      "bytes": 1955,
+      "sha256": "723be3e0f4d99a459c0ae3bc9abcd51155d183eed458f7ea508f5c330aa85ce9"
+    },
+    "reference_distance.h": {
+      "bytes": 17386,
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9"
+    },
+    "run_linux.py": {
+      "bytes": 4464,
+      "sha256": "251157af19f6f0b4fced9e0a1536da977ebde53f0823a03aaa5c9f5ab52346a5"
+    },
+    "test_compensated_distance.cpp": {
+      "bytes": 5743,
+      "sha256": "421f18da3f8817dfed53ea16fa7043504b96bca91f9e43a70e00529a5fc14d5d"
+    }
+  },
+  "scope": "No production modifications, native compilation, native test, microbenchmark or database run by this prototype delivery.",
+  "native_compilations": 0,
+  "native_executions": 0,
+  "database_runs": 0,
+  "math_review": "Independent source review reported no numerical-certification blocker; this is not a native or formal proof-tool result.",
+  "exception_mask_tests": "Six MXCSR masks and six x87 masks individually cleared after clearing sticky bits; attempt only; restore controls before assertions; no scalar call in unmasked environment.",
+  "entry": "python3 run_linux.py --output /tmp/<new-output-directory> --pairs 4 --calls 65536",
+  "adopted": false,
+  "formal_submission": false
+}

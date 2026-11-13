@@ -18,3 +18,5 @@
 /validation/iteration5-tighter*review.md -text
 # Quarter candidate handoff and reused oracle retain exact frozen bytes.
 /minivec/tools/quarter_margin/** -text
+# Compensated standalone runner and its oracle preserve frozen bytes.
+/minivec/tools/compensated_distance/** -text
