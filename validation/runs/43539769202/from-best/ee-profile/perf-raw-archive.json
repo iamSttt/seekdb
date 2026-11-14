@@ -1,0 +1,116 @@
+{
+  "archive": "perf-raw.tar.gz",
+  "archive_bytes": 9678,
+  "archive_sha256": "ad7b4040865e532f822329824a9c41388122efcc258f3382c5d9185f757da960",
+  "maximum_encoded_archive_bytes": 8388608,
+  "raw_perf_data_files": 1,
+  "members": [
+    {
+      "path": "buildid-cache-add.command.json",
+      "bytes": 497,
+      "sha256": "42e74220b1c3a38019bcce76497846c2a959da8d880304ed1c3a9e78e9f29ea6"
+    },
+    {
+      "path": "buildid-cache-add.stderr",
+      "bytes": 85,
+      "sha256": "535f18a1a82de749ce6accd7475c3f40c95c4d4383bbc9dae3cc4560ca07925d"
+    },
+    {
+      "path": "buildid-cache-add.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpuinfo.txt",
+      "bytes": 5228,
+      "sha256": "29e93c319eb8a2f59405cf02d71c1bdcfd915a34779e5c375fb021108f46e1a9"
+    },
+    {
+      "path": "kptr-restrict.txt",
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "perf-event-paranoid.txt",
+      "bytes": 2,
+      "sha256": "7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d"
+    },
+    {
+      "path": "perf-version.command.json",
+      "bytes": 288,
+      "sha256": "e25da76e8a0b631ba370e292d695fc501349a4de93ada5edf81c1cae88f5b833"
+    },
+    {
+      "path": "perf-version.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "perf-version.stdout",
+      "bytes": 20,
+      "sha256": "496b3d503a88d37a5f9137643742e6101b6a7f183075dd04d279982e92dcc662"
+    },
+    {
+      "path": "run-00/ingest/perf.data.gz",
+      "bytes": 1064,
+      "sha256": "8e8994faf884857f43ce2bcdfa27cfe9f376651f5b01f2fec70c6c467f1043e5"
+    },
+    {
+      "path": "run-00/ingest/record-collection.json",
+      "bytes": 716,
+      "sha256": "516a40d40d4fe5854a083572d949e941647a79b8d5ea49e5c82761455453c4a1"
+    },
+    {
+      "path": "run-00/ingest/record.log",
+      "bytes": 218,
+      "sha256": "8b5e6fce59bbb5e44e6d4ffeeaff96a7549d399506814ce6768b0bdc82c1ecb0"
+    },
+    {
+      "path": "run-00/ingest/stat-collection.json",
+      "bytes": 716,
+      "sha256": "68f7f4053d46a8a1c05c8cdebb919a7f5aead657b8cd6b0da11a42fe075aebe3"
+    },
+    {
+      "path": "run-00/ingest/stat.log",
+      "bytes": 71,
+      "sha256": "942056bfed9012bff641c0b415f1b55d0cfcdcf434c5ba14ce8e9643e9fd613f"
+    },
+    {
+      "path": "run-00/run.json",
+      "bytes": 9650,
+      "sha256": "b5b4301f1983fe37c2a40f1074fbb060c2e06037864b4962efe61948f630b9f0"
+    },
+    {
+      "path": "self-cgroup.txt",
+      "bytes": 46,
+      "sha256": "0dcb3ba0655f52452a0222c39d59295eae59ff9f296a86539ce24ffef1387abd"
+    },
+    {
+      "path": "strip-symbol-copy.command.json",
+      "bytes": 456,
+      "sha256": "7d4cf5f2dfacafd55c8c8636e46492a5c37c61b20b4ff630fd578f73d57c502d"
+    },
+    {
+      "path": "strip-symbol-copy.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "strip-symbol-copy.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 19275,
+      "sha256": "2183fc9163090c6e830945dfb34c78781efb08d02f8ca05a58d408aff7a1509b"
+    }
+  ],
+  "raw_archive_transported": false,
+  "scope": "Manifest and base64 text emitted by the existing CI report trap; decode bytes and verify SHA256 before extracting.",
+  "status": "prepared_for_text_transport",
+  "base64_file": "perf-raw.tar.gz.b64.txt",
+  "base64_bytes": 13074,
+  "base64_sha256": "11e73ba44a6727623b03025e99d4424f472ecdb7d1bf2b899a38a3223a57e965",
+  "raw_archive_transport_prepared": true
+}

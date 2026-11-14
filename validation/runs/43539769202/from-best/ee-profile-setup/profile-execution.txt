@@ -1,0 +1,4 @@
+database stderr tail: minivec ready data=/tmp/vectordb-gpzhry7a
+mvdb: fanout wake_us=5.41 (measured, median of 200 handshakes)
+
+{"status": "blocked", "completed_repetitions": 0, "capabilities": {"software": "blocked", "hardware": "blocked"}, "summary": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/summary.json"}

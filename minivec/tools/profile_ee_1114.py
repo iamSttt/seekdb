@@ -124,6 +124,7 @@ class PerfProcess:
         self.control = self.ack = None
         self.log = None
         self.enabled = False
+        self.ack_optional_nul = False
         ctl_read, ctl_write = os.pipe()
         ack_read, ack_write = os.pipe()
         self.control, self.ack = ctl_write, ack_read
@@ -151,9 +152,22 @@ class PerfProcess:
             os.close(ctl_read)
             os.close(ack_write)
 
+    def drain_ack_tail(self):
+        # C perf versions can write sizeof("ack\n"), including its final NUL.
+        # A tail arriving in another read belongs to the previous complete ACK;
+        # never accept another ACK or arbitrary trailing bytes as that tail.
+        while select.select([self.ack], [], [], 0)[0]:
+            chunk = os.read(self.ack, 128)
+            if not chunk:
+                raise ProfileBlocked(self.kind + ' closed acknowledgement pipe')
+            if not self.ack_optional_nul or chunk != b'\0':
+                raise ProfileBlocked(self.kind + ' unexpected trailing/stale perf acknowledgement: ' + repr(chunk))
+            self.ack_optional_nul = False
+
     def control_command(self, word):
         if self.proc.poll() is not None:
             raise ProfileBlocked(self.kind + ' exited before ' + word)
+        self.drain_ack_tail()
         os.write(self.control, (word + '\n').encode('ascii'))
         pending = b''
         deadline = time.monotonic() + 15
@@ -165,9 +179,20 @@ class PerfProcess:
                 chunk = os.read(self.ack, 128)
                 if not chunk:
                     raise ProfileBlocked(self.kind + ' closed acknowledgement pipe')
+                if self.ack_optional_nul:
+                    # The previous ACK's optional NUL may race the pre-command
+                    # drain. Consume at most one, not any bytes of this ACK.
+                    self.ack_optional_nul = False
+                    if chunk.startswith(b'\0'):
+                        chunk = chunk[1:]
                 pending += chunk
+                if not b'ack\n\0'.startswith(pending):
+                    raise ProfileBlocked(self.kind + ' unexpected perf acknowledgement: ' + repr(pending))
                 if b'\n' in pending:
-                    require(pending == b'ack\n', 'unexpected perf acknowledgement: ' + repr(pending))
+                    if pending not in (b'ack\n', b'ack\n\0'):
+                        raise ProfileBlocked(self.kind + ' unexpected perf acknowledgement: ' + repr(pending))
+                    self.ack_optional_nul = pending == b'ack\n'
+                    self.drain_ack_tail()
                     self.record['control_events'].append({'command': word, 'ack_monotonic': time.monotonic()})
                     return
         raise ProfileBlocked(self.kind + ' control acknowledgement timeout for ' + word)

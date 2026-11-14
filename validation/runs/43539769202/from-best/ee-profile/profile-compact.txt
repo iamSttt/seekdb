@@ -1,0 +1,25 @@
+{
+  "status": "blocked",
+  "completed_repetitions": 0,
+  "binary_sha256": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+  "capabilities": {
+    "software": "blocked",
+    "hardware": "blocked"
+  },
+  "phase_summary": null,
+  "raw_archive": {
+    "archive": "perf-raw.tar.gz",
+    "archive_bytes": 9678,
+    "archive_sha256": "ad7b4040865e532f822329824a9c41388122efcc258f3382c5d9185f757da960",
+    "maximum_encoded_archive_bytes": 8388608,
+    "raw_perf_data_files": 1,
+    "raw_archive_transported": false,
+    "scope": "Manifest and base64 text emitted by the existing CI report trap; decode bytes and verify SHA256 before extracting.",
+    "status": "prepared_for_text_transport",
+    "base64_file": "perf-raw.tar.gz.b64.txt",
+    "base64_bytes": 13074,
+    "base64_sha256": "11e73ba44a6727623b03025e99d4424f472ecdb7d1bf2b899a38a3223a57e965",
+    "raw_archive_transport_prepared": true
+  },
+  "error": "ProfileBlocked: software profiling unavailable: unexpected perf acknowledgement: b'ack\\n\\x00'"
+}

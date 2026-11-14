@@ -1,0 +1,3 @@
+source_commit=ee299adb296a2922d01982aa6c5707d37e767b41
+compiler=gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818
+mode=EE-only external sampling; no paired comparison or formal submission
