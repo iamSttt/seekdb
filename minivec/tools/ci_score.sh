@@ -35,6 +35,12 @@ git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec
 lscpu > protocol-results/lscpu.txt
 docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
+if [[ -f validation/profile-only-plan-20261114.json ]]; then
+  # Explicit diagnostic phase: previous candidate correctness and paired runs
+  # remain separate evidence. This run samples only the immutable EE root.
+  bash minivec/tools/ci_profile_only_1114.sh
+  exit 0
+fi
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
 docker image inspect "$IMAGE" > protocol-results/image-inspect.json

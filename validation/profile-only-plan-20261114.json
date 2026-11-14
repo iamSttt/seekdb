@@ -1,0 +1,12 @@
+{
+  "phase": "diagnostic_only",
+  "reason": "The first profiler failed before DB startup because its cgroup path did not match the existing launcher whitelist. Correctness and both paired matrices from run 43538319125 remain complete and are not repeated here.",
+  "source": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "binary_sha256": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+  "repetitions": 12,
+  "cpu_count": 1,
+  "software_event": "cpu-clock:u",
+  "frequency_hz": 999,
+  "scope": "Actual stripped EE ELF; identity-matched symbols. Independent external CPU sampling with original workload/oracle. No formal score or speed comparison.",
+  "output_rule": "Read profiler summary status and evidence, not CI green status alone. Retain blocked, incomplete and low-sample results."
+}

@@ -1,0 +1,147 @@
+{
+  "repetition": 0,
+  "cgroup": {
+    "path": "/sys/fs/cgroup/ee-profile-bc7471a840104fea98bf018a9aa29a70/case-47b039a4d58e4a948761197e9bc55323",
+    "before": {
+      "monotonic_seconds": 327.94208092,
+      "cpu.max": "100000 100000",
+      "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+      "memory.max": "2147483648",
+      "memory.swap.max": "0",
+      "memory.current": "0",
+      "memory.peak": "0",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "io.stat": "",
+      "cgroup.events": "populated 0\nfrozen 0",
+      "cgroup.procs": ""
+    },
+    "ancestor_constraints": [
+      {
+        "path": "/sys/fs/cgroup/ee-profile-bc7471a840104fea98bf018a9aa29a70/case-47b039a4d58e4a948761197e9bc55323",
+        "monotonic_seconds": 327.94242475,
+        "cpu.max": "100000 100000",
+        "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+        "memory.max": "2147483648",
+        "memory.swap.max": "0",
+        "memory.current": "0",
+        "memory.peak": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "io.stat": "",
+        "cgroup.events": "populated 0\nfrozen 0",
+        "cgroup.procs": ""
+      },
+      {
+        "path": "/sys/fs/cgroup/ee-profile-bc7471a840104fea98bf018a9aa29a70",
+        "monotonic_seconds": 327.942669603,
+        "cpu.max": "max 100000",
+        "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+        "memory.max": "max",
+        "memory.swap.max": "max",
+        "memory.current": "262144",
+        "memory.peak": "262144",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "io.stat": "",
+        "cgroup.events": "populated 0\nfrozen 0",
+        "cgroup.procs": ""
+      },
+      {
+        "path": "/sys/fs/cgroup",
+        "monotonic_seconds": 327.942914937,
+        "cpu.max": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/cpu.max'"
+        },
+        "cpu.stat": "usage_usec 331804000\nuser_usec 282136000\nsystem_usec 49668000\nnice_usec 10000\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+        "memory.max": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.max'"
+        },
+        "memory.swap.max": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.swap.max'"
+        },
+        "memory.current": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.current'"
+        },
+        "memory.peak": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.peak'"
+        },
+        "memory.events": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.events'"
+        },
+        "memory.events.local": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.events.local'"
+        },
+        "io.stat": "259:0 rbytes=1235790848 wbytes=6027326976 rios=32385 wios=52652 dbytes=2414096384 dios=2771\n7:7 \n7:6 \n7:5 \n7:4 \n7:3 \n7:2 \n7:1 \n7:0 rbytes=14336 wbytes=0 rios=11 wios=0 dbytes=0 dios=0",
+        "cgroup.events": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/cgroup.events'"
+        },
+        "cgroup.procs": "2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n36\n37\n38\n39\n40\n41\n42\n43\n44\n45\n46\n47\n48\n49\n50\n51\n52\n53\n54\n55\n56\n57\n58\n59\n60\n61\n62\n63\n64\n65\n66\n67\n68\n69\n70\n71\n72\n73\n74\n75\n76\n77\n78\n79\n80\n81\n82\n83\n84\n85\n86\n87\n88\n89\n90\n91\n92\n93\n94\n95\n97\n108\n109\n110\n137\n201\n202\n206\n207\n215\n220\n233\n243\n288\n295\n312\n313\n314\n315\n324\n325\n326\n327\n328\n331\n332\n333\n334\n335\n356\n364\n365\n574\n657\n757\n1896\n2215\n6562\n7032"
+      }
+    ],
+    "timeout": false,
+    "watchdog_error": null,
+    "execution_error": "ProtocolError: database exited before response",
+    "immediately_after": {
+      "monotonic_seconds": 327.945125195,
+      "cpu.max": "100000 100000",
+      "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+      "memory.max": "2147483648",
+      "memory.swap.max": "0",
+      "memory.current": "0",
+      "memory.peak": "0",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "io.stat": "",
+      "cgroup.events": "populated 0\nfrozen 0",
+      "cgroup.procs": ""
+    },
+    "after": {
+      "monotonic_seconds": 328.246874447,
+      "cpu.max": "100000 100000",
+      "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 2\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+      "memory.max": "2147483648",
+      "memory.swap.max": "0",
+      "memory.current": "0",
+      "memory.peak": "0",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "io.stat": "",
+      "cgroup.events": "populated 0\nfrozen 0",
+      "cgroup.procs": ""
+    },
+    "io_stable_samples": 3,
+    "resource_delta": {
+      "cpu_stat_delta": {
+        "usage_usec": 0,
+        "user_usec": 0,
+        "system_usec": 0,
+        "nice_usec": 0,
+        "core_sched.force_idle_usec": 0,
+        "nr_periods": 2,
+        "nr_throttled": 0,
+        "throttled_usec": 0,
+        "nr_bursts": 0,
+        "burst_usec": 0
+      },
+      "memory_peak_bytes": 0,
+      "io_stat_delta": {}
+    },
+    "oom_events_delta": {
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0
+    },
+    "request_timeout_observed": false
+  },
+  "adapter": {
+    "stderr": {
+      "total_bytes": 0,
+      "tail_source_bytes": 0,
+      "truncated": false,
+      "tail_utf8": ""
+    }
+  },
+  "status": "running",
+  "profiles": []
+}

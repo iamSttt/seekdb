@@ -1,0 +1,25 @@
+{
+  "runtime_commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+  "image_tag": "minivec:verify-9ed5baa1b136",
+  "image_id": "sha256:ce13d857beed9dba30925a7b7bd6d5bc72c40fbee2ba965ca24cec6e887d1612",
+  "scope": "current-checkout build and regression verification; not formal scoring",
+  "passed": true,
+  "checks": {
+    "root_docker_build": true,
+    "image_official_handshake_and_public_cases": true,
+    "source_official_handshake_and_public_cases": true,
+    "live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill": true,
+    "make_test": true,
+    "image_binary_json_and_exact_topk_serial_parallel": true,
+    "eight_wal_failure_cases_asan_ubsan": true,
+    "query_pool_both_modes_asan_ubsan": true,
+    "cross_table_spill_asan_ubsan": true,
+    "full_binary_json_ubsan": true
+  },
+  "limitations": [
+    "No hidden formal cases or score.",
+    "Paired performance screening is recorded separately in from-best/screen.json.",
+    "WAL fixture injects short/failed writes; not fdatasync or allocation failure.",
+    "ASan leak detection disabled; memory-safety and undefined-behavior checks enabled."
+  ]
+}

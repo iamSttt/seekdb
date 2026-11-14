@@ -1,0 +1,2 @@
+database stderr tail: 
+{"status": "failed", "completed_repetitions": 0, "capabilities": {"software": "unverified", "hardware": "unverified"}, "summary": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/summary.json"}

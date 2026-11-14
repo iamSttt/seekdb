@@ -1,0 +1,91 @@
+{
+  "archive": "perf-raw.tar.gz",
+  "archive_bytes": 6786,
+  "archive_sha256": "892a2b7273efb240b461f25fd51e53a8a76ee8e53538392c1cb6fa2282e63f5a",
+  "maximum_encoded_archive_bytes": 8388608,
+  "raw_perf_data_files": 0,
+  "members": [
+    {
+      "path": "buildid-cache-add.command.json",
+      "bytes": 494,
+      "sha256": "b4ac3bf0b20c276d6080dd207375d7e9ee11ba1c32682adc51048e954bd6bdb0"
+    },
+    {
+      "path": "buildid-cache-add.stderr",
+      "bytes": 82,
+      "sha256": "829e770ea9fcc4995a2490e19c2e48d1f6264a305101d4a6079d760505a440e6"
+    },
+    {
+      "path": "buildid-cache-add.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cpuinfo.txt",
+      "bytes": 5832,
+      "sha256": "9e3ec700fbbf5141757af54d8dc882894f1cb45a3af93f3f840fa75d34bef4c2"
+    },
+    {
+      "path": "kptr-restrict.txt",
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "perf-event-paranoid.txt",
+      "bytes": 2,
+      "sha256": "7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d"
+    },
+    {
+      "path": "perf-version.command.json",
+      "bytes": 288,
+      "sha256": "e25da76e8a0b631ba370e292d695fc501349a4de93ada5edf81c1cae88f5b833"
+    },
+    {
+      "path": "perf-version.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "perf-version.stdout",
+      "bytes": 20,
+      "sha256": "496b3d503a88d37a5f9137643742e6101b6a7f183075dd04d279982e92dcc662"
+    },
+    {
+      "path": "run-00/run.json",
+      "bytes": 6969,
+      "sha256": "5b689f8f56503e67abf8ad1bd453d031b165a74b04f5077e3d722997f88cb1b8"
+    },
+    {
+      "path": "self-cgroup.txt",
+      "bytes": 46,
+      "sha256": "0dcb3ba0655f52452a0222c39d59295eae59ff9f296a86539ce24ffef1387abd"
+    },
+    {
+      "path": "strip-symbol-copy.command.json",
+      "bytes": 453,
+      "sha256": "0701ce6775d421ea11fbb60da0314fd35c5838d5f9f58b982b4ba61f41144544"
+    },
+    {
+      "path": "strip-symbol-copy.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "strip-symbol-copy.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 15539,
+      "sha256": "7cdcbaadce1c5d1869be6abf63aa55a6c2572f16c003dea7fbe27c7b256faf6b"
+    }
+  ],
+  "raw_archive_transported": false,
+  "scope": "Manifest and base64 text emitted by the existing CI report trap; decode bytes and verify SHA256 before extracting.",
+  "status": "prepared_for_text_transport",
+  "base64_file": "perf-raw.tar.gz.b64.txt",
+  "base64_bytes": 9168,
+  "base64_sha256": "740b27d2d513d1c4d174799bbeeca64c1c2e3f567667dca9f01de3481dfe9993",
+  "raw_archive_transport_prepared": true
+}

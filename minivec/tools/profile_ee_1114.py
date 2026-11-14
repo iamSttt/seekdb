@@ -460,7 +460,11 @@ def main():
         cpus = small.select_cpus(os.sched_getaffinity(0), 1)
         summary['db_cpus'] = cpus
         taskset = str(Path(shutil.which('taskset') or '/missing-taskset').resolve())
-        parent = small.CGROOT / ('ee-profile-' + uuid.uuid4().hex)
+        parent = small.CGROOT / ('minivec-report-ee-profile-' + uuid.uuid4().hex)
+        # The unchanged cgroup_exec launcher deliberately rejects every path
+        # outside this prefix before exec; keep its safety boundary intact.
+        require(str(parent).startswith('/sys/fs/cgroup/minivec-report-') and '..' not in str(parent),
+                'profiling cgroup path violates the unchanged launcher allowlist')
         parent.mkdir()
         (parent / 'cgroup.subtree_control').write_text('+cpu +memory +io')
         response_hash = None

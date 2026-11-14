@@ -1,0 +1,315 @@
+{
+  "status": "failed",
+  "source_commit": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "expected_binary_sha256": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+  "kind": "external_actual_EE_perf_profile",
+  "formal_submission": false,
+  "performance_comparison": false,
+  "source_instrumentation": false,
+  "planned_repetitions": 12,
+  "completed_repetitions": 0,
+  "software_event": "cpu-clock:u",
+  "frequency_hz": 999,
+  "minimum_samples_per_phase": 300,
+  "fixed_limits": {
+    "db_cpu_count": 1,
+    "cpu_quota_us": 100000,
+    "cpu_period_us": 100000,
+    "memory_max": "2147483648",
+    "swap_max": "0"
+  },
+  "capabilities": {
+    "software": "unverified",
+    "hardware": "unverified"
+  },
+  "runs": [
+    {
+      "repetition": 0,
+      "cgroup": {
+        "path": "/sys/fs/cgroup/ee-profile-bc7471a840104fea98bf018a9aa29a70/case-47b039a4d58e4a948761197e9bc55323",
+        "before": {
+          "monotonic_seconds": 327.94208092,
+          "cpu.max": "100000 100000",
+          "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+          "memory.max": "2147483648",
+          "memory.swap.max": "0",
+          "memory.current": "0",
+          "memory.peak": "0",
+          "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+          "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+          "io.stat": "",
+          "cgroup.events": "populated 0\nfrozen 0",
+          "cgroup.procs": ""
+        },
+        "ancestor_constraints": [
+          {
+            "path": "/sys/fs/cgroup/ee-profile-bc7471a840104fea98bf018a9aa29a70/case-47b039a4d58e4a948761197e9bc55323",
+            "monotonic_seconds": 327.94242475,
+            "cpu.max": "100000 100000",
+            "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+            "memory.max": "2147483648",
+            "memory.swap.max": "0",
+            "memory.current": "0",
+            "memory.peak": "0",
+            "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+            "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+            "io.stat": "",
+            "cgroup.events": "populated 0\nfrozen 0",
+            "cgroup.procs": ""
+          },
+          {
+            "path": "/sys/fs/cgroup/ee-profile-bc7471a840104fea98bf018a9aa29a70",
+            "monotonic_seconds": 327.942669603,
+            "cpu.max": "max 100000",
+            "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+            "memory.max": "max",
+            "memory.swap.max": "max",
+            "memory.current": "262144",
+            "memory.peak": "262144",
+            "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+            "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+            "io.stat": "",
+            "cgroup.events": "populated 0\nfrozen 0",
+            "cgroup.procs": ""
+          },
+          {
+            "path": "/sys/fs/cgroup",
+            "monotonic_seconds": 327.942914937,
+            "cpu.max": {
+              "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/cpu.max'"
+            },
+            "cpu.stat": "usage_usec 331804000\nuser_usec 282136000\nsystem_usec 49668000\nnice_usec 10000\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+            "memory.max": {
+              "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.max'"
+            },
+            "memory.swap.max": {
+              "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.swap.max'"
+            },
+            "memory.current": {
+              "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.current'"
+            },
+            "memory.peak": {
+              "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.peak'"
+            },
+            "memory.events": {
+              "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.events'"
+            },
+            "memory.events.local": {
+              "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.events.local'"
+            },
+            "io.stat": "259:0 rbytes=1235790848 wbytes=6027326976 rios=32385 wios=52652 dbytes=2414096384 dios=2771\n7:7 \n7:6 \n7:5 \n7:4 \n7:3 \n7:2 \n7:1 \n7:0 rbytes=14336 wbytes=0 rios=11 wios=0 dbytes=0 dios=0",
+            "cgroup.events": {
+              "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/cgroup.events'"
+            },
+            "cgroup.procs": "2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n36\n37\n38\n39\n40\n41\n42\n43\n44\n45\n46\n47\n48\n49\n50\n51\n52\n53\n54\n55\n56\n57\n58\n59\n60\n61\n62\n63\n64\n65\n66\n67\n68\n69\n70\n71\n72\n73\n74\n75\n76\n77\n78\n79\n80\n81\n82\n83\n84\n85\n86\n87\n88\n89\n90\n91\n92\n93\n94\n95\n97\n108\n109\n110\n137\n201\n202\n206\n207\n215\n220\n233\n243\n288\n295\n312\n313\n314\n315\n324\n325\n326\n327\n328\n331\n332\n333\n334\n335\n356\n364\n365\n574\n657\n757\n1896\n2215\n6562\n7032"
+          }
+        ],
+        "timeout": false,
+        "watchdog_error": null,
+        "execution_error": "ProtocolError: database exited before response",
+        "immediately_after": {
+          "monotonic_seconds": 327.945125195,
+          "cpu.max": "100000 100000",
+          "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+          "memory.max": "2147483648",
+          "memory.swap.max": "0",
+          "memory.current": "0",
+          "memory.peak": "0",
+          "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+          "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+          "io.stat": "",
+          "cgroup.events": "populated 0\nfrozen 0",
+          "cgroup.procs": ""
+        },
+        "after": {
+          "monotonic_seconds": 328.246874447,
+          "cpu.max": "100000 100000",
+          "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 2\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+          "memory.max": "2147483648",
+          "memory.swap.max": "0",
+          "memory.current": "0",
+          "memory.peak": "0",
+          "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+          "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+          "io.stat": "",
+          "cgroup.events": "populated 0\nfrozen 0",
+          "cgroup.procs": ""
+        },
+        "io_stable_samples": 3,
+        "resource_delta": {
+          "cpu_stat_delta": {
+            "usage_usec": 0,
+            "user_usec": 0,
+            "system_usec": 0,
+            "nice_usec": 0,
+            "core_sched.force_idle_usec": 0,
+            "nr_periods": 2,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          },
+          "memory_peak_bytes": 0,
+          "io_stat_delta": {}
+        },
+        "oom_events_delta": {
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0
+        },
+        "request_timeout_observed": false
+      },
+      "adapter": {
+        "stderr": {
+          "total_bytes": 0,
+          "tail_source_bytes": 0,
+          "truncated": false,
+          "tail_utf8": ""
+        }
+      },
+      "status": "running",
+      "profiles": []
+    }
+  ],
+  "documentation": [
+    "https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf-record.txt",
+    "https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf-stat.txt",
+    "https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf.txt"
+  ],
+  "limitations": [
+    "Fixed twelve complete fresh-DB lifecycles, seed7319; no adaptive repeat or sample replacement.",
+    "Only initial BEGIN/INSERT/COMMIT and initial1000 exact-query phases are sampled; index, startup and restart are excluded.",
+    "Original one_run generator, sampled TopK oracle and complete restart validation are reused unchanged.",
+    "Sampling is CPU-clock user-space only, not off-CPU IO wait time or complete wall-time attribution.",
+    "No source instrumentation, call-graph assumption, sysctl change or hardware selection. Flat sampled IPs only.",
+    "Control acknowledgements bracket phases; observer/control overhead can perturb scheduling. This is not a speed benchmark.",
+    "Sample counts and period-weighted shares are approximate profiles, not exact function CPU times.",
+    "Missing PMU counters are explicitly blocked; software sampling may remain usable independently."
+  ],
+  "tool_provenance": {
+    "source_repository": "https://github.com/iamSttt/seekdb",
+    "source_commit": "446f5026098cd4c1fb110cabc1546cb3fa61d4b4",
+    "scope": "Nine original files byte-copied without changes; same oracle and measurements plus original launcher. metrics.py contains exact original standard_metrics function only. Historical source HEAD is not a retained runtime recommendation. Scoped .gitattributes -text preserves original vendor bytes across platforms.",
+    "files": [
+      {
+        "path": "minivec/tools/small_compute.py",
+        "source_path": "minivec/tools/small_compute.py",
+        "sha256": "dab4df913efa3860c63fce3f3102af35609931e47b756f21b613878928c8b9bb",
+        "source_git_blob": "8931d856d5ae320a594f79528e3a16586630149a",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tools/benchmark_iteration.py",
+        "source_path": "minivec/tools/benchmark_iteration.py",
+        "sha256": "58d04ec53b7a574b0b8d56535a066b0adedb394222418e8fcb6c5991b397d9a9",
+        "source_git_blob": "26a41881270dce90e81ade128ad670bf507beb49",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tools/benchmark_index_delta.py",
+        "source_path": "minivec/tools/benchmark_index_delta.py",
+        "sha256": "bdc09a1b37625acd5b0f6d942ce01e9f253a279f997a237555abb031e1db7695",
+        "source_git_blob": "73cdc552dd0a72ffc1ee97dac2f13aa321c9ad15",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tools/benchmark_write_query.py",
+        "source_path": "minivec/tools/benchmark_write_query.py",
+        "sha256": "d83cb8c5a13a3c5a9e84036be86c154f7a2d2ade439e4eae2202d1206f0991a2",
+        "source_git_blob": "939a0595d4945c35e5818c9b9b385130ed77b858",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tools/benchmark_projection.py",
+        "source_path": "minivec/tools/benchmark_projection.py",
+        "sha256": "74417730cf5d3874be1a4e973321b40821f1f5cbdaeb8f055c7f9ed1a0d1f417",
+        "source_git_blob": "11e798db3165669b3cb4f1024affaa0b4db2e0b3",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tests/json_protocol.py",
+        "source_path": "minivec/tests/json_protocol.py",
+        "sha256": "de937fdfb42b4915a7ef3847aea2fe46554a49c55438c447cf6ad4bb9e543088",
+        "source_git_blob": "ebb03c55000f5cfc229e524b93b86501160c957c",
+        "unchanged": true
+      },
+      {
+        "path": "protocol_check/_transport.py",
+        "source_path": "protocol_check/_transport.py",
+        "sha256": "fb3a820105e6e94fc348167c7644ce23a270c63f57b026065f4b563d6ef0674f",
+        "source_git_blob": "e49c13b3d6946256b818cd473d268de531d51b4f",
+        "unchanged": true
+      },
+      {
+        "path": "protocol_check/config.json",
+        "source_path": "protocol_check/config.json",
+        "sha256": "63fe51cac3aaaf45c3739b53b1de8420e5d001e8abb6cf88532d9f190d72d904",
+        "source_git_blob": "6a3aa78d8cd723ab6dee4c04a602850e2d4a304d",
+        "unchanged": true
+      },
+      {
+        "path": "metrics.py",
+        "sha256": "77ab5d3b7d610cc34cc2734589774805a69f4bb23743fd037599eef594988af9",
+        "source_path": "minivec/tools/summarize_highest_primary.py",
+        "source_sha256": "db76ff1e76f2af3f5e20852d288b24fa7d18cb0481766f83a619041908984977",
+        "source_lines": [
+          20,
+          53
+        ],
+        "extraction": "standard_metrics function copied verbatim, imports limited to its dependencies"
+      },
+      {
+        "path": "cgroup_exec.c",
+        "source_path": "minivec/tools/cgroup_exec.c",
+        "sha256": "5fb4bfd5f311adc7cff1261e9ccdd8175d71673952bc21b71536e38d3ebeb6d7",
+        "source_git_blob": "881202042b59bc8ac13c30d87bfc3d31ed1cc2d8",
+        "unchanged": true
+      }
+    ]
+  },
+  "binary": "/home/runner/work/_temp/minivec-from-best-guxHVB/baseline-binary",
+  "binary_sha256": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+  "symbols": "/home/runner/work/_temp/minivec-from-best-guxHVB/ee-symbols",
+  "symbols_sha256": "72567fdf9f23d3b4590edde649acdd63864563cb458f68e5a608d8d497299913",
+  "launcher_sha256": "f992766f28fbb35f84e6ded17fffa8fdb7916a5e34ebf5cde27074469dce6be1",
+  "wrapper_sha256": "68440f24ae68d2a4e45657522c5c12e2e5cbd3885662daf47d6c86287a80a28b",
+  "removed_MVDB_names": [],
+  "symbols_strip_verified": true,
+  "perf_version": "perf version 7.0.14",
+  "host": {
+    "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+    "affinity": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "workload_identity": {
+    "scenario": "standard10k",
+    "seed": 7319,
+    "sha256": "3b69a2f072e9373bcb3ef2ea9c9919695cc5e86dcc1b53f7f7f56881fd98593a",
+    "generator_sha256": "4c1d59b3bf2d71ed153c30f111217bf0b2f7f994733735e50035fd599c5099a8",
+    "rows": 10000,
+    "dimension": 128
+  },
+  "db_cpus": [
+    0
+  ],
+  "error": "ProtocolError: database exited before response",
+  "traceback": "Traceback (most recent call last):\n  File \"/home/runner/work/seekdb/seekdb/minivec/tools/profile_ee_1114.py\", line 479, in main\n    run.update(base.one_run(binary, workload, settings))\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/seekdb/seekdb/minivec/tools/research1114/minivec/tools/benchmark_iteration.py\", line 289, in one_run\n    session.start()\n  File \"/home/runner/work/seekdb/seekdb/minivec/tools/research1114/minivec/tools/small_compute.py\", line 361, in start\n    value = super().start(*args, **kwargs); observed_ready(self); return value\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/seekdb/seekdb/minivec/tools/research1114/protocol_check/_transport.py\", line 79, in start\n    message = self.read(self.config[\"startup_timeout\"])\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/seekdb/seekdb/minivec/tools/research1114/protocol_check/_transport.py\", line 97, in read\n    raise ProtocolError(\"database exited before response\")\n_transport.ProtocolError: database exited before response\n",
+  "raw_archive": {
+    "archive": "perf-raw.tar.gz",
+    "archive_bytes": 6786,
+    "archive_sha256": "892a2b7273efb240b461f25fd51e53a8a76ee8e53538392c1cb6fa2282e63f5a",
+    "maximum_encoded_archive_bytes": 8388608,
+    "raw_perf_data_files": 0,
+    "raw_archive_transported": false,
+    "scope": "Manifest and base64 text emitted by the existing CI report trap; decode bytes and verify SHA256 before extracting.",
+    "status": "prepared_for_text_transport",
+    "base64_file": "perf-raw.tar.gz.b64.txt",
+    "base64_bytes": 9168,
+    "base64_sha256": "740b27d2d513d1c4d174799bbeeca64c1c2e3f567667dca9f01de3481dfe9993",
+    "raw_archive_transport_prepared": true
+  }
+}

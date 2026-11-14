@@ -1,0 +1,9 @@
+{
+  "command": [
+    "/usr/bin/perf",
+    "--version"
+  ],
+  "stdout": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/perf-version.stdout",
+  "stderr": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/perf-version.stderr",
+  "exit_code": 0
+}

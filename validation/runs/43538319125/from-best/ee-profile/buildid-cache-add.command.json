@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/usr/bin/perf",
+    "--buildid-dir",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+    "buildid-cache",
+    "--add",
+    "/home/runner/work/_temp/minivec-from-best-guxHVB/ee-symbols"
+  ],
+  "stdout": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache-add.stdout",
+  "stderr": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache-add.stderr",
+  "exit_code": 0
+}
