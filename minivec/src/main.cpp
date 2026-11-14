@@ -294,7 +294,7 @@ static Json strict_json(const std::string& text, bool try_fast = true) {
     if (fast_envelope(text, &fast)) return fast;
   }
   std::vector<std::set<std::string>> keys;
-  return Json::parse(text, [&](int, Json::parse_event_t event, Json& value) {
+  Json parsed=Json::parse(text, [&](int, Json::parse_event_t event, Json& value) {
     if (event == Json::parse_event_t::object_start) keys.emplace_back();
     else if (event == Json::parse_event_t::object_end) keys.pop_back();
     else if (event == Json::parse_event_t::key &&
@@ -302,6 +302,13 @@ static Json strict_json(const std::string& text, bool try_fast = true) {
       throw std::runtime_error("duplicate JSON object key");
     return true;
   });
+  // nlohmann treats a raw NUL after a complete JSON value as end-of-input.
+  // The transport is length-delimited: never execute a valid prefix followed
+  // by an unvalidated NUL/tail. Keep the parser's existing rejection priority;
+  // escaped \u0000 contains no raw NUL and remains an ordinary JSON string.
+  if(text.find('\0')!=std::string::npos)
+    throw std::runtime_error("raw NUL byte in JSON request");
+  return parsed;
 }
 
 static void emit_json_text(const std::string& encoded) {

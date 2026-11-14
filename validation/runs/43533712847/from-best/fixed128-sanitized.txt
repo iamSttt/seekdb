@@ -1,0 +1,2 @@
+PASS fixed128 whole-bound decisions=6600 rejected=1170
+PASS fixed128 uint64 oracle, all supported ISAs, unaligned/end-guard buffers, non128 fallback

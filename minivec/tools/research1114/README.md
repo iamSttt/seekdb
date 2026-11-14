@@ -2,10 +2,13 @@
 
 `../best_screen_1114.py` reuses the historical benchmark and independent sampled
 TopK oracle without modifying the engine or the existing CI scripts. The eight
-imported files retain their original relative layout and bytes. Their original
+imported Python/config dependencies retain their original relative layout and bytes;
+the ninth imported file is the original launcher at `cgroup_exec.c`. Their original
 commit, Git blob IDs and local byte SHA256 values are in `source-manifest.json`.
 `metrics.py` is the verbatim `standard_metrics` function from lines 20–53 of the
-original `summarize_highest_primary.py`, with only its required imports.
+original `summarize_highest_primary.py`, with only its required imports. Scoped
+`.gitattributes` sets `-text` so Git preserves the hashed vendor bytes on Linux
+even when the Windows checkout uses `core.autocrlf=true`.
 
 On a Linux host with writable cgroup v2 and an already compiled `cgroup_exec.c`
 launcher:

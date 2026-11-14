@@ -1,0 +1,121 @@
+{
+  "run_id": 43533712847,
+  "job_id": 132257458332,
+  "ci_commit": "0ff21747f5675947b9eb43cae736bde356000cee",
+  "runtime_commit": "0ff21747f5675947b9eb43cae736bde356000cee",
+  "url": "https://github.com/iamSttt/seekdb/actions/runs/43533712847",
+  "files": {
+    "compiler.txt": {
+      "bytes": 245,
+      "sha256": "0c45c2417cda20b1ea33e8f54aee9aa0443c940cb9f23b71c6f126148cb8ff9c"
+    },
+    "docker-version.txt": {
+      "bytes": 769,
+      "sha256": "8402d8b7679b4087fa4fb62264e49054f974146c5d134195d8b7a341747ab4ed"
+    },
+    "from-best/baseline-image.json": {
+      "bytes": 2176,
+      "sha256": "03c18f4a7e13feb1518fcc8e9e082010d15ce767b524f7c186d12ba1b67751f1"
+    },
+    "from-best/binary-sha256.txt": {
+      "bytes": 263,
+      "sha256": "8146fe4561f2ccb845c071006e4efbf3660b9be7adefcea3ce625507ed6dc071"
+    },
+    "from-best/build-input-diff.txt": {
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    "from-best/candidate-image.json": {
+      "bytes": 2188,
+      "sha256": "6f05d51fe01f05e7efc1b568c79a3e272441792542bf89bd4ad6dd5974a28fcd"
+    },
+    "from-best/fixed128-MVDB_DISABLE_AVX512_QUANTIZED.txt": {
+      "bytes": 149,
+      "sha256": "ead6f883ef7d75db326f5a45037e0e15c6e50168b0e743033d9ae04e8b5c554e"
+    },
+    "from-best/fixed128-MVDB_DISABLE_FIXED128_QUANTIZED.txt": {
+      "bytes": 149,
+      "sha256": "ead6f883ef7d75db326f5a45037e0e15c6e50168b0e743033d9ae04e8b5c554e"
+    },
+    "from-best/fixed128-sanitized.txt": {
+      "bytes": 149,
+      "sha256": "ead6f883ef7d75db326f5a45037e0e15c6e50168b0e743033d9ae04e8b5c554e"
+    },
+    "from-best/fixed128.txt": {
+      "bytes": 5482,
+      "sha256": "1159759324dcfe6d25e76eeb2b05858b78fd687e8cfb029864a23d57fcd00c89"
+    },
+    "from-best/runtime-change.txt": {
+      "bytes": 81672,
+      "sha256": "061748b3c3a685aa1a7651267ed1f82db7d5e09e24d0ea8acb9ba581cf743554"
+    },
+    "image-binary-sha256.txt": {
+      "bytes": 125,
+      "sha256": "4265496e3eeaf864803595a3e541665e4f43c9c4076dea40a7bec2d6537e78df"
+    },
+    "image-handshake/cases.json": {
+      "bytes": 99,
+      "sha256": "b387d1279e77fce3a5eca8bcfc7cf35ed6aac1892e39917b298851fce171a9ab"
+    },
+    "image-handshake/result.json": {
+      "bytes": 269,
+      "sha256": "c1ebc1c715bebeddcec9cbf4ced52bffb5d108b5e16db3452b4d737d51e8c024"
+    },
+    "image-id.txt": {
+      "bytes": 72,
+      "sha256": "809b0769b29432488a56c645f76d818f8d9eab29e3567ca691b8286804228a1b"
+    },
+    "image-inspect.json": {
+      "bytes": 2188,
+      "sha256": "6f05d51fe01f05e7efc1b568c79a3e272441792542bf89bd4ad6dd5974a28fcd"
+    },
+    "image-interactive/events.json": {
+      "bytes": 4175,
+      "sha256": "76fc077523b5eea9fa9491e92c6ccfddea99deb444dbcf774b7c7c1b6240a5d8"
+    },
+    "image-public/cases.json": {
+      "bytes": 2090,
+      "sha256": "3e4ade80fed45a16d90be60384177aa265fb046ab139306fe4fcd2bc1c57de5e"
+    },
+    "image-public/result.json": {
+      "bytes": 2488,
+      "sha256": "7c75caf8eaba0fe3e38083ec71d8994c46e4c2a1d275023b1cce2a94141d0ac7"
+    },
+    "input-sha256.txt": {
+      "bytes": 11100,
+      "sha256": "77cc95bb270187b3009c103ce7970c0693265217014b2dca0850419c7b98b6da"
+    },
+    "lscpu.txt": {
+      "bytes": 3362,
+      "sha256": "0535bb1480e83c69fe356e41634e13a277dab7414cf5d563975b02388982cb37"
+    },
+    "runtime-commit.txt": {
+      "bytes": 41,
+      "sha256": "0905a636b2e4a9a96c6d22295fa313d557aa2a07e261273c89448a2df3d3f9af"
+    },
+    "source-handshake/cases.json": {
+      "bytes": 97,
+      "sha256": "5022ffa9bdd88a0a16df3bab83021df9bffcf7ae5ffbac778cf0ec2cb9cbfc7e"
+    },
+    "source-handshake/result.json": {
+      "bytes": 267,
+      "sha256": "c8202632197a8ba0f190a7557942a0b5f2f21a5549f20468c94cde19037c8453"
+    },
+    "source-public/cases.json": {
+      "bytes": 2058,
+      "sha256": "b1b742dfa0616d5ddbb94c976b4d703c74c4beefc4b7610ebf83147db92298bb"
+    },
+    "source-public/result.json": {
+      "bytes": 2456,
+      "sha256": "a352a6e3ec7c235676b8de7816669c596b25e559b74abf328b5fa892f72a0ac7"
+    }
+  },
+  "uncompressed_log": {
+    "bytes": 648779,
+    "sha256": "16cc982e391c4dc8f852c44d262c33a9b9c06f045c7f3dd065bf40c07aeba7ee"
+  },
+  "compressed_log": {
+    "bytes": 79473,
+    "sha256": "8df037d45381baf5eb5e34c5806f8b0ebe931f8a6605bd644d81ce9b9a01dca1"
+  }
+}
