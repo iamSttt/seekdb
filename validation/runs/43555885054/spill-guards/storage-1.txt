@@ -1,0 +1,1 @@
+PASS shared index budget, spill cache, rollback and reopen (delta disabled)

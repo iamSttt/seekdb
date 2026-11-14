@@ -4,6 +4,9 @@
 #include "sql.h"
 #include <cassert>
 #include <cstdlib>
+#include <cstdio>
+#include <exception>
+#include <execinfo.h>
 #include <filesystem>
 #include <iostream>
 #include <new>
@@ -12,9 +15,19 @@
 namespace {
 thread_local bool tracking=false, injected=false;
 thread_local size_t allocations=0, fail_at=0;
+thread_local const char* current_query="setup";
+thread_local size_t current_ordinal=0, failed_bytes=0;
+void diagnostic_terminate() noexcept {
+  tracking=false;
+  std::fprintf(stderr,"OOM_TERMINATE query=%s ordinal=%zu failed_bytes=%zu allocations=%zu injected=%d\n",
+               current_query,current_ordinal,failed_bytes,allocations,int(injected));
+  void* frames[64];const int count=::backtrace(frames,64);
+  ::backtrace_symbols_fd(frames,count,STDERR_FILENO);
+  std::_Exit(86);
+}
 void* allocate(size_t bytes) {
   if(tracking && ++allocations==fail_at) {
-    fail_at=0;injected=true;throw std::bad_alloc();
+    fail_at=0;injected=true;failed_bytes=bytes;throw std::bad_alloc();
   }
   void* p=std::malloc(bytes ? bytes : 1);
   if(!p)throw std::bad_alloc();
@@ -30,6 +43,7 @@ void operator delete[](void* p,size_t) noexcept {std::free(p);}
 
 int main() {
   using namespace mvdb;
+  std::set_terminate(diagnostic_terminate);
   alarm(120);
   char path[]="/tmp/mvdb-typed-oom-XXXXXX";assert(mkdtemp(path));
   size_t failed_allocations=0,queries=0;
@@ -63,6 +77,7 @@ int main() {
       }
       for(size_t ordinal=1;ordinal<=count;++ordinal) {
         std::string result,err;int ec=0;
+        current_query=sql;current_ordinal=ordinal;failed_bytes=0;
         allocations=0;fail_at=ordinal;injected=false;tracking=true;
         const bool ok=execute_json(db,st,&result,&err,&ec,false);
         tracking=false;fail_at=0;

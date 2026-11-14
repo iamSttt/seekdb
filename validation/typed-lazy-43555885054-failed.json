@@ -1,0 +1,12 @@
+{
+  "status": "correctness_blocked_before_performance",
+  "run_id": 43555885054,
+  "driver_commit": "99da81d104adb16d25f71d9621bfc9379033d918",
+  "runtime_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+  "failure": "New test-only nth-allocation O3 sweep terminated after std::bad_alloc; no performance pairs executed.",
+  "preceding_checks": "Full root correctness/protocol/recovery/numeric checks and typed writer/54UTF8 tests O3+ASan passed before sweep.",
+  "performance_pairs": 0,
+  "cause": "Unknown pending same-fixture three-arm backtrace diagnostic; pinned JSON noexcept destructor allocating stack is a source-level hypothesis, not a verified attribution.",
+  "release_gate_passed": false,
+  "automatic_adoption": false
+}

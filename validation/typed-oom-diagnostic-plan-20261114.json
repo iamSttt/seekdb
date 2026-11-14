@@ -1,0 +1,18 @@
+{
+  "status": "frozen_correctness_diagnostic_only",
+  "roles": {
+    "base": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+    "typed": "6412cbf862959655f351b4d908c430a98c5eabfe",
+    "lazy": "9595e1477af1325795b0f9fed52e6a44bb217b1c"
+  },
+  "diagnostic_test_sha256": "12476203408ee77380c92ae9bfdbe2eae447f8315f596cc3f657e541d5b498d9",
+  "diagnostic_driver_sha256": "fe93302b8fb560b75f5c50f89f4200226821ec098daf01664534454d90d661ac",
+  "original_test_commit": "99da81d104adb16d25f71d9621bfc9379033d918",
+  "original_test_sha256": "8914764ce6367c16ff8775e0f203428e4d0902bd9db333a524a6478780ac86d3",
+  "previous_failure_run": 43555885054,
+  "changes": "Only no-allocation query/ordinal and terminate backtrace, all original allocations and assertions retained. Same fixture on three immutable source arms.",
+  "production_changes": false,
+  "performance_pairs": 0,
+  "release_gate_passed": false,
+  "official_score": null
+}
