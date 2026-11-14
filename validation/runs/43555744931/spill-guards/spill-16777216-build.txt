@@ -1,0 +1,4 @@
+src/db.cpp: In member function ‘bool mvdb::Database::load_snapshot(std::string*)’:
+src/db.cpp:2052:47: warning: ignoring attributes on template argument ‘int (*)(FILE*)’ [-Wignored-attributes]
+ 2052 |   std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen(path.c_str(), "rb"), std::fclose);
+      |                                               ^

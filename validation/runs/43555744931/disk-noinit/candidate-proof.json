@@ -1,0 +1,6 @@
+{
+  "status": "verified_current_root_build",
+  "source_commit": "e685eeeed6f436ab57745db9c323d946273bb5cb",
+  "binary_sha256": "4830b882fb63191db9a2169fe786fa59dd0c2f9775c8dc428a2f3c3093fef1ec",
+  "scope": "Actual unchanged-root Docker ELF for one source factor; not formal scoring or release."
+}

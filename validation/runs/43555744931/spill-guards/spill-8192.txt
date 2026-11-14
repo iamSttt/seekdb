@@ -1,0 +1,2 @@
+mvdb: fanout wake_us=13.03 (measured, median of 200 handshakes)
+PASS spill scalar budget/compression/failure, payload read avoidance, exact filters, invalidation and rollback slot reuse

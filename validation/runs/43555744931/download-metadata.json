@@ -1,0 +1,11 @@
+{
+  "run_id": 43555744931,
+  "job_id": 132328072571,
+  "runtime_commit": "e685eeeed6f436ab57745db9c323d946273bb5cb",
+  "exit_code": 0,
+  "elapsed_seconds": 10.498270034790039,
+  "stderr": "",
+  "log_file": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-10-30\\yan\\work\\disk-noinit-43555744931.log",
+  "bytes": 24362847,
+  "sha256": "3679d192c383a2a4c00734174d6b37c802c9db3f5b4434b4e7004edc43148a65"
+}

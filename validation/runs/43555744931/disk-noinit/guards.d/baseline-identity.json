@@ -1,0 +1,8 @@
+{
+  "status": "verified",
+  "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "binary_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+  "external_evidence": "/home/runner/work/seekdb/seekdb/protocol-results/disk-noinit/baseline-proof.json",
+  "external_evidence_sha256": "5265d16d2c0c64cd1410c7e0084a4572ce59edbdd37aa6b03d7761f81f7690c1",
+  "scope": "Actual build identity for disk scan no-initialization source factor; not a release assertion."
+}
