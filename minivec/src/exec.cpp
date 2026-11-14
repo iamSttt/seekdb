@@ -4,6 +4,7 @@
 #include "distance.h"
 #include "quantized_bound.h"
 #include "query_pool.h"
+#include "json_row_writer.h"
 #include "../third_party/json.hpp"
 #include <limits>
 
@@ -421,6 +422,25 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             : distance2(row.vals[item.col].v, *item.qvec);
         return std::sqrt(squared);
       };
+      // Keep the existing DOM serializer for scalar/distance-only projections
+      // and vectors below 128 dimensions. Select the retained wide path once.
+      const bool use_typed_json = json_response &&
+          std::any_of(items.begin(), items.end(), [&](const Item& item) {
+            return !item.is_distance && sch.cols[item.col].type == Type::VECTOR &&
+                sch.cols[item.col].len >= 128;
+          });
+      std::string encoded_row;
+      JsonRowWriter row_writer(encoded_row);
+      auto encode_typed_json_row = [&](const Row& row, const Candidate* candidate = nullptr) -> const std::string& {
+        encoded_row.clear();encoded_row+='[';
+        for(size_t j=0;j<items.size();++j) {
+          if(j)encoded_row+=',';
+          const auto& item=items[j];
+          if(item.is_distance)row_writer.number(projected_distance(row,item,candidate));
+          else row_writer.value(row.vals[item.col]);
+        }
+        encoded_row+=']';return encoded_row;
+      };
       auto encode_json_row = [&](const Row& row, const Candidate* candidate = nullptr) {
         Json cells = Json::array();
         for (const auto& item : items) {
@@ -469,6 +489,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           }
         };
         auto render = [&](const Row& row) {
+          if (use_typed_json) return std::string(encode_typed_json_row(row));
           if (json_response) return encode_json_row(row);
           std::string text;
           for(size_t j=0;j<items.size();++j) {
@@ -713,7 +734,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         Row scratch;
         const Row& r = t->read_row(slot, scratch);
         if (json_response) {
-          append_json_row(encode_json_row(r, &c));
+          if (use_typed_json) append_json_row(encode_typed_json_row(r, &c));
+          else append_json_row(encode_json_row(r, &c));
           continue;
         }
         std::vector<std::string> row;
