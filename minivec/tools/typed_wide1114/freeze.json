@@ -1,0 +1,85 @@
+{
+  "status": "frozen_before_native_execution",
+  "files": [
+    {
+      "path": "minivec/tests/test_json_row_writer.cpp",
+      "sha256": "1e6dbd9978e28e870ec9ddc56d9d81f9d4a65a845029da94e401ebcf77215078"
+    },
+    {
+      "path": "minivec/tests/test_typed_response.cpp",
+      "sha256": "244eb7b8074acaf30971b8fa916c67b56a331876e165253f91aa1d32f2086425"
+    },
+    {
+      "path": "minivec/tests/test_typed_response.py",
+      "sha256": "3289cee7741466322b3a91a927dea1451457aa8f1082caf24db0dd229615bc4d"
+    },
+    {
+      "path": "minivec/tests/typed_wide_1114.py",
+      "sha256": "82e5dfe862d831d4518d154c7a0f6fdd4f094ef4cc420f8b71b19b61f3c6054c"
+    },
+    {
+      "path": "minivec/tests/validated_request_diff.py",
+      "sha256": "a16f307ad76dbb89f3d6d0c3fedb1a3d97220b2bc6c07074ff932a8f01c19b5b"
+    },
+    {
+      "path": "minivec/tools/ci_score.sh",
+      "sha256": "55a9c81896c46a41a9fda075b56d89cf24e97f7f0137741f263b6980dd71d9b7"
+    },
+    {
+      "path": "minivec/tools/ci_typed_wide_1114.sh",
+      "sha256": "e3cf341a8f59a75ac5f23c78bf2a2ca05b6d3d436b4da886632ab4baf3b1ec5d"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/.gitattributes",
+      "sha256": "8b9c3028d6467ff3be7c793141927841d70f47f52d0590677438f488ca154992"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/README.md",
+      "sha256": "09355569c7daafe7f5cc6f5d82e2f5ce840a5cf5d9c66ef6cf895fc08bbdd22a"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/guard_metrics.py",
+      "sha256": "d50a271cc68e4ba4fc12cc2e98327be211f7ce6673ba4e213fc1f5cda9c8ba7d"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/plan.json",
+      "sha256": "8c468c29d904677e65638c3c3cf5ca83a33f75d06ca762d14583c8284002191f"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/policy/evaluate_highest_primary24_screen.py",
+      "sha256": "40b8e003b715cb3b3c570ad3d733c7490d2de72837cffab92024a971364153c2"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/policy/highest-primary24-preregistration-v2.json",
+      "sha256": "a930984922150c82eea6c95fa56679cf7f0fe48ff0e88c72cdb5c36986a46d4d"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/policy/highest-primary24-spill-field-erratum.json",
+      "sha256": "cf2a1823f392f1baef512cc968f7068ed4b0529f786430770e026a18a5c63a1d"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/provenance.json",
+      "sha256": "301ded62a7e7a10a22270bec3d526fcfa58f8ccbc3441eae795cca0b2f8fd85e"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/reader-preflight.json",
+      "sha256": "74092cc9e2514857e7183e5eaf65380e9e18986a4cff4ade3e1d63b4f1c1cec9"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/run_ablation.py",
+      "sha256": "4f9c484b9b42c2ae5da3ef8e120c8320c870f74c3e30a2128668afd6af6a1b48"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/test_reader.py",
+      "sha256": "5d0be6625248930264f77a27248267861b4bcf1000da43839925b61ae8ec8925"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/verify_root.py",
+      "sha256": "93e3ab49c89d4dfec1f61a6cbe2da075e3c1e98649c7428315ebc2934f718469"
+    },
+    {
+      "path": "minivec/tools/typed_wide1114/verify_source.py",
+      "sha256": "a28db2733fb2c9ebb9ebb41c5459b57762510f4317dc7cef37700153bd775894"
+    }
+  ]
+}

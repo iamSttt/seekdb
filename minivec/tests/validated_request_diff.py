@@ -229,6 +229,8 @@ def main():
     parser.add_argument("--candidate")
     parser.add_argument("--output", help="write the successful test summary as JSON")
     parser.add_argument("--timeout", type=float, default=20.0)
+    parser.add_argument("--expected-raw-nul-changes", type=int, choices=(0, 2), default=2,
+                        help="2 for original EE; 0 for a parent that already rejects raw NUL")
     parser.add_argument("--describe", action="store_true")
     args = parser.parse_args()
     inventory = cases()
@@ -277,7 +279,7 @@ def main():
             check_state(left, right, "final-recovery")
             compare(left, right, "final-shutdown", b'{"id":0,"op":"shutdown"}')
         check_nul_atomicity(candidate, directories[1], args.timeout, summary)
-    assert summary["intentional_raw_nul_differential_changes"] == 2, summary
+    assert summary["intentional_raw_nul_differential_changes"] == args.expected_raw_nul_changes, summary
     assert summary["nul_atomicity_cases"] == 4, summary
     summary["result"] = "pass"
     if args.output:

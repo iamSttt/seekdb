@@ -1,0 +1,25 @@
+{
+  "status": "reader_checks_passed_not_measurement",
+  "historical_sha256": "b44801a1bb326114046e99f5481e8d6de185e3191a0af8735d6f72d397dd7fe3",
+  "original_metric_summaries_equal": 31,
+  "inclusive_wide_thresholds_accepted": true,
+  "regressions_blocked": [
+    "seven_query_phases_wall_seconds:pair0",
+    "seven_query_phases_wall_seconds:pair1",
+    "seven_query_phases_cpu_usec:pair0",
+    "seven_query_phases_cpu_usec:pair1",
+    "lifecycle_stage_wall_sum:pair0",
+    "lifecycle_stage_wall_sum:pair1",
+    "default:first_1000_queries_wall_seconds",
+    "default:memory_peak_bytes"
+  ],
+  "invalid_evidence_rejected": [
+    "missing_cpu",
+    "missing_pair",
+    "wrong_plan",
+    "missing_metric",
+    "nonfinite"
+  ],
+  "new_database_runs": 0,
+  "release_gate_passed": false
+}
