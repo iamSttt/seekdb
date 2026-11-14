@@ -1,0 +1,9 @@
+{
+  "source": "..\\round2-pgo-only-1114\\minivec\\tools\\pgo_only1114\\source_factor.py",
+  "source_sha256": "73992381648a097224bf0c272be9d1bd8811ddafb9ec71a3a819d43dd9754884",
+  "changes": [
+    "root build proof status instead of PGO training proof status",
+    "explicit raw-retention source-factor labels"
+  ],
+  "unchanged": "original scheduler, workload, metrics, oracle and regression rules imported unmodified from retained_guards1114"
+}

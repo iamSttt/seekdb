@@ -67,6 +67,6 @@ struct Statement {
 
 // Parses one statement. On failure returns false and fills `err` with a
 // message; `err_code` receives a MySQL-ish error code (1064 by default).
-bool parse_sql(const std::string& sql, Statement* out, std::string* err, int* err_code);
+bool parse_sql(const std::string& sql, Statement* out, std::string* err, int* err_code, bool retain_raw = true);
 
 }  // namespace mvdb

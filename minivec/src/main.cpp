@@ -110,7 +110,7 @@ static void run_statement(Database& db, const std::string& text) {
   Statement st;
   std::string perr, out;
   int code = 0;
-  if (!parse_sql(text, &st, &perr, &code)) {
+  if (!parse_sql(text, &st, &perr, &code, false)) {
     std::printf("ERROR %d (42000): %s\n", code ? code : 1064, perr.c_str());
     std::fflush(stdout);
     return;
@@ -413,7 +413,7 @@ static bool json_request(Database& db, const std::string& line, int* exit_code) 
       Statement statement;
       const std::string& sql=direct_execute ? direct.sql :
           request.at("sql").get_ref<const std::string&>();
-      if (!parse_sql(sql,&statement,&error,&code) ||
+      if (!parse_sql(sql,&statement,&error,&code,false) ||
           !execute_json(db,statement,&result,&error,&code,ann_mode)) {
         response={{"ok",false},{"error",{{"code",std::to_string(code ? code : 1105)},{"message",error}}}};
       } else {

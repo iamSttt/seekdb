@@ -1183,7 +1183,7 @@ void Parser::parse_where(Statement* st) { parse_cond_group(st, 0); }
 
 // ---------------------------------------------------------------- parse_sql --
 
-bool parse_sql(const std::string& sql, Statement* out, std::string* err, int* err_code) {
+bool parse_sql(const std::string& sql, Statement* out, std::string* err, int* err_code, bool retain_raw) {
   Statement local_stmt;
   std::string local_err;
   int local_code = 0;
@@ -1192,7 +1192,7 @@ bool parse_sql(const std::string& sql, Statement* out, std::string* err, int* er
   int* code = err_code ? err_code : &local_code;
 
   *st = Statement();
-  st->raw = sql;
+  if (retain_raw) st->raw = sql;
   e->clear();
   *code = 0;
 
