@@ -1,0 +1,409 @@
+{
+  "status": "rejected_fixed_source_factor_gate",
+  "branch": "codex/round2-disk-noinit-1114",
+  "evidence_commit": "154cb0b2ac1dfa90f8a74c970f791c66f56aba3b",
+  "runtime_commit": "e685eeeed6f436ab57745db9c323d946273bb5cb",
+  "source_runtime_identical_to": "26e3e3616cb895dbe3963a03b3edcdeda7700a63",
+  "base_source": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "production_scope": "Only two disk scan temporary allocations: value-initialized vector<float> -> local default-initialized new float[] with unique_ptr ownership; no resident or main-tree changes",
+  "identities": {
+    "baseline": {
+      "status": "verified_current_root_build",
+      "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+      "binary_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+      "scope": "Actual unchanged-root Docker ELF for one source factor; not formal scoring or release."
+    },
+    "candidate": {
+      "status": "verified_current_root_build",
+      "source_commit": "e685eeeed6f436ab57745db9c323d946273bb5cb",
+      "binary_sha256": "4830b882fb63191db9a2169fe786fa59dd0c2f9775c8dc428a2f3c3093fef1ec",
+      "scope": "Actual unchanged-root Docker ELF for one source factor; not formal scoring or release."
+    }
+  },
+  "actual_cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "correctness": {
+    "root_actual_image_public20_and_handshake": true,
+    "original_source_tests_and_safety_stages_completed": true,
+    "disk_fixture_control_native": 62,
+    "disk_fixture_candidate_native": 62,
+    "disk_fixture_candidate_asan_ubsan": 62,
+    "json_differential_cases": 464,
+    "nul_atomicity_cases": 4,
+    "numeric_rows": 56,
+    "exact_topk_oracle": true
+  },
+  "first_attempt": {
+    "run_id": 43554996238,
+    "performance_pairs": 0,
+    "failure": "old helper lacked already-tested optional expected NUL count; exact helper-only correction; source and all frozen rules unchanged"
+  },
+  "complete_performance_pairs": 12,
+  "all_paired_responses_identical": true,
+  "all31_guard_metrics_recomputed_exactly": true,
+  "original31_protection_passed": false,
+  "guard_triggers": [
+    {
+      "group": "retained:1:spill_high_q16",
+      "metric": "first_lifecycle_wall_seconds",
+      "threshold": 1.02
+    },
+    {
+      "group": "retained:1:spill_high_q16",
+      "metric": "ingest_wall_seconds",
+      "threshold": 1.02
+    }
+  ],
+  "guard_summary": {
+    "retained:1:standard10k": {
+      "first_lifecycle_wall_seconds": {
+        "median_candidate_over_baseline": 1.0033339464084081,
+        "AB_median": 1.060697631154751,
+        "BA_median": 0.9673754647179488,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "first_1000_queries_wall_seconds": {
+        "median_candidate_over_baseline": 0.9969429013366871,
+        "AB_median": 1.0966613975843877,
+        "BA_median": 0.9406697466177356,
+        "candidate_faster_pairs": 3,
+        "candidate_worse_pairs": 1
+      },
+      "first_1000_queries_cpu_usec": {
+        "median_candidate_over_baseline": 0.9950821767402617,
+        "AB_median": 1.0799866831387714,
+        "BA_median": 0.9484779452855647,
+        "candidate_faster_pairs": 3,
+        "candidate_worse_pairs": 1
+      },
+      "first_query_wall_seconds": {
+        "median_candidate_over_baseline": 0.984634882480843,
+        "AB_median": 0.984634882480843,
+        "BA_median": 1.0130607025849272,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "ingest_wall_seconds": {
+        "median_candidate_over_baseline": 1.0147045942831254,
+        "AB_median": 1.0542321702846031,
+        "BA_median": 0.9961443079236937,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "ingest_cpu_usec": {
+        "median_candidate_over_baseline": 1.004606648986838,
+        "AB_median": 1.0018616164136338,
+        "BA_median": 1.004606648986838,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 0.9983178445381752,
+        "AB_median": 1.0213561207167356,
+        "BA_median": 0.9876465728021584,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 1.003895786693516,
+        "AB_median": 1.0061898668638039,
+        "BA_median": 0.9853497812869578,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "max_process_rss_bytes": {
+        "median_candidate_over_baseline": 1.0,
+        "AB_median": 0.9998429154885329,
+        "BA_median": 1.0,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 0
+      }
+    },
+    "retained:1:spill_high_q16": {
+      "first_lifecycle_wall_seconds": {
+        "median_candidate_over_baseline": 1.1717806706965752,
+        "AB_median": 1.116764356082585,
+        "BA_median": 1.2267969853105656,
+        "candidate_faster_pairs": 0,
+        "candidate_worse_pairs": 2
+      },
+      "query_before_update_wall_seconds": {
+        "median_candidate_over_baseline": 0.9954665286416721,
+        "AB_median": 0.9988647370655012,
+        "BA_median": 0.992068320217843,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 0
+      },
+      "query_before_update_cpu_usec": {
+        "median_candidate_over_baseline": 0.9966532226576996,
+        "AB_median": 1.0046304871272458,
+        "BA_median": 0.9886759581881533,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "first_query_wall_seconds": {
+        "median_candidate_over_baseline": 0.9921298620586447,
+        "AB_median": 1.010834089776162,
+        "BA_median": 0.9734256343411275,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "ingest_wall_seconds": {
+        "median_candidate_over_baseline": 1.1923749550619474,
+        "AB_median": 1.1310654380770058,
+        "BA_median": 1.253684472046889,
+        "candidate_faster_pairs": 0,
+        "candidate_worse_pairs": 2
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 1.003118516824799,
+        "AB_median": 1.0092991520713999,
+        "BA_median": 0.996937881578198,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 1.000533827253536,
+        "AB_median": 0.9977859068155565,
+        "BA_median": 1.0032817476915157,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "max_process_rss_bytes": {
+        "median_candidate_over_baseline": 1.0001026167265263,
+        "AB_median": 1.0001026167265263,
+        "BA_median": 1.0001026167265263,
+        "candidate_faster_pairs": 0,
+        "candidate_worse_pairs": 2
+      }
+    },
+    "retained:2:standard10k": {
+      "first_lifecycle_wall_seconds": {
+        "median_candidate_over_baseline": 1.099621422935785,
+        "AB_median": 0.8780093113753513,
+        "BA_median": 1.3255653824895122,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "first_1000_queries_wall_seconds": {
+        "median_candidate_over_baseline": 0.9693296770956397,
+        "AB_median": 0.8925405416161258,
+        "BA_median": 1.0359973577957016,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "first_1000_queries_cpu_usec": {
+        "median_candidate_over_baseline": 0.9853133480301786,
+        "AB_median": 0.9388024344360051,
+        "BA_median": 1.026299567832382,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "first_query_wall_seconds": {
+        "median_candidate_over_baseline": 0.9685800756161864,
+        "AB_median": 0.7758963472405238,
+        "BA_median": 1.046808597673139,
+        "candidate_faster_pairs": 3,
+        "candidate_worse_pairs": 1
+      },
+      "ingest_wall_seconds": {
+        "median_candidate_over_baseline": 1.1943377754149112,
+        "AB_median": 0.8948829761221946,
+        "BA_median": 1.4511175551432534,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "ingest_cpu_usec": {
+        "median_candidate_over_baseline": 1.0046687816822297,
+        "AB_median": 0.9992705809340084,
+        "BA_median": 1.0216664566523836,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 0.9907030657092534,
+        "AB_median": 0.9763698541780009,
+        "BA_median": 1.023828869604294,
+        "candidate_faster_pairs": 3,
+        "candidate_worse_pairs": 1
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 1.0039137377144858,
+        "AB_median": 1.0039137377144858,
+        "BA_median": 0.9899435527534874,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "max_process_rss_bytes": {
+        "median_candidate_over_baseline": 1.0,
+        "AB_median": 1.0,
+        "BA_median": 1.0001571338780642,
+        "candidate_faster_pairs": 0,
+        "candidate_worse_pairs": 1
+      }
+    },
+    "retained:2:wide768": {
+      "lifecycle_stage_wall_sum": {
+        "median_candidate_over_baseline": 0.994987696634591,
+        "AB_median": 0.9481086700649325,
+        "BA_median": 1.0418667232042496,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "seven_query_phases_wall_seconds": {
+        "median_candidate_over_baseline": 0.9857413839123756,
+        "AB_median": 0.9258260936601268,
+        "BA_median": 1.0456566741646245,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "seven_query_phases_cpu_usec": {
+        "median_candidate_over_baseline": 0.9958853297343199,
+        "AB_median": 0.9796679185065962,
+        "BA_median": 1.0121027409620436,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 0.9990137775299834,
+        "AB_median": 0.9875250354774102,
+        "BA_median": 1.0105025195825568,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 0.9993523123420488,
+        "AB_median": 0.9962329759490003,
+        "BA_median": 1.0024716487350973,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      }
+    }
+  },
+  "spill_benefit_conditions": {
+    "query_before_update_wall_seconds": {
+      "threshold_candidate_over_baseline": 0.97,
+      "pairs": [
+        {
+          "pair_index": 0,
+          "order": [
+            "baseline",
+            "candidate"
+          ],
+          "baseline": 0.006282244999852082,
+          "candidate": 0.00627511299995831,
+          "candidate_minus_baseline": -7.131999893772445e-06,
+          "candidate_over_baseline": 0.9988647370655012,
+          "candidate_faster": true,
+          "candidate_worse": false
+        },
+        {
+          "pair_index": 1,
+          "order": [
+            "candidate",
+            "baseline"
+          ],
+          "baseline": 0.006606419000092956,
+          "candidate": 0.00655401900007746,
+          "candidate_minus_baseline": -5.240000001549561e-05,
+          "candidate_over_baseline": 0.992068320217843,
+          "candidate_faster": true,
+          "candidate_worse": false
+        }
+      ],
+      "passed": false
+    },
+    "query_before_update_cpu_usec": {
+      "threshold_candidate_over_baseline": 0.97,
+      "pairs": [
+        {
+          "pair_index": 0,
+          "order": [
+            "baseline",
+            "candidate"
+          ],
+          "baseline": 5399,
+          "candidate": 5424,
+          "candidate_minus_baseline": 25,
+          "candidate_over_baseline": 1.0046304871272458,
+          "candidate_faster": false,
+          "candidate_worse": true
+        },
+        {
+          "pair_index": 1,
+          "order": [
+            "candidate",
+            "baseline"
+          ],
+          "baseline": 5740,
+          "candidate": 5675,
+          "candidate_minus_baseline": -65,
+          "candidate_over_baseline": 0.9886759581881533,
+          "candidate_faster": true,
+          "candidate_worse": false
+        }
+      ],
+      "passed": false
+    },
+    "first_query_wall_seconds": {
+      "threshold_candidate_over_baseline": 0.95,
+      "pairs": [
+        {
+          "pair_index": 0,
+          "order": [
+            "baseline",
+            "candidate"
+          ],
+          "baseline": 0.0005398699999545897,
+          "candidate": 0.0005457190000015544,
+          "candidate_minus_baseline": 5.8490000469646475e-06,
+          "candidate_over_baseline": 1.010834089776162,
+          "candidate_faster": false,
+          "candidate_worse": true
+        },
+        {
+          "pair_index": 1,
+          "order": [
+            "candidate",
+            "baseline"
+          ],
+          "baseline": 0.0005600510000363101,
+          "candidate": 0.000545167999973728,
+          "candidate_minus_baseline": -1.4883000062582141e-05,
+          "candidate_over_baseline": 0.9734256343411275,
+          "candidate_faster": true,
+          "candidate_worse": false
+        }
+      ],
+      "passed": false
+    }
+  },
+  "all_adverse_metric_pair_observations": 52,
+  "source_factor_passed": false,
+  "bundle": {
+    "file": "disk-noinit1114-rejected-raw-20261114.zip",
+    "bytes": 3002665,
+    "sha256": "b37712d2bb8eae36108320e9527ec4270f3917b6778238b5df8cd41d202a65dc",
+    "entries": 170,
+    "original_reports": 131,
+    "complete_logs": 2,
+    "includes_frozen_runtime_inputs": 20,
+    "all_files_verified": true
+  },
+  "performance_log": {
+    "run_id": 43555744931,
+    "job_id": 132328072571,
+    "runtime_commit": "e685eeeed6f436ab57745db9c323d946273bb5cb",
+    "exit_code": 0,
+    "elapsed_seconds": 10.498270034790039,
+    "stderr": "",
+    "log_file": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-10-30\\yan\\work\\disk-noinit-43555744931.log",
+    "bytes": 24362847,
+    "sha256": "3679d192c383a2a4c00734174d6b37c802c9db3f5b4434b4e7004edc43148a65"
+  },
+  "decision": "Reject; do not import source into main, alter thresholds or retry a performance variant. Preserve evidence only.",
+  "official_score": null,
+  "release_gate_passed": false,
+  "automatic_adoption": false,
+  "production_merged": false
+}
