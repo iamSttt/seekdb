@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -42,9 +43,20 @@ class FlatIndex {
   FlatIndex& operator=(const FlatIndex&)=delete;
   // `values` is borrowed, not copied, when this index is resident: it must stay
   // alive and unmoved until the index is destroyed. A disk-backed index copies it.
-  void add(int64_t pk,uint64_t slot,const float* values,size_t dimension);
+  void add(int64_t pk,uint64_t slot,const float* values,size_t dimension,
+      const int64_t* integer_values=nullptr,size_t integer_count=0);
   void finish();
   void scan(const Visitor& visitor) const;
+  // Configure before add(), only for a disk index. Takes up to two columns in
+  // the supplied order and returns the admitted prefix length. Arrays and
+  // compression scratch share this budget, capped at 2 MiB. No PK copy needed.
+  size_t configure_spill_integers(const size_t* columns,size_t count,size_t budget);
+  bool spill_integer_value(size_t ordinal,size_t column,int64_t* value) const;
+  bool has_spill_integer(size_t column) const;
+  // Predicate sees the physical ordinal and existing key/slot metadata before
+  // any row payload is materialised. It must not mutate this physical index.
+  using MetadataPredicate=std::function<bool(size_t,int64_t,uint64_t)>;
+  void scan_filtered(const MetadataPredicate& predicate,const Visitor& visitor) const;
   // Read-only, non-owning view; available only for a finished resident index.
   // Storage remains owned by this index and must not outlive it.
   bool resident_view(ResidentView* view) const;
@@ -72,6 +84,14 @@ class FlatIndex {
  private:
   const float* row_at(size_t i) const {return rows_[i];}
   void build_partition();
+  void compress_spill_integers();
+  struct SpillInteger {
+    size_t column=0,width=8,bytes=0;
+    int64_t minimum=0,maximum=0;
+    std::unique_ptr<uint8_t[]> values;
+  };
+  std::array<SpillInteger,2> spill_integers_;
+  size_t spill_integer_count_=0,spill_integer_budget_=0;
   size_t dimension_=0,expected_=0,count_=0;
   int fd_=-1;
   bool ready_=false;

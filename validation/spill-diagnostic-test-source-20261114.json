@@ -1,0 +1,22 @@
+{
+  "test_spill_filter.cpp": {
+    "source": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-11-12\\iamsttt-seekdb-https-github-com-iamsttt\\work\\seekdb\\minivec\\tests\\test_spill_filter.cpp",
+    "source_sha256": "e3c141952e86805f6e0bc4c7d0ade76bae523b445be65a69357ebf6826530087",
+    "adapted_sha256": "cc1df47d8c9f0bd4b8136225948d3aee014242984e0ea969d8eb7f53ee4661a2",
+    "native_builds": 0,
+    "test_runs": 0
+  },
+  "test_storage_index_budget.cpp": {
+    "source": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-11-12\\iamsttt-seekdb-https-github-com-iamsttt\\work\\seekdb\\minivec\\tests\\test_storage_index_budget.cpp",
+    "source_sha256": "94263fd6cd4b80314a656b965e4c69fcfd17d84f9e16c984adf38a21589227da",
+    "adapted_sha256": "49f486741410a0ca125b933de4098dc6179dac4e1085062c0202a8fe6c02d800",
+    "native_builds": 0,
+    "test_runs": 0
+  },
+  "test_spill_payload_scope.cpp": {
+    "source": "new scope regression authored in this task",
+    "adapted_sha256": "8b0b616634ee189c3f96e9ed7f6fc681a0baf7244426f3619312f86e0433d671",
+    "native_builds": 0,
+    "test_runs": 0
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "status": "source_draft_only_uncompiled_unmeasured",
+  "base_commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+  "original_best_source": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "historical_draft": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-11-12\\iamsttt-seekdb-https-github-com-iamsttt\\work\\ee-spill-candidate",
+  "historical_manifest_sha256": "0b44cc2afde9813d4fd359b8c688774d74bb51740c06de92068194094c214b67",
+  "scope": "Only payload_store && disk_backed: at most first two non-PK BIGINT columns; existing global index budget, 2MiB cache bound, original per-record disk writes.",
+  "current_runtime_retained": "All non-three-file build inputs byte-identical to 9ed, including validated request, fixed128 and cached shared ceiling code. These prior changes are not attributed to this spill patch.",
+  "no_batch_write": true,
+  "no_PGO_or_build_flag_change": true,
+  "native_builds": 0,
+  "database_runs": 0,
+  "official_submissions": 0,
+  "source_files_changed": [
+    "minivec/src/db.cpp",
+    "minivec/src/flat_index.cpp",
+    "minivec/src/flat_index.h"
+  ],
+  "patch_sha256": "20d237c79cdb210e81a654431751f5ed09e15e514adf5729ec05767999c403b9",
+  "files": {
+    ".dockerignore": {
+      "base_sha256": "dd9b806988a5bcc72875b9cee43b90025efa58b75770ba975d9347584d8444ce",
+      "sha256": "dd9b806988a5bcc72875b9cee43b90025efa58b75770ba975d9347584d8444ce",
+      "bytes": 100,
+      "changed": false
+    },
+    "Dockerfile": {
+      "base_sha256": "d262b689634801e3280f004c7b918afd87a696365fc50ad9e718932c4c63035e",
+      "sha256": "d262b689634801e3280f004c7b918afd87a696365fc50ad9e718932c4c63035e",
+      "bytes": 779,
+      "changed": false
+    },
+    "minivec/Makefile": {
+      "base_sha256": "3c6b9c76ab290efd3f8e25292f48e917d4716f47f328ea70591b7887adc84c40",
+      "sha256": "3c6b9c76ab290efd3f8e25292f48e917d4716f47f328ea70591b7887adc84c40",
+      "bytes": 2205,
+      "changed": false
+    },
+    "minivec/src/db.cpp": {
+      "base_sha256": "3c7cf1bf25ae7965ad192fd2e9c1a7ec4d075a7dc5d10e61198b3b3c800b751f",
+      "sha256": "908cf567016786d7783eec263e8d4b20a7585b13ee20d0b48b984314d74c42d4",
+      "bytes": 84565,
+      "changed": true
+    },
+    "minivec/src/db.h": {
+      "base_sha256": "b2b045c5c869633596a435e2e8a94a8d0abfe3a4d3563d5f95615d7cbd529607",
+      "sha256": "b2b045c5c869633596a435e2e8a94a8d0abfe3a4d3563d5f95615d7cbd529607",
+      "bytes": 6422,
+      "changed": false
+    },
+    "minivec/src/distance.h": {
+      "base_sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+      "bytes": 17386,
+      "changed": false
+    },
+    "minivec/src/exec.cpp": {
+      "base_sha256": "326d72a903f117be08428f355a7f39364fcca58deff6b480cc1a9bf59fd82df5",
+      "sha256": "326d72a903f117be08428f355a7f39364fcca58deff6b480cc1a9bf59fd82df5",
+      "bytes": 33276,
+      "changed": false
+    },
+    "minivec/src/exec.h": {
+      "base_sha256": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5",
+      "sha256": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5",
+      "bytes": 1135,
+      "changed": false
+    },
+    "minivec/src/flat_index.cpp": {
+      "base_sha256": "7659ce94bcf921c1f4fa7f891eb5254804892483cadf14453cdcf97934f4a3b7",
+      "sha256": "6a2e8d2e09f6fa0365b6354f798a4901669c48cc27dae873aa7ed13225f2e070",
+      "bytes": 19253,
+      "changed": true
+    },
+    "minivec/src/flat_index.h": {
+      "base_sha256": "d47a58e21e4112e12fb51ea5f92d23ffda80abfa3fbda267e0287a7249fc3b12",
+      "sha256": "5bd63a4ea1a0f268e4137ff6e0c49be8860b64626f990a8fd96499fb292b4010",
+      "bytes": 5714,
+      "changed": true
+    },
+    "minivec/src/main.cpp": {
+      "base_sha256": "557524d9a1e1dfc62dbb28ace78056876201f87a5e49e8d00e6c45431a351b3f",
+      "sha256": "557524d9a1e1dfc62dbb28ace78056876201f87a5e49e8d00e6c45431a351b3f",
+      "bytes": 20881,
+      "changed": false
+    },
+    "minivec/src/parse_pool.h": {
+      "base_sha256": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e",
+      "sha256": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e",
+      "bytes": 5498,
+      "changed": false
+    },
+    "minivec/src/quantized_bound.h": {
+      "base_sha256": "88e3948f2f74b7d4373be9c63c0ce3f3421cbd2e657c3043c6123cc56fcfbd8f",
+      "sha256": "88e3948f2f74b7d4373be9c63c0ce3f3421cbd2e657c3043c6123cc56fcfbd8f",
+      "bytes": 13942,
+      "changed": false
+    },
+    "minivec/src/query_pool.h": {
+      "base_sha256": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b",
+      "sha256": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b",
+      "bytes": 11202,
+      "changed": false
+    },
+    "minivec/src/result_sort.h": {
+      "base_sha256": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361",
+      "sha256": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361",
+      "bytes": 5423,
+      "changed": false
+    },
+    "minivec/src/sql.cpp": {
+      "base_sha256": "339d6d704a18b2f0fe04ff97edac4d2be90ff5f908f0ad085284021e0f47cbb5",
+      "sha256": "339d6d704a18b2f0fe04ff97edac4d2be90ff5f908f0ad085284021e0f47cbb5",
+      "bytes": 44122,
+      "changed": false
+    },
+    "minivec/src/sql.h": {
+      "base_sha256": "564e8aab64e3fe8fc884b9cb95f9411e031e51900de924c9ee2c56dfea67b843",
+      "sha256": "564e8aab64e3fe8fc884b9cb95f9411e031e51900de924c9ee2c56dfea67b843",
+      "bytes": 1666,
+      "changed": false
+    },
+    "minivec/src/value.cpp": {
+      "base_sha256": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8",
+      "sha256": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8",
+      "bytes": 3025,
+      "changed": false
+    },
+    "minivec/src/value.h": {
+      "base_sha256": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12",
+      "sha256": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12",
+      "bytes": 1255,
+      "changed": false
+    },
+    "minivec/third_party/LICENSE.MIT": {
+      "base_sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14",
+      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14",
+      "bytes": 1076,
+      "changed": false
+    },
+    "minivec/third_party/json.hpp": {
+      "base_sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6",
+      "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6",
+      "bytes": 919975,
+      "changed": false
+    }
+  },
+  "limitations": [
+    "Historical donor tests and R gains are not validation of this 9ed-based candidate.",
+    "Final TopK materialization already existed. Vector disk index is still fully scanned.",
+    "New FlatIndex fields and code layout may affect resident/default costs despite admission guard.",
+    "Narrow payload guard intentionally declines cache when payload stays resident but EE index spills.",
+    "No automatic adoption, formal-score projection, or production mutation."
+  ]
+}
