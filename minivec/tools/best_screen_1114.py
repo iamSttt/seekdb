@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EE-only 12-pair screening; not the historical 24-pair release gate.
+"""12-pair source comparison; EE screening by default, explicit ablation otherwise.
 
 Run with cgroup-v2 write permission (normally sudo on the Linux CI host).
 The imported measurement/oracle tools are byte-identical historical tools.
@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent / 'research1114'
 TOOLS = ROOT / 'minivec' / 'tools'
 EE = 'ee299adb296a2922d01982aa6c5707d37e767b41'
 FAMILY = 'ee_only_12pair_screen_20261114'
+ABLATION_FAMILY = 'source_ablation_12pair_screen_20261114'
 
 
 def require(value, message):
@@ -80,7 +81,7 @@ def identity(role, binary, commit, directory, evidence=None):
             'evidence_commit_pointer': ['source_commit'], 'environment': {}}
 
 
-def summarize(data):
+def summarize(data, baseline_source=EE):
     # This function uses the original standard_metrics extraction, with its
     # original CPU phase boundaries. No new oracle or timing instrumentation.
     sys.path.insert(0, str(ROOT))
@@ -111,6 +112,11 @@ def summarize(data):
                          'candidate_strictly_faster_pairs': sum(r['candidate'] < r['baseline'] for r in rows),
                          'candidate_slower_pairs': sum(r['candidate'] > r['baseline'] for r in rows),
                          'order_median_candidate_over_baseline': by_order}
+    result = {'metrics': summary, 'baseline_source_commit': baseline_source,
+              'release_gate_passed': False, 'automatic_adoption': False}
+    if baseline_source != EE:
+        result['decision_scope'] = 'Paired source ablation metrics only; EE improvement thresholds do not apply to this baseline.'
+        return result
     thresholds = {'first_lifecycle_wall_seconds': .95,
                   'first_lifecycle_cpu_to_before_shutdown_usec': .95,
                   'first_1000_queries_wall_seconds': .90,
@@ -124,16 +130,17 @@ def summarize(data):
                         metric['candidate_strictly_faster_pairs'] >= 5 and
                         all(r is not None and r < 1 for r in
                             metric['order_median_candidate_over_baseline'].values()))
-    return {'metrics': summary, 'historical_EE_primary_thresholds_only': checks,
-            'all_EE_primary_thresholds_passed': all(checks.values()),
-            'release_gate_passed': False, 'automatic_adoption': False}
+    result.update(historical_EE_primary_thresholds_only=checks,
+                  all_EE_primary_thresholds_passed=all(checks.values()))
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--baseline', type=Path, required=True)
     parser.add_argument('--candidate', type=Path, required=True)
-    parser.add_argument('--baseline-source', default=EE)
+    parser.add_argument('--baseline-source', default=EE,
+                        help='full source SHA; EE by default, another explicit source selects metric-only ablation')
     parser.add_argument('--candidate-source', required=True)
     parser.add_argument('--baseline-evidence', type=Path)
     parser.add_argument('--candidate-evidence', type=Path)
@@ -144,12 +151,20 @@ def main():
     args.output = args.output.resolve()
     directory = args.output.with_suffix(args.output.suffix + '.d')
     require(not args.output.exists() and not directory.exists(), 'refuse to overwrite prior measurement')
-    require(args.baseline_source == EE, 'this screen requires the declared EE highest-score source')
+    require(re.fullmatch('[0-9a-f]{40}', args.baseline_source) is not None, 'full baseline source SHA required')
     require(re.fullmatch('[0-9a-f]{40}', args.candidate_source) is not None, 'full candidate source SHA required')
+    ee_comparison = args.baseline_source == EE
     manifest = verify_vendor()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     report = {'status': 'plan_only_not_executed' if args.plan_only else 'running',
-              'measurement_family': FAMILY, 'plan': plan(), 'expected_pairs': 12,
+              'measurement_family': FAMILY if ee_comparison else ABLATION_FAMILY,
+              'comparison_baseline': {'declared_source_commit': args.baseline_source,
+                                      'is_EE_source': ee_comparison,
+                                      'identity_scope': 'Caller-declared source; actual binary SHA256 is recorded separately.'},
+              'comparison_candidate': {'declared_source_commit': args.candidate_source},
+              'underlying_plan_selector': {'highest_primary_reference': 'ee',
+                  'scope': 'Selects the existing six-default-pairs-per-CPU schedule only. It does not establish EE binary/source identity for a non-EE comparison.'},
+              'plan': plan(), 'expected_pairs': 12,
               'completed_pairs': 0, 'official_score': None, 'formal_submission': False,
               'release_gate_passed': False, 'automatic_adoption': False,
               'tool_provenance': manifest, 'wrapper_sha256': sha(__file__),
@@ -159,7 +174,9 @@ def main():
                            'seed': 7319, 'query_mode': 'exact', 'queries_before_shutdown': 1000,
                            'queries_after_restart': 1000, 'batch_size': 100, 'topk': 10},
               'notes': [
-                  'EE-only 12-pair initial screen. Omits retained-R default, spill and wide protection; never the historical 24-pair release gate.',
+                  ('EE-only 12-pair initial screen.' if ee_comparison else
+                   'Explicit source ablation, 12 paired comparisons; no EE thresholds or official-baseline inference.') +
+                  ' Omits retained-R default, spill and wide protection; never the historical 24-pair release gate.',
                   'Original deterministic generator, sampled independent TopK oracle, all restarted IDs and sampled vectors are unchanged.',
                   'Full responses compared by SHA256 across each pair; per-request timings, phase counters, memory and IO remain in raw reports.',
                   'First-lifecycle wall is the sum of original measured request/startup/shutdown intervals. CPU ends before shutdown, as in the historical metric.',
@@ -188,13 +205,15 @@ def main():
         child_env['PYTHONDONTWRITEBYTECODE'] = '1'
         report['removed_inherited_MVDB_variable_names'] = sorted(k for k in os.environ if k.startswith('MVDB_'))
         for count in (1, 2):
-            path = directory / ('ee-' + str(count) + 'cpu.json')
+            path = directory / (('ee-' if ee_comparison else 'comparison-') + str(count) + 'cpu.json')
             command = [sys.executable, '-B', str(TOOLS / 'small_compute.py'), '--tools', str(TOOLS),
                        '--identities', str(identities_path), '--launcher', str(launcher), '--output', str(path),
                        '--allow-version-contrast', '--db-cpu-count', str(count), '--highest-primary-reference', 'ee',
                        '--query-mode', 'exact', '--memory-max', '2147483648', '--swap-max', '0',
                        '--cpu-quota-us', str(count * 100000), '--cpu-period-us', '100000', '--case-timeout', '600']
-            arm = {'command': command, 'raw_file': str(path), 'status': 'running'}
+            arm = {'command': command, 'raw_file': str(path), 'status': 'running',
+                   'baseline_source_commit': args.baseline_source,
+                   'raw_plan_scope': 'Unmodified historical helper uses an ee selector/family label for this six-pair schedule; source and binary identity are the explicit identities records, not that plan label.'}
             report['arms'][str(count)] = arm
             save(args.output, report)
             code = subprocess.run(command, env=child_env, check=False).returncode
@@ -204,7 +223,7 @@ def main():
                 arm.update(status=raw.get('status'), raw_sha256=sha(path), data=raw)
                 report['completed_pairs'] += len(raw.get('pairs', []))
                 if raw.get('pairs'):
-                    report['comparisons'][str(count)] = summarize(raw)
+                    report['comparisons'][str(count)] = summarize(raw, args.baseline_source)
             save(args.output, report)
             require(code == 0 and arm.get('status') == 'passed', 'CPU arm failed: ' + str(count))
             require(len(arm['data']['pairs']) == 6, 'missing pairs')
@@ -217,8 +236,11 @@ def main():
         require(actual_plan == plan() and report['completed_pairs'] == 12, 'measured plan differs')
         require(verify_vendor() == manifest, 'vendor provenance changed')
         report['status'] = 'screen_completed'
-        report['all_EE_primary_thresholds_passed'] = all(
-            item['all_EE_primary_thresholds_passed'] for item in report['comparisons'].values())
+        if ee_comparison:
+            report['all_EE_primary_thresholds_passed'] = all(
+                item['all_EE_primary_thresholds_passed'] for item in report['comparisons'].values())
+        else:
+            report['decision_scope'] = 'Source ablation completed; no EE threshold pass/fail or automatic adoption decision.'
     except BaseException as exc:
         failure = exc
         report.update(status='failed_or_incomplete', error=type(exc).__name__ + ': ' + str(exc),

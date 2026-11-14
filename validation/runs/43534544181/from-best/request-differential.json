@@ -1,0 +1,9 @@
+{
+  "cases": 464,
+  "sha256": "db2c5ed1b540aa1d5fc2e945ffc5b58557e8c423d7b22c4dc6320ac1ed30be08",
+  "intentional_raw_nul_rejections": 6,
+  "intentional_raw_nul_differential_changes": 2,
+  "nul_atomicity_cases": 4,
+  "nul_atomicity_sha256": "7ffbea440784659a07c4b768ae19bacab9e34b7d3f0b470373069b16182bf4d0",
+  "result": "pass"
+}

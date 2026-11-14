@@ -74,6 +74,7 @@ g++ -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer -fsanitize=address,undefi
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 timeout 120 "$scratch/cross-spill-san" 2>&1 | tee "$reports/cross-spill-san.log"
 g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -Iminivec/src minivec/src/*.cpp -o "$scratch/minivec-ubsan"
 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 minivec/tests/json_protocol.py --binary "$scratch/minivec-ubsan" --timeout 15 2>&1 | tee "$reports/fullbinary-json-ubsan.log"
+UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 minivec/tests/shared_bound_topk.py --binary "$scratch/minivec-ubsan" --output "$reports/shared-bound-ubsan.json"
 
 bash minivec/tools/ci_from_best_1114.sh
 

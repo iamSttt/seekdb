@@ -1,0 +1,12 @@
+{
+  "status": "frozen_before_native_execution",
+  "parent_candidate": "3bf7856dc77d1973f82db3b608db23d1a658b4fe",
+  "change": "During existing exact parallel scan, each half may read a conservative distance ceiling from the other half's complete K-row heap, once every 64 rows. Strict-greater rejection only; heaps and bound caches stay private.",
+  "prediction": "May avoid expensive uncertain-row calculations when the two halves progress unevenly. Random balanced halves may gain little; per-row threshold and cache-coherence overhead can outweigh rejection gains. One-CPU quota does not disable the old fanout policy, so test both CPU arms.",
+  "measurements": [
+    "Repeat unchanged EE 12-pair screening and thresholds.",
+    "On the same host, add 12 pairs against the exact pre-share parent root image to isolate this mechanism. Preserve both roots and all samples. This second contrast is not an EE score gate."
+  ],
+  "correctness": ["Existing root/image public and exact TopK regressions", "Native serial/forced-parallel oracle checks for adversarial partitions and ties", "No score or adoption inference from algorithm model alone"],
+  "adoption": "All previous EE thresholds and release protections still apply. A failed primary screen is not overridden by special-case gains."
+}

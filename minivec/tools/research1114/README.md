@@ -1,4 +1,4 @@
-# EE-only screening harness, 2026-11-14
+# Source-comparison screening harness, 2026-11-14
 
 `../best_screen_1114.py` reuses the historical benchmark and independent sampled
 TopK oracle without modifying the engine or the existing CI scripts. The eight
@@ -22,6 +22,21 @@ sudo -n env PYTHONDONTWRITEBYTECODE=1 python3 minivec/tools/best_screen_1114.py 
   --output /absolute/screen.json
 ```
 
+The default baseline source is EE `ee299adb296a2922d01982aa6c5707d37e767b41`.
+For a direct ablation against another built version, explicitly pass
+`--baseline-source FULL_BASELINE_COMMIT`. This retains exactly the same 12-pair
+schedule, generator, oracle and metrics, but uses the distinct
+`source_ablation_12pair_screen_20261114` family. It reports no EE threshold
+pass/fail; the raw files are named `comparison-1cpu.json` and
+`comparison-2cpu.json`. Both declared source commits and measured binary hashes
+remain explicit. This comparison does not by itself establish a single-change
+causal effect: the caller must bind the source/build differences separately.
+
+The unmodified underlying tool is invoked with `--highest-primary-reference ee`
+solely to select its existing six-default-pairs-per-CPU schedule. Its raw
+historical family/selector labels are preserved as source evidence, not used as
+a claim that a non-EE baseline is EE. Wrapper metadata states this distinction.
+
 Optional `--baseline-evidence` and `--candidate-evidence` record externally
 produced build-proof file hashes. Binary SHA256 is independently measured here;
 source commit labels remain caller declarations. This wrapper does not certify
@@ -41,11 +56,13 @@ drop, warmup discard, source/ISA selection or sample trimming.
 failure leaves completed pairs and the original partial failure report, exits
 nonzero and stops subsequent arms. Existing output paths are never overwritten.
 
-The four historical EE thresholds are displayed per CPU, including AB/BA
+In default EE mode, the four historical EE thresholds are displayed per CPU, including AB/BA
 directions and every pair. A threshold pass is only an initial screening signal:
 this is **12 EE pairs**, not the historical **24-pair** release gate. Retained-R
 default, spill and wide-vector protections and independent confirmation remain
-outside this wrapper. No score prediction or automatic adoption is performed.
+outside this wrapper. In explicit non-EE mode, only the paired metrics are
+reported, without those EE thresholds. No score prediction or automatic adoption
+is performed in either mode.
 
 `--plan-only` validates vendored hashes and writes the plan without launching a
 database. Local checks covered Python syntax, imports, exact vendor hashes and

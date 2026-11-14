@@ -8,6 +8,7 @@
 #include <limits>
 
 #include <algorithm>
+#include <atomic>
 #include <charconv>
 #include <cmath>
 #include <cstdio>
@@ -539,17 +540,23 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             const bool approximate=index &&
                 index->ann_probe(order.qvec->data(),0,&probed,&ordinals,&ordinal_count);
             // Intra-query fan-out over two contiguous halves of the ordinal
-            // span. A half owns its top-K heap, its own certification bound and
-            // its own mutable threshold cache - neither bound object may be
-            // shared between threads - so the halves touch no shared state and
-            // the merge below is their only meeting point. Their union holds the
-            // K best rows under (exact distance, primary key), a total order, so
-            // the winner set cannot depend on how the span was cut.
+            // span. Each half owns its heap and mutable bound caches. The only
+            // exchanged state is a distance ceiling witnessed by K actual rows
+            // in the publisher's full heap. Rejecting strictly greater distances
+            // cannot remove a global Top-K row, even before the local heap fills.
+            // Equal distances still use the original primary-key tie breaker.
+            // The normal merge of both heaps retains all global Top-K winners.
             const bool fanout=!approximate && bounded && !st.order_desc && k>=1 &&
                 k<=kFanoutTopKMax && query_fanout_wanted(view.count);
             if(fanout) {
               std::vector<Candidate> halves[2];
               halves[0].reserve(k);halves[1].reserve(k);
+              struct alignas(64) PublishedKth {
+                std::atomic<double> value{std::numeric_limits<double>::infinity()};
+              };
+              PublishedKth published[2]; // One writer per separate cache line.
+              // Non-lock-free implementations retain the old local-only path.
+              constexpr bool share_kth=std::atomic<double>::is_always_lock_free;
               auto keep=[&](std::vector<Candidate>& heap,Candidate c) {
                 if(heap.size()<k) {
                   heap.push_back(std::move(c));
@@ -572,19 +579,44 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 const QuantizedQueryBound quantized(query,dimension,
                     view.quantized ? view.quantization_step : 0);
                 std::vector<Candidate>& heap=halves[worker];
+                const double infinity=std::numeric_limits<double>::infinity();
+                double peer_threshold=infinity,last_published=infinity;
+                auto publish_kth=[&] {
+                  if constexpr(share_kth) {
+                    if(heap.size()==k) {
+                      const double own=heap.front().distance;
+                      if(std::isfinite(own) && own>=0 && own<last_published) {
+                        published[worker].value.store(own,std::memory_order_relaxed);
+                        last_published=own;
+                      }
+                    }
+                  }
+                };
                 for(size_t i=first;i<last;++i) {
-                  // Integer codes are only a certified rejection filter, taken
-                  // against this half's own k-th distance. Every uncertain row
-                  // follows the existing float bound and exact kernel.
-                  if(quantized.enabled() && heap.size()==k &&
-                     quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance))
+                  if constexpr(share_kth) {
+                    if(((i-first)&63)==0) {
+                      publish_kth();
+                      const double peer=published[worker^1].value.load(std::memory_order_relaxed);
+                      if(std::isfinite(peer) && peer>=0 && peer<peer_threshold)
+                        peer_threshold=peer;
+                    }
+                  }
+                  const bool full=heap.size()==k;
+                  const double local=full ? heap.front().distance : infinity;
+                  // Keep a NaN local boundary conservative. Stale peer values
+                  // remain valid upper bounds; no heap state crosses threads.
+                  const double threshold=peer_threshold<local ? peer_threshold : local;
+                  const bool may_reject=full || peer_threshold<infinity;
+                  if(quantized.enabled() && may_reject &&
+                     quantized.definitely_greater(view.quantized+i*dimension,threshold))
                     continue;
                   const float* row=view.rows[i];
-                  if(heap.size()==k && bound.definitely_greater(row,query,heap.front().distance))
+                  if(may_reject && bound.definitely_greater(row,query,threshold))
                     continue;
                   Candidate c;c.pk=view.keys[i];c.distance=distance_squared(row,query,dimension);
                   keep(heap,std::move(c));
                 }
+                publish_kth(); // A short/finished half can still help its peer.
               };
               auto run_half=+[](void* ctx,unsigned worker) {
                 (*static_cast<std::function<void(unsigned)>*>(ctx))(worker);

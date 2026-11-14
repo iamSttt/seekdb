@@ -40,9 +40,26 @@ done
 
 # Compare complete request/response sequences and post-error effects against EE.
 python3 minivec/tests/validated_request_diff.py --baseline "$scratch/baseline-binary" --candidate "$scratch/candidate-binary" --output "$out/request-differential.json"
+python3 minivec/tests/shared_bound_topk.py --binary "$scratch/candidate-binary" --output "$out/shared-bound-topk.json"
 
 # Same-machine paired screening, separate DB-only CPU quotas, all samples retained.
 gcc -O2 -Wall -Wextra -static minivec/tools/research1114/cgroup_exec.c -o "$scratch/cgroup-exec"
 sudo --preserve-env=PATH python3 minivec/tools/best_screen_1114.py \
   --baseline "$scratch/baseline-binary" --candidate "$scratch/candidate-binary" \
   --candidate-source "$RUNTIME_COMMIT" --launcher "$scratch/cgroup-exec" --output "$out/screen.json"
+
+# Isolate the added cross-half ceiling from the already measured request/kernel changes.
+pre_share=3bf7856dc77d1973f82db3b608db23d1a658b4fe
+git fetch --no-tags --depth=1 origin "$pre_share"
+mkdir "$scratch/pre-share"
+git archive "$pre_share" Dockerfile .dockerignore minivec/src minivec/third_party | tar -x -C "$scratch/pre-share"
+docker build --platform linux/amd64 --progress=plain -t minivec:pre-share-1114 "$scratch/pre-share" 2>&1 | tee "$out/pre-share-build.log"
+container=$(docker create minivec:pre-share-1114)
+docker cp "$container:/minivec" "$scratch/pre-share-binary"
+docker rm "$container"
+docker image inspect minivec:pre-share-1114 > "$out/pre-share-image.json"
+sha256sum "$scratch/pre-share-binary" > "$out/pre-share-binary-sha256.txt"
+sudo --preserve-env=PATH python3 minivec/tools/best_screen_1114.py \
+  --baseline "$scratch/pre-share-binary" --baseline-source "$pre_share" \
+  --candidate "$scratch/candidate-binary" --candidate-source "$RUNTIME_COMMIT" \
+  --launcher "$scratch/cgroup-exec" --output "$out/shared-ablation.json"
