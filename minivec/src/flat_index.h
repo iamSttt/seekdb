@@ -85,6 +85,7 @@ class FlatIndex {
   const float* row_at(size_t i) const {return rows_[i];}
   void build_partition();
   void compress_spill_integers();
+  void flush_build_block();
   struct SpillInteger {
     size_t column=0,width=8,bytes=0;
     int64_t minimum=0,maximum=0;
@@ -95,6 +96,12 @@ class FlatIndex {
   size_t dimension_=0,expected_=0,count_=0;
   int fd_=-1;
   bool ready_=false;
+  bool build_failed_=false;
+  // Transient sequential disk-build buffer; released by successful finish().
+  // This additional bounded I/O buffer is not charged by resident_bytes().
+  std::vector<float> build_block_;
+  size_t build_used_=0;
+  uint64_t build_offset_=0;
   // Borrowed row payload pointers (resident path); never owns the floats.
   std::vector<const float*> rows_;
   std::vector<int64_t> keys_;

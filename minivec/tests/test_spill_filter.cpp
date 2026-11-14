@@ -1,4 +1,4 @@
-// Adapted for isolated 9ed + spill-only, 2026-11-14; not executed on Linux.
+// Adapted for 760f + isolated FlatIndex batching, 2026-11-14; native run pending.
 // g++ -std=c++17 -O2 -pthread -Isrc -DMVDB_ENABLE_SPILL_FILTER
 //   -DMVDB_SPILL_BYTES=1 tests/test_spill_filter.cpp
 //   src/{db,exec,sql,value,flat_index}.cpp -Wl,--wrap=pread -o /tmp/test_spill_filter
@@ -169,48 +169,32 @@ static void direct(const std::string& path) {
   FlatIndex too_large(path,5,(2u<<20)/8+1,0);
   assert(!too_large.configure_spill_integers(columns,2,std::numeric_limits<size_t>::max()));
 #ifdef MVDB_TEST_WRAP_PWRITE
-  // EE writes each record inside add(), not in a batch at finish().
-  // Fail the first, middle and last record; no incomplete cache may publish.
-  for(size_t fault_row:{size_t(0),n/2,n-1}) {
-    FlatIndex failed(path,5,n,0);
+  for(bool tail_flush:{false,true}) {
+    // Small indexes flush their entire allocated build buffer on the last
+    // add(), so finish() has no pending write. Exercise that boundary and a
+    // larger index whose partial final block really is flushed by finish().
+    const size_t rows=tail_flush ? (256u<<10)/(5*sizeof(float)+16)+1 : n;
+    FlatIndex failed(path,5,rows,0);
     assert(failed.configure_spill_integers(columns,2,256u<<10)==2);
-    for(size_t i=0;i<fault_row;++i) {
+    const size_t before_fault=tail_flush ? rows : rows-1;
+    for(size_t i=0;i<before_fault;++i) {
       const int64_t integers[2]={int64_t(i%13),int64_t(i)};
       failed.add(int64_t(i),i,vector,5,integers,2);
     }
     injected_flat_write_failures=0;fail_flat_write=true;
-    const int64_t integers[2]={int64_t(fault_row%13),int64_t(fault_row)};
-    throws([&]{failed.add(int64_t(fault_row),fault_row,vector,5,integers,2);});
+    throws([&] {
+      if(tail_flush)failed.finish();
+      else {
+        const int64_t integers[2]={int64_t((rows-1)%13),int64_t(rows-1)};
+        failed.add(int64_t(rows-1),rows-1,vector,5,integers,2);
+      }
+    });
     fail_flat_write=false;assert(injected_flat_write_failures==1);
     int64_t integer=0;
     assert(!failed.has_spill_integer(3) && !failed.spill_integer_value(0,3,&integer));
     throws([&]{failed.finish();});
     throws([&]{failed.scan_filtered([](size_t,int64_t,uint64_t){return true;},
         [](int64_t,uint64_t,const float*,size_t){return true;});});
-  }
-  // EINTR and short pwrite must complete each record without publishing a
-  // partial file. Once every add succeeded, finish itself must issue no write.
-  {
-    FlatIndex complete(path,5,n,0);
-    assert(complete.configure_spill_integers(columns,2,256u<<10)==2);
-    interrupt_flat_write=true;short_flat_write=true;flat_write_calls=0;
-    for(size_t i=0;i<n;++i) {
-      const int64_t integers[2]={int64_t(i%13),int64_t(i)};
-      complete.add(int64_t(i),i,vector,5,integers,2);
-    }
-    short_flat_write=false;
-    assert(!interrupt_flat_write && flat_write_calls>n);
-    injected_flat_write_failures=0;fail_flat_write=true;
-    complete.finish();fail_flat_write=false;
-    assert(injected_flat_write_failures==0 && complete.has_spill_integer(3));
-    size_t visited=0;
-    complete.scan_filtered([](size_t,int64_t,uint64_t){return true;},
-        [&](int64_t pk,uint64_t slot,const float* data,size_t dimension) {
-          assert(pk==int64_t(visited) && slot==visited && dimension==5);
-          for(size_t j=0;j<5;++j)assert(data[j]==vector[j]);
-          ++visited;return true;
-        });
-    assert(visited==n);
   }
 #endif
 }

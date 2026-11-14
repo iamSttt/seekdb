@@ -96,7 +96,7 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
 }
 FlatIndex::~FlatIndex(){if(fd_>=0)::close(fd_);}
 size_t FlatIndex::configure_spill_integers(const size_t* columns,size_t count,size_t budget) {
-  if(ready_ || count_ || spill_integer_count_)
+  if(ready_ || build_failed_ || count_ || spill_integer_count_)
     throw std::runtime_error("flat scalar cache must precede index construction");
   if(fd_<0 || !expected_ || !count || !columns)return 0;
   count=std::min(count,spill_integers_.size());
@@ -193,7 +193,7 @@ void FlatIndex::scan_filtered(const MetadataPredicate& predicate,const Visitor& 
 }
 void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimension,
     const int64_t* integer_values,size_t integer_count) {
-  if(ready_ || count_>=expected_ || dimension!=dimension_ || !values)
+  if(ready_ || build_failed_ || count_>=expected_ || dimension!=dimension_ || !values)
     throw std::runtime_error("invalid flat index build row");
   if(integer_count!=spill_integer_count_ || (integer_count && !integer_values))
     throw std::runtime_error("invalid flat index scalar build row");
@@ -212,19 +212,41 @@ void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimensio
   } else {
     // Float-aligned storage: the first four float-sized words contain raw key
     // metadata and are accessed only via memcpy, never as floating point values.
-    std::vector<float> record(dimension_+4);
-    std::memcpy(record.data(),&pk,sizeof(pk));
-    std::memcpy(record.data()+2,&slot,sizeof(slot));
-    std::memcpy(record.data()+4,values,dimension_*sizeof(float));
-    const size_t bytes=record.size()*sizeof(float);
-    transfer(fd_,record.data(),bytes,static_cast<uint64_t>(count_)*bytes,true);
+    const size_t words=dimension_+4,stride=words*sizeof(float);
+    if(build_block_.empty()) {
+      const size_t records=std::min(expected_,std::max<size_t>(1,(256u<<10)/stride));
+      build_block_.resize(records*words);
+    }
+    float* record=build_block_.data()+build_used_;
+    std::memcpy(record,&pk,sizeof(pk));
+    std::memcpy(record+2,&slot,sizeof(slot));
+    std::memcpy(record+4,values,dimension_*sizeof(float));
+    build_used_+=words;
+    if(build_used_==build_block_.size())flush_build_block();
   }
   ++count_;
 }
+void FlatIndex::flush_build_block() {
+  if(!build_used_)return;
+  const size_t bytes=build_used_*sizeof(float);
+  try {
+    transfer(fd_,build_block_.data(),bytes,build_offset_,true);
+  } catch(...) {
+    // A partial write may already have reached the file. Never expose or reuse
+    // this failed build; its unlinked file is removed by the destructor.
+    build_failed_=true;throw;
+  }
+  build_offset_+=bytes;build_used_=0;
+}
 void FlatIndex::finish() {
+  if(build_failed_)throw std::runtime_error("flat vector index build failed");
   if(count_!=expected_)throw std::runtime_error("incomplete flat vector index build");
   if(ready_)return;
-  if(fd_>=0)compress_spill_integers();
+  if(fd_>=0) {
+    flush_build_block();
+    std::vector<float>().swap(build_block_);
+    compress_spill_integers();
+  }
 #ifndef MVDB_DISABLE_QUANTIZED_BOUND
   if(quantized_budget_) {
     double max_abs=0;

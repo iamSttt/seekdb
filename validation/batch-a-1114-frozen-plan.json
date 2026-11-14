@@ -1,0 +1,46 @@
+{
+  "kind": "isolated_FlatIndex_sequential_build_batch_preparation",
+  "status": "prepared_not_native_tested",
+  "baseline_source": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "port_source": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+  "scope": [
+    "FlatIndex disk build buffering and sticky write failure only",
+    "adapt old spill write-fault expectations to original R33 finish-tail semantics"
+  ],
+  "excluded": [
+    "payload batching",
+    "resident undo",
+    "index delta",
+    "admission changes",
+    "PGO changes",
+    "typed JSON"
+  ],
+  "runtime_files": {
+    "minivec/src/flat_index.cpp": {
+      "working_lf_sha256": "2ddf1230949f68ab267b4912a1c1b40c8152910c17665fa9c45b1a5176ffdf97"
+    },
+    "minivec/src/flat_index.h": {
+      "working_lf_sha256": "28aceb794fb3c8c6e6f4406580f95db449c005c72fe9a4cec0cc4c7efd23b5fc"
+    },
+    "minivec/tests/test_spill_filter.cpp": {
+      "working_lf_sha256": "2cf634f34bedc7577b061e150164d35089c8d1d7cdfc3f01843abe19a69cd64e"
+    },
+    "minivec/tests/test_flat_batch_1114.cpp": {
+      "working_lf_sha256": "d963a0a08b2de20955c9f358b21270c302869a5dfd630a791bfb68fcee643546"
+    },
+    "minivec/tools/run_batch_a_1114.sh": {
+      "working_lf_sha256": "acaee0cf512e6ce879a3c14e7d7c2513c8a1091ac1d95a30c62153499f0e28b2"
+    }
+  },
+  "validation": [
+    "run_batch_a_1114.sh optimized plus ASan+UBSan",
+    "retained original scalar allocation-fallback and memory-budget guards",
+    "physical first/middle/tail ENOSPC and zero, partial then ENOSPC, EINTR and repeated short writes",
+    "allocation failure abort before publication then retry, failed CREATE metadata, write-rebuild failure and rollback, failed open then retry and checkpoint restart",
+    "real root Docker build and all 20 public cases required before any adoption; parent dispatches separately"
+  ],
+  "measurement": "No performance run scheduled or claimed here. Parent must freeze source/ELF identities and isolated baseline760f comparison before dispatch; A and B cannot be pooled as a single-factor result. Original EE/R gates remain unchanged.",
+  "memory": "Disk build buffer adds min(expected,max(1,floor(262144/stride)))*stride bytes transiently; normal stride<=262144 fits 256KiB, an oversized single record can exceed it. Buffer is not included in resident_bytes/global index admission. finish releases vector capacity via swap before scalar compression; failure cleanup frees it on destruction. Existing 2MiB scalar admission/fallback unchanged.",
+  "durability": "Unlinked rebuildable file only; same record spelling, pwrite transfer loop and persisted WAL/snapshot/fsync behavior. No batching of ordinary DB writes.",
+  "allocation_failure": "No new fallback: R33 bad_alloc aborts safely; private index is not published. Existing scalar nothrow fallback retained."
+}
