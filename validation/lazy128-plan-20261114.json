@@ -1,0 +1,13 @@
+{
+  "status": "frozen_before_native_execution",
+  "parent_runtime": "9ed5baa1b1363ebd388850e74271b353954902da",
+  "formal_reference": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "scope": "Explicit exact, unfiltered resident, ascending squared-distance TopK, dimension 128, K in [1,32], and the existing fanout policy must already be enabled. Unsupported FP state retains the existing path.",
+  "change": "Keep K+1 stable query-local slots with certified intervals. Disjoint intervals determine canonical distance order; overlapping intervals materialize the integer ExactSum. Materialize every final survivor. Only K-witnessed local upper bounds may be published.",
+  "prediction": "May eliminate canonical computations for transient heap candidates. Overlap-heavy equal-distance and overflow data can be slower, including at small K. Extra heap bookkeeping and integer materialization may erase any gain.",
+  "unchanged": ["Root compiler and flags", "No PGO", "Existing query thread policy", "Quantized encoding and rejection proof", "Canonical final values and signed primary-key ties", "Filtered, approximate, disk, other dimensions and larger K use the preceding implementation"],
+  "native_checks": ["Independent ExactSum interval/reject checks on every input, per supported float ISA", "Directed finite exponent, underflow, overflow, rounding and control-state cases", "Single and two-half oracle heaps with multiple schedules and threads", "ASan/UBSan and SIMD-disabled builds", "Actual root image, public protocol and existing full regressions", "Exact database oracle queries in normal/forced-two modes"],
+  "microbenchmark": "Separate single-thread kernel/heap AB/BA pairs on ordinary, equal-norm, near-tie and overflow data, with canonical counters collected separately. No conversion to database or official score.",
+  "performance": "Unchanged EE 12-pair screen, then same-host 12-pair ablation against parent runtime. Retain all adverse samples. Original primary gates remain unchanged. Passing initial screening is insufficient without R guards and independent confirmation.",
+  "formal_submission": false
+}

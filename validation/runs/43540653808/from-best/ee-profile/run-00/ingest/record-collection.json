@@ -1,0 +1,39 @@
+{
+  "kind": "record",
+  "pid": 2583,
+  "status": "blocked",
+  "control_events": [
+    {
+      "command": "enable",
+      "ack_monotonic": 142.655244118
+    },
+    {
+      "command": "disable",
+      "ack_monotonic": 142.861448168
+    }
+  ],
+  "command": [
+    "/usr/bin/perf",
+    "--buildid-dir",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+    "record",
+    "--no-buildid-cache",
+    "-e",
+    "cpu-clock:u",
+    "-F",
+    "999",
+    "--inherit",
+    "-o",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf.data",
+    "-p",
+    "2583",
+    "-D",
+    "-1",
+    "--control=fd:7,10"
+  ],
+  "output": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf.data",
+  "control": "fd with acknowledgement",
+  "event": "cpu-clock:u",
+  "exit_code": -2,
+  "error": "ProfileBlocked: record exited nonzero"
+}

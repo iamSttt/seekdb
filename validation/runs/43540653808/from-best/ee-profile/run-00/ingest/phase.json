@@ -1,0 +1,8 @@
+{
+  "phase": "ingest",
+  "pid": 2583,
+  "directory": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest",
+  "status": "blocked",
+  "error": "ProfileBlocked: record exited nonzero",
+  "hardware_error": "ProfileBlocked: stat exited nonzero"
+}

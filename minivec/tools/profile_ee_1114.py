@@ -33,7 +33,9 @@ INDEX_SQL = 'CREATE VECTOR INDEX docs_v ON docs(v);'
 DOCS = [
     'https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf-record.txt',
     'https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf-stat.txt',
-    'https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf.txt']
+    'https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf.txt',
+    'https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf-report.txt',
+    'https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf-script.txt']
 
 
 class ProfileBlocked(RuntimeError):
@@ -67,7 +69,7 @@ def archive_raw(output, summary):
             continue
         if path.name in ('perf.data', 'symbol-strip-verification') or path.name.startswith('perf-raw'):
             continue
-        if path.suffix in ('.json', '.txt', '.log', '.stdout', '.stderr', '.gz'):
+        if path.suffix in ('.json', '.txt', '.log', '.stdout', '.stderr', '.csv', '.gz'):
             members.append(path)
     archive = output / 'perf-raw.tar.gz'
     with tarfile.open(archive, 'w:gz') as tar:
@@ -210,6 +212,8 @@ class PerfProcess:
                 setattr(self, name, None)
 
     def finish(self, abort=False):
+        disable_acknowledged = False
+        own_sigint_sent = False
         try:
             if not abort and self.enabled:
                 if not self.proc or self.proc.poll() is not None:
@@ -217,8 +221,10 @@ class PerfProcess:
                 # An exit code of zero cannot prove that the complete phase was
                 # sampled. Require a live collector and its disable ACK first.
                 self.control_command('disable')
+                disable_acknowledged = True
             if self.proc and self.proc.poll() is None:
                 self.proc.send_signal(signal.SIGINT)
+                own_sigint_sent = True
                 try:
                     self.proc.wait(timeout=20)
                 except subprocess.TimeoutExpired:
@@ -227,7 +233,10 @@ class PerfProcess:
                     raise ProfileBlocked(self.kind + ' could not finish bounded collection')
             if self.proc:
                 self.record['exit_code'] = self.proc.returncode
-            if not abort and self.record.get('exit_code') != 0:
+            self.record.update(disable_acknowledged=disable_acknowledged, own_sigint_sent=own_sigint_sent)
+            accepted_signal_exit = (disable_acknowledged and own_sigint_sent and
+                                    self.record.get('exit_code') == -signal.SIGINT)
+            if not abort and self.record.get('exit_code') != 0 and not accepted_signal_exit:
                 raise ProfileBlocked(self.kind + ' exited nonzero')
             self.record['status'] = 'aborted' if abort else 'collected'
         except BaseException as exc:
@@ -369,7 +378,7 @@ def profile_boundaries(base, collector):
         base.Session = original
 
 
-def decode_phase(prefix, item, environment):
+def decode_phase(prefix, item, environment, symfs):
     directory = Path(item['directory'])
     data = directory / 'perf.data'
     require(data.is_file() and data.stat().st_size > 0, 'missing perf.data')
@@ -378,9 +387,9 @@ def decode_phase(prefix, item, environment):
     with data.open('rb') as src, gzip.open(compressed, 'wb') as dst:
         shutil.copyfileobj(src, dst)
     item.update(data_sha256=sha(data), gzip_sha256=sha(compressed), gzip_bytes=compressed.stat().st_size)
-    report_text, report_command = checked(prefix + ['report', '--stdio', '--header', '--no-children',
+    report_text, report_command = checked(prefix + ['report', '--symfs', str(symfs), '--stdio', '--header', '--no-children',
         '--percent-limit', '0.5', '--sort', 'dso,symbol', '-n', '-i', str(data)], directory, 'perf-report', environment)
-    text, script_command = checked(prefix + ['script', '-i', str(data), '-F', 'event,period,ip,sym,dso'],
+    text, script_command = checked(prefix + ['script', '--symfs', str(symfs), '-i', str(data), '-F', 'event,period,ip,sym,dso'],
                                   directory, 'perf-script', environment)
     counts, periods = Counter(), Counter()
     unparsed = []
@@ -462,11 +471,29 @@ def main():
         checked(['strip', '-o', str(stripped), str(symbols)], output, 'strip-symbol-copy', environment)
         require(sha(stripped) == EE_SHA, 'symbol ELF does not strip byte-identically to actual EE')
         summary['symbols_strip_verified'] = True
+        # The historical GCC image can emit an ELF without a build ID, for
+        # which perf buildid-cache --add prints a warning yet returns zero.
+        # Map the captured absolute DSO path to the byte-verified symbol ELF;
+        # do not change the executable that is actually being sampled.
+        symfs = output / 'symfs'
+        mapped_symbols = symfs / binary.relative_to(binary.anchor)
+        mapped_symbols.parent.mkdir(parents=True)
+        shutil.copyfile(symbols, mapped_symbols)
+        require(sha(mapped_symbols) == sha(symbols), 'symfs symbol mapping differs')
+        summary['symbol_resolution'] = {'mechanism': 'explicit_perf_symfs', 'root': str(symfs),
+            'captured_dso_path': str(binary), 'mapped_symbol_file': str(mapped_symbols),
+            'mapped_sha256': sha(mapped_symbols), 'strip_to_actual_binary_verified': True}
         perf = str(Path(shutil.which(args.perf) or args.perf).resolve())
         prefix = [perf, '--buildid-dir', str(output / 'buildid-cache')]
         version, _ = checked([perf, '--version'], output, 'perf-version', environment)
         summary['perf_version'] = version.strip()
-        checked(prefix + ['buildid-cache', '--add', str(symbols)], output, 'buildid-cache-add', environment)
+        try:
+            checked(prefix + ['buildid-cache', '--add', str(symbols)], output, 'buildid-cache-add', environment)
+            warning = (output / 'buildid-cache-add.stderr').read_text(encoding='utf-8', errors='replace')
+            summary['symbol_resolution']['optional_buildid_cache'] = 'unverified_warning' if warning.strip() else 'command_completed'
+        except ProfileBlocked as exc:
+            summary['symbol_resolution']['optional_buildid_cache'] = 'blocked; explicit symfs remains required'
+            summary['symbol_resolution']['optional_buildid_cache_error'] = str(exc)
         summary['host'] = {'platform': platform.platform(), 'affinity': sorted(os.sched_getaffinity(0))}
         for name, path in (('cpuinfo', '/proc/cpuinfo'), ('self-cgroup', '/proc/self/cgroup'),
                            ('perf-event-paranoid', '/proc/sys/kernel/perf_event_paranoid'),
@@ -513,7 +540,7 @@ def main():
                 response_hash = run['response_sha256']
                 require(sha(binary) == EE_SHA, 'actual EE changed during profiling')
                 for phase in collector.phases:
-                    decode_phase(prefix, phase, environment)
+                    decode_phase(prefix, phase, environment, symfs)
                 summary['completed_repetitions'] += 1
                 summary['capabilities']['software'] = 'available'
                 run['status'] = 'passed'

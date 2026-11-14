@@ -1,0 +1,277 @@
+{
+  "repetition": 0,
+  "cgroup": {
+    "path": "/sys/fs/cgroup/minivec-report-ee-profile-0adb1b2d71ca41d299be95ad29f9884f/case-843c33dbdc2546d5a0c54565fd9eec09",
+    "before": {
+      "monotonic_seconds": 141.624755104,
+      "cpu.max": "100000 100000",
+      "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+      "memory.max": "2147483648",
+      "memory.swap.max": "0",
+      "memory.current": "0",
+      "memory.peak": "0",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "io.stat": "",
+      "cgroup.events": "populated 0\nfrozen 0",
+      "cgroup.procs": ""
+    },
+    "ancestor_constraints": [
+      {
+        "path": "/sys/fs/cgroup/minivec-report-ee-profile-0adb1b2d71ca41d299be95ad29f9884f/case-843c33dbdc2546d5a0c54565fd9eec09",
+        "monotonic_seconds": 141.625028295,
+        "cpu.max": "100000 100000",
+        "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+        "memory.max": "2147483648",
+        "memory.swap.max": "0",
+        "memory.current": "0",
+        "memory.peak": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "io.stat": "",
+        "cgroup.events": "populated 0\nfrozen 0",
+        "cgroup.procs": ""
+      },
+      {
+        "path": "/sys/fs/cgroup/minivec-report-ee-profile-0adb1b2d71ca41d299be95ad29f9884f",
+        "monotonic_seconds": 141.625200737,
+        "cpu.max": "max 100000",
+        "cpu.stat": "usage_usec 0\nuser_usec 0\nsystem_usec 0\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+        "memory.max": "max",
+        "memory.swap.max": "max",
+        "memory.current": "262144",
+        "memory.peak": "262144",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "io.stat": "",
+        "cgroup.events": "populated 0\nfrozen 0",
+        "cgroup.procs": ""
+      },
+      {
+        "path": "/sys/fs/cgroup",
+        "monotonic_seconds": 141.625353753,
+        "cpu.max": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/cpu.max'"
+        },
+        "cpu.stat": "usage_usec 68972659\nuser_usec 55187898\nsystem_usec 13784761\nnice_usec 8000\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+        "memory.max": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.max'"
+        },
+        "memory.swap.max": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.swap.max'"
+        },
+        "memory.current": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.current'"
+        },
+        "memory.peak": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.peak'"
+        },
+        "memory.events": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.events'"
+        },
+        "memory.events.local": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/memory.events.local'"
+        },
+        "io.stat": "251:0 rbytes=1204224 wbytes=4096 rios=53 wios=1 dbytes=0 dios=0\n252:0 rbytes=784911360 wbytes=4956075008 rios=191631 wios=1209988 dbytes=0 dios=0\n259:1 rbytes=2485248 wbytes=4998214656 rios=137 wios=97847 dbytes=0 dios=0\n259:0 rbytes=816723456 wbytes=185856 rios=19485 wios=26 dbytes=0 dios=0\n7:7 \n7:6 \n7:5 \n7:4 \n7:3 \n7:2 rbytes=14336 wbytes=0 rios=11 wios=0 dbytes=0 dios=0\n7:1 rbytes=375808 wbytes=0 rios=53 wios=0 dbytes=0 dios=0\n7:0 rbytes=1107968 wbytes=0 rios=64 wios=0 dbytes=0 dios=0",
+        "cgroup.events": {
+          "unavailable": "[Errno 2] No such file or directory: '/sys/fs/cgroup/cgroup.events'"
+        },
+        "cgroup.procs": "2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n36\n37\n38\n39\n40\n41\n42\n43\n44\n45\n46\n47\n48\n49\n50\n51\n52\n53\n54\n55\n56\n57\n58\n59\n60\n61\n62\n63\n64\n65\n66\n67\n68\n69\n70\n71\n72\n73\n74\n75\n76\n77\n78\n79\n80\n81\n82\n83\n84\n85\n86\n87\n88\n89\n90\n91\n92\n93\n94\n95\n96\n97\n98\n99\n100\n101\n102\n103\n104\n105\n106\n107\n108\n109\n110\n111\n112\n113\n114\n115\n116\n117\n118\n119\n120\n121\n122\n123\n124\n125\n126\n127\n129\n140\n212\n240\n241\n338\n340\n341\n342\n371\n373\n374\n440\n451\n492\n493\n508\n517\n518\n531\n584\n641\n642\n644\n663\n664\n822\n1391\n1925"
+      }
+    ],
+    "timeout": false,
+    "watchdog_error": null,
+    "execution_error": "ProfileBlocked: record exited nonzero",
+    "immediately_after": {
+      "monotonic_seconds": 142.882180177,
+      "cpu.max": "100000 100000",
+      "cpu.stat": "usage_usec 123311\nuser_usec 70962\nsystem_usec 52349\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 5\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+      "memory.max": "2147483648",
+      "memory.swap.max": "0",
+      "memory.current": "405504",
+      "memory.peak": "11710464",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "io.stat": "259:1 rbytes=409600 wbytes=6066176 rios=100 wios=1481 dbytes=0 dios=0\n259:0 rbytes=32768 wbytes=0 rios=8 wios=0 dbytes=0 dios=0\n252:0 rbytes=442368 wbytes=6066176 rios=108 wios=1481 dbytes=0 dios=0",
+      "cgroup.events": "populated 0\nfrozen 0",
+      "cgroup.procs": ""
+    },
+    "after": {
+      "monotonic_seconds": 143.183691946,
+      "cpu.max": "100000 100000",
+      "cpu.stat": "usage_usec 123311\nuser_usec 70962\nsystem_usec 52349\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 7\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+      "memory.max": "2147483648",
+      "memory.swap.max": "0",
+      "memory.current": "139264",
+      "memory.peak": "11710464",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "io.stat": "259:1 rbytes=409600 wbytes=6066176 rios=100 wios=1481 dbytes=0 dios=0\n259:0 rbytes=32768 wbytes=0 rios=8 wios=0 dbytes=0 dios=0\n252:0 rbytes=442368 wbytes=6066176 rios=108 wios=1481 dbytes=0 dios=0",
+      "cgroup.events": "populated 0\nfrozen 0",
+      "cgroup.procs": ""
+    },
+    "io_stable_samples": 3,
+    "resource_delta": {
+      "cpu_stat_delta": {
+        "usage_usec": 123311,
+        "user_usec": 70962,
+        "system_usec": 52349,
+        "nice_usec": 0,
+        "core_sched.force_idle_usec": 0,
+        "nr_periods": 7,
+        "nr_throttled": 0,
+        "throttled_usec": 0,
+        "nr_bursts": 0,
+        "burst_usec": 0
+      },
+      "memory_peak_bytes": 11710464,
+      "io_stat_delta": {
+        "259:1": {
+          "rbytes": 409600,
+          "wbytes": 6066176,
+          "rios": 100,
+          "wios": 1481,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "259:0": {
+          "rbytes": 32768,
+          "wbytes": 0,
+          "rios": 8,
+          "wios": 0,
+          "dbytes": 0,
+          "dios": 0
+        },
+        "252:0": {
+          "rbytes": 442368,
+          "wbytes": 6066176,
+          "rios": 108,
+          "wios": 1481,
+          "dbytes": 0,
+          "dios": 0
+        }
+      }
+    },
+    "oom_events_delta": {
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0
+    },
+    "request_timeout_observed": false
+  },
+  "adapter": {
+    "ready_memberships": [
+      {
+        "pid": 2583,
+        "members": [
+          2583
+        ],
+        "driver_pid": 2573,
+        "actual_exe": "/home/runner/work/_temp/minivec-profile-only-XK7PEJ/baseline-binary",
+        "cpus_allowed_list": "0",
+        "runtime_environment": {}
+      }
+    ],
+    "completed_request_modes": {
+      "exact": 301
+    },
+    "completed_transport_requests": 301,
+    "phase_cgroups": [
+      {
+        "phase": "before_ingest",
+        "monotonic_seconds": 141.692659445,
+        "cpu.max": "100000 100000",
+        "cpu.stat": "usage_usec 2193\nuser_usec 0\nsystem_usec 2193\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 1\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+        "memory.max": "2147483648",
+        "memory.swap.max": "0",
+        "memory.current": "393216",
+        "memory.peak": "430080",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "io.stat": "259:1 rbytes=0 wbytes=4096 rios=0 wios=1 dbytes=0 dios=0\n259:0 rbytes=32768 wbytes=0 rios=8 wios=0 dbytes=0 dios=0\n252:0 rbytes=32768 wbytes=4096 rios=8 wios=1 dbytes=0 dios=0",
+        "cgroup.events": "populated 1\nfrozen 0",
+        "cgroup.procs": "2583",
+        "pid": 2583,
+        "native_tasks": [
+          {
+            "tid": 2583,
+            "main": true,
+            "cpu_ticks": 0,
+            "starttime_ticks": 14162,
+            "last_processor": 0,
+            "cpus_allowed_list": "0"
+          },
+          {
+            "tid": 2584,
+            "main": false,
+            "cpu_ticks": 0,
+            "starttime_ticks": 14169,
+            "last_processor": 0,
+            "cpus_allowed_list": "0"
+          }
+        ],
+        "clock_ticks_per_second": 100
+      },
+      {
+        "phase": "after_ingest",
+        "monotonic_seconds": 142.86074199,
+        "cpu.max": "100000 100000",
+        "cpu.stat": "usage_usec 122930\nuser_usec 70742\nsystem_usec 52187\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 5\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+        "memory.max": "2147483648",
+        "memory.swap.max": "0",
+        "memory.current": "11657216",
+        "memory.peak": "11710464",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory.events.local": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "io.stat": "259:1 rbytes=409600 wbytes=6066176 rios=100 wios=1481 dbytes=0 dios=0\n259:0 rbytes=32768 wbytes=0 rios=8 wios=0 dbytes=0 dios=0\n252:0 rbytes=442368 wbytes=6066176 rios=108 wios=1481 dbytes=0 dios=0",
+        "cgroup.events": "populated 1\nfrozen 0",
+        "cgroup.procs": "2583",
+        "pid": 2583,
+        "native_tasks": [
+          {
+            "tid": 2583,
+            "main": true,
+            "cpu_ticks": 9,
+            "starttime_ticks": 14162,
+            "last_processor": 0,
+            "cpus_allowed_list": "0"
+          },
+          {
+            "tid": 2584,
+            "main": false,
+            "cpu_ticks": 0,
+            "starttime_ticks": 14169,
+            "last_processor": 0,
+            "cpus_allowed_list": "0"
+          },
+          {
+            "tid": 2593,
+            "main": false,
+            "cpu_ticks": 1,
+            "starttime_ticks": 14267,
+            "last_processor": 0,
+            "cpus_allowed_list": "0"
+          }
+        ],
+        "clock_ticks_per_second": 100
+      }
+    ],
+    "stderr": {
+      "total_bytes": 105,
+      "tail_source_bytes": 105,
+      "truncated": false,
+      "tail_utf8": "minivec ready data=/tmp/vectordb-r9_psndt\nmvdb: fanout wake_us=1.52 (measured, median of 200 handshakes)\n"
+    }
+  },
+  "status": "running",
+  "profiles": [
+    {
+      "phase": "ingest",
+      "pid": 2583,
+      "directory": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest",
+      "status": "blocked",
+      "error": "ProfileBlocked: record exited nonzero",
+      "hardware_error": "ProfileBlocked: stat exited nonzero"
+    }
+  ]
+}

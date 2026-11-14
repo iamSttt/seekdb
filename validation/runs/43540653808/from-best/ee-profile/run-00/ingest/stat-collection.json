@@ -1,0 +1,38 @@
+{
+  "kind": "stat",
+  "pid": 2583,
+  "status": "blocked",
+  "control_events": [
+    {
+      "command": "enable",
+      "ack_monotonic": 141.947164271
+    },
+    {
+      "command": "disable",
+      "ack_monotonic": 142.877049685
+    }
+  ],
+  "command": [
+    "/usr/bin/perf",
+    "--buildid-dir",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+    "stat",
+    "-e",
+    "cycles:u,instructions:u",
+    "-x",
+    ";",
+    "--no-big-num",
+    "-o",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/hardware.csv",
+    "-p",
+    "2583",
+    "-D",
+    "-1",
+    "--control=fd:7,13"
+  ],
+  "output": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/hardware.csv",
+  "control": "fd with acknowledgement",
+  "event": "cycles:u,instructions:u",
+  "exit_code": -2,
+  "error": "ProfileBlocked: stat exited nonzero"
+}

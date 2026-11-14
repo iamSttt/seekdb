@@ -1,0 +1,25 @@
+{
+  "status": "blocked",
+  "completed_repetitions": 0,
+  "binary_sha256": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+  "capabilities": {
+    "software": "blocked",
+    "hardware": "blocked"
+  },
+  "phase_summary": null,
+  "raw_archive": {
+    "archive": "perf-raw.tar.gz",
+    "archive_bytes": 11186,
+    "archive_sha256": "73a5c2e2749d9f00b6f2bac2176325729912e45e8b22f438b673e713b4109303",
+    "maximum_encoded_archive_bytes": 8388608,
+    "raw_perf_data_files": 1,
+    "raw_archive_transported": false,
+    "scope": "Manifest and base64 text emitted by the existing CI report trap; decode bytes and verify SHA256 before extracting.",
+    "status": "prepared_for_text_transport",
+    "base64_file": "perf-raw.tar.gz.b64.txt",
+    "base64_bytes": 15113,
+    "base64_sha256": "8213a5720dcc9d6fca95a4aef19535f370ed0c409507d4074ff721aebb26693a",
+    "raw_archive_transport_prepared": true
+  },
+  "error": "ProfileBlocked: record exited nonzero"
+}
