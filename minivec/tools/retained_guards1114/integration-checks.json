@@ -1,0 +1,27 @@
+{
+  "status": "integration_checks_passed_not_executed",
+  "copied_bundle": {
+    "status": "copied_bytes_and_plan_verified",
+    "copied_files": 54,
+    "unchanged_files": 53,
+    "adapted_files": [
+      "retained_guards.py"
+    ],
+    "plan_sha256": "cf71e6d545751d53f98bc3b0eebc4d87cf9df1b81564d4ab391b10ad474016b9",
+    "new_database_pairs": 0,
+    "new_pgo_builds": 0
+  },
+  "compiled_python_files": 15,
+  "CI_summary_negative_cases_rejected": [
+    "missing_guard_metric",
+    "missing_raw_arm",
+    "missing_pair",
+    "false_numerical_flag",
+    "missing_reference",
+    "wrong_reference_elf",
+    "failed_execution"
+  ],
+  "new_database_pairs": 0,
+  "new_pgo_builds": 0,
+  "scope": "Positive CI-summary control is explicitly synthetic equal-role data derived in memory from historical schema, never performance evidence."
+}

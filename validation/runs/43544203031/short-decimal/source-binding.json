@@ -1,0 +1,8 @@
+{
+  "status": "identical_after_removing_test_counters_and_renaming",
+  "production_parser_normalized_sha256": "faeec8a6a80af62089a13cd04c2f7e2a66416543520abc6dbc9bce3d6d55c84a",
+  "baseline_parser_normalized_sha256": "229669aba4294fff3a26d5a70e5fe06ec548699a866d890ed9bed0a791226afd",
+  "snapshot_sha256": "ac813712782046a8fe8dd30ce1391af99ca1621f1077b43185b96d8a6d5c06b5",
+  "production_header_sha256": "989e87daa4400d73ba28a3b696fb88a3eb013f80adbf9aeda0677436698e824f",
+  "scope": "Text binding of parser implementation; native and actual-binary tests remain separate."
+}

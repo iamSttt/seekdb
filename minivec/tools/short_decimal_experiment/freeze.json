@@ -1,8 +1,17 @@
 {
   "native_status": "not_run",
-  "production_status": "not_integrated",
+  "candidate": "19-total-digit + four-ulp midpoint guard + fast prefix/unchanged old loop",
+  "baseline": "unchanged EE/9ed parser, not v1",
   "activation": "body bytes >=128 and supported FP environment",
-  "limiter": "first declined short attempt disables remaining vector attempts",
+  "limiter": "first declined attempt breaks prefix; original while handles remainder with no fast branch",
+  "release_cpp_flags": [
+    "-O3",
+    "-std=c++17",
+    "-fno-math-errno"
+  ],
+  "strict_cpp_flags_add": [
+    "-frounding-math"
+  ],
   "planned_micro_dimensions": [
     1,
     16,
@@ -19,50 +28,65 @@
   ],
   "planned_pairs": 8,
   "target_segment_ms": 25,
+  "fixture_generator_same_as_v1": true,
+  "fixture_generator_sha256": "671af3333237225956a422ece3d3499a2d74852e7cd4514d93dbfa085f0a7c95",
+  "oracle_python_high_uint64": {
+    "accepted": 273,
+    "guarded": 998
+  },
   "files": {
-    "short_decimal.h": {
-      "bytes": 3619,
-      "sha256": "989e87daa4400d73ba28a3b696fb88a3eb013f80adbf9aeda0677436698e824f"
-    },
-    "parser_snapshot.h": {
-      "bytes": 4517,
-      "sha256": "ac813712782046a8fe8dd30ce1391af99ca1621f1077b43185b96d8a6d5c06b5"
-    },
-    "make_snapshot.py": {
-      "bytes": 3387,
-      "sha256": "6c21e388b0f953144de5ee8fe66838b7d52df019fafc289cd462d32e4a2f4586"
-    },
-    "make_oracle.py": {
-      "bytes": 5644,
-      "sha256": "20c28e7b66592a5fc6c5dd76cf190d7f318f9eb20000a6b355f1cdf9382a467b"
-    },
-    "test_short_decimal.cpp": {
-      "bytes": 7442,
-      "sha256": "b74554c748a54bac65e66e7fcb0f8bb766f522e6471b8c2e725ca320289d79d5"
-    },
     "bench_short_decimal.cpp": {
-      "bytes": 6621,
-      "sha256": "5d77aa332f796dc38454fb70ece55880e78da2feeb2ad886be3d7180ff299085"
+      "bytes": 6818,
+      "sha256": "e15e5b021d820b1074ee3b369efa0d4c51f3e7ffbd1b7f11110bd24303a826de",
+      "normalized_sha256": "e15e5b021d820b1074ee3b369efa0d4c51f3e7ffbd1b7f11110bd24303a826de"
     },
     "CERTIFICATE.md": {
-      "bytes": 7494,
-      "sha256": "796b9687ca2532aef34c7fef5f8714a150dd98bb0eb4f61bebff9d41743a2329"
+      "bytes": 7961,
+      "sha256": "a7bb669b0d5b6782270aa8a956c795a37decc79b97b17fb8e9c3f621e6690996"
     },
-    "README.md": {
-      "bytes": 3937,
-      "sha256": "d95ef22f6e8e8e68eff20b6828c6209ed8ac6ecdc0af3b6ff3486e921e08e49a"
+    "make_oracle.py": {
+      "bytes": 7345,
+      "sha256": "e6cd11347a6592d8553667f78c93449121cad1132fe95e1e4298f8d806ffe96f",
+      "normalized_sha256": "e6cd11347a6592d8553667f78c93449121cad1132fe95e1e4298f8d806ffe96f"
     },
-    "source-provenance.json": {
-      "bytes": 800,
-      "sha256": "6012dbabe698a18a8859a43633bd1e1b61f1bc586124625de000296059243a9b"
+    "make_snapshot.py": {
+      "bytes": 3969,
+      "sha256": "a9816410cc2e6683fd61d010586d0bb1fd891e0a86ab8f258e3eed7bfd7abb99"
     },
     "oracle.json": {
-      "bytes": 1027,
-      "sha256": "29f0a5bf7ef5886867419ea955e9ddb02a00c8ae1652a48f9f23409fa1f4044d"
+      "bytes": 4549,
+      "sha256": "865926c0ea4e9869692a4625c43303ba582b22f3018638bf6ebaca01d1ed84ed"
     },
     "oracle.tsv": {
-      "bytes": 5501388,
-      "sha256": "457fde6b9a318b3dd8279d2bcf14491c9794514757c46a938e268b13d9c4ad8c"
+      "bytes": 13993967,
+      "sha256": "869fd03cb39616e01d38e71e2115612dc30eac6d8d5d753a722dc14d75fdb4f1"
+    },
+    "parser_snapshot.h": {
+      "bytes": 4933,
+      "sha256": "d80895489d028406f9901ee6f042756a567cdbe04480d06c01d8e0d5f7a1822e",
+      "normalized_sha256": "14c0cc8bc4c817e40a60998c64183b563804dcf15f598ba5800257f1650c163f"
+    },
+    "README.md": {
+      "bytes": 3869,
+      "sha256": "c6ff48aaeb50f085b874ce12ec7e2294e1ec780d0549bbd5ee5e9edf02d7ef77"
+    },
+    "short_decimal.h": {
+      "bytes": 4006,
+      "sha256": "513cc8b66cf0d861721a3537aa7da70e7c1322571b8b4f6f0068d5eb89d063f6",
+      "normalized_sha256": "513cc8b66cf0d861721a3537aa7da70e7c1322571b8b4f6f0068d5eb89d063f6"
+    },
+    "source-provenance.json": {
+      "bytes": 1011,
+      "sha256": "2dc6d31b258c470c221d224fe0e7b5a5a06b2a7e0f48000f96a51aec3aed65a2"
+    },
+    "test_short_decimal.cpp": {
+      "bytes": 8691,
+      "sha256": "9e90e04d59d491a31e1906098619dfbd356a487a8e466ee528013cf1ea8abd4f",
+      "normalized_sha256": "9e90e04d59d491a31e1906098619dfbd356a487a8e466ee528013cf1ea8abd4f"
     }
-  }
+  },
+  "production_status_at_standalone_freeze": "not_integrated",
+  "integration_status": "candidate_integrated_for_validation_not_adopted",
+  "integration_manifest": "validation/short-decimal-plan-20261114.json",
+  "newline_scope": "Original prototype artifact raw hashes retained; normalized_sha256 ignores CRLF only for binding across checkout policies."
 }

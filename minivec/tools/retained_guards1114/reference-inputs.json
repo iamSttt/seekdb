@@ -1,0 +1,54 @@
+{
+  "source_commit": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+  "expected_binary_sha256": "acddca115ab183bfc6419e27c9e3383cfd1a9046e3897e5ea516cd7bc0f29f54",
+  "input_paths": [
+    "Dockerfile",
+    ".dockerignore",
+    "minivec/src",
+    "minivec/third_party",
+    "minivec/tools/pgo/train.cpp",
+    "minivec/tools/pgo/run-training.sh"
+  ],
+  "source_sha256": {
+    ".dockerignore": "395634ec31dfc28a6b728a3e27594441770830e360148bf85a61c7fe946ed83d",
+    "Dockerfile": "8014b651f2974844a411fdc1b88b9b6e46a6010eb31be14f28d909e77eeb8b5b",
+    "minivec/src/crc32_ieee.h": "8d0ed64ce786dd9eee74d0230eacd16d61c3721c5b1b2db9dfa45e67887d723a",
+    "minivec/src/db.cpp": "9ca1d88ce5f8fe168c5a20800cbb2d69a09f34f6496c737e8a7be9b3fddb818e",
+    "minivec/src/db.h": "388b711ff46dc6951cf49e2ff026665f91bad855f7faef6f11182454df134244",
+    "minivec/src/distance.h": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+    "minivec/src/exec.cpp": "366eb7a8f0bb22ae113aa9e841443f8913b4e876cc6599183bd6450f914137e5",
+    "minivec/src/exec.h": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5",
+    "minivec/src/filter_diagnostics.h": "c93f5a5eeb8688ff7c0946c046b00fef031e482a313a7a62f40457baf5241106",
+    "minivec/src/flat_index.cpp": "6e5093648f01ed5699a68a2885e9db57a232d3548e105a95a078455218d1087d",
+    "minivec/src/flat_index.h": "bca6f7a692830741760e4bff1f020f2ee6e4aa192d0c856506719bc1c57fc805",
+    "minivec/src/json_response_diagnostics.h": "4c4285250334ce22998361b4790f222c176f3ec8927086ac5476234a2eb7cdb6",
+    "minivec/src/json_row_writer.h": "b17e6ccfb54587783b07de61b61eb41223426ffbd8edb7a2381f5116c260004b",
+    "minivec/src/main.cpp": "06a1d4cad89c3cfd89a78a1109f4ff6f21472e480482443ea6ca57fb68d93a41",
+    "minivec/src/parse_pool.h": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e",
+    "minivec/src/quantized_bound.h": "5a7b4a1f533515e13b331c8f59be9222a3b8202346d751dbf17267846bb56cdb",
+    "minivec/src/quantized_scale.h": "e7450de5f5bc217213757b62a80e0e259e3df2ca52b20e4d64cd547e5c2a8321",
+    "minivec/src/query_cost.h": "24ee43837b61d9e6883d4725787c89c3e826da8b2cd80472f0c0e4ee68f01c16",
+    "minivec/src/query_pool.h": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b",
+    "minivec/src/result_sort.h": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361",
+    "minivec/src/sql.cpp": "9aff425726495cfa6ab396d08bf61e3484cde5e2a64356f461291e4e18699cd6",
+    "minivec/src/sql.h": "8493db811bbcfff20aae4c9e6f3e4cf6ae85036f243e26869e38f1e62a89053b",
+    "minivec/src/value.cpp": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8",
+    "minivec/src/value.h": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12",
+    "minivec/third_party/LICENSE.MIT": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14",
+    "minivec/third_party/json.hpp": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6",
+    "minivec/tools/pgo/run-training.sh": "e5af635da202155dd21b84418cb729fd4a10858bbfb963132941412eaabf27d5",
+    "minivec/tools/pgo/train.cpp": "0af3ab5c00f8238e6a8dc627799d8ffe0ad7bb530dc3b83002f02b3f2f7bd69f"
+  },
+  "historical_proofs": [
+    {
+      "file": "evidence\\R2-first-proof.json",
+      "sha256": "61309a59c42b288a372977324d848bf64a9d59b24d6ac1a351366c47a20949e3",
+      "source": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-11-12\\iamsttt-seekdb-https-github-com-iamsttt\\work\\performance\\matched-insert-6d2c433\\r2\\proof.json"
+    },
+    {
+      "file": "evidence\\R2-repeat-proof.json",
+      "sha256": "c6e5644d08ee03bfffa70ae1df89eb92a7dbac9a9be9baa6c3d2dec40d3687bb",
+      "source": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-11-12\\iamsttt-seekdb-https-github-com-iamsttt\\work\\performance\\matched-insert-repeat-6d2c433\\r2\\proof.json"
+    }
+  ]
+}

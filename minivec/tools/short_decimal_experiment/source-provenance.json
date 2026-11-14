@@ -1,13 +1,18 @@
 {
-  "source": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-10-30\\yan\\work\\round2-20261114-from-best\\minivec\\src\\sql.cpp",
+  "source": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-10-30\\yan\\work\\round2-20261112-report-clean\\minivec\\src\\sql.cpp",
   "source_sha256": "339d6d704a18b2f0fe04ff97edac4d2be90ff5f908f0ad085284021e0f47cbb5",
   "original_parse_float_list_sha256": "28f4031db532fe1e5f70bdb9e21e10b798e9ec26421925976224cca76655bc97",
-  "snapshot_sha256": "ac813712782046a8fe8dd30ce1391af99ca1621f1077b43185b96d8a6d5c06b5",
+  "snapshot_sha256": "d80895489d028406f9901ee6f042756a567cdbe04480d06c01d8e0d5f7a1822e",
+  "original_old_loop_sha256": "2bebe684fb960506244ca13946cf7ef2cbccbc1306b0b742eab64b63d6f5f508",
+  "candidate_old_loop_verbatim": true,
   "changes": [
     "one Context per vector, no FP environment check for body shorter than 128 bytes",
-    "first short-path decline disables further attempts for the same vector",
-    "attempt strict short decimal before unchanged from_chars/strtof block",
-    "test-only template counters compiled out of timing"
+    "fast prefix loop breaks at first decline, old loop resumes at identical i/out state",
+    "old while loop retained byte-for-byte; no per-coordinate fast branch inside old loop",
+    "test-only prefix counters compiled out of timing; old-value counts computed by test callers"
   ],
-  "original_function_included_verbatim_except_name": true
+  "original_function_included_verbatim_except_name": true,
+  "original_parse_float_list_normalized_sha256": "229669aba4294fff3a26d5a70e5fe06ec548699a866d890ed9bed0a791226afd",
+  "original_old_loop_normalized_sha256": "3f8ecb31a0d273fe7e9c5f3deb986fbbeaf3135a5f6d8e96b2ccc32b232c1d74",
+  "newline_scope": "Original source/hash uses CRLF; normalized hashes use LF and were independently checked against git objects EE and 9ed."
 }

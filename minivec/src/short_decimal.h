@@ -51,14 +51,14 @@ class Context {
     uint64_t mantissa=0;
     unsigned digits=0,fraction=0;
     while(p!=end && *p>='0' && *p<='9') {
-      if(digits==15)return {Reason::syntax_or_size,begin,0};
+      if(digits==19)return {Reason::syntax_or_size,begin,0};
       mantissa=mantissa*10+static_cast<unsigned>(*p-'0');++digits;++p;
     }
     if(p!=end && *p=='.') {
       ++p;
       if(p==end || *p<'0' || *p>'9')return {Reason::syntax_or_size,begin,0};
       while(p!=end && *p>='0' && *p<='9') {
-        if(digits==15)return {Reason::syntax_or_size,begin,0};
+        if(digits==19)return {Reason::syntax_or_size,begin,0};
         mantissa=mantissa*10+static_cast<unsigned>(*p-'0');
         ++digits;++fraction;++p;
       }
@@ -69,14 +69,20 @@ class Context {
       return {Reason::syntax_or_size,begin,0};
     static constexpr double powers[]={1.,10.,100.,1000.,10000.,100000.,1000000.,
       10000000.,100000000.,1000000000.,10000000000.,100000000000.,
-      1000000000000.,10000000000000.,100000000000000.,1000000000000000.};
-    // Both operands are exactly represented binary64 integers (<2^53).
-    // Explicit division is essential: reciprocal multiplication has no proof.
+      1000000000000.,10000000000000.,100000000000000.,1000000000000000.,
+      10000000000000000.,100000000000000000.,1000000000000000000.};
+    static_assert(sizeof powers/sizeof powers[0]==19,"powers 10^0 through 10^18");
+    // 10^fraction is exactly represented; mantissa->double and division each
+    // round once to nearest. Their combined error is <3 ulp64(d). Explicit
+    // division is essential: reciprocal multiplication has no proof.
     const double d=static_cast<double>(mantissa)/powers[fraction];
     uint64_t bits=0;std::memcpy(&bits,&d,sizeof bits);
-    // All accepted nonzero magnitudes are float32 normal and finite. Their
-    // rounding boundaries are exactly the binary64 numbers with these bits.
-    if((bits & ((uint64_t(1)<<29)-1))==(uint64_t(1)<<28))
+    // All nonzero magnitudes are float32 normal and finite. Reject every d
+    // within four binary64 grid positions of a binary32 rounding boundary.
+    // Checking only equality is insufficient once integer conversion rounds.
+    const uint64_t low=bits & ((uint64_t(1)<<29)-1);
+    constexpr uint64_t midpoint=uint64_t(1)<<28;
+    if(low>=midpoint-4 && low<=midpoint+4)
       return {Reason::midpoint,begin,0};
     float value=static_cast<float>(d);
     if(negative)value=-value; // Includes negative zero.

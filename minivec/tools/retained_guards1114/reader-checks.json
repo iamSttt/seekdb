@@ -1,0 +1,59 @@
+{
+  "status": "reader_checks_passed_no_execution",
+  "original_reader_metric_summaries_equal": 31,
+  "checked_metrics": [
+    "retained:1:standard10k/first_lifecycle_wall_seconds",
+    "retained:1:standard10k/first_1000_queries_wall_seconds",
+    "retained:1:standard10k/first_1000_queries_cpu_usec",
+    "retained:1:standard10k/first_query_wall_seconds",
+    "retained:1:standard10k/ingest_wall_seconds",
+    "retained:1:standard10k/ingest_cpu_usec",
+    "retained:1:standard10k/complete_lifecycle_cpu_usec",
+    "retained:1:standard10k/memory_peak_bytes",
+    "retained:1:standard10k/max_process_rss_bytes",
+    "retained:1:spill_high_q16/first_lifecycle_wall_seconds",
+    "retained:1:spill_high_q16/query_before_update_wall_seconds",
+    "retained:1:spill_high_q16/query_before_update_cpu_usec",
+    "retained:1:spill_high_q16/first_query_wall_seconds",
+    "retained:1:spill_high_q16/ingest_wall_seconds",
+    "retained:1:spill_high_q16/complete_lifecycle_cpu_usec",
+    "retained:1:spill_high_q16/memory_peak_bytes",
+    "retained:1:spill_high_q16/max_process_rss_bytes",
+    "retained:2:standard10k/first_lifecycle_wall_seconds",
+    "retained:2:standard10k/first_1000_queries_wall_seconds",
+    "retained:2:standard10k/first_1000_queries_cpu_usec",
+    "retained:2:standard10k/first_query_wall_seconds",
+    "retained:2:standard10k/ingest_wall_seconds",
+    "retained:2:standard10k/ingest_cpu_usec",
+    "retained:2:standard10k/complete_lifecycle_cpu_usec",
+    "retained:2:standard10k/memory_peak_bytes",
+    "retained:2:standard10k/max_process_rss_bytes",
+    "retained:2:wide768/lifecycle_stage_wall_sum",
+    "retained:2:wide768/seven_query_phases_wall_seconds",
+    "retained:2:wide768/seven_query_phases_cpu_usec",
+    "retained:2:wide768/complete_lifecycle_cpu_usec",
+    "retained:2:wide768/memory_peak_bytes"
+  ],
+  "invalid_evidence_rejected": [
+    "missing_cpu_arm",
+    "missing_pair",
+    "missing_default_memory",
+    "zero_first_query_denominator",
+    "spill_initial_query_count",
+    "wide_phase_missing"
+  ],
+  "historical_raw": [
+    {
+      "file": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-11-12\\iamsttt-seekdb-https-github-com-iamsttt\\work\\highest-primary-quantizer-raw\\highest-primary-root\\retained-1cpu.json",
+      "sha256": "ba25519d74ba819752a3ca8c1150dae82458147fc5e5b4b5fe51f869e55227ce"
+    },
+    {
+      "file": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-11-12\\iamsttt-seekdb-https-github-com-iamsttt\\work\\highest-primary-quantizer-raw\\highest-primary-root\\retained-2cpu.json",
+      "sha256": "c87bfaacc48ed26fd62b52e45e0a4473941d6cf65abd42786d45907d7d86be26"
+    }
+  ],
+  "new_database_pairs": 0,
+  "new_pgo_builds": 0,
+  "release_gate_passed": false,
+  "scope": "Postprocess historical data to check field/rule equivalence only; not results for any new candidate."
+}

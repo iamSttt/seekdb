@@ -1,0 +1,2354 @@
+diff --git a/minivec/src/crc32.h b/minivec/src/crc32.h
+deleted file mode 100644
+index 9389555..0000000
+--- a/minivec/src/crc32.h
++++ /dev/null
+@@ -1,66 +0,0 @@
+-#pragma once
+-#include <cstddef>
+-#include <cstdint>
+-#include <cstring>
+-
+-namespace mvdb {
+-namespace crc32_detail {
+-#if !defined(MVDB_DISABLE_CRC_SLICING) && defined(__BYTE_ORDER__) && \
+-    defined(__ORDER_LITTLE_ENDIAN__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+-inline constexpr bool slicing_by_8=true;
+-inline constexpr size_t slices=8;
+-#else
+-// Unknown/big endian targets retain the original byte-at-a-time algorithm.
+-inline constexpr bool slicing_by_8=false;
+-inline constexpr size_t slices=1;
+-#endif
+-
+-struct Tables {
+-  uint32_t t[slices][256]{};
+-  constexpr Tables() {
+-    for(uint32_t i=0;i<256;++i) {
+-      uint32_t crc=i;
+-      for(unsigned bit=0;bit<8;++bit)
+-        crc=(crc&1u) ? (crc>>1)^0xEDB88320u : crc>>1;
+-      t[0][i]=crc;
+-    }
+-    for(size_t slice=1;slice<slices;++slice)
+-      for(size_t i=0;i<256;++i) {
+-        const uint32_t previous=t[slice-1][i];
+-        t[slice][i]=(previous>>8)^t[0][previous&0xffu];
+-      }
+-  }
+-};
+-inline constexpr Tables tables{};
+-} // namespace crc32_detail
+-
+-// Reflected IEEE CRC32 running state. No initial/final XOR is applied here:
+-// callers may split a message at any byte and continue with the returned state.
+-// A null pointer is permitted only when n==0, in which case crc is unchanged.
+-inline uint32_t crc32_upd(uint32_t crc,const void* data,size_t n) {
+-  const auto* p=static_cast<const uint8_t*>(data);
+-  const auto& t=crc32_detail::tables.t;
+-#if !defined(MVDB_DISABLE_CRC_SLICING) && defined(__BYTE_ORDER__) && \
+-    defined(__ORDER_LITTLE_ENDIAN__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+-  while(n>=8) {
+-    uint32_t first,second;
+-    // memcpy permits arbitrary byte alignment and does not violate aliasing.
+-    // On verified little-endian targets the low bits are the earliest bytes.
+-    std::memcpy(&first,p,sizeof(first));
+-    std::memcpy(&second,p+4,sizeof(second));
+-    first^=crc;
+-    crc=t[7][first&0xffu]^t[6][(first>>8)&0xffu]^
+-        t[5][(first>>16)&0xffu]^t[4][first>>24]^
+-        t[3][second&0xffu]^t[2][(second>>8)&0xffu]^
+-        t[1][(second>>16)&0xffu]^t[0][second>>24];
+-    p+=8;n-=8;
+-  }
+-#endif
+-  while(n--)crc=t[0][(crc^*p++)&0xffu]^(crc>>8);
+-  return crc;
+-}
+-
+-inline uint32_t crc32_of(const void* data,size_t n) {
+-  return crc32_upd(0xffffffffu,data,n)^0xffffffffu;
+-}
+-} // namespace mvdb
+diff --git a/minivec/src/exec.cpp b/minivec/src/exec.cpp
+index 521bfd5..a53b413 100644
+--- a/minivec/src/exec.cpp
++++ b/minivec/src/exec.cpp
+@@ -8,6 +8,7 @@
+ #include <limits>
+ 
+ #include <algorithm>
++#include <atomic>
+ #include <charconv>
+ #include <cmath>
+ #include <cstdio>
+@@ -539,26 +540,35 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
+             const bool approximate=index &&
+                 index->ann_probe(order.qvec->data(),0,&probed,&ordinals,&ordinal_count);
+             // Intra-query fan-out over two contiguous halves of the ordinal
+-            // span. A half owns its top-K heap, its own certification bound and
+-            // its own mutable threshold cache - neither bound object may be
+-            // shared between threads - so the halves touch no shared state and
+-            // the merge below is their only meeting point. Their union holds the
+-            // K best rows under (exact distance, primary key), a total order, so
+-            // the winner set cannot depend on how the span was cut.
++            // span. Each half owns its heap and mutable bound caches. The only
++            // exchanged state is a distance ceiling witnessed by K actual rows
++            // in the publisher's full heap. Rejecting strictly greater distances
++            // cannot remove a global Top-K row, even before the local heap fills.
++            // Equal distances still use the original primary-key tie breaker.
++            // The normal merge of both heaps retains all global Top-K winners.
+             const bool fanout=!approximate && bounded && !st.order_desc && k>=1 &&
+                 k<=kFanoutTopKMax && query_fanout_wanted(view.count);
+             if(fanout) {
+               std::vector<Candidate> halves[2];
+               halves[0].reserve(k);halves[1].reserve(k);
++              struct alignas(64) PublishedKth {
++                std::atomic<double> value{std::numeric_limits<double>::infinity()};
++              };
++              PublishedKth published[2]; // One writer per separate cache line.
++              // Non-lock-free implementations retain the old local-only path.
++              constexpr bool share_kth=std::atomic<double>::is_always_lock_free;
+               auto keep=[&](std::vector<Candidate>& heap,Candidate c) {
+                 if(heap.size()<k) {
+                   heap.push_back(std::move(c));
+                   std::push_heap(heap.begin(),heap.end(),better);
++                  return true;
+                 } else if(better(c,heap.front())) {
+                   std::pop_heap(heap.begin(),heap.end(),better);
+                   heap.back()=std::move(c);
+                   std::push_heap(heap.begin(),heap.end(),better);
++                  return true;
+                 }
++                return false;
+               };
+               const size_t dimension=view.dimension;
+               const float* query=order.qvec->data();
+@@ -572,19 +582,53 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
+                 const QuantizedQueryBound quantized(query,dimension,
+                     view.quantized ? view.quantization_step : 0);
+                 std::vector<Candidate>& heap=halves[worker];
++                const double infinity=std::numeric_limits<double>::infinity();
++                double peer_threshold=infinity,last_published=infinity;
++                double local_threshold=infinity,threshold=infinity;
++                bool may_reject=false;
++                auto publish_kth=[&] {
++                  if constexpr(share_kth) {
++                    if(heap.size()==k) {
++                      const double own=heap.front().distance;
++                      if(std::isfinite(own) && own>=0 && own<last_published) {
++                        published[worker].value.store(own,std::memory_order_relaxed);
++                        last_published=own;
++                      }
++                    }
++                  }
++                };
+                 for(size_t i=first;i<last;++i) {
+-                  // Integer codes are only a certified rejection filter, taken
+-                  // against this half's own k-th distance. Every uncertain row
+-                  // follows the existing float bound and exact kernel.
+-                  if(quantized.enabled() && heap.size()==k &&
+-                     quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance))
++                  if constexpr(share_kth) {
++                    if(((i-first)&63)==0) {
++                      publish_kth();
++                      const double peer=published[worker^1].value.load(std::memory_order_relaxed);
++                      if(std::isfinite(peer) && peer>=0 && peer<peer_threshold) {
++                        peer_threshold=peer;
++                        threshold=peer<local_threshold ? peer : local_threshold;
++                        may_reject=true;
++                      }
++                    }
++                  }
++                  if(quantized.enabled() && may_reject &&
++                     quantized.definitely_greater(view.quantized+i*dimension,threshold))
+                     continue;
+                   const float* row=view.rows[i];
+-                  if(heap.size()==k && bound.definitely_greater(row,query,heap.front().distance))
++                  if(may_reject && bound.definitely_greater(row,query,threshold))
+                     continue;
+                   Candidate c;c.pk=view.keys[i];c.distance=distance_squared(row,query,dimension);
+-                  keep(heap,std::move(c));
++                  if(keep(heap,std::move(c)) && heap.size()==k) {
++                    const double local=heap.front().distance;
++                    if(local!=local_threshold) {
++                      // Valid heap distances only decrease. Also refresh NaN/
++                      // infinity transitions so the original conservative
++                      // behavior survives without inspecting the heap per row.
++                      local_threshold=local;
++                      threshold=peer_threshold<local ? peer_threshold : local;
++                      may_reject=true;
++                    }
++                  }
+                 }
++                publish_kth(); // A short/finished half can still help its peer.
+               };
+               auto run_half=+[](void* ctx,unsigned worker) {
+                 (*static_cast<std::function<void(unsigned)>*>(ctx))(worker);
+diff --git a/minivec/src/main.cpp b/minivec/src/main.cpp
+index 2d3d8ab..cf0ba66 100644
+--- a/minivec/src/main.cpp
++++ b/minivec/src/main.cpp
+@@ -1,496 +1,545 @@
+-// main.cpp — stdin/stdout protocol loop for MiniVectorDB
+-//
+-// Official JSONL transport is the default; --protocol sql explicitly enables
+-// the legacy SQL console used by local regressions. Both use read(2), avoiding
+-// buffered reads that might wait for EOF while an interactive peer is waiting.
+-#include <cerrno>
+-#include <cctype>
+-#include <csignal>
+-#include <cstdio>
+-#include <cstring>
+-#include <cstdlib>
+-#include <set>
+-#include <stdexcept>
+-#include <string>
+-#include <vector>
+-
+-#include <unistd.h>
+-
+-#include "db.h"
+-#include "exec.h"
+-#include "sql.h"
+-#include "../third_party/json.hpp"
+-
+-using namespace mvdb;
+-static volatile sig_atomic_t stopping = 0;
+-static void stop_signal(int) { stopping = 1; }
+-
+-class StatementScanner {
+- public:
+-  // The cursor and lexical state survive read boundaries. Leave a trailing
+-  // byte pending only when a second byte can change its meaning.
+-  size_t next_end(const std::string& buf) {
+-    for (; cursor_ < buf.size(); ++cursor_) {
+-      const char c = buf[cursor_];
+-      const bool has_next = cursor_ + 1 < buf.size();
+-      const char next = has_next ? buf[cursor_ + 1] : '\0';
+-      switch (state_) {
+-        case State::LineComment:
+-          if (c == '\n') state_ = State::Sql;
+-          break;
+-        case State::BlockComment:
+-          if (c == '*') {
+-            if (!has_next) return std::string::npos;
+-            if (next == '/') {
+-              state_ = State::Sql;
+-              ++cursor_;
+-            }
+-          }
+-          break;
+-        case State::Quoted:
+-          if (c == '\\' && quote_ != '`') {
+-            if (!has_next) return std::string::npos;
+-            ++cursor_;
+-          } else if (c == quote_) {
+-            if (!has_next) return std::string::npos;
+-            if (next == quote_) ++cursor_;
+-            else state_ = State::Sql;
+-          }
+-          break;
+-        case State::Vector:
+-          // Match tokenize(): a bare vector consumes balanced brackets;
+-          // quotes, comments and semicolons inside it are ordinary data.
+-          // Invalid contents are rejected by the parser after the frame ends.
+-          if (c == '[') ++vector_depth_;
+-          else if (c == ']' && --vector_depth_ == 0) state_ = State::Sql;
+-          break;
+-        case State::Sql:
+-          if ((c == '-' || c == '/') && !has_next) return std::string::npos;
+-          if (c == '-' && next == '-') {
+-            state_ = State::LineComment;
+-            ++cursor_;
+-          } else if (c == '#') {
+-            state_ = State::LineComment;
+-          } else if (c == '/' && next == '*') {
+-            state_ = State::BlockComment;
+-            ++cursor_;
+-          } else if (c == '\'' || c == '"' || c == '`') {
+-            state_ = State::Quoted;
+-            quote_ = c;
+-          } else if (c == '[') {
+-            state_ = State::Vector;
+-            vector_depth_ = 1;
+-          } else if (c == ';') {
+-            return cursor_++;
+-          }
+-          break;
+-      }
+-    }
+-    return std::string::npos;
+-  }
+-
+-  void discard_prefix(size_t count) { cursor_ -= count; }
+-
+- private:
+-  enum class State { Sql, Quoted, Vector, LineComment, BlockComment };
+-  State state_ = State::Sql;
+-  size_t cursor_ = 0;
+-  size_t vector_depth_ = 0;
+-  char quote_ = '\0';
+-};
+-
+-static bool has_token(const std::string& s) {
+-  for (char c : s)
+-    if (!std::isspace((unsigned char)c)) return true;
+-  return false;
+-}
+-
+-static void run_statement(Database& db, const std::string& text) {
+-  if (!has_token(text)) return;
+-  Statement st;
+-  std::string perr, out;
+-  int code = 0;
+-  if (!parse_sql(text, &st, &perr, &code)) {
+-    std::printf("ERROR %d (42000): %s\n", code ? code : 1064, perr.c_str());
+-    std::fflush(stdout);
+-    return;
+-  }
+-  if (st.kind == Statement::EMPTY) return;
+-  if (execute(db, st, &out, &perr, &code, [](const std::string& text) {
+-        std::fwrite(text.data(), 1, text.size(), stdout);
+-      })) {
+-    std::fwrite(out.data(), 1, out.size(), stdout);
+-  } else {
+-    std::printf("ERROR %d (HY000): %s\n", code ? code : 1105, perr.c_str());
+-  }
+-  std::fflush(stdout);
+-}
+-
+-using Json = nlohmann::json;
+-
+-// Fast path for the request envelope. Every official request is a flat object of
+-// scalar members, so validating that shape directly avoids building a whole DOM
+-// (and a duplicate-key std::set) for each request. Anything outside the shape —
+-// nesting, backslash escapes, unknown keys, out-of-range integers — falls back
+-// to the nlohmann parse below, which stays the reference implementation.
+-// Only unescaped ASCII strings use this path. Non-ASCII must go through the
+-// reference parser's UTF-8 validation before SQL can have any side effects.
+-static bool needs_strict_string_parse(const char* p, const char* q) {
+-  while (q - p >= 8) {
+-    uint64_t w = 0;
+-    std::memcpy(&w, p, 8);
+-    if ((w & 0x8080808080808080ull) != 0) return true;
+-    if (((w - 0x2020202020202020ull) & ~w & 0x8080808080808080ull) != 0) return true;
+-    p += 8;
+-  }
+-  while (p < q) {
+-    const unsigned char c = static_cast<unsigned char>(*p);
+-    if (c < 0x20 || c >= 0x80) return true;
+-    ++p;
+-  }
+-  return false;
+-}
+-
+-static bool scan_simple_json_string(const std::string& t, size_t* p, std::string* out) {
+-  size_t i = *p;
+-  if (i >= t.size() || t[i] != '"') return false;
+-  ++i;
+-  // A 250 KB SQL string dominates an ingest request, so the span is found with a
+-  // vectorised search and then proven escape-free and control-byte-free instead
+-  // of being walked one byte at a time.
+-  const char* base = t.data();
+-  const char* hit = static_cast<const char*>(std::memchr(base + i, '"', t.size() - i));
+-  if (hit == nullptr) return false;
+-  const size_t close = static_cast<size_t>(hit - base);
+-  if (std::memchr(base + i, '\\', close - i) != nullptr) return false;
+-  if (needs_strict_string_parse(base + i, base + close)) return false;
+-  if (out) out->assign(base + i, close - i);
+-  *p = close + 1;
+-  return true;
+-}
+-
+-static bool fast_envelope(const std::string& t, Json* out) {
+-  static const char* const kKeys[4] = {"id", "op", "sql", "search_mode"};
+-  size_t p = 0;
+-  const size_t n = t.size();
+-  auto skip_ws = [&]() {
+-    while (p < n && (t[p] == ' ' || t[p] == '\t' || t[p] == '\n' || t[p] == '\r')) ++p;
+-  };
+-  skip_ws();
+-  if (p >= n || t[p] != '{') return false;
+-  ++p;
+-  Json obj = Json::object();
+-  bool seen[4] = {false, false, false, false};
+-  bool first = true;
+-  for (;;) {
+-    skip_ws();
+-    if (p < n && t[p] == '}' && first) { ++p; break; }
+-    if (p >= n) return false;
+-    std::string key;
+-    if (!scan_simple_json_string(t, &p, &key)) return false;
+-    int slot = -1;
+-    for (int k = 0; k < 4; ++k)
+-      if (key == kKeys[k]) slot = k;
+-    if (slot < 0) return false;
+-    if (seen[slot]) throw std::runtime_error("duplicate JSON object key");
+-    seen[slot] = true;
+-    skip_ws();
+-    if (p >= n || t[p] != ':') return false;
+-    ++p;
+-    skip_ws();
+-    if (p >= n) return false;
+-    const char c = t[p];
+-    if (c == '"') {
+-      std::string v;
+-      if (!scan_simple_json_string(t, &p, &v)) return false;
+-      obj[kKeys[slot]] = std::move(v);
+-    } else if (c == 't' || c == 'f' || c == 'n') {
+-      if (t.compare(p, 4, "true") == 0) { obj[kKeys[slot]] = true; p += 4; }
+-      else if (t.compare(p, 5, "false") == 0) { obj[kKeys[slot]] = false; p += 5; }
+-      else if (t.compare(p, 4, "null") == 0) { obj[kKeys[slot]] = nullptr; p += 4; }
+-      else return false;
+-    } else if (c == '-' || (c >= '0' && c <= '9')) {
+-      const size_t b = p;
+-      const bool neg = (c == '-');
+-      if (neg) ++p;
+-      if (p >= n) return false;
+-      if (t[p] == '0') { ++p; }
+-      else if (t[p] >= '1' && t[p] <= '9') { while (p < n && t[p] >= '0' && t[p] <= '9') ++p; }
+-      else return false;
+-      if (p < n && t[p] == '.') {
+-        ++p;
+-        if (p >= n || t[p] < '0' || t[p] > '9') return false;
+-        while (p < n && t[p] >= '0' && t[p] <= '9') ++p;
+-      }
+-      if (p < n && (t[p] == 'e' || t[p] == 'E')) {
+-        ++p;
+-        if (p < n && (t[p] == '+' || t[p] == '-')) ++p;
+-        if (p >= n || t[p] < '0' || t[p] > '9') return false;
+-        while (p < n && t[p] >= '0' && t[p] <= '9') ++p;
+-      }
+-      // The id value is only tested for presence; other members are strings.
+-      uint64_t acc = 0;
+-      for (size_t k = (neg ? b + 1 : b); k < p; ++k) {
+-        // Floating-point and wide integer IDs retain the reference parser's
+-        // range checks. The original lexical ID is echoed after validation.
+-        if (t[k] < '0' || t[k] > '9') return false;
+-        const uint64_t digit = static_cast<uint64_t>(t[k] - '0');
+-        if (acc > 1844674407370955161ull ||
+-            (acc == 1844674407370955161ull && digit > 5)) return false;
+-        acc = acc * 10 + digit;
+-      }
+-      if (neg) {
+-        if (acc > 9223372036854775808ull) return false;
+-        obj[kKeys[slot]] = acc == 9223372036854775808ull
+-            ? (-9223372036854775807LL - 1) : -static_cast<int64_t>(acc);
+-      } else obj[kKeys[slot]] = acc;
+-    } else {
+-      return false;  // arrays/objects/other tokens: let nlohmann handle it
+-    }
+-    first = false;
+-    skip_ws();
+-    if (p < n && t[p] == ',') { ++p; continue; }
+-    if (p < n && t[p] == '}') { ++p; break; }
+-    return false;
+-  }
+-  skip_ws();
+-  if (p != n) return false;
+-  *out = std::move(obj);
+-  return true;
+-}
+-
+-static Json strict_json(const std::string& text) {
+-  {
+-    Json fast;
+-    if (fast_envelope(text, &fast)) return fast;
+-  }
+-  std::vector<std::set<std::string>> keys;
+-  return Json::parse(text, [&](int, Json::parse_event_t event, Json& value) {
+-    if (event == Json::parse_event_t::object_start) keys.emplace_back();
+-    else if (event == Json::parse_event_t::object_end) keys.pop_back();
+-    else if (event == Json::parse_event_t::key &&
+-             !keys.back().insert(value.get<std::string>()).second)
+-      throw std::runtime_error("duplicate JSON object key");
+-    return true;
+-  });
+-}
+-
+-static void emit_json_text(const std::string& encoded) {
+-  if (std::fwrite(encoded.data(),1,encoded.size(),stdout)!=encoded.size() ||
+-      std::fputc('\n',stdout)==EOF || std::fflush(stdout)!=0)
+-    throw std::runtime_error("cannot write protocol response");
+-}
+-
+-// Diagnostics may contain a parser-truncated UTF-8 suffix. Replace only in
+-// envelopes; typed SQL data is serialized strictly by execute_json.
+-static void emit_json(const Json& message) {
+-  emit_json_text(message.dump(-1,' ',false,Json::error_handler_t::replace));
+-}
+-
+-// Called only after strict_json validated the entire request. Retain the raw
+-// top-level id value, including integers wider than uint64, instead of
+-// round-tripping through the JSON library's uint64/double representation.
+-static std::string raw_request_id(const std::string& text) {
+-  auto skip_space=[&](size_t& p) {
+-    while (p<text.size() && std::isspace(static_cast<unsigned char>(text[p]))) ++p;
+-  };
+-  auto string_end=[&](size_t p) {
+-    ++p;
+-    while (p<text.size()) {
+-      if (text[p]=='\\') p+=2;
+-      else if (text[p++]=='"') return p;
+-    }
+-    throw std::runtime_error("unterminated JSON string");
+-  };
+-  size_t p=0; skip_space(p); ++p;
+-  for (;;) {
+-    skip_space(p);
+-    if (p>=text.size() || text[p]=='}') return "null";
+-    const size_t key_start=p;
+-    p=string_end(p);
+-    const std::string key=Json::parse(text.substr(key_start,p-key_start)).get<std::string>();
+-    skip_space(p); ++p; skip_space(p);
+-    const size_t value_start=p;
+-    size_t depth=0;
+-    while (p<text.size()) {
+-      const char c=text[p];
+-      if (c=='"') { p=string_end(p); continue; }
+-      if (c=='[' || c=='{') ++depth;
+-      else if (c==']' || c=='}') {
+-        if (!depth) break;
+-        --depth;
+-      } else if (c==',' && !depth) break;
+-      ++p;
+-    }
+-    if (key=="id") return text.substr(value_start,p-value_start);
+-    if (p>=text.size() || text[p]=='}') return "null";
+-    ++p;
+-  }
+-}
+-
+-// One physical input line is one request. Parse the complete SQL before doing
+-// any work: parse_sql rejects multiple statements and trailing non-SQL input.
+-static bool json_request(Database& db, const std::string& line, int* exit_code) {
+-  Json response;
+-  std::string raw_id="null";
+-  std::string success_result;
+-  bool shutdown=false;
+-  try {
+-    const Json request=strict_json(line);
+-    if (!request.is_object()) throw std::runtime_error("request must be a JSON object");
+-    if (request.contains("id")) raw_id=raw_request_id(line);
+-    else throw std::runtime_error("missing request id");
+-    if (!request.contains("op") || !request.at("op").is_string())
+-      throw std::runtime_error("op must be a string");
+-    const std::string op=request.at("op").get<std::string>();
+-    std::string error, result; int code=0;
+-    if (op=="shutdown") {
+-      shutdown=true;
+-      if (db.in_txn() && !db.rollback(&error,&code)) {
+-        *exit_code=1;
+-        response={{"error",{{"code",std::to_string(code ? code : 1105)},{"message",error}}},{"ok",false}};
+-      } else {
+-        db.close();
+-        response={{"ok",true}};
+-      }
+-    } else if (op=="execute") {
+-      if (!request.contains("sql") || !request.at("sql").is_string())
+-        throw std::runtime_error("sql must be a string");
+-      const Json mode=request.value("search_mode",Json("exact"));
+-      if (!mode.is_string() || (mode!="exact" && mode!="ann"))
+-        throw std::runtime_error("search_mode must be exact or ann");
+-      // The mode selects the candidate set of an unfiltered vector search: a
+-      // recall-bounded coarse partition for "ann", always-exact for "exact".
+-      const bool ann_mode = (mode == "ann");
+-      Statement statement;
+-      const std::string& sql=request.at("sql").get_ref<const std::string&>();
+-      if (!parse_sql(sql,&statement,&error,&code) ||
+-          !execute_json(db,statement,&result,&error,&code,ann_mode)) {
+-        response={{"ok",false},{"error",{{"code",std::to_string(code ? code : 1105)},{"message",error}}}};
+-      } else {
+-        if (result.size()<2 || result.front()!='{' || result.back()!='}')
+-          throw std::runtime_error("executor returned non-object result");
+-        success_result=std::move(result);
+-      }
+-    } else throw std::runtime_error("unsupported operation");
+-  } catch (const std::exception& ex) {
+-    response={{"ok",false},{"error",{{"code","invalid_request"},{"message",ex.what()}}}};
+-    if (shutdown) *exit_code=1;
+-  }
+-  if (!success_result.empty()) {
+-    // execute_json guarantees a compact typed object without id/ok. Add the
+-    // envelope directly instead of building a second DOM for large row sets.
+-    const std::string fields="\"id\":"+raw_id+",\"ok\":true"+
+-                             (success_result.size()>2 ? "," : "");
+-    success_result.insert(1,fields);
+-    emit_json_text(success_result);
+-  } else {
+-    std::string encoded=response.dump(-1,' ',false,Json::error_handler_t::replace);
+-    encoded.insert(1,"\"id\":"+raw_id+(encoded.size()>2 ? "," : ""));
+-    emit_json_text(encoded);
+-  }
+-  return shutdown;
+-}
+-
+-int main(int argc, char** argv) {
+-  std::string data_dir = "/data";
+-  std::string mode = "exact";
+-  const char* protocol_env=std::getenv("MVDB_PROTOCOL");
+-  std::string protocol=protocol_env ? protocol_env : "jsonl";
+-  for (int i = 1; i < argc; ++i) {
+-    if (std::strcmp(argv[i], "--data") == 0 && i + 1 < argc) data_dir = argv[++i];
+-    else if (std::strncmp(argv[i], "--data=", 7) == 0) data_dir = argv[i] + 7;
+-    else if (std::strcmp(argv[i], "--mode") == 0 && i+1<argc) mode=argv[++i];
+-    else if (std::strncmp(argv[i], "--mode=", 7) == 0) mode = argv[i] + 7;
+-    else if (std::strcmp(argv[i], "--protocol") == 0 && i+1<argc) protocol=argv[++i];
+-    else if (std::strncmp(argv[i], "--protocol=", 11) == 0) protocol=argv[i]+11;
+-    else { std::fprintf(stderr,"unknown or incomplete option: %s\n",argv[i]);return 2; }
+-  }
+-
+-  if(mode!="exact" && mode!="ann") {std::fprintf(stderr,"mode must be exact or ann\n");return 2;}
+-  if(protocol!="jsonl" && protocol!="sql") {std::fprintf(stderr,"protocol must be jsonl or sql\n");return 2;}
+-  // The default mode is exact; JSONL also validates each request's mode.
+-  struct sigaction action {};
+-  action.sa_handler = stop_signal;
+-  sigemptyset(&action.sa_mask);
+-  sigaction(SIGTERM, &action, nullptr);
+-  sigaction(SIGINT, &action, nullptr);
+-
+-  Database db;
+-  std::string err;
+-  if (!db.open(data_dir, &err)) {
+-    std::fprintf(stderr, "open failed: %s\n", err.c_str());
+-    return 1;
+-  }
+-  std::fprintf(stderr, "minivec ready data=%s\n", data_dir.c_str());
+-  std::fflush(stderr);
+-
+-  if (protocol=="jsonl") {
+-    int status=0;
+-    try {
+-      emit_json({{"type","ready"}});
+-      std::string pending; char input[65536]; bool shutdown=false;
+-      while (!stopping && !shutdown) {
+-        const ssize_t count=::read(STDIN_FILENO,input,sizeof(input));
+-        if (count<0) { if (errno==EINTR) continue; throw std::runtime_error("cannot read request"); }
+-        if (count==0) break;
+-        pending.append(input,static_cast<size_t>(count));
+-        size_t begin=0;
+-        for (size_t end=pending.find('\n',begin); end!=std::string::npos;
+-             end=pending.find('\n',begin)) {
+-          shutdown=json_request(db,pending.substr(begin,end-begin),&status);
+-          begin=end+1;
+-          if (shutdown) break;
+-        }
+-        if (begin) pending.erase(0,begin);
+-      }
+-      if (!shutdown && !pending.empty()) {
+-        // A truncated JSONL frame is never executed at EOF.
+-        emit_json({{"id",nullptr},{"ok",false},{"error",{{"code","invalid_request"},{"message","unterminated JSONL request"}}}});
+-      }
+-    } catch (const std::exception& ex) {
+-      std::fprintf(stderr,"protocol failure: %s\n",ex.what()); status=1;
+-    }
+-    if (db.in_txn() && !db.rollback(&err,nullptr)) {
+-      std::fprintf(stderr,"shutdown rollback failed: %s\n",err.c_str()); status=1;
+-    }
+-    db.close();
+-    return status;
+-  }
+-
+-  std::string buf;
+-  StatementScanner scanner;
+-  char chunk[65536];
+-  while (!stopping) {
+-    ssize_t n = ::read(STDIN_FILENO, chunk, sizeof(chunk));
+-    if (n < 0) {
+-      if (errno == EINTR) continue;
+-      break;
+-    }
+-    if (n == 0) break;  // EOF
+-    buf.append(chunk, (size_t)n);
+-
+-    size_t begin = 0;
+-    for (size_t end = scanner.next_end(buf); end != std::string::npos;
+-         end = scanner.next_end(buf)) {
+-      run_statement(db, buf.substr(begin, end - begin));
+-      begin = end + 1;
+-    }
+-    // Compact once per input chunk, not once per statement in a bulk feed.
+-    if (begin) {
+-      buf.erase(0, begin);
+-      scanner.discard_prefix(begin);
+-    }
+-  }
+-
+-  // Newlines can occur inside statements; never execute a pipe-read prefix.
+-  // EOF accepts one final SQL statement, not a sequence of guessed fragments.
+-  if (!stopping && has_token(buf)) run_statement(db, buf);
+-  if (db.in_txn() && !db.rollback(&err, nullptr)) {
+-    std::fprintf(stderr, "shutdown rollback failed: %s\n", err.c_str());
+-    db.close();
+-    return 1;
+-  }
+-  db.close();
+-  return 0;
+-}
++// main.cpp — stdin/stdout protocol loop for MiniVectorDB
++//
++// Official JSONL transport is the default; --protocol sql explicitly enables
++// the legacy SQL console used by local regressions. Both use read(2), avoiding
++// buffered reads that might wait for EOF while an interactive peer is waiting.
++#include <cerrno>
++#include <cctype>
++#include <csignal>
++#include <cstdio>
++#include <cstring>
++#include <cstdlib>
++#include <set>
++#include <stdexcept>
++#include <string>
++#include <vector>
++
++#include <unistd.h>
++
++#include "db.h"
++#include "exec.h"
++#include "sql.h"
++#include "../third_party/json.hpp"
++
++using namespace mvdb;
++static volatile sig_atomic_t stopping = 0;
++static void stop_signal(int) { stopping = 1; }
++
++class StatementScanner {
++ public:
++  // The cursor and lexical state survive read boundaries. Leave a trailing
++  // byte pending only when a second byte can change its meaning.
++  size_t next_end(const std::string& buf) {
++    for (; cursor_ < buf.size(); ++cursor_) {
++      const char c = buf[cursor_];
++      const bool has_next = cursor_ + 1 < buf.size();
++      const char next = has_next ? buf[cursor_ + 1] : '\0';
++      switch (state_) {
++        case State::LineComment:
++          if (c == '\n') state_ = State::Sql;
++          break;
++        case State::BlockComment:
++          if (c == '*') {
++            if (!has_next) return std::string::npos;
++            if (next == '/') {
++              state_ = State::Sql;
++              ++cursor_;
++            }
++          }
++          break;
++        case State::Quoted:
++          if (c == '\\' && quote_ != '`') {
++            if (!has_next) return std::string::npos;
++            ++cursor_;
++          } else if (c == quote_) {
++            if (!has_next) return std::string::npos;
++            if (next == quote_) ++cursor_;
++            else state_ = State::Sql;
++          }
++          break;
++        case State::Vector:
++          // Match tokenize(): a bare vector consumes balanced brackets;
++          // quotes, comments and semicolons inside it are ordinary data.
++          // Invalid contents are rejected by the parser after the frame ends.
++          if (c == '[') ++vector_depth_;
++          else if (c == ']' && --vector_depth_ == 0) state_ = State::Sql;
++          break;
++        case State::Sql:
++          if ((c == '-' || c == '/') && !has_next) return std::string::npos;
++          if (c == '-' && next == '-') {
++            state_ = State::LineComment;
++            ++cursor_;
++          } else if (c == '#') {
++            state_ = State::LineComment;
++          } else if (c == '/' && next == '*') {
++            state_ = State::BlockComment;
++            ++cursor_;
++          } else if (c == '\'' || c == '"' || c == '`') {
++            state_ = State::Quoted;
++            quote_ = c;
++          } else if (c == '[') {
++            state_ = State::Vector;
++            vector_depth_ = 1;
++          } else if (c == ';') {
++            return cursor_++;
++          }
++          break;
++      }
++    }
++    return std::string::npos;
++  }
++
++  void discard_prefix(size_t count) { cursor_ -= count; }
++
++ private:
++  enum class State { Sql, Quoted, Vector, LineComment, BlockComment };
++  State state_ = State::Sql;
++  size_t cursor_ = 0;
++  size_t vector_depth_ = 0;
++  char quote_ = '\0';
++};
++
++static bool has_token(const std::string& s) {
++  for (char c : s)
++    if (!std::isspace((unsigned char)c)) return true;
++  return false;
++}
++
++static void run_statement(Database& db, const std::string& text) {
++  if (!has_token(text)) return;
++  Statement st;
++  std::string perr, out;
++  int code = 0;
++  if (!parse_sql(text, &st, &perr, &code)) {
++    std::printf("ERROR %d (42000): %s\n", code ? code : 1064, perr.c_str());
++    std::fflush(stdout);
++    return;
++  }
++  if (st.kind == Statement::EMPTY) return;
++  if (execute(db, st, &out, &perr, &code, [](const std::string& text) {
++        std::fwrite(text.data(), 1, text.size(), stdout);
++      })) {
++    std::fwrite(out.data(), 1, out.size(), stdout);
++  } else {
++    std::printf("ERROR %d (HY000): %s\n", code ? code : 1105, perr.c_str());
++  }
++  std::fflush(stdout);
++}
++
++using Json = nlohmann::json;
++
++// The common execute envelope is a flat object of scalar members. Validate
++// it completely into an owned request, avoiding a DOM and a second scan for id.
++// Anything outside the admitted shape —
++// nesting, backslash escapes, unknown keys, out-of-range integers — falls back
++// to the nlohmann parse below, which stays the reference implementation.
++// Only unescaped ASCII strings use this path. Non-ASCII must go through the
++// reference parser's UTF-8 validation before SQL can have any side effects.
++static bool needs_strict_string_parse(const char* p, const char* q) {
++  while (q - p >= 8) {
++    uint64_t w = 0;
++    std::memcpy(&w, p, 8);
++    if ((w & 0x8080808080808080ull) != 0) return true;
++    if (((w - 0x2020202020202020ull) & ~w & 0x8080808080808080ull) != 0) return true;
++    p += 8;
++  }
++  while (p < q) {
++    const unsigned char c = static_cast<unsigned char>(*p);
++    if (c < 0x20 || c >= 0x80) return true;
++    ++p;
++  }
++  return false;
++}
++
++static bool scan_simple_json_string(const std::string& t, size_t* p, std::string* out) {
++  size_t i = *p;
++  if (i >= t.size() || t[i] != '"') return false;
++  ++i;
++  // A 250 KB SQL string dominates an ingest request, so the span is found with a
++  // vectorised search and then proven escape-free and control-byte-free instead
++  // of being walked one byte at a time.
++  const char* base = t.data();
++  const char* hit = static_cast<const char*>(std::memchr(base + i, '"', t.size() - i));
++  if (hit == nullptr) return false;
++  const size_t close = static_cast<size_t>(hit - base);
++  if (std::memchr(base + i, '\\', close - i) != nullptr) return false;
++  if (needs_strict_string_parse(base + i, base + close)) return false;
++  if (out) out->assign(base + i, close - i);
++  *p = close + 1;
++  return true;
++}
++
++struct ValidatedExecuteRequest {
++  std::string sql;
++  std::string raw_id;
++  bool ann_mode = false;
++};
++
++// With direct != nullptr, validate the same entire flat JSON shape but retain
++// only an executable request. Unsupported shapes/operations use strict_json.
++static bool fast_envelope(const std::string& t, Json* out,
++                          ValidatedExecuteRequest* direct = nullptr) {
++  static const char* const kKeys[4] = {"id", "op", "sql", "search_mode"};
++  size_t p = 0;
++  const size_t n = t.size();
++  auto skip_ws = [&]() {
++    while (p < n && (t[p] == ' ' || t[p] == '\t' || t[p] == '\n' || t[p] == '\r')) ++p;
++  };
++  skip_ws();
++  if (p >= n || t[p] != '{') return false;
++  ++p;
++  Json obj;
++  if (out) obj = Json::object();
++  bool strings[4] = {false, false, false, false};
++  std::string direct_op, direct_mode = "exact";
++  size_t id_begin = 0, id_end = 0;
++  bool seen[4] = {false, false, false, false};
++  bool first = true;
++  for (;;) {
++    skip_ws();
++    if (p < n && t[p] == '}' && first) { ++p; break; }
++    if (p >= n) return false;
++    std::string key;
++    if (!scan_simple_json_string(t, &p, &key)) return false;
++    int slot = -1;
++    for (int k = 0; k < 4; ++k)
++      if (key == kKeys[k]) slot = k;
++    if (slot < 0) return false;
++    if (seen[slot]) throw std::runtime_error("duplicate JSON object key");
++    seen[slot] = true;
++    skip_ws();
++    if (p >= n || t[p] != ':') return false;
++    ++p;
++    skip_ws();
++    if (p >= n) return false;
++    if (direct && slot == 0) id_begin = p;
++    const char c = t[p];
++    if (c == '"') {
++      std::string v;
++      if (!scan_simple_json_string(t, &p, &v)) return false;
++      if (out) obj[kKeys[slot]] = std::move(v);
++      else {
++        strings[slot] = true;
++        if (slot == 1) direct_op = std::move(v);
++        else if (slot == 2) direct->sql = std::move(v);
++        else if (slot == 3) direct_mode = std::move(v);
++      }
++    } else if (c == 't' || c == 'f' || c == 'n') {
++      if (t.compare(p, 4, "true") == 0) { if (out) obj[kKeys[slot]] = true; p += 4; }
++      else if (t.compare(p, 5, "false") == 0) { if (out) obj[kKeys[slot]] = false; p += 5; }
++      else if (t.compare(p, 4, "null") == 0) { if (out) obj[kKeys[slot]] = nullptr; p += 4; }
++      else return false;
++    } else if (c == '-' || (c >= '0' && c <= '9')) {
++      const size_t b = p;
++      const bool neg = (c == '-');
++      if (neg) ++p;
++      if (p >= n) return false;
++      if (t[p] == '0') { ++p; }
++      else if (t[p] >= '1' && t[p] <= '9') { while (p < n && t[p] >= '0' && t[p] <= '9') ++p; }
++      else return false;
++      if (p < n && t[p] == '.') {
++        ++p;
++        if (p >= n || t[p] < '0' || t[p] > '9') return false;
++        while (p < n && t[p] >= '0' && t[p] <= '9') ++p;
++      }
++      if (p < n && (t[p] == 'e' || t[p] == 'E')) {
++        ++p;
++        if (p < n && (t[p] == '+' || t[p] == '-')) ++p;
++        if (p >= n || t[p] < '0' || t[p] > '9') return false;
++        while (p < n && t[p] >= '0' && t[p] <= '9') ++p;
++      }
++      // The id value is only tested for presence; other members are strings.
++      uint64_t acc = 0;
++      for (size_t k = (neg ? b + 1 : b); k < p; ++k) {
++        // Floating-point and wide integer IDs retain the reference parser's
++        // range checks. The original lexical ID is echoed after validation.
++        if (t[k] < '0' || t[k] > '9') return false;
++        const uint64_t digit = static_cast<uint64_t>(t[k] - '0');
++        if (acc > 1844674407370955161ull ||
++            (acc == 1844674407370955161ull && digit > 5)) return false;
++        acc = acc * 10 + digit;
++      }
++      if (neg) {
++        if (acc > 9223372036854775808ull) return false;
++        if (out) obj[kKeys[slot]] = acc == 9223372036854775808ull
++            ? (-9223372036854775807LL - 1) : -static_cast<int64_t>(acc);
++      } else if (out) obj[kKeys[slot]] = acc;
++    } else {
++      return false;  // arrays/objects/other tokens: let nlohmann handle it
++    }
++    first = false;
++    skip_ws();
++    // raw_request_id includes whitespace before the comma/closing brace.
++    if (direct && slot == 0) id_end = p;
++    if (p < n && t[p] == ',') { ++p; continue; }
++    if (p < n && t[p] == '}') { ++p; break; }
++    return false;
++  }
++  skip_ws();
++  if (p != n) return false;
++  if (out) *out = std::move(obj);
++  else {
++    if (!seen[0] || !seen[1] || !seen[2] || !strings[1] || !strings[2] ||
++        direct_op != "execute" || (seen[3] && (!strings[3] ||
++        (direct_mode != "exact" && direct_mode != "ann")))) return false;
++    direct->raw_id.assign(t, id_begin, id_end - id_begin);
++    direct->ann_mode = (direct_mode == "ann");
++  }
++  return true;
++}
++
++static Json strict_json(const std::string& text, bool try_fast = true) {
++  if (try_fast) {
++    Json fast;
++    if (fast_envelope(text, &fast)) return fast;
++  }
++  std::vector<std::set<std::string>> keys;
++  Json parsed=Json::parse(text, [&](int, Json::parse_event_t event, Json& value) {
++    if (event == Json::parse_event_t::object_start) keys.emplace_back();
++    else if (event == Json::parse_event_t::object_end) keys.pop_back();
++    else if (event == Json::parse_event_t::key &&
++             !keys.back().insert(value.get<std::string>()).second)
++      throw std::runtime_error("duplicate JSON object key");
++    return true;
++  });
++  // nlohmann treats a raw NUL after a complete JSON value as end-of-input.
++  // The transport is length-delimited: never execute a valid prefix followed
++  // by an unvalidated NUL/tail. Keep the parser's existing rejection priority;
++  // escaped \u0000 contains no raw NUL and remains an ordinary JSON string.
++  if(text.find('\0')!=std::string::npos)
++    throw std::runtime_error("raw NUL byte in JSON request");
++  return parsed;
++}
++
++static void emit_json_text(const std::string& encoded) {
++  if (std::fwrite(encoded.data(),1,encoded.size(),stdout)!=encoded.size() ||
++      std::fputc('\n',stdout)==EOF || std::fflush(stdout)!=0)
++    throw std::runtime_error("cannot write protocol response");
++}
++
++// Diagnostics may contain a parser-truncated UTF-8 suffix. Replace only in
++// envelopes; typed SQL data is serialized strictly by execute_json.
++static void emit_json(const Json& message) {
++  emit_json_text(message.dump(-1,' ',false,Json::error_handler_t::replace));
++}
++
++// Called only after strict_json validated the entire request. Retain the raw
++// top-level id value, including integers wider than uint64, instead of
++// round-tripping through the JSON library's uint64/double representation.
++static std::string raw_request_id(const std::string& text) {
++  auto skip_space=[&](size_t& p) {
++    while (p<text.size() && std::isspace(static_cast<unsigned char>(text[p]))) ++p;
++  };
++  auto string_end=[&](size_t p) {
++    ++p;
++    while (p<text.size()) {
++      if (text[p]=='\\') p+=2;
++      else if (text[p++]=='"') return p;
++    }
++    throw std::runtime_error("unterminated JSON string");
++  };
++  size_t p=0; skip_space(p); ++p;
++  for (;;) {
++    skip_space(p);
++    if (p>=text.size() || text[p]=='}') return "null";
++    const size_t key_start=p;
++    p=string_end(p);
++    const std::string key=Json::parse(text.substr(key_start,p-key_start)).get<std::string>();
++    skip_space(p); ++p; skip_space(p);
++    const size_t value_start=p;
++    size_t depth=0;
++    while (p<text.size()) {
++      const char c=text[p];
++      if (c=='"') { p=string_end(p); continue; }
++      if (c=='[' || c=='{') ++depth;
++      else if (c==']' || c=='}') {
++        if (!depth) break;
++        --depth;
++      } else if (c==',' && !depth) break;
++      ++p;
++    }
++    if (key=="id") return text.substr(value_start,p-value_start);
++    if (p>=text.size() || text[p]=='}') return "null";
++    ++p;
++  }
++}
++
++// One physical input line is one request. Parse the complete SQL before doing
++// any work: parse_sql rejects multiple statements and trailing non-SQL input.
++static bool json_request(Database& db, const std::string& line, int* exit_code) {
++  Json response;
++  std::string raw_id="null";
++  std::string success_result;
++  bool shutdown=false;
++  try {
++    Json request;
++    ValidatedExecuteRequest direct;
++    const bool direct_execute=fast_envelope(line,nullptr,&direct);
++    std::string op="execute";
++    if (direct_execute) raw_id=std::move(direct.raw_id);
++    else {
++      // Do not retain a failed probe's wide SQL allocation during DOM parsing.
++      std::string().swap(direct.sql);
++      // The identical fast syntax probe already ran; do not scan it twice.
++      request=strict_json(line,false);
++      if (!request.is_object()) throw std::runtime_error("request must be a JSON object");
++      if (request.contains("id")) raw_id=raw_request_id(line);
++      else throw std::runtime_error("missing request id");
++      if (!request.contains("op") || !request.at("op").is_string())
++        throw std::runtime_error("op must be a string");
++      op=request.at("op").get<std::string>();
++    }
++    std::string error, result; int code=0;
++    if (op=="shutdown") {
++      shutdown=true;
++      if (db.in_txn() && !db.rollback(&error,&code)) {
++        *exit_code=1;
++        response={{"error",{{"code",std::to_string(code ? code : 1105)},{"message",error}}},{"ok",false}};
++      } else {
++        db.close();
++        response={{"ok",true}};
++      }
++    } else if (op=="execute") {
++      bool ann_mode=direct.ann_mode;
++      if (!direct_execute) {
++        if (!request.contains("sql") || !request.at("sql").is_string())
++          throw std::runtime_error("sql must be a string");
++        const Json mode=request.value("search_mode",Json("exact"));
++        if (!mode.is_string() || (mode!="exact" && mode!="ann"))
++          throw std::runtime_error("search_mode must be exact or ann");
++        ann_mode=(mode=="ann");
++      }
++      // Search-mode candidate selection and SQL ownership remain unchanged.
++      Statement statement;
++      const std::string& sql=direct_execute ? direct.sql :
++          request.at("sql").get_ref<const std::string&>();
++      if (!parse_sql(sql,&statement,&error,&code) ||
++          !execute_json(db,statement,&result,&error,&code,ann_mode)) {
++        response={{"ok",false},{"error",{{"code",std::to_string(code ? code : 1105)},{"message",error}}}};
++      } else {
++        if (result.size()<2 || result.front()!='{' || result.back()!='}')
++          throw std::runtime_error("executor returned non-object result");
++        success_result=std::move(result);
++      }
++    } else throw std::runtime_error("unsupported operation");
++  } catch (const std::exception& ex) {
++    response={{"ok",false},{"error",{{"code","invalid_request"},{"message",ex.what()}}}};
++    if (shutdown) *exit_code=1;
++  }
++  if (!success_result.empty()) {
++    // execute_json guarantees a compact typed object without id/ok. Add the
++    // envelope directly instead of building a second DOM for large row sets.
++    const std::string fields="\"id\":"+raw_id+",\"ok\":true"+
++                             (success_result.size()>2 ? "," : "");
++    success_result.insert(1,fields);
++    emit_json_text(success_result);
++  } else {
++    std::string encoded=response.dump(-1,' ',false,Json::error_handler_t::replace);
++    encoded.insert(1,"\"id\":"+raw_id+(encoded.size()>2 ? "," : ""));
++    emit_json_text(encoded);
++  }
++  return shutdown;
++}
++
++int main(int argc, char** argv) {
++  std::string data_dir = "/data";
++  std::string mode = "exact";
++  const char* protocol_env=std::getenv("MVDB_PROTOCOL");
++  std::string protocol=protocol_env ? protocol_env : "jsonl";
++  for (int i = 1; i < argc; ++i) {
++    if (std::strcmp(argv[i], "--data") == 0 && i + 1 < argc) data_dir = argv[++i];
++    else if (std::strncmp(argv[i], "--data=", 7) == 0) data_dir = argv[i] + 7;
++    else if (std::strcmp(argv[i], "--mode") == 0 && i+1<argc) mode=argv[++i];
++    else if (std::strncmp(argv[i], "--mode=", 7) == 0) mode = argv[i] + 7;
++    else if (std::strcmp(argv[i], "--protocol") == 0 && i+1<argc) protocol=argv[++i];
++    else if (std::strncmp(argv[i], "--protocol=", 11) == 0) protocol=argv[i]+11;
++    else { std::fprintf(stderr,"unknown or incomplete option: %s\n",argv[i]);return 2; }
++  }
++
++  if(mode!="exact" && mode!="ann") {std::fprintf(stderr,"mode must be exact or ann\n");return 2;}
++  if(protocol!="jsonl" && protocol!="sql") {std::fprintf(stderr,"protocol must be jsonl or sql\n");return 2;}
++  // The default mode is exact; JSONL also validates each request's mode.
++  struct sigaction action {};
++  action.sa_handler = stop_signal;
++  sigemptyset(&action.sa_mask);
++  sigaction(SIGTERM, &action, nullptr);
++  sigaction(SIGINT, &action, nullptr);
++
++  Database db;
++  std::string err;
++  if (!db.open(data_dir, &err)) {
++    std::fprintf(stderr, "open failed: %s\n", err.c_str());
++    return 1;
++  }
++  std::fprintf(stderr, "minivec ready data=%s\n", data_dir.c_str());
++  std::fflush(stderr);
++
++  if (protocol=="jsonl") {
++    int status=0;
++    try {
++      emit_json({{"type","ready"}});
++      std::string pending; char input[65536]; bool shutdown=false;
++      while (!stopping && !shutdown) {
++        const ssize_t count=::read(STDIN_FILENO,input,sizeof(input));
++        if (count<0) { if (errno==EINTR) continue; throw std::runtime_error("cannot read request"); }
++        if (count==0) break;
++        pending.append(input,static_cast<size_t>(count));
++        size_t begin=0;
++        for (size_t end=pending.find('\n',begin); end!=std::string::npos;
++             end=pending.find('\n',begin)) {
++          shutdown=json_request(db,pending.substr(begin,end-begin),&status);
++          begin=end+1;
++          if (shutdown) break;
++        }
++        if (begin) pending.erase(0,begin);
++      }
++      if (!shutdown && !pending.empty()) {
++        // A truncated JSONL frame is never executed at EOF.
++        emit_json({{"id",nullptr},{"ok",false},{"error",{{"code","invalid_request"},{"message","unterminated JSONL request"}}}});
++      }
++    } catch (const std::exception& ex) {
++      std::fprintf(stderr,"protocol failure: %s\n",ex.what()); status=1;
++    }
++    if (db.in_txn() && !db.rollback(&err,nullptr)) {
++      std::fprintf(stderr,"shutdown rollback failed: %s\n",err.c_str()); status=1;
++    }
++    db.close();
++    return status;
++  }
++
++  std::string buf;
++  StatementScanner scanner;
++  char chunk[65536];
++  while (!stopping) {
++    ssize_t n = ::read(STDIN_FILENO, chunk, sizeof(chunk));
++    if (n < 0) {
++      if (errno == EINTR) continue;
++      break;
++    }
++    if (n == 0) break;  // EOF
++    buf.append(chunk, (size_t)n);
++
++    size_t begin = 0;
++    for (size_t end = scanner.next_end(buf); end != std::string::npos;
++         end = scanner.next_end(buf)) {
++      run_statement(db, buf.substr(begin, end - begin));
++      begin = end + 1;
++    }
++    // Compact once per input chunk, not once per statement in a bulk feed.
++    if (begin) {
++      buf.erase(0, begin);
++      scanner.discard_prefix(begin);
++    }
++  }
++
++  // Newlines can occur inside statements; never execute a pipe-read prefix.
++  // EOF accepts one final SQL statement, not a sequence of guessed fragments.
++  if (!stopping && has_token(buf)) run_statement(db, buf);
++  if (db.in_txn() && !db.rollback(&err, nullptr)) {
++    std::fprintf(stderr, "shutdown rollback failed: %s\n", err.c_str());
++    db.close();
++    return 1;
++  }
++  db.close();
++  return 0;
++}
+diff --git a/minivec/src/quantized_bound.h b/minivec/src/quantized_bound.h
+index fa2686b..73db4e3 100644
+--- a/minivec/src/quantized_bound.h
++++ b/minivec/src/quantized_bound.h
+@@ -98,6 +98,76 @@ inline uint32_t distance_avx512(const int8_t* a,const int8_t* b,size_t n) {
+ }
+ #endif
+ #endif
++// Exactly 128 readable bytes per operand. Query initialization selects these
++// kernels only for n==128; all other lengths keep the original dynamic kernel.
++// Independent partial sums remove the loop-carried accumulation dependency.
++// Even the int8 endpoints give 128*255^2=8323200, so every partial sum and the
++// final reduction are exact in uint32 (and below INT32_MAX).
++#if defined(MVDB_SIMD_BOUND_X86)
++template<size_t Offset>
++__attribute__((target("sse2,no-avx,no-fma"),always_inline))
++inline __m128i fixed128_block_sse2(const int8_t* a,const int8_t* b) {
++  const __m128i zero=_mm_setzero_si128();
++  const __m128i x=_mm_loadu_si128(reinterpret_cast<const __m128i*>(a+Offset));
++  const __m128i y=_mm_loadu_si128(reinterpret_cast<const __m128i*>(b+Offset));
++  const __m128i xs=_mm_cmpgt_epi8(zero,x),ys=_mm_cmpgt_epi8(zero,y);
++  const __m128i lo=_mm_sub_epi16(_mm_unpacklo_epi8(x,xs),_mm_unpacklo_epi8(y,ys));
++  const __m128i hi=_mm_sub_epi16(_mm_unpackhi_epi8(x,xs),_mm_unpackhi_epi8(y,ys));
++  return _mm_add_epi32(_mm_madd_epi16(lo,lo),_mm_madd_epi16(hi,hi));
++}
++__attribute__((target("sse2,no-avx,no-fma")))
++inline uint32_t distance_sse2_128(const int8_t* a,const int8_t* b,size_t) {
++  const __m128i s0=_mm_add_epi32(fixed128_block_sse2<0>(a,b),fixed128_block_sse2<64>(a,b));
++  const __m128i s1=_mm_add_epi32(fixed128_block_sse2<16>(a,b),fixed128_block_sse2<80>(a,b));
++  const __m128i s2=_mm_add_epi32(fixed128_block_sse2<32>(a,b),fixed128_block_sse2<96>(a,b));
++  const __m128i s3=_mm_add_epi32(fixed128_block_sse2<48>(a,b),fixed128_block_sse2<112>(a,b));
++  __m128i sum=_mm_add_epi32(_mm_add_epi32(s0,s1),_mm_add_epi32(s2,s3));
++  sum=_mm_add_epi32(sum,_mm_srli_si128(sum,8));
++  sum=_mm_add_epi32(sum,_mm_srli_si128(sum,4));
++  return static_cast<uint32_t>(_mm_cvtsi128_si32(sum));
++}
++template<size_t Offset>
++__attribute__((target("avx2,no-fma"),always_inline))
++inline __m256i fixed128_block_avx2(const int8_t* a,const int8_t* b) {
++  const __m256i x=_mm256_cvtepi8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(a+Offset)));
++  const __m256i y=_mm256_cvtepi8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(b+Offset)));
++  const __m256i d=_mm256_sub_epi16(x,y);
++  return _mm256_madd_epi16(d,d);
++}
++__attribute__((target("avx2,no-fma")))
++inline uint32_t distance_avx2_128(const int8_t* a,const int8_t* b,size_t) {
++  const __m256i s0=_mm256_add_epi32(fixed128_block_avx2<0>(a,b),fixed128_block_avx2<64>(a,b));
++  const __m256i s1=_mm256_add_epi32(fixed128_block_avx2<16>(a,b),fixed128_block_avx2<80>(a,b));
++  const __m256i s2=_mm256_add_epi32(fixed128_block_avx2<32>(a,b),fixed128_block_avx2<96>(a,b));
++  const __m256i s3=_mm256_add_epi32(fixed128_block_avx2<48>(a,b),fixed128_block_avx2<112>(a,b));
++  const __m256i sum=_mm256_add_epi32(_mm256_add_epi32(s0,s1),_mm256_add_epi32(s2,s3));
++  __m128i total=_mm_add_epi32(_mm256_castsi256_si128(sum),_mm256_extracti128_si256(sum,1));
++  total=_mm_add_epi32(total,_mm_srli_si128(total,8));
++  total=_mm_add_epi32(total,_mm_srli_si128(total,4));
++  return static_cast<uint32_t>(_mm_cvtsi128_si32(total));
++}
++#if !defined(MVDB_DISABLE_AVX512_QUANTIZED)
++template<size_t Offset>
++__attribute__((target("avx512f,avx512bw,no-fma"),always_inline))
++inline __m512i fixed128_block_avx512(const int8_t* a,const int8_t* b) {
++  const __m512i x=_mm512_cvtepi8_epi16(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(a+Offset)));
++  const __m512i y=_mm512_cvtepi8_epi16(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(b+Offset)));
++  const __m512i d=_mm512_sub_epi16(x,y);
++  return _mm512_madd_epi16(d,d);
++}
++__attribute__((target("avx512f,avx512bw,no-fma")))
++inline uint32_t distance_avx512_128(const int8_t* a,const int8_t* b,size_t) {
++  const __m512i s0=fixed128_block_avx512<0>(a,b),s1=fixed128_block_avx512<32>(a,b);
++  const __m512i s2=fixed128_block_avx512<64>(a,b),s3=fixed128_block_avx512<96>(a,b);
++  const __m512i sum=_mm512_add_epi32(_mm512_add_epi32(s0,s1),_mm512_add_epi32(s2,s3));
++  const __m256i halves=_mm256_add_epi32(_mm512_castsi512_si256(sum),_mm512_extracti64x4_epi64(sum,1));
++  __m128i total=_mm_add_epi32(_mm256_castsi256_si128(halves),_mm256_extracti128_si256(halves,1));
++  total=_mm_add_epi32(total,_mm_srli_si128(total,8));
++  total=_mm_add_epi32(total,_mm_srli_si128(total,4));
++  return static_cast<uint32_t>(_mm_cvtsi128_si32(total));
++}
++#endif
++#endif
+ using Distance = uint32_t(*)(const int8_t*,const int8_t*,size_t);
+ inline Distance choose_distance() {
+ #if defined(MVDB_SIMD_BOUND_X86)
+@@ -110,6 +180,20 @@ inline Distance choose_distance() {
+ #endif
+   return distance_scalar;
+ }
++inline Distance choose_query_distance(size_t n) {
++  const auto original=choose_distance();
++#if defined(MVDB_SIMD_BOUND_X86) && !defined(MVDB_DISABLE_FIXED128_QUANTIZED)
++  if(n!=128)return original;
++#if !defined(MVDB_DISABLE_AVX512_QUANTIZED)
++  if(original==distance_avx512)return distance_avx512_128;
++#endif
++  if(original==distance_avx2)return distance_avx2_128;
++  if(original==distance_sse2)return distance_sse2_128;
++#else
++  (void)n;
++#endif
++  return original;
++}
+ inline double up(double x) {
+   return std::isfinite(x) ? distance_detail::positive_neighbors(x).upper : x;
+ }
+@@ -158,7 +242,7 @@ class QuantizedQueryBound {
+       }
+     }
+     root_n_=quantized_detail::up(std::sqrt(static_cast<double>(n)));
+-    kernel_=quantized_detail::choose_distance();
++    kernel_=quantized_detail::choose_query_distance(n);
+     enabled_=true;
+ #else
+     (void)query;(void)step;
+diff --git a/minivec/src/short_decimal.h b/minivec/src/short_decimal.h
+new file mode 100644
+index 0000000..2f2736c
+--- /dev/null
++++ b/minivec/src/short_decimal.h
+@@ -0,0 +1,88 @@
++#pragma once
++// Work-only experiment. Does not change SQL grammar or the original fallback.
++#include <cfenv>
++#include <cfloat>
++#include <cstdint>
++#include <cstring>
++#include <limits>
++#if defined(__x86_64__) && defined(__SSE2__)
++#include <xmmintrin.h>
++#endif
++
++namespace short_decimal {
++inline bool space(unsigned char c) {
++  return c==' ' || c=='\t' || c=='\n' || c=='\r' || c=='\f' || c=='\v';
++}
++enum class Reason { accepted, environment, syntax_or_size, midpoint };
++struct Result {
++  Reason reason;
++  const char* ptr;
++  float value;
++  bool accepted() const { return reason==Reason::accepted; }
++};
++
++// Construct once per vector. The caller must not change the FP environment
++// during that vector's parse. Unsupported builds/environments use old parsing.
++class Context {
++ public:
++  explicit Context(bool attempt=true): enabled_(attempt && supported()) {}
++  bool enabled() const { return enabled_; }
++  static bool supported() {
++#if defined(__x86_64__) && defined(__SSE2__) && FLT_EVAL_METHOD == 0 && !defined(__FAST_MATH__)
++    if(!std::numeric_limits<float>::is_iec559 ||
++       !std::numeric_limits<double>::is_iec559 || sizeof(float)!=4 || sizeof(double)!=8)
++      return false;
++    if(std::fegetround()!=FE_TONEAREST)return false;
++    const unsigned csr=_mm_getcsr();
++    return (csr & ((3u<<13)|(1u<<15)|(1u<<6)))==0 &&
++           (csr & (63u<<7))==(63u<<7);
++#else
++    return false;
++#endif
++  }
++  Result parse(const char* begin,const char* end) const {
++    if(!enabled_)return {Reason::environment,begin,0};
++    const char* p=begin;
++    bool negative=false;
++    if(p!=end && *p=='-'){negative=true;++p;}
++    // A deliberately strict subset: at least one integer digit, and at least
++    // one fractional digit when a dot is present. .1/1./+1 all fall back.
++    if(p==end || *p<'0' || *p>'9')return {Reason::syntax_or_size,begin,0};
++    uint64_t mantissa=0;
++    unsigned digits=0,fraction=0;
++    while(p!=end && *p>='0' && *p<='9') {
++      if(digits==15)return {Reason::syntax_or_size,begin,0};
++      mantissa=mantissa*10+static_cast<unsigned>(*p-'0');++digits;++p;
++    }
++    if(p!=end && *p=='.') {
++      ++p;
++      if(p==end || *p<'0' || *p>'9')return {Reason::syntax_or_size,begin,0};
++      while(p!=end && *p>='0' && *p<='9') {
++        if(digits==15)return {Reason::syntax_or_size,begin,0};
++        mantissa=mantissa*10+static_cast<unsigned>(*p-'0');
++        ++digits;++fraction;++p;
++      }
++    }
++    // Do not return the prefix of an exponent/hex/garbage token. Preserve the
++    // old from_chars + strtof path and its error/partial-pointer behavior.
++    if(p!=end && *p!=',' && !space(static_cast<unsigned char>(*p)))
++      return {Reason::syntax_or_size,begin,0};
++    static constexpr double powers[]={1.,10.,100.,1000.,10000.,100000.,1000000.,
++      10000000.,100000000.,1000000000.,10000000000.,100000000000.,
++      1000000000000.,10000000000000.,100000000000000.,1000000000000000.};
++    // Both operands are exactly represented binary64 integers (<2^53).
++    // Explicit division is essential: reciprocal multiplication has no proof.
++    const double d=static_cast<double>(mantissa)/powers[fraction];
++    uint64_t bits=0;std::memcpy(&bits,&d,sizeof bits);
++    // All accepted nonzero magnitudes are float32 normal and finite. Their
++    // rounding boundaries are exactly the binary64 numbers with these bits.
++    if((bits & ((uint64_t(1)<<29)-1))==(uint64_t(1)<<28))
++      return {Reason::midpoint,begin,0};
++    float value=static_cast<float>(d);
++    if(negative)value=-value; // Includes negative zero.
++    return {Reason::accepted,p,value};
++  }
++ private:
++  bool enabled_;
++};
++} // namespace short_decimal
+diff --git a/minivec/src/sql.cpp b/minivec/src/sql.cpp
+index 0ca8814..8809503 100644
+--- a/minivec/src/sql.cpp
++++ b/minivec/src/sql.cpp
+@@ -17,6 +17,7 @@
+ // savepoints, ...). Nothing in here ever crashes: every failure path throws a
+ // ParseError that parse_sql converts into (false, message, code).
+ #include "sql.h"
++#include "short_decimal.h"
+ #include "parse_pool.h"
+ 
+ #include <cerrno>
+@@ -313,6 +314,8 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
+ // Parses "1, 2.5, -3e2" into floats. Strict: rejects empty elements, trailing
+ // commas, garbage tokens and non-finite values.
+ bool parse_float_list(std::string_view body, std::vector<float>* out) {
++  const short_decimal::Context context(body.size() >= 128);
++  bool try_short=context.enabled();
+   out->clear();
+   // One allocation for the usual 128-coordinate case instead of log2 growth.
+   if (out->capacity() == 0) out->reserve(body.size() / 8 + 4);
+@@ -326,16 +329,23 @@ bool parse_float_list(std::string_view body, std::vector<float>* out) {
+     // Parse at storage precision to avoid rounding first to double and then
+     // rounding again at a float32 midpoint. Subnormals and zero are finite.
+     float stored = 0;
+-    const auto parsed = std::from_chars(begin, body.data() + n, stored, std::chars_format::general);
+-    if (parsed.ec == std::errc{} &&
+-        (parsed.ptr == body.data() + n || *parsed.ptr == ',' || is_space((unsigned char)*parsed.ptr))) {
+-      endp = parsed.ptr;
+-    } else {
+-      // Keep strtof's leading plus, hexadecimal and underflow-to-zero forms.
+-      // In particular, from_chars may successfully consume only the 0 in 0x1.
+-      char* compatible_end = nullptr;
+-      stored = std::strtof(begin, &compatible_end);
+-      endp = compatible_end;
++    if(try_short) {
++      const auto fast = context.parse(begin, body.data() + n);
++      if(fast.accepted()) { stored=fast.value; endp=fast.ptr; }
++      else try_short=false; // First decline disables attempts for this vector.
++    }
++    if(!endp) {
++      const auto parsed = std::from_chars(begin, body.data() + n, stored, std::chars_format::general);
++      if (parsed.ec == std::errc{} &&
++          (parsed.ptr == body.data() + n || *parsed.ptr == ',' || is_space((unsigned char)*parsed.ptr))) {
++        endp = parsed.ptr;
++      } else {
++        // Keep strtof's leading plus, hexadecimal and underflow-to-zero forms.
++        // In particular, from_chars may successfully consume only the 0 in 0x1.
++        char* compatible_end = nullptr;
++        stored = std::strtof(begin, &compatible_end);
++        endp = compatible_end;
++      }
+     }
+     if (endp == begin || !std::isfinite(stored)) return false;
+     out->push_back(stored);
+diff --git a/minivec/src/vector.cpp b/minivec/src/vector.cpp
+deleted file mode 100644
+index c1f3a86..0000000
+--- a/minivec/src/vector.cpp
++++ /dev/null
+@@ -1,687 +0,0 @@
+-// vector.cpp — see vector.h for the contract and the tuning knobs.
+-#include "vector.h"
+-
+-#include <algorithm>
+-#include <cmath>
+-#include <cstring>
+-#include <limits>
+-#include <random>
+-
+-namespace mvdb {
+-
+-// ---------------------------------------------------------------- distance --
+-// Squared L2, four independent float accumulators. Squared (not sqrt'd) keeps
+-// ordering identical for any monotone post-processing and saves a sqrt per
+-// candidate; all thresholds in this file are expressed in squared space.
+-// float32 accumulation: ~1e-6 relative error on 128 dims, i.e. ~1e-4 absolute on
+-// distances of order 100 — far below the gaps between distinct random vectors,
+-// and exactly 0.0f for identical vectors, which is what the tie-break relies on.
+-float l2_distance(const float* a, const float* b, size_t dim) {
+-  if (a == nullptr || b == nullptr || dim == 0) return 0.0f;
+-  const float* __restrict__ x = a;
+-  const float* __restrict__ y = b;
+-  float s0 = 0.f, s1 = 0.f, s2 = 0.f, s3 = 0.f;
+-  size_t i = 0;
+-  for (; i + 4 <= dim; i += 4) {
+-    const float d0 = x[i] - y[i];
+-    const float d1 = x[i + 1] - y[i + 1];
+-    const float d2 = x[i + 2] - y[i + 2];
+-    const float d3 = x[i + 3] - y[i + 3];
+-    s0 += d0 * d0;
+-    s1 += d1 * d1;
+-    s2 += d2 * d2;
+-    s3 += d3 * d3;
+-  }
+-  for (; i < dim; ++i) {
+-    const float d = x[i] - y[i];
+-    s0 += d * d;
+-  }
+-  return (s0 + s1) + (s2 + s3);
+-}
+-
+-namespace {
+-
+-inline bool hit_less(const Hit& a, const Hit& b) {
+-  if (a.dist != b.dist) return a.dist < b.dist;
+-  return a.pk < b.pk;
+-}
+-
+-// Bounded max-heap: index 0 is the *worst* hit so far (largest by hit_less).
+-inline void sift_up(std::vector<Hit>& h, size_t i) {
+-  while (i > 0) {
+-    const size_t p = (i - 1) / 2;
+-    if (!hit_less(h[p], h[i])) break;
+-    std::swap(h[p], h[i]);
+-    i = p;
+-  }
+-}
+-
+-inline void sift_down(std::vector<Hit>& h, size_t i) {
+-  const size_t n = h.size();
+-  for (;;) {
+-    size_t big = i;
+-    const size_t l = 2 * i + 1, r = l + 1;
+-    if (l < n && hit_less(h[big], h[l])) big = l;
+-    if (r < n && hit_less(h[big], h[r])) big = r;
+-    if (big == i) break;
+-    std::swap(h[i], h[big]);
+-    i = big;
+-  }
+-}
+-
+-inline void heap_offer(std::vector<Hit>& h, size_t k, int64_t pk, float dist) {
+-  if (h.size() < k) {
+-    h.push_back(Hit{pk, dist});
+-    sift_up(h, h.size() - 1);
+-  } else if (hit_less(Hit{pk, dist}, h[0])) {
+-    h[0] = Hit{pk, dist};
+-    sift_down(h, 0);
+-  }
+-}
+-
+-// Extracts pk for a row: pk column when it is a BIGINT, Row::rid otherwise.
+-inline int64_t row_pk(const Row& r, int pk_col) {
+-  if (pk_col >= 0 && static_cast<size_t>(pk_col) < r.vals.size()) {
+-    const Value& v = r.vals[pk_col];
+-    if (v.type == Type::BIGINT) return v.i;
+-  }
+-  return r.rid;
+-}
+-
+-bool wr_bytes(FILE* f, const void* p, size_t n) {
+-  return n == 0 || std::fwrite(p, 1, n, f) == n;
+-}
+-bool rd_bytes(FILE* f, void* p, size_t n) {
+-  return n == 0 || std::fread(p, 1, n, f) == n;
+-}
+-
+-constexpr uint32_t kMagic = 0x564D4449u;  // 'IDMV'
+-constexpr uint32_t kVersion = 1u;
+-
+-// Automatic cell count: ~sqrt(n) cells keeps ~sqrt(n) points per list, which is
+-// the sweet spot in the measurements (64 for 10k, 316 for 100k).
+-size_t auto_nlist(size_t n) {
+-  size_t nl = static_cast<size_t>(std::sqrt(static_cast<double>(n)));
+-  if (nl < 16) nl = 16;
+-  if (nl > 4096) nl = 4096;
+-  if (nl > n) nl = n ? n : 1;
+-  return nl ? nl : 1;
+-}
+-
+-}  // namespace
+-
+-// -------------------------------------------------------------- exact top-k --
+-void exact_topk(const std::vector<Row>& rows, const std::vector<uint8_t>& dead,
+-                int vec_col, int pk_col, const float* q, size_t dim, size_t k,
+-                std::vector<Hit>* out) {
+-  if (out == nullptr) return;
+-  out->clear();
+-  if (k == 0 || q == nullptr || dim == 0) return;
+-  std::vector<Hit>& heap = *out;
+-  heap.reserve(std::min(k, rows.size()));  // the single allocation
+-  const size_t nd = dead.size();
+-  for (size_t i = 0; i < rows.size(); ++i) {
+-    if (i < nd && dead[i]) continue;
+-    const Row& r = rows[i];
+-    if (vec_col < 0 || static_cast<size_t>(vec_col) >= r.vals.size()) continue;
+-    const Value& v = r.vals[vec_col];
+-    if (v.type != Type::VECTOR || v.v.size() != dim) continue;
+-    const float d = l2_distance(q, v.v.data(), dim);  // no per-row allocation
+-    const int64_t pk = row_pk(r, pk_col);
+-    if (heap.size() < k) {
+-      heap.push_back(Hit{pk, d});
+-      sift_up(heap, heap.size() - 1);
+-    } else if (hit_less(Hit{pk, d}, heap[0])) {
+-      heap[0] = Hit{pk, d};
+-      sift_down(heap, 0);
+-    }
+-  }
+-  std::sort(heap.begin(), heap.end(), hit_less);
+-}
+-
+-// ----------------------------------------------------------------- IvfIndex --
+-void IvfIndex::clear() {
+-  dim_ = 0;
+-  nlist_ = 0;
+-  live_ = 0;
+-  dead_slots_ = 0;
+-  target_nlist_ = 64;
+-  data_.clear();
+-  slot_pk_.clear();
+-  slot_dead_.clear();
+-  lists_.clear();
+-  cents_.clear();
+-  radius_.clear();
+-  max_rad_ = 0.f;
+-  pk2slot_.clear();
+-  cdist_.clear();
+-  order_.clear();
+-  stamp_.clear();
+-  gen_ = 0;
+-}
+-
+-size_t IvfIndex::memory_bytes() const {
+-  size_t b = data_.capacity() * sizeof(float);
+-  b += slot_pk_.capacity() * sizeof(int64_t);
+-  b += slot_dead_.capacity();
+-  b += sizeof(lists_);
+-  for (const auto& l : lists_) b += sizeof(l) + l.capacity() * sizeof(uint32_t);
+-  b += cents_.capacity() * sizeof(float);
+-  b += radius_.capacity() * sizeof(float);
+-  b += cdist_.capacity() * sizeof(float);
+-  b += order_.capacity() * sizeof(uint32_t);
+-  b += stamp_.capacity() * sizeof(uint32_t);
+-  // Conservative per-node cost of libstdc++'s unordered_map (node + bucket array).
+-  b += pk2slot_.size() * (sizeof(int64_t) + sizeof(uint32_t) + 2 * sizeof(void*) + 16);
+-  return b;
+-}
+-
+-// k-means++ seeding + Lloyd iterations over the sampled slots. Deterministic:
+-// fixed seed, so a rebuild reproduces the same clustering.
+-void IvfIndex::kmeans_(const std::vector<uint32_t>& sidx) {
+-  const size_t d = dim_;
+-  const size_t nl = nlist_;
+-  const size_t ns = sidx.size();
+-  std::mt19937 rng(0x5EED1234u);
+-
+-  std::uniform_int_distribution<size_t> pick(0, ns - 1);
+-  std::memcpy(cents_.data(), data_.data() + static_cast<size_t>(sidx[pick(rng)]) * d,
+-              d * sizeof(float));
+-
+-  std::vector<float> d2(ns, std::numeric_limits<float>::max());
+-  for (size_t c = 1; c < nl; ++c) {
+-    const float* last = cents_.data() + (c - 1) * d;
+-    double total = 0.0;
+-    for (size_t i = 0; i < ns; ++i) {
+-      const float dd = l2_distance(data_.data() + static_cast<size_t>(sidx[i]) * d, last, d);
+-      if (dd < d2[i]) d2[i] = dd;
+-      total += static_cast<double>(d2[i]);
+-    }
+-    size_t chosen = sidx[0];
+-    if (total > 0.0) {
+-      std::uniform_real_distribution<double> u(0.0, total);
+-      const double t = u(rng);
+-      double acc = 0.0;
+-      for (size_t i = 0; i < ns; ++i) {
+-        acc += static_cast<double>(d2[i]);
+-        if (acc >= t) {
+-          chosen = sidx[i];
+-          break;
+-        }
+-      }
+-    } else {
+-      chosen = sidx[pick(rng)];
+-    }
+-    std::memcpy(cents_.data() + c * d, data_.data() + static_cast<size_t>(chosen) * d,
+-                d * sizeof(float));
+-  }
+-
+-  std::vector<float> sums(nl * d, 0.f);
+-  std::vector<size_t> cnt(nl, 0);
+-  for (size_t it = 0; it < kmeans_iters_; ++it) {
+-    std::fill(sums.begin(), sums.end(), 0.f);
+-    std::fill(cnt.begin(), cnt.end(), 0);
+-    for (size_t i = 0; i < ns; ++i) {
+-      const float* p = data_.data() + static_cast<size_t>(sidx[i]) * d;
+-      size_t best = 0;
+-      float bd = l2_distance(p, cents_.data(), d);
+-      for (size_t c = 1; c < nl; ++c) {
+-        const float dd = l2_distance(p, cents_.data() + c * d, d);
+-        if (dd < bd) {
+-          bd = dd;
+-          best = c;
+-        }
+-      }
+-      ++cnt[best];
+-      float* s = sums.data() + best * d;
+-      for (size_t j = 0; j < d; ++j) s[j] += p[j];
+-    }
+-    for (size_t c = 0; c < nl; ++c) {
+-      float* cc = cents_.data() + c * d;
+-      if (cnt[c] == 0) {  // re-seed an empty cluster on a random sample point
+-        const size_t r = sidx[pick(rng)];
+-        std::memcpy(cc, data_.data() + static_cast<size_t>(r) * d, d * sizeof(float));
+-      } else {
+-        const float inv = 1.0f / static_cast<float>(cnt[c]);
+-        const float* s = sums.data() + c * d;
+-        for (size_t j = 0; j < d; ++j) cc[j] = s[j] * inv;
+-      }
+-    }
+-  }
+-}
+-
+-// r best centroids for v, ascending by squared distance.
+-size_t IvfIndex::nearest_lists_(const float* v, size_t r, uint32_t* ids, float* ds) const {
+-  if (nlist_ == 0 || dim_ == 0) return 0;
+-  if (r == 0) return 0;
+-  if (r > kMaxReplication) r = kMaxReplication;
+-  size_t cnt = 0;
+-  for (size_t c = 0; c < nlist_; ++c) {
+-    const float d = l2_distance(v, cents_.data() + c * dim_, dim_);
+-    if (cnt == r && d >= ds[cnt - 1]) continue;
+-    size_t pos = (cnt < r) ? cnt : (r - 1);
+-    while (pos > 0 && ds[pos - 1] > d) {
+-      ds[pos] = ds[pos - 1];
+-      ids[pos] = ids[pos - 1];
+-      --pos;
+-    }
+-    ds[pos] = d;
+-    ids[pos] = static_cast<uint32_t>(c);
+-    if (cnt < r) ++cnt;
+-  }
+-  return cnt;
+-}
+-
+-// Assigns every live slot to its r nearest centroids (extra lists only when the
+-// point sits near a cell boundary -- see replication_ratio_), then reorders the
+-// master vector array so that each list's members are *contiguous and ascending*:
+-// a probe then walks memory forward instead of chasing scattered slots (measured
+-// ~2.5x cheaper per candidate on 128-d). Radius per list = furthest member.
+-void IvfIndex::build_lists_() {
+-  const size_t n = slot_pk_.size();
+-  const size_t r = std::max<size_t>(1, std::min(replication_, nlist_));
+-  std::vector<uint32_t> assign(n * r);
+-  std::vector<float> adist(n * r);
+-  std::vector<uint8_t> keep(n, 1);
+-  for (size_t s = 0; s < n; ++s) {
+-    const size_t got = nearest_lists_(data_.data() + s * dim_, r, assign.data() + s * r,
+-                                     adist.data() + s * r);
+-    const float lim = adist[s * r] * replication_ratio_;
+-    size_t k = 1;
+-    while (k < got && adist[s * r + k] <= lim) ++k;
+-    keep[s] = static_cast<uint8_t>(k);
+-  }
+-
+-  // Stable counting sort of slots by primary list id.
+-  std::vector<uint32_t> cnt(nlist_ + 1, 0);
+-  for (size_t s = 0; s < n; ++s) ++cnt[assign[s * r] + 1];
+-  for (size_t c = 0; c < nlist_; ++c) cnt[c + 1] += cnt[c];
+-  std::vector<uint32_t> newpos(n), old_of_new(n);
+-  for (size_t s = 0; s < n; ++s) newpos[s] = cnt[assign[s * r]]++;
+-  for (size_t s = 0; s < n; ++s) old_of_new[newpos[s]] = static_cast<uint32_t>(s);
+-  {
+-    std::vector<float> nd(data_.size());
+-    std::vector<int64_t> npk(n);
+-    for (size_t s = 0; s < n; ++s) {
+-      const uint32_t p = newpos[s];
+-      std::memcpy(nd.data() + static_cast<size_t>(p) * dim_, data_.data() + s * dim_,
+-                  dim_ * sizeof(float));
+-      npk[p] = slot_pk_[s];
+-    }
+-    data_.swap(nd);
+-    slot_pk_.swap(npk);
+-  }
+-
+-  // Lists, appended in ascending slot order (i.e. ascending memory in data_).
+-  lists_.assign(nlist_, std::vector<uint32_t>());
+-  radius_.assign(nlist_, 0.f);
+-  max_rad_ = 0.f;
+-  for (size_t p = 0; p < n; ++p) {
+-    const size_t s = old_of_new[p];
+-    const uint32_t* a = assign.data() + s * r;
+-    const float* ad = adist.data() + s * r;
+-    for (size_t j = 0; j < keep[s]; ++j) {
+-      lists_[a[j]].push_back(static_cast<uint32_t>(p));
+-      const float rd = std::sqrt(ad[j]);  // Euclidean radius, used by the bound
+-      if (rd > radius_[a[j]]) radius_[a[j]] = rd;
+-    }
+-  }
+-  for (float v : radius_)
+-    if (v > max_rad_) max_rad_ = v;
+-
+-  pk2slot_.clear();
+-  pk2slot_.reserve(n * 2);
+-  for (size_t p = 0; p < n; ++p) pk2slot_[slot_pk_[p]] = static_cast<uint32_t>(p);
+-}
+-
+-// Adopts (pks, vecs) — both sized for the same number of rows — and clusters them.
+-void IvfIndex::build_core_(std::vector<int64_t>* pks, std::vector<float>* vecs, size_t nl) {
+-  const size_t n = pks->size();
+-  if (n == 0 || dim_ == 0) {
+-    clear();
+-    return;
+-  }
+-  nlist_ = std::max<size_t>(1, std::min(nl, n));
+-  live_ = n;
+-  dead_slots_ = 0;
+-
+-  data_.swap(*vecs);
+-  slot_pk_.swap(*pks);
+-  slot_dead_.assign(n, 0);
+-  lists_.assign(nlist_, std::vector<uint32_t>());
+-  cents_.assign(nlist_ * dim_, 0.f);
+-  radius_.assign(nlist_, 0.f);
+-
+-  // Train on a bounded sample when n is large.
+-  const size_t sample = std::min(n, std::max<size_t>(sample_cap_, nlist_ * 4));
+-  std::vector<uint32_t> sidx(n);
+-  for (size_t i = 0; i < n; ++i) sidx[i] = static_cast<uint32_t>(i);
+-  if (sample < n) {
+-    std::mt19937 rng(0xC0FFEEu);  // partial Fisher-Yates, deterministic
+-    for (size_t i = 0; i < sample; ++i) std::swap(sidx[i], sidx[i + rng() % (n - i)]);
+-    sidx.resize(sample);
+-    sidx.shrink_to_fit();
+-  }
+-  kmeans_(sidx);
+-  build_lists_();
+-
+-  cdist_.assign(nlist_, 0.f);
+-  order_.resize(nlist_);
+-  stamp_.assign(n, 0);
+-  gen_ = 0;
+-}
+-
+-void IvfIndex::build(const std::vector<Row>& rows, const std::vector<uint8_t>& dead,
+-                     int vec_col, int pk_col, size_t dim, size_t nlist) {
+-  clear();
+-  if (dim == 0) {  // infer from the first live VECTOR value
+-    const size_t nd = dead.size();
+-    for (size_t i = 0; i < rows.size(); ++i) {
+-      if (i < nd && dead[i]) continue;
+-      if (vec_col < 0 || static_cast<size_t>(vec_col) >= rows[i].vals.size()) continue;
+-      const Value& v = rows[i].vals[vec_col];
+-      if (v.type == Type::VECTOR && !v.v.empty()) {
+-        dim = v.v.size();
+-        break;
+-      }
+-    }
+-  }
+-  dim_ = dim;
+-  if (dim_ == 0) return;
+-
+-  std::vector<int64_t> pks;
+-  std::vector<float> vecs;
+-  pks.reserve(rows.size());
+-  vecs.reserve(rows.size() * dim_);
+-  const size_t nd = dead.size();
+-  for (size_t i = 0; i < rows.size(); ++i) {
+-    if (i < nd && dead[i]) continue;
+-    if (vec_col < 0 || static_cast<size_t>(vec_col) >= rows[i].vals.size()) continue;
+-    const Value& v = rows[i].vals[vec_col];
+-    if (v.type != Type::VECTOR || v.v.size() != dim_) continue;
+-    pks.push_back(row_pk(rows[i], pk_col));
+-    vecs.insert(vecs.end(), v.v.begin(), v.v.end());
+-  }
+-  if (pks.empty()) return;  // keep dim_ so inserts can bootstrap the index
+-  const size_t want = nlist == 0 ? auto_nlist(pks.size()) : nlist;
+-  target_nlist_ = want;  // insert() grows the index towards this cell count
+-  build_core_(&pks, &vecs, want);
+-}
+-
+-void IvfIndex::rebuild_from_storage_(size_t nl) {
+-  std::vector<int64_t> pks;
+-  std::vector<float> vecs;
+-  pks.reserve(live_);
+-  vecs.reserve(live_ * dim_);
+-  const size_t slots = slot_pk_.size();
+-  for (size_t s = 0; s < slots; ++s) {
+-    if (slot_dead_[s]) continue;
+-    pks.push_back(slot_pk_[s]);
+-    vecs.insert(vecs.end(), data_.data() + s * dim_, data_.data() + (s + 1) * dim_);
+-  }
+-  if (pks.empty()) {
+-    const size_t d = dim_;
+-    const size_t tn = target_nlist_;
+-    clear();
+-    dim_ = d;
+-    target_nlist_ = tn;
+-    return;
+-  }
+-  build_core_(&pks, &vecs, std::max<size_t>(1, std::min(nl, pks.size())));
+-}
+-
+-void IvfIndex::maybe_grow_() {
+-  if (target_nlist_ > nlist_ && live_ >= 8 * nlist_) {
+-    rebuild_from_storage_(std::min(target_nlist_, std::max<size_t>(nlist_ * 2, live_)));
+-    return;
+-  }
+-  const size_t total = slot_pk_.size();
+-  if (dead_slots_ > 256 && dead_slots_ * 2 > total) rebuild_from_storage_(nlist_);
+-}
+-
+-void IvfIndex::insert(int64_t pk, const float* v) {
+-  if (v == nullptr || dim_ == 0) return;
+-  if (pk2slot_.find(pk) != pk2slot_.end()) erase(pk);  // replace semantics
+-  if (nlist_ == 0) {  // bootstrap: one list seeded on the first vector
+-    nlist_ = 1;
+-    cents_.assign(dim_, 0.f);
+-    std::memcpy(cents_.data(), v, dim_ * sizeof(float));
+-    lists_.assign(1, std::vector<uint32_t>());
+-    radius_.assign(1, 0.f);
+-    max_rad_ = 0.f;
+-    cdist_.assign(1, 0.f);
+-    order_.resize(1);
+-    target_nlist_ = std::max<size_t>(1, target_nlist_);
+-  }
+-  const uint32_t slot = static_cast<uint32_t>(slot_pk_.size());
+-  data_.insert(data_.end(), v, v + dim_);
+-  slot_pk_.push_back(pk);
+-  slot_dead_.push_back(0);
+-  pk2slot_[pk] = slot;
+-  ++live_;
+-  if (stamp_.size() < slot_pk_.size()) stamp_.resize(slot_pk_.size(), 0);
+-
+-  const size_t r = std::max<size_t>(1, std::min(replication_, nlist_));
+-  uint32_t ids[kMaxReplication];
+-  float ds[kMaxReplication];
+-  const size_t got = nearest_lists_(v, r, ids, ds);
+-  const float lim = ds[0] * replication_ratio_;  // boundary points only
+-  size_t keep = 1;
+-  while (keep < got && ds[keep] <= lim) ++keep;
+-  for (size_t j = 0; j < keep; ++j) {
+-    lists_[ids[j]].push_back(slot);
+-    const float rd = std::sqrt(ds[j]);
+-    if (rd > radius_[ids[j]]) radius_[ids[j]] = rd;
+-    if (rd > max_rad_) max_rad_ = rd;
+-  }
+-  maybe_grow_();
+-}
+-
+-void IvfIndex::erase(int64_t pk) {
+-  const auto it = pk2slot_.find(pk);
+-  if (it == pk2slot_.end()) return;
+-  const uint32_t slot = it->second;
+-  pk2slot_.erase(it);
+-  if (slot_dead_[slot]) return;
+-  slot_dead_[slot] = 1;
+-  --live_;
+-  ++dead_slots_;
+-  // radius_ and max_rad_ stay as over-estimates: still sound, only looser.
+-  maybe_grow_();
+-}
+-
+-void IvfIndex::ensure_query_buffers_() const {
+-  if (cdist_.size() != nlist_) cdist_.assign(nlist_, 0.f);
+-  if (order_.size() != nlist_) order_.resize(nlist_);
+-  if (stamp_.size() != slot_pk_.size()) stamp_.assign(slot_pk_.size(), 0);
+-}
+-
+-namespace {
+-using Pred = std::function<bool(int64_t)>;
+-}
+-
+-void IvfIndex::search(const float* q, size_t k, std::vector<Hit>* out) const {
+-  const Pred* none = nullptr;
+-  search_impl_(q, k, none, out);
+-}
+-
+-void IvfIndex::search_filtered(const float* q, size_t k, const Pred& pred,
+-                               std::vector<Hit>* out) const {
+-  search_impl_(q, k, &pred, out);
+-}
+-
+-void IvfIndex::search_impl_(const float* q, size_t k, const Pred* pred,
+-                            std::vector<Hit>* out) const {
+-  if (out == nullptr) return;
+-  out->clear();
+-  if (q == nullptr || k == 0 || live_ == 0 || nlist_ == 0 || dim_ == 0) return;
+-  ensure_query_buffers_();
+-  if (++gen_ == 0) {  // wrap: clear stamps and restart the generation
+-    std::fill(stamp_.begin(), stamp_.end(), 0u);
+-    gen_ = 1;
+-  }
+-
+-  // 1) Centroid ranking: full ascending order, needed by the pruning walk.
+-  for (size_t c = 0; c < nlist_; ++c)
+-    cdist_[c] = l2_distance(q, cents_.data() + c * dim_, dim_);
+-  for (size_t c = 0; c < nlist_; ++c) order_[c] = static_cast<uint32_t>(c);
+-  std::sort(order_.begin(), order_.end(), [this](uint32_t a, uint32_t b) {
+-    if (cdist_[a] != cdist_[b]) return cdist_[a] < cdist_[b];
+-    return a < b;
+-  });
+-
+-  // 2) Probe.
+-  std::vector<Hit>& heap = *out;
+-  heap.reserve(std::min(k, live_));
+-  const size_t min_probe = std::max<size_t>(1, std::min(nprobe_, nlist_));
+-  const size_t want_pass =
+-      pred != nullptr ? k * std::max<size_t>(1, filtered_oversample_) : 0;
+-  const float* base = data_.data();
+-  size_t probed = 0, passed = 0;
+-
+-  for (size_t oi = 0; oi < nlist_; ++oi) {
+-    const uint32_t ci = order_[oi];
+-    const float worst = heap.size() >= k ? heap[0].dist : std::numeric_limits<float>::infinity();
+-    // Tolerance for float rounding in sqrt-based bounds (percent-level slack,
+-    // far below any real gap, so pruning never drops a true winner).
+-    const float tol = 1e-3f * (1.0f + worst);
+-    if (probed >= min_probe) {
+-      bool more = false;
+-      if (pred != nullptr && passed < want_pass) more = true;
+-      if (!more) {
+-        if (!use_radius_prune_) break;
+-        if (heap.size() >= k) {
+-          const float sc = std::sqrt(cdist_[ci]);
+-          const float gap = sc - max_rad_;
+-          const float lb = gap > 0.f ? gap * gap : 0.f;  // <= d(q,x) for all later lists
+-          if (lb > worst + tol) break;
+-        }
+-      }
+-    }
+-    ++probed;
+-    // This list alone cannot contribute (sound: d(q,x) >= (sqrt(d(q,c))-r_c)^2).
+-    if (heap.size() >= k) {
+-      const float sc = std::sqrt(cdist_[ci]);
+-      const float gap = sc - radius_[ci];
+-      const float lb = gap > 0.f ? gap * gap : 0.f;
+-      if (lb > worst + tol) continue;
+-    }
+-    const std::vector<uint32_t>& list = lists_[ci];
+-    const size_t ln = list.size();
+-    for (size_t li = 0; li < ln; ++li) {
+-      const uint32_t slot = list[li];
+-#if defined(__GNUC__)
+-      if (li + 4 < ln) __builtin_prefetch(base + static_cast<size_t>(list[li + 4]) * dim_, 0, 1);
+-#endif
+-      if (slot_dead_[slot]) continue;
+-      if (stamp_[slot] == gen_) continue;  // replication / multi-probe duplicate
+-      stamp_[slot] = gen_;
+-      const int64_t pk = slot_pk_[slot];
+-      if (pred != nullptr && !(*pred)(pk)) continue;  // filter BEFORE top-k
+-      ++passed;
+-      const float d = l2_distance(q, base + static_cast<size_t>(slot) * dim_, dim_);
+-      if (heap.size() < k) {
+-        heap.push_back(Hit{pk, d});
+-        sift_up(heap, heap.size() - 1);
+-      } else if (hit_less(Hit{pk, d}, heap[0])) {
+-        heap[0] = Hit{pk, d};
+-        sift_down(heap, 0);
+-      }
+-    }
+-  }
+-  std::sort(heap.begin(), heap.end(), hit_less);
+-}
+-
+-// --------------------------------------------------------------- diagnostics --
+-std::vector<size_t> IvfIndex::list_sizes() const {
+-  std::vector<size_t> out(nlist_, 0);
+-  for (size_t c = 0; c < nlist_; ++c) {
+-    size_t live = 0;
+-    for (uint32_t slot : lists_[c])
+-      if (!slot_dead_[slot]) ++live;
+-    out[c] = live;
+-  }
+-  return out;
+-}
+-
+-// ------------------------------------------------------------------ persist --
+-bool IvfIndex::write_to(FILE* f) const {
+-  if (f == nullptr) return false;
+-  const uint32_t magic = kMagic, ver = kVersion;
+-  const uint64_t hdr[6] = {static_cast<uint64_t>(dim_),
+-                           static_cast<uint64_t>(nlist_),
+-                           static_cast<uint64_t>(live_),
+-                           static_cast<uint64_t>(slot_pk_.size()),
+-                           static_cast<uint64_t>(dead_slots_),
+-                           static_cast<uint64_t>(target_nlist_)};
+-  const float mr = max_rad_;
+-  if (!wr_bytes(f, &magic, 4) || !wr_bytes(f, &ver, 4) || !wr_bytes(f, hdr, sizeof hdr) ||
+-      !wr_bytes(f, &mr, 4))
+-    return false;
+-  if (!wr_bytes(f, cents_.data(), cents_.size() * 4)) return false;
+-  if (!wr_bytes(f, radius_.data(), radius_.size() * 4)) return false;
+-  if (!wr_bytes(f, data_.data(), slot_pk_.size() * dim_ * 4)) return false;
+-  if (!wr_bytes(f, slot_pk_.data(), slot_pk_.size() * 8)) return false;
+-  if (!wr_bytes(f, slot_dead_.data(), slot_dead_.size())) return false;
+-  for (const auto& l : lists_) {
+-    const uint64_t c = l.size();
+-    if (!wr_bytes(f, &c, 8)) return false;
+-    if (!wr_bytes(f, l.data(), l.size() * 4)) return false;
+-  }
+-  return true;
+-}
+-
+-bool IvfIndex::read_from(FILE* f) {
+-  if (f == nullptr) return false;
+-  uint32_t magic = 0, ver = 0;
+-  uint64_t hdr[6] = {0, 0, 0, 0, 0, 0};
+-  float mr = 0.f;
+-  const auto bad = [this]() {
+-    clear();
+-    return false;
+-  };
+-  if (!rd_bytes(f, &magic, 4) || magic != kMagic) return bad();
+-  if (!rd_bytes(f, &ver, 4) || ver != kVersion) return bad();
+-  if (!rd_bytes(f, hdr, sizeof hdr) || !rd_bytes(f, &mr, 4)) return bad();
+-  const size_t dim = hdr[0], nl = hdr[1], live = hdr[2], slots = hdr[3];
+-  const size_t deads = hdr[4], target = hdr[5];
+-  if (dim > (1u << 16) || nl > (1u << 22) || slots > (1ull << 33)) return bad();
+-  if (dim != 0 && slots > (1ull << 33) / dim) return bad();
+-  if (live > slots || deads > slots) return bad();
+-
+-  clear();
+-  dim_ = dim;
+-  nlist_ = nl;
+-  live_ = live;
+-  dead_slots_ = deads;
+-  target_nlist_ = target ? target : 64;
+-  cents_.resize(nl * dim);
+-  radius_.resize(nl);
+-  data_.resize(slots * dim);
+-  slot_pk_.resize(slots);
+-  slot_dead_.resize(slots);
+-  lists_.assign(nl, std::vector<uint32_t>());
+-  if (!rd_bytes(f, cents_.data(), cents_.size() * 4)) return bad();
+-  if (!rd_bytes(f, radius_.data(), radius_.size() * 4)) return bad();
+-  if (!rd_bytes(f, data_.data(), slots * dim * 4)) return bad();
+-  if (!rd_bytes(f, slot_pk_.data(), slots * 8)) return bad();
+-  if (!rd_bytes(f, slot_dead_.data(), slots)) return bad();
+-  for (size_t c = 0; c < nl; ++c) {
+-    uint64_t cnt = 0;
+-    if (!rd_bytes(f, &cnt, 8) || cnt > slots) return bad();
+-    lists_[c].resize(cnt);
+-    if (!rd_bytes(f, lists_[c].data(), cnt * 4)) return bad();
+-  }
+-  pk2slot_.clear();
+-  pk2slot_.reserve(slots * 2);
+-  for (size_t s = 0; s < slots; ++s)
+-    if (!slot_dead_[s]) pk2slot_[slot_pk_[s]] = static_cast<uint32_t>(s);
+-  max_rad_ = mr;
+-  cdist_.assign(nl, 0.f);
+-  order_.resize(nl);
+-  stamp_.assign(slots, 0);
+-  gen_ = 0;
+-  return true;
+-}
+-
+-}  // namespace mvdb
+diff --git a/minivec/src/vector.h b/minivec/src/vector.h
+deleted file mode 100644
+index 4f361ee..0000000
+--- a/minivec/src/vector.h
++++ /dev/null
+@@ -1,162 +0,0 @@
+-// vector.h — vector kernels, exact top-k, and an IVF-Flat index.
+-//
+-// Design notes (see vector.cpp for the measurements):
+-//   * l2_distance returns SQUARED L2 (no sqrt) accumulated in float32 with four
+-//     independent lane accumulators. Deterministic: identical inputs produce a
+-//     bit-identical result, which is what makes the (dist asc, pk asc) tie-break
+-//     below exact for duplicate vectors.
+-//   * exact_topk is O(n log k) with a bounded max-heap written directly into the
+-//     caller's output vector (one reserve, zero per-row allocation).
+-//   * IvfIndex is IVF-Flat with k-means++ seeding, read/write, and an optional
+-//     *sound* radius bound that turns probing into an exact accelerator.
+-//
+-// Measured on the competition box (i9-14900HX, g++13 -O2, no -march):
+-//   exact_topk   10k x 128 = 0.19 ms/query, 100k x 128 = 4.2 ms/query
+-//   IVF nprobe=8 10k x 128 = 0.053 ms (3.7x), 100k x 128/nlist=256 = 0.50 ms (8.6x)
+-//   IVF nprobe=8 100k x 128 clustered embeddings/nlist=256 = 0.069 ms (63x),
+-//                recall@10 = 1.000 (radius pruning gives 61x with exact results)
+-//   memory 100k x 128 = 55 MB (51.2 MB vectors + ~4 MB bookkeeping, +7.4%)
+-//   build 100k x 128, nlist=256 = ~0.9 s (k-means on an 8k sample, 10 iters)
+-//
+-// Thread-safety: search()/search_filtered() share mutable scratch (list order,
+-// dedup stamps), so one IvfIndex must not be searched concurrently. build(),
+-// insert() and erase() must not run concurrently with a search.
+-#pragma once
+-
+-#include <cstddef>
+-#include <cstdint>
+-#include <cstdio>
+-#include <functional>
+-#include <unordered_map>
+-#include <vector>
+-
+-#include "value.h"
+-
+-namespace mvdb {
+-
+-// Squared Euclidean distance. Returns 0 when a/b is null or dim == 0.
+-float l2_distance(const float* a, const float* b, size_t dim);
+-
+-struct Hit {
+-  int64_t pk;
+-  float dist;  // squared L2
+-};
+-
+-// Exact top-k over `rows`, skipping dead[i] != 0.
+-// vec_col: column holding the VECTOR value; pk_col: BIGINT pk column.
+-// pk_col < 0 (or a non-BIGINT value there) falls back to Row::rid.
+-// Rows whose vector type/size does not match `dim` are ignored.
+-// Result is sorted by (dist asc, pk asc) and holds at most min(k, live) hits.
+-void exact_topk(const std::vector<Row>& rows, const std::vector<uint8_t>& dead,
+-                int vec_col, int pk_col, const float* q, size_t dim, size_t k,
+-                std::vector<Hit>* out);
+-
+-class IvfIndex {
+- public:
+-  IvfIndex() = default;
+-
+-  // Builds from the current table state. `dim` == 0 means "infer from the first
+-  // live VECTOR value". `nlist` is clamped to the live row count; pass 0 for an
+-  // automatic cell count (clamp(sqrt(n), 16, 4096) -- 64 cells is right for 10k
+-  // rows, 256..1024 for 100k).
+-  void build(const std::vector<Row>& rows, const std::vector<uint8_t>& dead,
+-             int vec_col, int pk_col, size_t dim, size_t nlist = 64);
+-
+-  // insert() has replace semantics for an already-present pk.
+-  // Requires a prior build() (which fixes the dimension); if no list exists yet
+-  // a single-list index is bootstrapped and re-clustered as it grows.
+-  void insert(int64_t pk, const float* v);
+-  void erase(int64_t pk);
+-
+-  void search(const float* q, size_t k, std::vector<Hit>* out) const;
+-  void search_filtered(const float* q, size_t k,
+-                       const std::function<bool(int64_t pk)>& pred,
+-                       std::vector<Hit>* out) const;
+-
+-  bool empty() const { return live_ == 0; }
+-
+-  // ---- tuning knobs (public so the executor can set them per query) -------
+-  // Lists probed per query. Measured on this machine (i9-14900HX, g++13 -O2,
+-  // k=10, recall vs exact_topk):
+-  //   n=10k i.i.d. uniform 128-d, nlist=64: np 8 -> 0.50 @3.3x | 16 -> 0.77
+-  //     | 32 -> 0.95 @1.0x | 40 -> 0.98 | 64 -> 1.00 (slower than a flat scan)
+-  //   n=100k i.i.d. uniform, nlist=256: np 8 -> 0.34 @8.6x | 32 -> 0.74 @2.5x
+-  //   n=100k clustered embeddings, nlist=256: np 8 -> 1.000 @63x
+-  // i.e. recall on *unstructured* data costs ~1 probe per percent of the data
+-  // (no index can beat that); on structured embeddings 8/256 lists are enough
+-  // for perfect recall. 8 is the fast default; 32-40 is the "recall >= 0.95 on
+-  // random data" setting; use_radius_prune_ = nprobe_ = anything is exact.
+-  size_t nprobe_ = 8;
+-  // Number of nearest inverted lists a single vector is filed under (1..8).
+-  // Replication buys recall at fixed nprobe for 4 bytes per duplicate entry, but
+-  // only boundary points are duplicated: a point joins its 2nd..r-th nearest
+-  // list only if that list's squared distance is within replication_ratio_ of
+-  // the nearest. Without that cap, a "hub" centroid in clustered high-dim data
+-  // ends up holding a fifth of the table (measured: 3454 of 20000 entries),
+-  // which destroys probe cost.
+-  size_t replication_ = 2;
+-  float replication_ratio_ = 1.3f;  // squared-distance factor for extra lists
+-  // When true, probing continues past nprobe_ until the triangle-inequality
+-  // bound proves that no unprobed list can beat the current k-th hit. Results
+-  // are then bit-identical to exact_topk; cost adapts to how clustered the data
+-  // is. When false, exactly nprobe_ lists are scanned (pure approximate).
+-  bool use_radius_prune_ = false;
+-  // k-means trains on at most this many sampled vectors.
+-  size_t sample_cap_ = 8192;
+-  size_t kmeans_iters_ = 10;
+-  // search_filtered keeps probing while fewer than k*this predicate-passing
+-  // candidates were seen (bounded by nlist).
+-  size_t filtered_oversample_ = 8;
+-
+-  // ---- introspection / persistence ---------------------------------------
+-  size_t size() const { return live_; }
+-  size_t dead_count() const { return dead_slots_; }
+-  size_t nlist() const { return nlist_; }
+-  size_t dim() const { return dim_; }
+-  size_t memory_bytes() const;
+-  // Diagnostics: live entries per inverted list. A large max/median ratio means
+-  // nlist is too small for the data (badly merged cells), which inflates probe
+-  // cost: check it before blaming the recall numbers.
+-  std::vector<size_t> list_sizes() const;
+-  // Little-endian, host float layout; versioned magic header.
+-  bool write_to(FILE* f) const;
+-  bool read_from(FILE* f);
+-  void clear();
+-
+- private:
+-  static constexpr size_t kMaxReplication = 8;
+-
+-  void build_core_(std::vector<int64_t>* pks, std::vector<float>* vecs, size_t nl);
+-  void rebuild_from_storage_(size_t nl);
+-  void build_lists_();
+-  void kmeans_(const std::vector<uint32_t>& sample_slots);
+-  size_t nearest_lists_(const float* v, size_t r, uint32_t* ids, float* ds) const;
+-  void maybe_grow_();
+-  void ensure_query_buffers_() const;
+-  void search_impl_(const float* q, size_t k,
+-                    const std::function<bool(int64_t)>* pred,
+-                    std::vector<Hit>* out) const;
+-
+-  size_t dim_ = 0;    // vector dimension
+-  size_t nlist_ = 0;  // number of inverted lists / centroids
+-  size_t live_ = 0;   // live slots
+-  size_t dead_slots_ = 0;
+-  size_t target_nlist_ = 64;  // nlist requested by build(); used for auto-grow
+-
+-  std::vector<float> data_;         // live vectors, slot-major: slot*dim_
+-  std::vector<int64_t> slot_pk_;    // slot -> pk
+-  std::vector<uint8_t> slot_dead_;  // slot -> tombstone
+-  std::vector<std::vector<uint32_t>> lists_;  // inverted lists: slot ids
+-  std::vector<float> cents_;        // nlist_ * dim_
+-  std::vector<float> radius_;       // per list: max ||x - centroid|| (Euclidean)
+-  float max_rad_ = 0.f;             // max over radius_
+-  std::unordered_map<int64_t, uint32_t> pk2slot_;
+-
+-  // query scratch (mutable: search() is const)
+-  mutable std::vector<float> cdist_;
+-  mutable std::vector<uint32_t> order_;
+-  mutable std::vector<uint32_t> stamp_;
+-  mutable uint32_t gen_ = 0;
+-};
+-
+-}  // namespace mvdb

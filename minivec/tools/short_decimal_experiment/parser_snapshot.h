@@ -51,13 +51,39 @@ inline bool baseline_parse(std::string_view body, std::vector<float>* out) {
 }
 template<bool Count=false>
 bool candidate_parse(std::string_view body, std::vector<float>* out, Counters* counts=nullptr) {
-  const short_decimal::Context context(body.size() >= 128);
-  bool try_short=context.enabled();
   out->clear();
   // One allocation for the usual 128-coordinate case instead of log2 growth.
   if (out->capacity() == 0) out->reserve(body.size() / 8 + 4);
   const size_t n = body.size();
   size_t i = 0;
+  const short_decimal::Context context(body.size() >= 128);
+  if(context.enabled()) {
+    while (i < n) {
+      while (i < n && is_space((unsigned char)body[i])) ++i;
+      if (i >= n) break;
+      const char* begin = body.data() + i;
+      const auto fast = context.parse(begin, body.data() + n);
+      if constexpr (Count) {
+        if(fast.reason==short_decimal::Reason::accepted)++counts->accepted;
+        else if(fast.reason==short_decimal::Reason::midpoint)++counts->midpoint;
+        else if(fast.reason==short_decimal::Reason::environment)++counts->environment;
+        else ++counts->syntax;
+      }
+      if(!fast.accepted())break; // i is unchanged at the first non-space byte.
+      const char* endp=fast.ptr;
+      const float stored=fast.value;
+      out->push_back(stored);
+      i += (size_t)(endp - begin);
+      while (i < n && is_space((unsigned char)body[i])) ++i;
+      if (i < n) {
+        if (body[i] != ',') return false;
+        ++i;
+        size_t probe = i;
+        while (probe < n && is_space((unsigned char)body[probe])) ++probe;
+        if (probe >= n) return false;  // trailing comma
+      }
+    }
+  }
   while (i < n) {
     while (i < n && is_space((unsigned char)body[i])) ++i;
     if (i >= n) break;
@@ -66,29 +92,16 @@ bool candidate_parse(std::string_view body, std::vector<float>* out, Counters* c
     // Parse at storage precision to avoid rounding first to double and then
     // rounding again at a float32 midpoint. Subnormals and zero are finite.
     float stored = 0;
-    if(try_short) {
-      const auto fast = context.parse(begin, body.data() + n);
-      if constexpr (Count) {
-        if(fast.reason==short_decimal::Reason::accepted)++counts->accepted;
-        else if(fast.reason==short_decimal::Reason::midpoint)++counts->midpoint;
-        else if(fast.reason==short_decimal::Reason::environment)++counts->environment;
-        else ++counts->syntax;
-      }
-      if(fast.accepted()) { stored=fast.value; endp=fast.ptr; }
-      else try_short=false; // First decline disables attempts for this vector.
-    } else if constexpr (Count) ++counts->bypassed;
-    if(!endp) {
-      const auto parsed = std::from_chars(begin, body.data() + n, stored, std::chars_format::general);
-      if (parsed.ec == std::errc{} &&
-          (parsed.ptr == body.data() + n || *parsed.ptr == ',' || is_space((unsigned char)*parsed.ptr))) {
-        endp = parsed.ptr;
-      } else {
-        // Keep strtof's leading plus, hexadecimal and underflow-to-zero forms.
-        // In particular, from_chars may successfully consume only the 0 in 0x1.
-        char* compatible_end = nullptr;
-        stored = std::strtof(begin, &compatible_end);
-        endp = compatible_end;
-      }
+    const auto parsed = std::from_chars(begin, body.data() + n, stored, std::chars_format::general);
+    if (parsed.ec == std::errc{} &&
+        (parsed.ptr == body.data() + n || *parsed.ptr == ',' || is_space((unsigned char)*parsed.ptr))) {
+      endp = parsed.ptr;
+    } else {
+      // Keep strtof's leading plus, hexadecimal and underflow-to-zero forms.
+      // In particular, from_chars may successfully consume only the 0 in 0x1.
+      char* compatible_end = nullptr;
+      stored = std::strtof(begin, &compatible_end);
+      endp = compatible_end;
     }
     if (endp == begin || !std::isfinite(stored)) return false;
     out->push_back(stored);

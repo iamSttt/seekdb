@@ -30,6 +30,7 @@ int main(int argc,char** argv)try {
   std::ifstream in(argv[1]);need(bool(in),"oracle open");
   std::string line;
   Counters counts;const short_decimal::Context token_context;
+  size_t high_uint64_accepted=0,high_uint64_guarded=0;
   while(std::getline(in,line)) {
     auto tab=line.find('\t');need(tab!=std::string::npos,"oracle record");
     const std::string s=line.substr(0,tab);
@@ -37,6 +38,16 @@ int main(int argc,char** argv)try {
     std::vector<float> value;
     const bool ok=candidate_parse(s,&value);
     const auto fast=token_context.parse(s.data(),s.data()+s.size());
+    uint64_t decimal_m=0;unsigned decimal_digits=0;bool short_spelling=true;
+    for(size_t i=s[0]=='-'?1:0;i<s.size();++i) {
+      if(s[i]=='.')continue;
+      if(s[i]<'0' || s[i]>'9' || decimal_digits==19){short_spelling=false;break;}
+      decimal_m=decimal_m*10+unsigned(s[i]-'0');++decimal_digits;
+    }
+    if(short_spelling && decimal_m>=(uint64_t(1)<<63)) {
+      high_uint64_accepted+=fast.accepted();
+      high_uint64_guarded+=fast.reason==short_decimal::Reason::midpoint;
+    }
     if(fast.reason==short_decimal::Reason::accepted) {
       ++counts.accepted;need(bits(fast.value)==expected,"direct fast result differs from rational oracle");
       need(fast.ptr==s.data()+s.size(),"direct oracle token consumed partial range");
@@ -56,11 +67,16 @@ int main(int argc,char** argv)try {
   }
   need(oracle_cases>50000,"oracle corpus unexpectedly small");
   need(counts.accepted>10000 && counts.midpoint>0 && counts.syntax>0,"path coverage");
+  need(high_uint64_accepted>0 && high_uint64_guarded>0,"uint64 high-bit conversion coverage");
   const std::vector<std::string> tokens={"", " ","-","+",".","1.",".1","-.1","+1",
     "-0","-0.0","00.0","0000000000000000","0x1","-0x1.8p+2","1e3","1e-45",
     "-1e-1000","1e1000","INF","-infinity","nan","nan(12)","1junk","1.2.3","1e",
     "1_0","1\t","1\v","1\f",std::string("1\0",2),std::string("\xc2\xa0"),"16777217",
-    "999999999999999","9999999999999999","0.000000000000001","16384.0009765625"};
+    "999999999999999","9999999999999999","0.000000000000001","16384.0009765625",
+    "37.692861557006836","-37.692861557006836","927745.5312499999999","-927745.5312499999999",
+    "9223372036854775807","9223372036854775808","9223372036854775809",
+    "9999999999999999999","10000000000000000000","0.000000000000000001",
+    "0.0000000000000000001"};
   for(const auto& t:tokens) {
     same(t);same("  "+t+" \t");same("1,"+t);same(t+",2");same("1,"+t+",2");
     same(t+",");same(t+",,");
@@ -73,7 +89,11 @@ int main(int argc,char** argv)try {
     for(const auto& t:tokens) {
       std::string body;
       for(unsigned j=0;j<dim;++j){if(j)body+=',';body+=j==at?t:"0.123456";}
-      same(body);std::vector<float> scratch;candidate_parse<true>(body,&scratch,&vector_counts);
+      same(body);std::vector<float> scratch;
+      const uint64_t before=vector_counts.accepted;
+      candidate_parse<true>(body,&scratch,&vector_counts);
+      need(scratch.size()>=vector_counts.accepted-before,"prefix count exceeds output");
+      vector_counts.bypassed+=scratch.size()-(vector_counts.accepted-before);
     }
   }
   need(vector_counts.accepted>0 && vector_counts.midpoint>0 && vector_counts.syntax>0 && vector_counts.bypassed>0,
@@ -108,7 +128,7 @@ int main(int argc,char** argv)try {
   char* end=static_cast<char*>(mapping)+page;
   need(mprotect(end,size_t(page),PROT_NONE)==0,"guard page protect");
   for(const char* s:{"0","-","-0","0.",".","1.25","1e3","16777217",
-                     "999999999999999","1000000000000000","1 ","1,"}) {
+                     "9999999999999999999","10000000000000000000","1 ","1,"}) {
     const size_t n=std::strlen(s);std::memcpy(end-n,s,n);
     const auto r=context.parse(end-n,end);
     need(r.ptr>=end-n && r.ptr<=end,"guard-page parse ptr");
@@ -141,6 +161,7 @@ int main(int argc,char** argv)try {
     <<",\"semantic_cases\":"<<semantic_cases<<",\"checks\":"<<checks
     <<",\"direct_token_accepted\":"<<counts.accepted<<",\"direct_token_midpoint_fallback\":"<<counts.midpoint
     <<",\"direct_token_syntax_fallback\":"<<counts.syntax
+    <<",\"high_uint64_accepted\":"<<high_uint64_accepted<<",\"high_uint64_guarded\":"<<high_uint64_guarded
     <<",\"vector_accepted\":"<<vector_counts.accepted<<",\"vector_midpoint_fallback\":"<<vector_counts.midpoint
     <<",\"vector_syntax_fallback\":"<<vector_counts.syntax<<",\"vector_bypassed\":"<<vector_counts.bypassed<<"}\n";
   return 0;

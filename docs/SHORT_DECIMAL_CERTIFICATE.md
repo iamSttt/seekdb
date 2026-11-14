@@ -1,43 +1,75 @@
-# Short-decimal prototype: scope and correctness argument
+# Nineteen-digit decimal prototype: correctness certificate
 
-This is an experimental candidate integrated over the `9ed5baa` runtime, with native correctness and performance pending at integration time. The Python diagnostic alone does not establish compiled correctness or speed. The authoritative pre-run scope is `validation/short-decimal-plan-20261114.json`. CI uses the actual root GCC13.3 flags for its primary numerical test and microbenchmark; a separate sanitizer build adds `-frounding-math`. `verify_source.py` binds the instrument-free snapshot body to the production parser, and a separate protocol test checks real ELF responses and committed/restarted float32 bits.
+This v2 certificate was frozen in the standalone work directory before integration. The candidate is now integrated for validation; v2 native correctness and performance remain unmeasured. The Python diagnostic is separate evidence, not proof of the compiled operation graph or speed. V1 raw reports remain under validation/runs/43544203031; its prior plan, certificate, oracle and complete micro summaries are preserved in minivec/tools/short_decimal_experiment/history. V1 is not the performance control: EE and parent 9ed remain the references.
 
-## Accepted subset and environment
+## Scope and arithmetic assumptions
 
-The fast path recognizes `-?[0-9]+(\.[0-9]+)?`, with at most 15 total digit characters, including leading zeroes. A following byte must be the explicit end, comma, or one of the original six ASCII whitespace characters. It accepts neither a prefix before an exponent/hex/garbage suffix nor `.1`, `1.`, or `+1`. Those cases execute the unchanged `from_chars(float)` and conditional `strtof` block. Whole-vector grammar, partial-output behavior, allocation policy, and finiteness checks remain the original code.
+The fast subset is `-?[0-9]+(\.[0-9]+)?` with at most **19 total digit characters**, counting leading zeroes, and at least one integer digit. The fraction length is at most 18. An explicit end, comma or one of the original six ASCII whitespace characters must follow. Exponents, leading plus/dot, trailing dot, hexadecimal, special values, unsupported suffixes and longer spellings go through the unchanged original `from_chars(float)` / conditional `strtof` path.
 
-Before native measurements, the scope was further restricted to vector bodies of at least 128 bytes; shorter bodies do not perform even the FP environment check. The first declined short attempt disables further attempts for that vector, including a midpoint decline. Thus a vector containing long decimal or exponent spellings pays at most one unsuccessful short scan, rather than scanning each coordinate twice. This limiter changes only attempts, not parsing results. Mixed vectors can lose most potential acceleration after an early fallback, so that scenario is explicitly measured. The native token oracle also tests `Context.parse` directly, because a one-token body usually does not satisfy the vector activation gate.
+The concatenated mantissa satisfies `0 <= m < 10^19 < 2^64`. The check precedes every multiply/add, so no integer overflow occurs. Every denominator `10^f`, `0 <= f <= 18`, is exactly binary64-representable: `10^f = 2^f * 5^f` and `5^18 < 2^42`. In contrast to v1, `m` need not be exactly representable in binary64. Its conversion and the division each round once to nearest:
 
-Let `m` be the concatenated integer digits and `f` the fraction length. Then `0 <= m < 10^15 < 2^53`, `0 <= f <= 14` in this deliberately strict implementation, and `10^f` is also an exactly representable binary64 integer. Nonzero exact magnitudes lie between `10^-14` and `10^15`; the looser `[10^-15,10^15)` bound also suffices. Thus every nonzero magnitude and its binary64 rounded result are finite, normal binary32-range values, far from both binary32 underflow and overflow.
+```
+a = RN64(m)
+d = RN64(a / 10^f)
+```
 
-The prototype requires x86-64/SSE2, IEEE binary32/binary64, `FLT_EVAL_METHOD == 0`, no fast-math build, round-to-nearest in both `fegetround()` and MXCSR, FTZ/DAZ disabled, and all six SIMD exceptions masked. This is checked once per vector. The caller must not change FP control state during parsing. The actual build must preserve a correctly rounded binary64 division and binary32 conversion: no reciprocal approximation, unsafe reassociation, or hidden excess precision. Native validation must inspect the generated division/conversion instructions. `-fno-fast-math -frounding-math` is used for the proposed standalone builds.
+For nonzero input the exact magnitude is in `[10^-18,10^19)`. All intermediate results and relevant binary32 rounding boundaries are finite and normal; binary32 subnormal/overflow boundaries are outside this scope. Zero and negative zero are handled separately by the parsed sign applied after conversion.
 
-## Why checking only double results exactly at float midpoints suffices
+The existing per-vector environment gate requires x86-64/SSE2, IEEE binary32/binary64, `FLT_EVAL_METHOD == 0`, no fast-math build, round-to-nearest in `fegetround()` and MXCSR, FTZ/DAZ off, and all SIMD exceptions masked. Bodies shorter than 128 bytes skip the environment check and use the old loop. The caller must keep FP control state unchanged while parsing the vector. The build must preserve correctly rounded integer-to-double conversion, division and double-to-float conversion, with no reciprocal-math transform or excess precision. Proposed release micro flags match the actual Docker flags: `-O3 -fno-math-errno`, with no added `-frounding-math`. Separate strict correctness/ASan builds may add `-frounding-math` but their timings are not release comparisons.
 
-Work first with the positive magnitude `x = m / 10^f`, and let `d = RN64(x)`. Both operands are exact; `d` is one round-to-nearest binary64 division.
+## Error bound for integer conversion plus division
 
-Every rounding boundary `h` between adjacent finite normal binary32 values in this range is exactly representable as a binary64 number. Round-to-nearest is monotone and fixes representable values. Therefore, if `x < h`, then `RN64(x) <= RN64(h) = h`; similarly, `x > h` implies `RN64(x) >= h`. Consequently, a binary64 rounding step cannot cross `h` strictly. The only way the binary32 rounding decision could differ after binary64 rounding is for `d` to land exactly on a boundary. If `d` is not any boundary, `x` and `d` lie in the same open binary32 rounding cell, so converting `d` to binary32 gives the unique correctly rounded result for `x`.
+Let `x=m/10^f > 0` and `u=2^-53`. Correct round-to-nearest arithmetic gives
 
-For a positive normal binary64 value in a binary32-normal binade, the adjacent binary32 lattice points have binary64 fraction fields differing by `2^29`. Their midpoint has low 29 fraction bits equal to `2^28`. This characterization also covers the boundary just below a power of two: that midpoint belongs to the lower binade and the same lower-binade spacing applies. The implementation tests exactly this low-bit pattern and falls back on every such `d`, regardless of which side `x` was on or the even/odd tie direction. It does not attempt to infer a tie from a decimal spelling.
+```
+d = x (1+delta1)(1+delta2),       |delta1|, |delta2| <= u.
+```
 
-Zero produces `d=0` and positive zero; applying the parsed sign after conversion preserves negative zero. For nonzero negatives, round-to-nearest is sign-symmetric, so converting the positive magnitude and negating is correct. Negation is exact.
+Therefore the larger relative error when expressing `x` in terms of `d` is
 
-## Parsing and memory safety
+```
+|x-d| / d <= (1-u)^(-2) - 1
+          = (2u-u^2)/(1-u)^2 < 3u.
+```
 
-All character dereferences are guarded by `p != end`. The 15-digit limit is checked before multiplication/addition, bounding the accumulator strictly below `10^15`, so unsigned overflow cannot occur. The fraction length indexes a 16-entry exact table and is at most 14. Midpoint/unsupported/environment outcomes return the original input pointer and do not modify the caller's stored value. The old parser block then sees the identical original range. Delimiter validation prevents silently treating `1e3`, `0x1`, or `1junk` as a successfully parsed short prefix.
+For `d` in binade `[2^e,2^(e+1))`, let `q=2^(e-52)` be that binade's binary64 grid spacing. Since `u*d < q`, **`|x-d| < 3q`**.
 
-The new fast parser itself is bounded by the explicit end; direct guard-page tests cover a physical non-NUL end. The unchanged historical `strtof` fallback is separately tested only under its existing string-storage assumptions. No new guarantee is claimed for that old unbounded library API. Floating-point exception *status* flags are not part of the SQL response contract; the fast division/conversion can set inexact. Control state is not modified, and unmasked environments never enter the arithmetic fast path.
+Every midpoint `h` between adjacent normal binary32 numbers is an exactly representable binary64 grid point. If rounding `x` directly to binary32 differs from converting `d`, there must be such a midpoint between them, possibly including an endpoint. A midpoint outside `d`'s binade is at least `2^27*q` away from its endpoint (the lower neighboring binade has half-width double steps), so an error of less than `3q` cannot cross an outside midpoint. Any relevant `h` is in the same binade as `d` and satisfies `|h-d| < 3q`.
 
-## Independent oracle and differential validation
+Within that binade, adjacent binary32 values are `2^29` binary64 grid positions apart and their midpoint has low 29 fraction bits equal to `2^28`. Thus the check
 
-`make_oracle.py` computes expected binary32 values directly from integer rational numerators/denominators: find the binary exponent, divide to obtain a 24-bit significand, and round from quotient/remainder with tie-to-even. Expected values are never constructed by first converting a `Fraction` to binary64. Directed values cover sign/zero, digit boundaries, exponents around the eligible range, both midpoint parities, binade transitions, and nearby decimal numerators. Random cases are deterministic.
+```
+low = bits(d) & (2^29-1)
+2^28-4 <= low <= 2^28+4
+```
 
-The generated corpus has 243,908 cases. The separately labeled Python double-rounding diagnostic found four real naive double-rounding failures, all caught by midpoint rejection:
+rejects every possible boundary-crossing result. It is deliberately conservative: the sufficient proof bound is below three positions. If the check does not reject, `x` and `d` occupy the same open binary32 rounding cell; converting `d` returns the unique correctly rounded result for `x`. Absolute-magnitude computation followed by exact negation preserves RN symmetry and negative zero. Floating-point status flags can differ, as in v1; they are not SQL response fields. Control state is unchanged.
 
-- `0.98356494307518`: correct `3f7bcae9`, naive `3f7bcaea`.
-- `3.05607807636261`: correct `404396c9`, naive `404396c8`.
-- Their negative counterparts have the corresponding sign bits.
+## Why v1's equality-only midpoint check is insufficient here
 
-There were 237,788 eligible spellings, 12,991 midpoint fallbacks, and no accepted mismatch in that Python diagnostic. These are corpus counts, not production acceptance rates. Exact integer midpoint values such as `16777217` and `16777219` are included and also fall back.
+The independent reviewer found concrete counterexamples, also included in the oracle:
 
-The native test checks that oracle, compares the complete original/candidate parsed float bit patterns including partial output on errors, exercises incompatible syntax and 30,000 deterministic byte-string fuzz cases, checks explicit pointer boundaries/guard pages, and verifies disabled FP environments. Full-vector tests cover dimensions 1/16/128/768 and first-decline positions from the first through the last coordinate. The native microbenchmark includes the full new per-vector environment guard, allocation, scanner, division, cast and fallback costs. It covers those four dimensions and six families: fixed-six-decimal, mixed-exponent, all-exponent, all-17-digit, float32 expanded into double with 17-digit formatting, and midpoint fallback. No parser or end-to-end speed claim is justified before these native measurements.
+| Decimal | Correct binary32 | Naive two-round result | d relative to midpoint |
+|---|---|---|---|
+| `37.692861557006836` | `4216c57e` | `4216c57d` | one binary64 position below |
+| `927745.5312499999999` | `49628018` | `49628019` | one position above |
+
+The second mantissa is above `2^63`, so it also exercises the unsigned-conversion high-bit path. Both negative counterparts are tested. Equality-only detection would accept these wrong results; the four-position guard rejects them.
+
+On an x86 compiler lowering high `uint64_t` conversion by shift/jam, the expected sequence is `j=(m>>1)|(m&1)`, convert `j` to double, then multiply/add by two. For even `m` the halving is exact. For odd `m`, `j` is an odd integer within one half-integer of `m/2`; in this range double midpoints are even integers separated by at least 1024. The jammed odd value and `m/2` cannot be on opposite sides of one, so the RN result is unchanged. Doubling is exact. This explains that known lowering, but the actual build still requires native oracle coverage and disassembly inspection; no uninspected compiler sequence is certified by this text.
+
+## Two-loop parser equivalence
+
+The candidate contains a fast prefix loop followed by the **byte-for-byte original old while loop**. The source function hash is pinned to unchanged EE/9ed parsing, never to the slower v1 candidate. `source-provenance.json` records both the original function and old-loop hashes.
+
+Before each prefix attempt, `i` points at the first non-space byte and `out` contains exactly the successfully parsed preceding coordinates. A fast success has the same value and end pointer as old parsing and uses the same subsequent push/whitespace/comma/trailing-comma code. On the first decline, the prefix breaks without advancing `i` or appending a value; the old loop starts with exactly the state it would have reached. Leading whitespace has already been consumed, but consuming it again is a no-op. All remaining coordinates run the original loop without a per-coordinate short-path branch or end-pointer fallback branch. Invalid suffixes, partial output, trailing commas, allocation policy and whole-vector validation retain the old behavior.
+
+Test-only counters exist in the prefix and compile out of timing. Remaining old-loop value counts are computed by the test caller, so the old loop remains literally unchanged even in the snapshot source.
+
+## Planned evidence and limitations
+
+The independent integer-rational oracle directly constructs binary32 bits from exponent, quotient/remainder and ties-to-even. It never uses `float(Fraction)` as expected output. The corpus additionally includes real `str(float32)` spellings; their values still use the integer oracle.
+
+The generated corpus contains **554,561** tokens. In the separately labeled Python arithmetic diagnostic, 546,902 are eligible, 128,872 are conservatively guarded, and all 37,092 naive double-rounding errors are rejected. Equality-only checking would miss 1,114 errors; the new accepted set has zero mismatches. There are 1,271 eligible unsigned-high-bit mantissas. Counts reflect a boundary-heavy diagnostic corpus, not production rates.
+
+Native tests cover the integer oracle, full-parser differential results and partial outputs, first-decline positions, whitespace/delimiters, 30,000 deterministic byte strings, non-NUL end/guard pages, FP environments and signed zero. The 24 original micro fixtures and generated data remain unchanged: dimensions 1/16/128/768 crossed with fixed6, mixed scientific, all scientific, all17-digit, float32 expanded to double repr17, and midpoint-heavy families. All negative samples remain. Actual release Docker and EE/9ed paired comparisons determine adoption; neither the v1 regression nor a favorable micro result is a valid substitute baseline.

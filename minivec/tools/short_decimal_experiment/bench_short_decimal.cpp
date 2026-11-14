@@ -85,8 +85,11 @@ int main(int argc,char** argv)try {
     const auto f=fixture(kind,dimension);Counters counts;
     for(const auto& s:f.bodies) {
       std::vector<float> a,b;
+      const uint64_t before=counts.accepted;
       if(!baseline_parse(s,&a) || !candidate_parse<true>(s,&b,&counts) || a.size()!=b.size())
         throw std::runtime_error("untimed parser mismatch");
+      if(b.size()<counts.accepted-before)throw std::runtime_error("prefix counter mismatch");
+      counts.bypassed+=b.size()-(counts.accepted-before);
       for(size_t i=0;i<a.size();++i)if(bits(a[i])!=bits(b[i]))throw std::runtime_error("untimed bits mismatch");
     }
     std::cout<<"{\"type\":\"untimed_counts\",\"fixture\":\""<<f.name

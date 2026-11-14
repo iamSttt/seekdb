@@ -1,0 +1,68 @@
+{
+  "native_status": "not_run",
+  "production_status": "not_integrated",
+  "activation": "body bytes >=128 and supported FP environment",
+  "limiter": "first declined short attempt disables remaining vector attempts",
+  "planned_micro_dimensions": [
+    1,
+    16,
+    128,
+    768
+  ],
+  "planned_micro_families": [
+    "fixed6",
+    "mixed25pctexp",
+    "all_exp",
+    "all_17digit_decimal",
+    "float32_as_double_repr17",
+    "midpoint"
+  ],
+  "planned_pairs": 8,
+  "target_segment_ms": 25,
+  "files": {
+    "short_decimal.h": {
+      "bytes": 3619,
+      "sha256": "989e87daa4400d73ba28a3b696fb88a3eb013f80adbf9aeda0677436698e824f"
+    },
+    "parser_snapshot.h": {
+      "bytes": 4517,
+      "sha256": "ac813712782046a8fe8dd30ce1391af99ca1621f1077b43185b96d8a6d5c06b5"
+    },
+    "make_snapshot.py": {
+      "bytes": 3387,
+      "sha256": "6c21e388b0f953144de5ee8fe66838b7d52df019fafc289cd462d32e4a2f4586"
+    },
+    "make_oracle.py": {
+      "bytes": 5644,
+      "sha256": "20c28e7b66592a5fc6c5dd76cf190d7f318f9eb20000a6b355f1cdf9382a467b"
+    },
+    "test_short_decimal.cpp": {
+      "bytes": 7442,
+      "sha256": "b74554c748a54bac65e66e7fcb0f8bb766f522e6471b8c2e725ca320289d79d5"
+    },
+    "bench_short_decimal.cpp": {
+      "bytes": 6621,
+      "sha256": "5d77aa332f796dc38454fb70ece55880e78da2feeb2ad886be3d7180ff299085"
+    },
+    "CERTIFICATE.md": {
+      "bytes": 7494,
+      "sha256": "796b9687ca2532aef34c7fef5f8714a150dd98bb0eb4f61bebff9d41743a2329"
+    },
+    "README.md": {
+      "bytes": 3937,
+      "sha256": "d95ef22f6e8e8e68eff20b6828c6209ed8ac6ecdc0af3b6ff3486e921e08e49a"
+    },
+    "source-provenance.json": {
+      "bytes": 800,
+      "sha256": "6012dbabe698a18a8859a43633bd1e1b61f1bc586124625de000296059243a9b"
+    },
+    "oracle.json": {
+      "bytes": 1027,
+      "sha256": "29f0a5bf7ef5886867419ea955e9ddb02a00c8ae1652a48f9f23409fa1f4044d"
+    },
+    "oracle.tsv": {
+      "bytes": 5501388,
+      "sha256": "457fde6b9a318b3dd8279d2bcf14491c9794514757c46a938e268b13d9c4ad8c"
+    }
+  }
+}

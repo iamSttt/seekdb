@@ -1,0 +1,220 @@
+{
+  "status": "prepared_not_executed",
+  "expected_pairs": 12,
+  "completed_pairs": 0,
+  "vendor_provenance": {
+    "source_repository": "https://github.com/iamSttt/seekdb",
+    "source_commit": "446f5026098cd4c1fb110cabc1546cb3fa61d4b4",
+    "scope": "Nine original files byte-copied without changes; same oracle and measurements plus original launcher. metrics.py contains exact original standard_metrics function only. Historical source HEAD is not a retained runtime recommendation. Scoped .gitattributes -text preserves original vendor bytes across platforms.",
+    "files": [
+      {
+        "path": "minivec/tools/small_compute.py",
+        "source_path": "minivec/tools/small_compute.py",
+        "sha256": "dab4df913efa3860c63fce3f3102af35609931e47b756f21b613878928c8b9bb",
+        "source_git_blob": "8931d856d5ae320a594f79528e3a16586630149a",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tools/benchmark_iteration.py",
+        "source_path": "minivec/tools/benchmark_iteration.py",
+        "sha256": "58d04ec53b7a574b0b8d56535a066b0adedb394222418e8fcb6c5991b397d9a9",
+        "source_git_blob": "26a41881270dce90e81ade128ad670bf507beb49",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tools/benchmark_index_delta.py",
+        "source_path": "minivec/tools/benchmark_index_delta.py",
+        "sha256": "bdc09a1b37625acd5b0f6d942ce01e9f253a279f997a237555abb031e1db7695",
+        "source_git_blob": "73cdc552dd0a72ffc1ee97dac2f13aa321c9ad15",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tools/benchmark_write_query.py",
+        "source_path": "minivec/tools/benchmark_write_query.py",
+        "sha256": "d83cb8c5a13a3c5a9e84036be86c154f7a2d2ade439e4eae2202d1206f0991a2",
+        "source_git_blob": "939a0595d4945c35e5818c9b9b385130ed77b858",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tools/benchmark_projection.py",
+        "source_path": "minivec/tools/benchmark_projection.py",
+        "sha256": "74417730cf5d3874be1a4e973321b40821f1f5cbdaeb8f055c7f9ed1a0d1f417",
+        "source_git_blob": "11e798db3165669b3cb4f1024affaa0b4db2e0b3",
+        "unchanged": true
+      },
+      {
+        "path": "minivec/tests/json_protocol.py",
+        "source_path": "minivec/tests/json_protocol.py",
+        "sha256": "de937fdfb42b4915a7ef3847aea2fe46554a49c55438c447cf6ad4bb9e543088",
+        "source_git_blob": "ebb03c55000f5cfc229e524b93b86501160c957c",
+        "unchanged": true
+      },
+      {
+        "path": "protocol_check/_transport.py",
+        "source_path": "protocol_check/_transport.py",
+        "sha256": "fb3a820105e6e94fc348167c7644ce23a270c63f57b026065f4b563d6ef0674f",
+        "source_git_blob": "e49c13b3d6946256b818cd473d268de531d51b4f",
+        "unchanged": true
+      },
+      {
+        "path": "protocol_check/config.json",
+        "source_path": "protocol_check/config.json",
+        "sha256": "63fe51cac3aaaf45c3739b53b1de8420e5d001e8abb6cf88532d9f190d72d904",
+        "source_git_blob": "6a3aa78d8cd723ab6dee4c04a602850e2d4a304d",
+        "unchanged": true
+      },
+      {
+        "path": "metrics.py",
+        "sha256": "77ab5d3b7d610cc34cc2734589774805a69f4bb23743fd037599eef594988af9",
+        "source_path": "minivec/tools/summarize_highest_primary.py",
+        "source_sha256": "db76ff1e76f2af3f5e20852d288b24fa7d18cb0481766f83a619041908984977",
+        "source_lines": [
+          20,
+          53
+        ],
+        "extraction": "standard_metrics function copied verbatim, imports limited to its dependencies"
+      },
+      {
+        "path": "cgroup_exec.c",
+        "source_path": "minivec/tools/cgroup_exec.c",
+        "sha256": "5fb4bfd5f311adc7cff1261e9ccdd8175d71673952bc21b71536e38d3ebeb6d7",
+        "source_git_blob": "881202042b59bc8ac13c30d87bfc3d31ed1cc2d8",
+        "unchanged": true
+      }
+    ]
+  },
+  "wrapper_sha256": "0c1dc560e52e8b211f855eff4df062f324935862c61f58c7e70ed4b8b8cf3298",
+  "reference_source": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+  "reference_binary_sha256": "acddca115ab183bfc6419e27c9e3383cfd1a9046e3897e5ea516cd7bc0f29f54",
+  "candidate_source": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+  "plan": [
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 2,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 3,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "spill_high_q16",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "spill_high_q16",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 2,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 3,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "wide768",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "wide768",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    }
+  ],
+  "arms": {},
+  "numerical_retained_guards_passed": false,
+  "full_24_pair_gate_passed": false,
+  "release_gate_passed": false,
+  "automatic_adoption": false,
+  "official_score": null,
+  "formal_submission": false,
+  "scope": "Original retained portion only: default4 per CPU, spill2 on CPU1, wide2 on CPU2; no missing guard passes."
+}

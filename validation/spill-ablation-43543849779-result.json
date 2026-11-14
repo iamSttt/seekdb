@@ -1,0 +1,639 @@
+{
+  "status": "completed_parent_source_ablation_no_guard_trigger",
+  "run": "https://github.com/iamSttt/seekdb/actions/runs/43543849779",
+  "harness_commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+  "runtime_sources": {
+    "baseline": "9ed5baa1b1363ebd388850e74271b353954902da",
+    "candidate": "2bbe6d00f2dc97182d3021f21449473581d623d2"
+  },
+  "actual_elf_sha256": {
+    "baseline": "07af43283446b85e73f14a5c378183bb0855d83858b7925ce77561d276b44799",
+    "candidate": "aecd9ce4887b60e12ec747677f8f02bf608a8b7173583d2ad0386b23f70b2a28"
+  },
+  "expected_pairs": 12,
+  "completed_pairs": 12,
+  "numerical_guards_passed": true,
+  "guard_triggers": [],
+  "full_24_gate_passed": false,
+  "release_gate_passed": false,
+  "official_score": null,
+  "formal_submission": false,
+  "measurement_family": "parent_source_spill_ablation12_20261114",
+  "frozen_plan_sha256": "e1464dab498a64b59856682adc2c2883ba4b16f0acdd69470ed882f1f8f2c60e",
+  "host": {
+    "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+    "driver_affinity": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "requested_limits": {
+    "1": {
+      "cpu_quota_us": 100000,
+      "cpu_period_us": 100000,
+      "memory_max": "2147483648",
+      "swap_max": "0"
+    },
+    "2": {
+      "cpu_quota_us": 200000,
+      "cpu_period_us": 100000,
+      "memory_max": "2147483648",
+      "swap_max": "0"
+    }
+  },
+  "all_12_response_hash_pairs_equal": true,
+  "verified_git_blob_inputs": [
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": ".dockerignore",
+      "sha256": "dd9b806988a5bcc72875b9cee43b90025efa58b75770ba975d9347584d8444ce"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "Dockerfile",
+      "sha256": "d262b689634801e3280f004c7b918afd87a696365fc50ad9e718932c4c63035e"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/parse_pool.h",
+      "sha256": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/sql.h",
+      "sha256": "564e8aab64e3fe8fc884b9cb95f9411e031e51900de924c9ee2c56dfea67b843"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/distance.h",
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/result_sort.h",
+      "sha256": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/quantized_bound.h",
+      "sha256": "88e3948f2f74b7d4373be9c63c0ce3f3421cbd2e657c3043c6123cc56fcfbd8f"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/db.h",
+      "sha256": "b2b045c5c869633596a435e2e8a94a8d0abfe3a4d3563d5f95615d7cbd529607"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/exec.cpp",
+      "sha256": "326d72a903f117be08428f355a7f39364fcca58deff6b480cc1a9bf59fd82df5"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/flat_index.cpp",
+      "sha256": "7659ce94bcf921c1f4fa7f891eb5254804892483cadf14453cdcf97934f4a3b7"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/exec.h",
+      "sha256": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/value.cpp",
+      "sha256": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/sql.cpp",
+      "sha256": "339d6d704a18b2f0fe04ff97edac4d2be90ff5f908f0ad085284021e0f47cbb5"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/value.h",
+      "sha256": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/main.cpp",
+      "sha256": "557524d9a1e1dfc62dbb28ace78056876201f87a5e49e8d00e6c45431a351b3f"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/query_pool.h",
+      "sha256": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/flat_index.h",
+      "sha256": "d47a58e21e4112e12fb51ea5f92d23ffda80abfa3fbda267e0287a7249fc3b12"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/src/db.cpp",
+      "sha256": "3c7cf1bf25ae7965ad192fd2e9c1a7ec4d075a7dc5d10e61198b3b3c800b751f"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/third_party/json.hpp",
+      "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6"
+    },
+    {
+      "commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+      "path": "minivec/third_party/LICENSE.MIT",
+      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": ".dockerignore",
+      "sha256": "dd9b806988a5bcc72875b9cee43b90025efa58b75770ba975d9347584d8444ce"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "Dockerfile",
+      "sha256": "d262b689634801e3280f004c7b918afd87a696365fc50ad9e718932c4c63035e"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/parse_pool.h",
+      "sha256": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/sql.h",
+      "sha256": "564e8aab64e3fe8fc884b9cb95f9411e031e51900de924c9ee2c56dfea67b843"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/distance.h",
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/result_sort.h",
+      "sha256": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/quantized_bound.h",
+      "sha256": "88e3948f2f74b7d4373be9c63c0ce3f3421cbd2e657c3043c6123cc56fcfbd8f"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/db.h",
+      "sha256": "b2b045c5c869633596a435e2e8a94a8d0abfe3a4d3563d5f95615d7cbd529607"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/exec.cpp",
+      "sha256": "326d72a903f117be08428f355a7f39364fcca58deff6b480cc1a9bf59fd82df5"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/flat_index.cpp",
+      "sha256": "6a2e8d2e09f6fa0365b6354f798a4901669c48cc27dae873aa7ed13225f2e070"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/exec.h",
+      "sha256": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/value.cpp",
+      "sha256": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/sql.cpp",
+      "sha256": "339d6d704a18b2f0fe04ff97edac4d2be90ff5f908f0ad085284021e0f47cbb5"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/value.h",
+      "sha256": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/main.cpp",
+      "sha256": "557524d9a1e1dfc62dbb28ace78056876201f87a5e49e8d00e6c45431a351b3f"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/query_pool.h",
+      "sha256": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/flat_index.h",
+      "sha256": "5bd63a4ea1a0f268e4137ff6e0c49be8860b64626f990a8fd96499fb292b4010"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/src/db.cpp",
+      "sha256": "908cf567016786d7783eec263e8d4b20a7585b13ee20d0b48b984314d74c42d4"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/third_party/json.hpp",
+      "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6"
+    },
+    {
+      "commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "path": "minivec/third_party/LICENSE.MIT",
+      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/spill_ablation1114/run_ablation.py",
+      "sha256": "ecfcece843d58c238dcdaa5b675600873d3c7fb13c35ea40f785a11505ce2fb8"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/spill_ablation1114/plan.json",
+      "sha256": "e1464dab498a64b59856682adc2c2883ba4b16f0acdd69470ed882f1f8f2c60e"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/spill_ablation1114/guard_metrics.py",
+      "sha256": "d50a271cc68e4ba4fc12cc2e98327be211f7ce6673ba4e213fc1f5cda9c8ba7d"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/spill_ablation1114/policy/highest-primary24-preregistration-v2.json",
+      "sha256": "a930984922150c82eea6c95fa56679cf7f0fe48ff0e88c72cdb5c36986a46d4d"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/spill_ablation1114/policy/highest-primary24-spill-field-erratum.json",
+      "sha256": "cf2a1823f392f1baef512cc968f7068ed4b0529f786430770e026a18a5c63a1d"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/spill_ablation1114/policy/evaluate_highest_primary24_screen.py",
+      "sha256": "40b8e003b715cb3b3c570ad3d733c7490d2de72837cffab92024a971364153c2"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/minivec/tools/small_compute.py",
+      "sha256": "dab4df913efa3860c63fce3f3102af35609931e47b756f21b613878928c8b9bb"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/minivec/tools/benchmark_iteration.py",
+      "sha256": "58d04ec53b7a574b0b8d56535a066b0adedb394222418e8fcb6c5991b397d9a9"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/minivec/tools/benchmark_index_delta.py",
+      "sha256": "bdc09a1b37625acd5b0f6d942ce01e9f253a279f997a237555abb031e1db7695"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/minivec/tools/benchmark_write_query.py",
+      "sha256": "d83cb8c5a13a3c5a9e84036be86c154f7a2d2ade439e4eae2202d1206f0991a2"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/minivec/tools/benchmark_projection.py",
+      "sha256": "74417730cf5d3874be1a4e973321b40821f1f5cbdaeb8f055c7f9ed1a0d1f417"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/minivec/tests/json_protocol.py",
+      "sha256": "de937fdfb42b4915a7ef3847aea2fe46554a49c55438c447cf6ad4bb9e543088"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/protocol_check/_transport.py",
+      "sha256": "fb3a820105e6e94fc348167c7644ce23a270c63f57b026065f4b563d6ef0674f"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/protocol_check/config.json",
+      "sha256": "63fe51cac3aaaf45c3739b53b1de8420e5d001e8abb6cf88532d9f190d72d904"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/metrics.py",
+      "sha256": "77ab5d3b7d610cc34cc2734589774805a69f4bb23743fd037599eef594988af9"
+    },
+    {
+      "commit": "b3ee266bcc10d64be57e81e300fda560971546ca",
+      "path": "minivec/tools/research1114/cgroup_exec.c",
+      "sha256": "5fb4bfd5f311adc7cff1261e9ccdd8175d71673952bc21b71536e38d3ebeb6d7"
+    }
+  ],
+  "workflow_blob": "9bbb0c70973e509fb3dbbda02f25c8e18601a3e4",
+  "raw_arm_sha256_checks": [
+    {
+      "cpu": 1,
+      "path": "reports/spill-ablation/ablation.d/ablation-1cpu.json",
+      "sha256": "0c1bda7096d3ce6b0ef846ca936b4c979e7024dc8e7ba0cb7c6ca841d4efc403",
+      "transport_adjustment": "remove exactly one extra print newline",
+      "matches_embedded_raw": true
+    },
+    {
+      "cpu": 2,
+      "path": "reports/spill-ablation/ablation.d/ablation-2cpu.json",
+      "sha256": "75d1930756bbee692f2636035074a240538d223ba1d573fb394ace7b526fadbd",
+      "transport_adjustment": "remove exactly one extra print newline",
+      "matches_embedded_raw": true
+    }
+  ],
+  "metrics": {
+    "parent-source-ablation:1:standard10k": {
+      "first_lifecycle_wall_seconds": {
+        "median_candidate_over_baseline": 1.0023911607746179,
+        "AB_median": 0.9730263016121943,
+        "BA_median": 1.0167952019303002,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "first_1000_queries_wall_seconds": {
+        "median_candidate_over_baseline": 1.0247727627133054,
+        "AB_median": 0.9671133072277197,
+        "BA_median": 1.0433095682196982,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "first_1000_queries_cpu_usec": {
+        "median_candidate_over_baseline": 1.0187634213824643,
+        "AB_median": 0.9496103514295888,
+        "BA_median": 1.0385004757431973,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "first_query_wall_seconds": {
+        "median_candidate_over_baseline": 0.9423649734456339,
+        "AB_median": 1.0315370280095317,
+        "BA_median": 0.9251315340491343,
+        "candidate_faster_pairs": 3,
+        "candidate_worse_pairs": 1
+      },
+      "ingest_wall_seconds": {
+        "median_candidate_over_baseline": 0.9979551815391596,
+        "AB_median": 0.9946420285424108,
+        "BA_median": 0.9979551815391596,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "ingest_cpu_usec": {
+        "median_candidate_over_baseline": 1.0011224377046342,
+        "AB_median": 1.0064046286659982,
+        "BA_median": 0.9874449219057272,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 0.9985384352463252,
+        "AB_median": 0.9801585031836131,
+        "BA_median": 1.0129520133314038,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 1.0058367284978587,
+        "AB_median": 1.007614248519153,
+        "BA_median": 1.0058367284978587,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 2
+      },
+      "max_process_rss_bytes": {
+        "median_candidate_over_baseline": 1.0031515915537346,
+        "AB_median": 1.0031515915537346,
+        "BA_median": 1.0031521380150696,
+        "candidate_faster_pairs": 0,
+        "candidate_worse_pairs": 4
+      }
+    },
+    "parent-source-ablation:1:spill_high_q16": {
+      "first_lifecycle_wall_seconds": {
+        "median_candidate_over_baseline": 0.3894504963218152,
+        "AB_median": 0.3833035849958013,
+        "BA_median": 0.39559740764782914,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 0
+      },
+      "query_before_update_wall_seconds": {
+        "median_candidate_over_baseline": 0.031047449034071924,
+        "AB_median": 0.030377443831511194,
+        "BA_median": 0.03171745423663266,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 0
+      },
+      "query_before_update_cpu_usec": {
+        "median_candidate_over_baseline": 0.02695196724184512,
+        "AB_median": 0.026260893299280604,
+        "BA_median": 0.027643041184409637,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 0
+      },
+      "first_query_wall_seconds": {
+        "median_candidate_over_baseline": 0.04279251268215854,
+        "AB_median": 0.04256997192129072,
+        "BA_median": 0.043015053443026356,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 0
+      },
+      "ingest_wall_seconds": {
+        "median_candidate_over_baseline": 0.9989467972799425,
+        "AB_median": 0.9929190326041031,
+        "BA_median": 1.004974561955782,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 0.3903667151468721,
+        "AB_median": 0.38524927242160173,
+        "BA_median": 0.39548415787214247,
+        "candidate_faster_pairs": 2,
+        "candidate_worse_pairs": 0
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 1.0015767188291682,
+        "AB_median": 1.003185533174593,
+        "BA_median": 0.9999679044837436,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "max_process_rss_bytes": {
+        "median_candidate_over_baseline": 1.001078529680747,
+        "AB_median": 1.001129943502825,
+        "BA_median": 1.0010271158586688,
+        "candidate_faster_pairs": 0,
+        "candidate_worse_pairs": 2
+      }
+    },
+    "parent-source-ablation:2:standard10k": {
+      "first_lifecycle_wall_seconds": {
+        "median_candidate_over_baseline": 0.9831402719935773,
+        "AB_median": 0.9831402719935773,
+        "BA_median": 0.9770001942046153,
+        "candidate_faster_pairs": 4,
+        "candidate_worse_pairs": 0
+      },
+      "first_1000_queries_wall_seconds": {
+        "median_candidate_over_baseline": 0.9750363869993577,
+        "AB_median": 0.9794581037460011,
+        "BA_median": 0.968437107810465,
+        "candidate_faster_pairs": 4,
+        "candidate_worse_pairs": 0
+      },
+      "first_1000_queries_cpu_usec": {
+        "median_candidate_over_baseline": 0.9752361432997487,
+        "AB_median": 0.9806272450431084,
+        "BA_median": 0.969051942169047,
+        "candidate_faster_pairs": 4,
+        "candidate_worse_pairs": 0
+      },
+      "first_query_wall_seconds": {
+        "median_candidate_over_baseline": 1.008764138671784,
+        "AB_median": 1.0398255954189572,
+        "BA_median": 0.9900142612669764,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "ingest_wall_seconds": {
+        "median_candidate_over_baseline": 0.9831885069279966,
+        "AB_median": 0.9831885069279966,
+        "BA_median": 0.983320658867219,
+        "candidate_faster_pairs": 3,
+        "candidate_worse_pairs": 1
+      },
+      "ingest_cpu_usec": {
+        "median_candidate_over_baseline": 1.0014419469059173,
+        "AB_median": 1.0038518573978767,
+        "BA_median": 0.9977826668761176,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 0.9979980755867615,
+        "AB_median": 1.0140974569714614,
+        "BA_median": 0.9935070463032423,
+        "candidate_faster_pairs": 3,
+        "candidate_worse_pairs": 1
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 1.0003452508985635,
+        "AB_median": 0.9951049178402278,
+        "BA_median": 1.000921499933198,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 3
+      },
+      "max_process_rss_bytes": {
+        "median_candidate_over_baseline": 1.0031535793125197,
+        "AB_median": 1.0031535793125197,
+        "BA_median": 1.0031535793125197,
+        "candidate_faster_pairs": 0,
+        "candidate_worse_pairs": 4
+      }
+    },
+    "parent-source-ablation:2:wide768": {
+      "lifecycle_stage_wall_sum": {
+        "median_candidate_over_baseline": 0.9918015435367384,
+        "AB_median": 0.981705918204568,
+        "BA_median": 1.001897168868909,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "seven_query_phases_wall_seconds": {
+        "median_candidate_over_baseline": 0.9944421766368379,
+        "AB_median": 0.9802619848787563,
+        "BA_median": 1.0086223683949196,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      },
+      "seven_query_phases_cpu_usec": {
+        "median_candidate_over_baseline": 1.006169782127036,
+        "AB_median": 1.00432091882248,
+        "BA_median": 1.0080186454315918,
+        "candidate_faster_pairs": 0,
+        "candidate_worse_pairs": 2
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 1.0035600391515085,
+        "AB_median": 1.0027530595421783,
+        "BA_median": 1.0043670187608387,
+        "candidate_faster_pairs": 0,
+        "candidate_worse_pairs": 2
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 0.9995616890580986,
+        "AB_median": 1.001735859973962,
+        "BA_median": 0.9973875181422351,
+        "candidate_faster_pairs": 1,
+        "candidate_worse_pairs": 1
+      }
+    }
+  },
+  "descriptive_spill_four_cycle_sums": [
+    {
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "cycle_seconds": {
+        "baseline_sum": 1.1331867869999712,
+        "candidate_sum": 0.13543324699998038,
+        "candidate_over_baseline": 0.11951537782974858
+      },
+      "write_and_commit_seconds": {
+        "baseline_sum": 0.005649113999936617,
+        "candidate_sum": 0.0047688730000459145,
+        "candidate_over_baseline": 0.8441806980881288
+      },
+      "query_seconds": {
+        "baseline_sum": 1.1275376730000346,
+        "candidate_sum": 0.13066437399993447,
+        "candidate_over_baseline": 0.11588470800472354
+      },
+      "first_query_seconds": {
+        "baseline_sum": 0.1637886080000328,
+        "candidate_sum": 0.10138446699994574,
+        "candidate_over_baseline": 0.6189958400521081
+      }
+    },
+    {
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "cycle_seconds": {
+        "baseline_sum": 1.084221070999945,
+        "candidate_sum": 0.13452979400005916,
+        "candidate_over_baseline": 0.12407967120209748
+      },
+      "write_and_commit_seconds": {
+        "baseline_sum": 0.005546781999981931,
+        "candidate_sum": 0.005199973000088676,
+        "candidate_over_baseline": 0.9374756390472195
+      },
+      "query_seconds": {
+        "baseline_sum": 1.078674288999963,
+        "candidate_sum": 0.12932982099997048,
+        "candidate_over_baseline": 0.11989700905902924
+      },
+      "first_query_seconds": {
+        "baseline_sum": 0.15564486100001318,
+        "candidate_sum": 0.10043540299997744,
+        "candidate_over_baseline": 0.645285699474324
+      }
+    }
+  ],
+  "adverse_metric_pair_count": 45,
+  "default_1cpu_warning": "Query wall median candidate/baseline is1.024773. AB0.967113 andBA1.043310 fail the preregistered all-three-stable-regression conjunction. This is no guard trigger, not proof of no slowdown. Four pairs only.",
+  "scope": "Original9ed source versus spill-only2bbe; unchanged original measurement tools/oracle/thresholds. This is neither EE-primary nor retained-R confirmation; no extra q1 experiment; no parser or lazy combination tested.",
+  "archive": {
+    "path": "validation/spill-ablation-43543849779-raw.zip",
+    "bytes": 2483552,
+    "sha256": "fb56db97ae134217f09ceee885efbfc8f2794274b8989728a0dd873e37de4c0c",
+    "complete_downloaded_log_sha256": "98a35123c5ff43c342303b7763f62b16c34f2025e535910104f66630e41cb89a",
+    "contains": "Complete downloaded log and run identity, all18 reconstructed reports, transport manifest and independent Git-blob/raw-hash recheck."
+  }
+}

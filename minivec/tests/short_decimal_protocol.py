@@ -30,6 +30,12 @@ KNOWN_DOUBLE_ROUNDING = {
     "-0.98356494307518": 0xbf7bcae9,
     "3.05607807636261": 0x404396c9,
     "-3.05607807636261": 0xc04396c9,
+    # v2: d is one binary64 grid position off the midpoint. Equality-only
+    # rejection fails; the second mantissa is larger than 2^63.
+    "37.692861557006836": 0x4216c57e,
+    "-37.692861557006836": 0xc216c57e,
+    "927745.5312499999999": 0x49628018,
+    "-927745.5312499999999": 0xc9628018,
 }
 
 
@@ -140,6 +146,7 @@ def make_fixtures():
     require(token_bits("16777219") == 0x4b800002, "integer midpoint upward parity")
     require(token_bits("-0") == token_bits("-1e-1000") == 0x80000000, "negative zero oracle")
     require(token_bits("1e-45") == 1 and token_bits("-1e-45") == 0x80000001, "subnormal oracle")
+    require(int("9277455312499999999") >= 1 << 63, "v2 unsigned-high-bit fixture")
     return rows
 
 
@@ -264,6 +271,9 @@ def main():
               "fixtures": [{key: value for key, value in row.items() if key not in ("tokens", "bits")}
                            for row in fixtures],
               "first_decline_positions": [0, 64, 127],
+              "known_double_rounding_counterexamples": {token: f"{bits:08x}" for token, bits in KNOWN_DOUBLE_ROUNDING.items()},
+              "v2_nonzero_midpoint_offset_cases": ["37.692861557006836", "-37.692861557006836",
+                                                   "927745.5312499999999", "-927745.5312499999999"],
               "internal_fast_path_execution_observed": False,
               "response_comparison": "all parsed response fields; no ignored error/metadata fields; signed zero preserved",
               "response_checks": [], "bitwise_readbacks": 0, "state_verifications": 0,

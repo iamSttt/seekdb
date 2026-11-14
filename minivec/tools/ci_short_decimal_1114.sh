@@ -19,8 +19,13 @@ docker run --rm -v "$repo:/work:ro" -v "$scratch:/out" -w /work "$compiler" \
   g++ -O3 -std=c++17 -fno-math-errno -static -pthread -Iminivec/src \
   "$prototype/test_short_decimal.cpp" -o /out/oracle-rootflags
 "$scratch/oracle-rootflags" "$scratch/oracle.tsv" | tee "$out/oracle-rootflags.txt"
+# Additional strict correctness only; these flags never enter the micro build.
+docker run --rm -v "$repo:/work:ro" -v "$scratch:/out" -w /work "$compiler" \
+  g++ -O3 -std=c++17 -fno-math-errno -frounding-math -static -pthread -Iminivec/src \
+  "$prototype/test_short_decimal.cpp" -o /out/oracle-strict
+"$scratch/oracle-strict" "$scratch/oracle.tsv" | tee "$out/oracle-strict.txt"
 # This additional instrumented build explicitly observes FP control changes.
-g++ -O1 -g -std=c++17 -frounding-math -fno-omit-frame-pointer -fsanitize=address,undefined \
+g++ -O1 -g -std=c++17 -fno-math-errno -frounding-math -fno-omit-frame-pointer -fsanitize=address,undefined \
   -no-pie -pthread -Iminivec/src "$prototype/test_short_decimal.cpp" -o "$scratch/oracle-san"
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
   "$scratch/oracle-san" "$scratch/oracle.tsv" | tee "$out/oracle-sanitized.txt"
@@ -30,4 +35,4 @@ docker run --rm -v "$repo:/work:ro" -v "$scratch:/out" -w /work "$compiler" \
 first_cpu=$(python3 -c 'import os;print(min(os.sched_getaffinity(0)))')
 taskset -c "$first_cpu" "$scratch/bench" --pairs 8 --target-ms 25 | tee "$out/micro.txt"
 cat "$scratch/"*.s > "$out/micro-translation-unit.txt"
-sha256sum "$scratch/oracle-rootflags" "$scratch/oracle-san" "$scratch/bench" > "$out/binary-sha256.txt"
+sha256sum "$scratch/oracle-rootflags" "$scratch/oracle-strict" "$scratch/oracle-san" "$scratch/bench" > "$out/binary-sha256.txt"
