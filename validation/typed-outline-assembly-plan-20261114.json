@@ -1,0 +1,22 @@
+{
+  "status": "assembly_diagnostic_before_new_performance",
+  "base": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "typed": "6412cbf862959655f351b4d908c430a98c5eabfe",
+  "expected_stripped_sha256": {
+    "base": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+    "typed": "41f20159c3b8ae4992bcbfd45ace6264e84125fa841140c84094d5dd6619cb06"
+  },
+  "compiler": "gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818",
+  "flags": "-O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc",
+  "working_directory": "/src",
+  "output": "/minivec",
+  "variant": "Copy typed source, add only GNU noinline to encode_typed_json_row local lambda; never modify repository production files in this phase.",
+  "questions": [
+    "Does the original typed formatter inline into execute_impl or already have an out-of-line operator?",
+    "Does noinline change real core code size/calls, or is it an ineffective label?",
+    "Does default SELECT retain unconditional encoded_row and JsonRowWriter stack/lifetime work?"
+  ],
+  "not_authorized_by_this_plan": ["performance measurement", "release adoption", "score prediction"],
+  "performance_pairs": 0,
+  "formal_submission": false
+}
