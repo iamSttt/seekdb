@@ -17,6 +17,7 @@
 // savepoints, ...). Nothing in here ever crashes: every failure path throws a
 // ParseError that parse_sql converts into (false, message, code).
 #include "sql.h"
+#include "short_decimal.h"
 #include "parse_pool.h"
 
 #include <cerrno>
@@ -313,6 +314,8 @@ void tokenize(const std::string& s, std::vector<Tok>* out) {
 // Parses "1, 2.5, -3e2" into floats. Strict: rejects empty elements, trailing
 // commas, garbage tokens and non-finite values.
 bool parse_float_list(std::string_view body, std::vector<float>* out) {
+  const short_decimal::Context context(body.size() >= 128);
+  bool try_short=context.enabled();
   out->clear();
   // One allocation for the usual 128-coordinate case instead of log2 growth.
   if (out->capacity() == 0) out->reserve(body.size() / 8 + 4);
@@ -326,16 +329,23 @@ bool parse_float_list(std::string_view body, std::vector<float>* out) {
     // Parse at storage precision to avoid rounding first to double and then
     // rounding again at a float32 midpoint. Subnormals and zero are finite.
     float stored = 0;
-    const auto parsed = std::from_chars(begin, body.data() + n, stored, std::chars_format::general);
-    if (parsed.ec == std::errc{} &&
-        (parsed.ptr == body.data() + n || *parsed.ptr == ',' || is_space((unsigned char)*parsed.ptr))) {
-      endp = parsed.ptr;
-    } else {
-      // Keep strtof's leading plus, hexadecimal and underflow-to-zero forms.
-      // In particular, from_chars may successfully consume only the 0 in 0x1.
-      char* compatible_end = nullptr;
-      stored = std::strtof(begin, &compatible_end);
-      endp = compatible_end;
+    if(try_short) {
+      const auto fast = context.parse(begin, body.data() + n);
+      if(fast.accepted()) { stored=fast.value; endp=fast.ptr; }
+      else try_short=false; // First decline disables attempts for this vector.
+    }
+    if(!endp) {
+      const auto parsed = std::from_chars(begin, body.data() + n, stored, std::chars_format::general);
+      if (parsed.ec == std::errc{} &&
+          (parsed.ptr == body.data() + n || *parsed.ptr == ',' || is_space((unsigned char)*parsed.ptr))) {
+        endp = parsed.ptr;
+      } else {
+        // Keep strtof's leading plus, hexadecimal and underflow-to-zero forms.
+        // In particular, from_chars may successfully consume only the 0 in 0x1.
+        char* compatible_end = nullptr;
+        stored = std::strtof(begin, &compatible_end);
+        endp = compatible_end;
+      }
     }
     if (endp == begin || !std::isfinite(stored)) return false;
     out->push_back(stored);

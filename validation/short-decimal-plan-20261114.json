@@ -1,0 +1,15 @@
+{
+  "status": "frozen_before_native_execution",
+  "parent_runtime": "9ed5baa1b1363ebd388850e74271b353954902da",
+  "formal_reference": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "evidence_for_priority": "Run 43541247291 actual EE software sampling: from_chars(float) 34.49% and parse_float_list self 8.88% of sampled ingest user CPU. No claimed wall-time ceiling or formal workload identity.",
+  "scope": "Only parse_float_list bodies of at least 128 bytes, admitted nearest-rounding x86-64 IEEE float/double environment. At most 15 total decimal digits with a leading integer digit, optional minus and decimal point; complete token delimiter required. At the first declined token, all remaining coordinates in that vector use the original block.",
+  "change": "Exact binary64 integer numerator and power-of-ten denominator, one nearest division, then direct float cast only if the intermediate is not a binary32 midpoint. Midpoints, exponent/hex/plus, longer or unsupported forms keep the original direct-float from_chars and strtof fallback.",
+  "prediction": "Could reduce common short fixed-decimal parsing cost. Long/scientific representations may gain nothing or regress; first-decline fallback bounds repeated failed probes. Small bodies deliberately retain the original route. CPU improvement may not overcome COMMIT wall variability.",
+  "numeric_oracle": "Direct rational integer quotient/remainder rounding to 24-bit binary32 with tie-even, never float(Fraction) followed by float32 conversion. Include actual double-rounding counterexamples, signed zero, midpoint neighbors, non-NUL views and end guards.",
+  "build_flags": "Primary native oracle and micro use the actual root GCC13.3 -O3 -std=c++17 -fno-math-errno flags and static linkage. The additional host ASan/UBSan test enables -frounding-math. This choice was fixed before the first native run; root Docker flags do not change.",
+  "native_checks": ["Complete old/new parser accept/reject, partial output and exact float32 bits", "Direct candidate acceptance against independent rational fixture", "Rounding, exception masks, DAZ/FTZ and unsupported environment fallback", "ASan/UBSan", "Actual root image, public cases, protocol differential, exact TopK and existing recovery regressions"],
+  "microbenchmark": "Separate eight-pair AB/BA whole-parser comparisons for dimensions 1,16,128,768; fixed-six-digit, mixed, scientific, full17-digit, float32-expanded-to-double representation and midpoint families. Preserve every result; no database or E conversion.",
+  "performance": "Unchanged EE12 primary thresholds, then same-host parent ablation12. R protections and independent confirmation remain required for full adoption; no adjustment of earlier gates based on these results.",
+  "formal_submission": false
+}

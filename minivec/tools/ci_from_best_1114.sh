@@ -25,6 +25,9 @@ for role in baseline candidate; do
 done
 sha256sum "$scratch/"*-binary > "$out/binary-sha256.txt"
 echo '9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd  '"$scratch/baseline-binary" | sha256sum -c -
+# Addresses come from the already recorded, same-hash EE software profile.
+# This immutable .text window needs no new profiling or source instrumentation.
+objdump -d --start-address=0x42dc00 --stop-address=0x42e600 "$scratch/baseline-binary" > "$out/ee-hot-lambda-disassembly.txt"
 
 # The new integer kernels are exact: validate raw sums, guards, and bound decisions.
 docker run --rm -v "$repo:/work:ro" -v "$scratch:/out" -w /work "$compiler" \
@@ -40,6 +43,7 @@ done
 
 # Compare complete request/response sequences and post-error effects against EE.
 python3 minivec/tests/validated_request_diff.py --baseline "$scratch/baseline-binary" --candidate "$scratch/candidate-binary" --output "$out/request-differential.json"
+python3 minivec/tests/short_decimal_protocol.py --baseline "$scratch/baseline-binary" --candidate "$scratch/candidate-binary" --output "$out/short-decimal-protocol.json"
 python3 minivec/tests/shared_bound_topk.py --binary "$scratch/candidate-binary" --output "$out/shared-bound-topk.json"
 
 # Same-machine paired screening, separate DB-only CPU quotas, all samples retained.
@@ -48,7 +52,7 @@ sudo --preserve-env=PATH python3 minivec/tools/best_screen_1114.py \
   --baseline "$scratch/baseline-binary" --candidate "$scratch/candidate-binary" \
   --candidate-source "$RUNTIME_COMMIT" --launcher "$scratch/cgroup-exec" --output "$out/screen.json"
 
-# Isolate the lazy interval heap from its immediate runtime parent.
+# Isolate short-decimal parsing from its immediate runtime parent.
 pre_share=9ed5baa1b1363ebd388850e74271b353954902da
 git fetch --no-tags --depth=1 origin "$pre_share"
 mkdir "$scratch/pre-share"
