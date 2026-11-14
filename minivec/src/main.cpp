@@ -128,9 +128,9 @@ static void run_statement(Database& db, const std::string& text) {
 
 using Json = nlohmann::json;
 
-// Fast path for the request envelope. Every official request is a flat object of
-// scalar members, so validating that shape directly avoids building a whole DOM
-// (and a duplicate-key std::set) for each request. Anything outside the shape —
+// The common execute envelope is a flat object of scalar members. Validate
+// it completely into an owned request, avoiding a DOM and a second scan for id.
+// Anything outside the admitted shape —
 // nesting, backslash escapes, unknown keys, out-of-range integers — falls back
 // to the nlohmann parse below, which stays the reference implementation.
 // Only unescaped ASCII strings use this path. Non-ASCII must go through the
@@ -169,7 +169,16 @@ static bool scan_simple_json_string(const std::string& t, size_t* p, std::string
   return true;
 }
 
-static bool fast_envelope(const std::string& t, Json* out) {
+struct ValidatedExecuteRequest {
+  std::string sql;
+  std::string raw_id;
+  bool ann_mode = false;
+};
+
+// With direct != nullptr, validate the same entire flat JSON shape but retain
+// only an executable request. Unsupported shapes/operations use strict_json.
+static bool fast_envelope(const std::string& t, Json* out,
+                          ValidatedExecuteRequest* direct = nullptr) {
   static const char* const kKeys[4] = {"id", "op", "sql", "search_mode"};
   size_t p = 0;
   const size_t n = t.size();
@@ -179,7 +188,11 @@ static bool fast_envelope(const std::string& t, Json* out) {
   skip_ws();
   if (p >= n || t[p] != '{') return false;
   ++p;
-  Json obj = Json::object();
+  Json obj;
+  if (out) obj = Json::object();
+  bool strings[4] = {false, false, false, false};
+  std::string direct_op, direct_mode = "exact";
+  size_t id_begin = 0, id_end = 0;
   bool seen[4] = {false, false, false, false};
   bool first = true;
   for (;;) {
@@ -199,15 +212,22 @@ static bool fast_envelope(const std::string& t, Json* out) {
     ++p;
     skip_ws();
     if (p >= n) return false;
+    if (direct && slot == 0) id_begin = p;
     const char c = t[p];
     if (c == '"') {
       std::string v;
       if (!scan_simple_json_string(t, &p, &v)) return false;
-      obj[kKeys[slot]] = std::move(v);
+      if (out) obj[kKeys[slot]] = std::move(v);
+      else {
+        strings[slot] = true;
+        if (slot == 1) direct_op = std::move(v);
+        else if (slot == 2) direct->sql = std::move(v);
+        else if (slot == 3) direct_mode = std::move(v);
+      }
     } else if (c == 't' || c == 'f' || c == 'n') {
-      if (t.compare(p, 4, "true") == 0) { obj[kKeys[slot]] = true; p += 4; }
-      else if (t.compare(p, 5, "false") == 0) { obj[kKeys[slot]] = false; p += 5; }
-      else if (t.compare(p, 4, "null") == 0) { obj[kKeys[slot]] = nullptr; p += 4; }
+      if (t.compare(p, 4, "true") == 0) { if (out) obj[kKeys[slot]] = true; p += 4; }
+      else if (t.compare(p, 5, "false") == 0) { if (out) obj[kKeys[slot]] = false; p += 5; }
+      else if (t.compare(p, 4, "null") == 0) { if (out) obj[kKeys[slot]] = nullptr; p += 4; }
       else return false;
     } else if (c == '-' || (c >= '0' && c <= '9')) {
       const size_t b = p;
@@ -241,26 +261,35 @@ static bool fast_envelope(const std::string& t, Json* out) {
       }
       if (neg) {
         if (acc > 9223372036854775808ull) return false;
-        obj[kKeys[slot]] = acc == 9223372036854775808ull
+        if (out) obj[kKeys[slot]] = acc == 9223372036854775808ull
             ? (-9223372036854775807LL - 1) : -static_cast<int64_t>(acc);
-      } else obj[kKeys[slot]] = acc;
+      } else if (out) obj[kKeys[slot]] = acc;
     } else {
       return false;  // arrays/objects/other tokens: let nlohmann handle it
     }
     first = false;
     skip_ws();
+    // raw_request_id includes whitespace before the comma/closing brace.
+    if (direct && slot == 0) id_end = p;
     if (p < n && t[p] == ',') { ++p; continue; }
     if (p < n && t[p] == '}') { ++p; break; }
     return false;
   }
   skip_ws();
   if (p != n) return false;
-  *out = std::move(obj);
+  if (out) *out = std::move(obj);
+  else {
+    if (!seen[0] || !seen[1] || !seen[2] || !strings[1] || !strings[2] ||
+        direct_op != "execute" || (seen[3] && (!strings[3] ||
+        (direct_mode != "exact" && direct_mode != "ann")))) return false;
+    direct->raw_id.assign(t, id_begin, id_end - id_begin);
+    direct->ann_mode = (direct_mode == "ann");
+  }
   return true;
 }
 
-static Json strict_json(const std::string& text) {
-  {
+static Json strict_json(const std::string& text, bool try_fast = true) {
+  if (try_fast) {
     Json fast;
     if (fast_envelope(text, &fast)) return fast;
   }
@@ -336,13 +365,23 @@ static bool json_request(Database& db, const std::string& line, int* exit_code) 
   std::string success_result;
   bool shutdown=false;
   try {
-    const Json request=strict_json(line);
-    if (!request.is_object()) throw std::runtime_error("request must be a JSON object");
-    if (request.contains("id")) raw_id=raw_request_id(line);
-    else throw std::runtime_error("missing request id");
-    if (!request.contains("op") || !request.at("op").is_string())
-      throw std::runtime_error("op must be a string");
-    const std::string op=request.at("op").get<std::string>();
+    Json request;
+    ValidatedExecuteRequest direct;
+    const bool direct_execute=fast_envelope(line,nullptr,&direct);
+    std::string op="execute";
+    if (direct_execute) raw_id=std::move(direct.raw_id);
+    else {
+      // Do not retain a failed probe's wide SQL allocation during DOM parsing.
+      std::string().swap(direct.sql);
+      // The identical fast syntax probe already ran; do not scan it twice.
+      request=strict_json(line,false);
+      if (!request.is_object()) throw std::runtime_error("request must be a JSON object");
+      if (request.contains("id")) raw_id=raw_request_id(line);
+      else throw std::runtime_error("missing request id");
+      if (!request.contains("op") || !request.at("op").is_string())
+        throw std::runtime_error("op must be a string");
+      op=request.at("op").get<std::string>();
+    }
     std::string error, result; int code=0;
     if (op=="shutdown") {
       shutdown=true;
@@ -354,16 +393,19 @@ static bool json_request(Database& db, const std::string& line, int* exit_code) 
         response={{"ok",true}};
       }
     } else if (op=="execute") {
-      if (!request.contains("sql") || !request.at("sql").is_string())
-        throw std::runtime_error("sql must be a string");
-      const Json mode=request.value("search_mode",Json("exact"));
-      if (!mode.is_string() || (mode!="exact" && mode!="ann"))
-        throw std::runtime_error("search_mode must be exact or ann");
-      // The mode selects the candidate set of an unfiltered vector search: a
-      // recall-bounded coarse partition for "ann", always-exact for "exact".
-      const bool ann_mode = (mode == "ann");
+      bool ann_mode=direct.ann_mode;
+      if (!direct_execute) {
+        if (!request.contains("sql") || !request.at("sql").is_string())
+          throw std::runtime_error("sql must be a string");
+        const Json mode=request.value("search_mode",Json("exact"));
+        if (!mode.is_string() || (mode!="exact" && mode!="ann"))
+          throw std::runtime_error("search_mode must be exact or ann");
+        ann_mode=(mode=="ann");
+      }
+      // Search-mode candidate selection and SQL ownership remain unchanged.
       Statement statement;
-      const std::string& sql=request.at("sql").get_ref<const std::string&>();
+      const std::string& sql=direct_execute ? direct.sql :
+          request.at("sql").get_ref<const std::string&>();
       if (!parse_sql(sql,&statement,&error,&code) ||
           !execute_json(db,statement,&result,&error,&code,ann_mode)) {
         response={{"ok",false},{"error",{{"code",std::to_string(code ? code : 1105)},{"message",error}}}};

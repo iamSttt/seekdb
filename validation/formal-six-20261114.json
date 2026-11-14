@@ -1,0 +1,21 @@
+{
+  "observed_on": "2026-11-14",
+  "timezone": "Asia/Shanghai",
+  "source": "https://open.oceanbase.com/train/TestRecord?questionId=600081",
+  "method": "Read all six successful performance result detail dialogs in the authenticated browser. No evaluation submitted.",
+  "results": [
+    {"time": "2026-11-13 23:23", "commit": "7ca3baad3f4c71970b01d194e8eee88a3606ff3b", "E": 2567.716075},
+    {"time": "2026-11-13 18:31", "commit": "e020fdeb67dd8b64b77f0f8c2905f137f0112bba", "E": 2937.367246},
+    {"time": "2026-11-12 19:52", "commit": "ee299adb296a2922d01982aa6c5707d37e767b41", "E": 3014.419039},
+    {"time": "2026-11-11 16:20", "commit": "2d1dc249bb64804e294b18f49a4634b427952c38", "E": 2336.046455},
+    {"time": "2026-11-11 12:23", "commit": "ff9c6bfbe89e1045e12ac56652165245c834630c", "E": 2708.402710},
+    {"time": "2026-11-10 21:33", "commit": "fa562be89069a84215a6196c9e24e4c6274f3862", "E": 2180.028190}
+  ],
+  "all_mysql_pass": true,
+  "all_prompt_not_ranked": true,
+  "prompt_message": "Prompt结果无效、待复核、超出平台0–100范围或缺少材料摘要，本项不参与排名；未截断或换算本地分数。",
+  "limitations": [
+    "The detail dialogs did not expose T/B/M, hardware, official image or executable hashes, or specific Prompt-review findings.",
+    "Cross-day E changes do not isolate source-code effects. No official score is predicted for this candidate."
+  ]
+}

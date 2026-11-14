@@ -98,6 +98,76 @@ inline uint32_t distance_avx512(const int8_t* a,const int8_t* b,size_t n) {
 }
 #endif
 #endif
+// Exactly 128 readable bytes per operand. Query initialization selects these
+// kernels only for n==128; all other lengths keep the original dynamic kernel.
+// Independent partial sums remove the loop-carried accumulation dependency.
+// Even the int8 endpoints give 128*255^2=8323200, so every partial sum and the
+// final reduction are exact in uint32 (and below INT32_MAX).
+#if defined(MVDB_SIMD_BOUND_X86)
+template<size_t Offset>
+__attribute__((target("sse2,no-avx,no-fma"),always_inline))
+inline __m128i fixed128_block_sse2(const int8_t* a,const int8_t* b) {
+  const __m128i zero=_mm_setzero_si128();
+  const __m128i x=_mm_loadu_si128(reinterpret_cast<const __m128i*>(a+Offset));
+  const __m128i y=_mm_loadu_si128(reinterpret_cast<const __m128i*>(b+Offset));
+  const __m128i xs=_mm_cmpgt_epi8(zero,x),ys=_mm_cmpgt_epi8(zero,y);
+  const __m128i lo=_mm_sub_epi16(_mm_unpacklo_epi8(x,xs),_mm_unpacklo_epi8(y,ys));
+  const __m128i hi=_mm_sub_epi16(_mm_unpackhi_epi8(x,xs),_mm_unpackhi_epi8(y,ys));
+  return _mm_add_epi32(_mm_madd_epi16(lo,lo),_mm_madd_epi16(hi,hi));
+}
+__attribute__((target("sse2,no-avx,no-fma")))
+inline uint32_t distance_sse2_128(const int8_t* a,const int8_t* b,size_t) {
+  const __m128i s0=_mm_add_epi32(fixed128_block_sse2<0>(a,b),fixed128_block_sse2<64>(a,b));
+  const __m128i s1=_mm_add_epi32(fixed128_block_sse2<16>(a,b),fixed128_block_sse2<80>(a,b));
+  const __m128i s2=_mm_add_epi32(fixed128_block_sse2<32>(a,b),fixed128_block_sse2<96>(a,b));
+  const __m128i s3=_mm_add_epi32(fixed128_block_sse2<48>(a,b),fixed128_block_sse2<112>(a,b));
+  __m128i sum=_mm_add_epi32(_mm_add_epi32(s0,s1),_mm_add_epi32(s2,s3));
+  sum=_mm_add_epi32(sum,_mm_srli_si128(sum,8));
+  sum=_mm_add_epi32(sum,_mm_srli_si128(sum,4));
+  return static_cast<uint32_t>(_mm_cvtsi128_si32(sum));
+}
+template<size_t Offset>
+__attribute__((target("avx2,no-fma"),always_inline))
+inline __m256i fixed128_block_avx2(const int8_t* a,const int8_t* b) {
+  const __m256i x=_mm256_cvtepi8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(a+Offset)));
+  const __m256i y=_mm256_cvtepi8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(b+Offset)));
+  const __m256i d=_mm256_sub_epi16(x,y);
+  return _mm256_madd_epi16(d,d);
+}
+__attribute__((target("avx2,no-fma")))
+inline uint32_t distance_avx2_128(const int8_t* a,const int8_t* b,size_t) {
+  const __m256i s0=_mm256_add_epi32(fixed128_block_avx2<0>(a,b),fixed128_block_avx2<64>(a,b));
+  const __m256i s1=_mm256_add_epi32(fixed128_block_avx2<16>(a,b),fixed128_block_avx2<80>(a,b));
+  const __m256i s2=_mm256_add_epi32(fixed128_block_avx2<32>(a,b),fixed128_block_avx2<96>(a,b));
+  const __m256i s3=_mm256_add_epi32(fixed128_block_avx2<48>(a,b),fixed128_block_avx2<112>(a,b));
+  const __m256i sum=_mm256_add_epi32(_mm256_add_epi32(s0,s1),_mm256_add_epi32(s2,s3));
+  __m128i total=_mm_add_epi32(_mm256_castsi256_si128(sum),_mm256_extracti128_si256(sum,1));
+  total=_mm_add_epi32(total,_mm_srli_si128(total,8));
+  total=_mm_add_epi32(total,_mm_srli_si128(total,4));
+  return static_cast<uint32_t>(_mm_cvtsi128_si32(total));
+}
+#if !defined(MVDB_DISABLE_AVX512_QUANTIZED)
+template<size_t Offset>
+__attribute__((target("avx512f,avx512bw,no-fma"),always_inline))
+inline __m512i fixed128_block_avx512(const int8_t* a,const int8_t* b) {
+  const __m512i x=_mm512_cvtepi8_epi16(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(a+Offset)));
+  const __m512i y=_mm512_cvtepi8_epi16(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(b+Offset)));
+  const __m512i d=_mm512_sub_epi16(x,y);
+  return _mm512_madd_epi16(d,d);
+}
+__attribute__((target("avx512f,avx512bw,no-fma")))
+inline uint32_t distance_avx512_128(const int8_t* a,const int8_t* b,size_t) {
+  const __m512i s0=fixed128_block_avx512<0>(a,b),s1=fixed128_block_avx512<32>(a,b);
+  const __m512i s2=fixed128_block_avx512<64>(a,b),s3=fixed128_block_avx512<96>(a,b);
+  const __m512i sum=_mm512_add_epi32(_mm512_add_epi32(s0,s1),_mm512_add_epi32(s2,s3));
+  const __m256i halves=_mm256_add_epi32(_mm512_castsi512_si256(sum),_mm512_extracti64x4_epi64(sum,1));
+  __m128i total=_mm_add_epi32(_mm256_castsi256_si128(halves),_mm256_extracti128_si256(halves,1));
+  total=_mm_add_epi32(total,_mm_srli_si128(total,8));
+  total=_mm_add_epi32(total,_mm_srli_si128(total,4));
+  return static_cast<uint32_t>(_mm_cvtsi128_si32(total));
+}
+#endif
+#endif
 using Distance = uint32_t(*)(const int8_t*,const int8_t*,size_t);
 inline Distance choose_distance() {
 #if defined(MVDB_SIMD_BOUND_X86)
@@ -109,6 +179,20 @@ inline Distance choose_distance() {
   if(__builtin_cpu_supports("sse2"))return distance_sse2;
 #endif
   return distance_scalar;
+}
+inline Distance choose_query_distance(size_t n) {
+  const auto original=choose_distance();
+#if defined(MVDB_SIMD_BOUND_X86) && !defined(MVDB_DISABLE_FIXED128_QUANTIZED)
+  if(n!=128)return original;
+#if !defined(MVDB_DISABLE_AVX512_QUANTIZED)
+  if(original==distance_avx512)return distance_avx512_128;
+#endif
+  if(original==distance_avx2)return distance_avx2_128;
+  if(original==distance_sse2)return distance_sse2_128;
+#else
+  (void)n;
+#endif
+  return original;
 }
 inline double up(double x) {
   return std::isfinite(x) ? distance_detail::positive_neighbors(x).upper : x;
@@ -158,7 +242,7 @@ class QuantizedQueryBound {
       }
     }
     root_n_=quantized_detail::up(std::sqrt(static_cast<double>(n)));
-    kernel_=quantized_detail::choose_distance();
+    kernel_=quantized_detail::choose_query_distance(n);
     enabled_=true;
 #else
     (void)query;(void)step;

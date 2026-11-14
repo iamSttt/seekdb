@@ -1,0 +1,27 @@
+{
+  "status": "frozen_before_native_execution",
+  "baseline": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "clean_equivalent_source": "a90b2b750e40f020793cddefe01d5b66631afc63",
+  "baseline_rebuild_sha256_expected": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+  "candidate_scope": ["Validated execute envelope without temporary JSON DOM", "Exact fixed-128 int8 distance kernels"],
+  "unchanged": ["Root compiler and flags, no PGO", "Exact distance and pruning certificate", "Storage format, transactions and recovery", "Thread policy"],
+  "screen": {
+    "seed": 7319,
+    "scenario": "standard10k, 128 dimensions, 1000 exact queries",
+    "cpu_quotas": [1, 2],
+    "pairs_per_cpu": 6,
+    "order": "alternating AB/BA",
+    "memory_bytes": 2147483648,
+    "swap_bytes": 0,
+    "preserve_all_pairs": true,
+    "metrics": ["first lifecycle wall and CPU", "first 1000 queries wall and CPU", "first query", "restart", "memory and I/O", "response identity and independent TopK oracle"],
+    "thresholds_for_advancing": {
+      "lifecycle_candidate_over_baseline_median_max": 0.95,
+      "query_candidate_over_baseline_median_max": 0.90,
+      "strictly_faster_pairs_per_primary_metric_min": 5,
+      "both_order_subgroup_medians_less_than": 1.0
+    }
+  },
+  "release_policy": "This 12-pair EE screen is only an initial screen, not the earlier full 24-pair retained-R protection plan or independent confirmation. If it fails, do not recommend replacing the 3014-point baseline. If it passes, run protections and an independent new-runner/new-seed confirmation first.",
+  "official_submission": "user only"
+}
