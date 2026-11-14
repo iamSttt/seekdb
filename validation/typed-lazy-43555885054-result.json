@@ -1,0 +1,112 @@
+{
+  "status": "correctness_blocked_existing_json_noexcept_oom_no_performance",
+  "branch": "research/typed-outline-1114",
+  "runtime_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+  "driver_commit": "99da81d104adb16d25f71d9621bfc9379033d918",
+  "run_id": 43555885054,
+  "diagnostic_run_id": 43557064668,
+  "diagnostic_driver_commit": "0a0bf14fb1b84aa1a5a82297df53269b70a938ee",
+  "root_identities": {
+    "baseline": {
+      "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+      "binary_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456"
+    },
+    "candidate": {
+      "source_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+      "binary_sha256": "01d5d67adf3f0746eda48518be658d614b9205a88e97354a26d2b09d95ed018c"
+    }
+  },
+  "correctness": {
+    "inherited_root_public_recovery_and_native_prefix": "passed_before_new_oom_sweep",
+    "typed_native_units_passed": {
+      "writer-o3": {
+        "sha256": "78b44aaed5bce6e32596e393d97ada53aa5eb38329989dcf071a913d316fd101",
+        "message": "PASS typed JSON matches pinned serializer, exact int64, float roundtrip, negative zero and strict UTF8"
+      },
+      "response-o3": {
+        "sha256": "0738687790930741b412a1f157345cfcfe9927454a34f632368065c565f1aae7",
+        "message": "PASS 54 scalar/127d/128d mid-response UTF8 failures clear executor output and allow following success"
+      },
+      "writer-san": {
+        "sha256": "78b44aaed5bce6e32596e393d97ada53aa5eb38329989dcf071a913d316fd101",
+        "message": "PASS typed JSON matches pinned serializer, exact int64, float roundtrip, negative zero and strict UTF8"
+      },
+      "response-san": {
+        "sha256": "0738687790930741b412a1f157345cfcfe9927454a34f632368065c565f1aae7",
+        "message": "PASS 54 scalar/127d/128d mid-response UTF8 failures clear executor output and allow following success"
+      }
+    },
+    "new_allocation_sweep": "failed",
+    "new_actual_root_byte_and_UTF8_oracles_after_oom": "not_executed",
+    "new_oom_ASan": "not_executed"
+  },
+  "diagnostic": {
+    "status": "same_existing_failure_reproduced_in_all_three_arms",
+    "roles": {
+      "base": {
+        "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+        "exit_code": 86,
+        "query": "SELECT id,s FROM t ORDER BY id LIMIT 10;",
+        "ordinal": 17,
+        "failed_bytes": 32,
+        "stack_sha256": "e82d6eeb011384c15e708db55c810cf0004a723dff74cd95bcbb5b0e651583f3",
+        "verified_frames": [
+          "json_value::destroy",
+          "~basic_json noexcept at json.hpp20559",
+          "begin_json_rows lambda at exec.cpp414/415"
+        ]
+      },
+      "typed": {
+        "source_commit": "6412cbf862959655f351b4d908c430a98c5eabfe",
+        "exit_code": 86,
+        "query": "SELECT id,s FROM t ORDER BY id LIMIT 10;",
+        "ordinal": 17,
+        "failed_bytes": 32,
+        "stack_sha256": "763db50b485b0bd98113ac8ef774254554f1cae31b4c7ca96bd54caccf273547",
+        "verified_frames": [
+          "json_value::destroy",
+          "~basic_json noexcept at json.hpp20559",
+          "begin_json_rows lambda at exec.cpp414/415"
+        ]
+      },
+      "lazy": {
+        "source_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+        "exit_code": 86,
+        "query": "SELECT id,s FROM t ORDER BY id LIMIT 10;",
+        "ordinal": 17,
+        "failed_bytes": 32,
+        "stack_sha256": "aca5b36ac0c635cd01153ed3127b5090ab84a925f29d6004e0c41ccd71775e80",
+        "verified_frames": [
+          "json_value::destroy",
+          "~basic_json noexcept at json.hpp20559",
+          "begin_json_rows lambda at exec.cpp414/415"
+        ]
+      }
+    },
+    "explanation": "Pinned JSON destructor is noexcept; destroying begin_json_rows columns array allocates a heap work stack. Injecting failure there terminates rather than reaching execute_json catch. The observed failure is in all three original scalar paths, before lazy state allocation.",
+    "remaining_uncertainty": "Sweep stops at ordinal17 in the first scalar query, so subsequent wide allocation failures are untested. This does not prove the candidate meets the new OOM gate."
+  },
+  "completed_pairs": 0,
+  "original31_guard_metrics": null,
+  "wide_benefit_checks": null,
+  "frozen_thresholds": {
+    "time_cpu": 1.02,
+    "memory": 1.05,
+    "default": "overall+AB+BA medians must all exceed threshold to block",
+    "spill_wide": "both individual pairs must exceed threshold on same metric to block",
+    "wide_per_pair_required_max": {
+      "seven_query_phases_wall_seconds": 0.9,
+      "seven_query_phases_cpu_usec": 0.9,
+      "lifecycle_stage_wall_sum": 0.95
+    }
+  },
+  "performance_status": "not_started; missing guards are not pass",
+  "assembly_evidence": "typed-lazy-assembly-result-20261114.json",
+  "decision": "Do not adopt lazy candidate; end typed experiments this round. Keep the same failure and all frozen acceptance conditions, without library edits or omitted ordinals.",
+  "release_gate_passed": false,
+  "automatic_adoption": false,
+  "official_score": null,
+  "formal_submission": false,
+  "raw_manifest_sha256": "0f18ca96a4dfbdbba5109eaecf764447fad52cda94e9957548071ce0c307a963",
+  "raw_log_gzip_sha256": "6a54a8b5cc64aaaabed3dd1475d7f29a5e86af386b1965f498f5e20c13fe475f"
+}

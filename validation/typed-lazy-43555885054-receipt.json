@@ -1,0 +1,46 @@
+{
+  "status": "correctness_blocked_existing_json_noexcept_oom_no_performance",
+  "branch": "research/typed-outline-1114",
+  "runtime_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+  "driver_commit": "99da81d104adb16d25f71d9621bfc9379033d918",
+  "run_id": 43555885054,
+  "assembly_runs": [
+    43554050534,
+    43555043153
+  ],
+  "diagnostic_run_id": 43557064668,
+  "completed_pairs": 0,
+  "guard_triggers": null,
+  "wide_benefit_checks": null,
+  "guard_status": "All31 original and extra wide checks unmeasured; no missing guard treated as pass",
+  "all31_original_metrics_recomputed": false,
+  "all_failures_retained": true,
+  "root_identities": {
+    "baseline": {
+      "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+      "binary_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456"
+    },
+    "candidate": {
+      "source_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+      "binary_sha256": "01d5d67adf3f0746eda48518be658d614b9205a88e97354a26d2b09d95ed018c"
+    }
+  },
+  "archive": {
+    "name": "typed-lazy-43555885054-raw.zip",
+    "bytes": 12906147,
+    "sha256": "5deee6bf477c74b50b64102353bd7eff3319f54d5c9bba5245bca06eff7c3cbf",
+    "members": 170
+  },
+  "result": {
+    "name": "typed-lazy-43555885054-result.json",
+    "sha256": "62dc6812fa397438251568339d2de25b6664067601d9d91bf3bfac4ebb983538"
+  },
+  "candidate_patch_sha256": "c9ddf593ab4e6a4509384d67256bee3c0f5e09dd30cb063be7fe61fccf16617e",
+  "raw_log_sha256": "6a54a8b5cc64aaaabed3dd1475d7f29a5e86af386b1965f498f5e20c13fe475f",
+  "source_factor_only": true,
+  "release_gate_passed": false,
+  "automatic_adoption": false,
+  "official_score": null,
+  "formal_submission": false,
+  "no_additional_typed_variant_or_performance_retry": true
+}

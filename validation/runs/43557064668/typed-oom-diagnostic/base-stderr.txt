@@ -1,0 +1,17 @@
+mvdb: fanout wake_us=16.01 (measured, median of 200 handshakes)
+OOM_TERMINATE query=SELECT id,s FROM t ORDER BY id LIMIT 10; ordinal=17 failed_bytes=32 allocations=17 injected=1
+[0x40f610]
+[0x461fba]
+[0x51f5e9]
+[0x461746]
+[0x52e637]
+[0x52f27d]
+[0x43e8fe]
+[0x43e922]
+[0x430f66]
+[0x434612]
+[0x436316]
+[0x40d410]
+[0x532a64]
+[0x534160]
+[0x40f4a1]

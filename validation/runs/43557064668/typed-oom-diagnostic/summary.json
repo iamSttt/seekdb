@@ -1,0 +1,24 @@
+{
+  "status": "diagnostic_finished_not_validation",
+  "roles": {
+    "base": {
+      "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+      "exit_code": 86,
+      "stderr": "mvdb: fanout wake_us=16.01 (measured, median of 200 handshakes)\nOOM_TERMINATE query=SELECT id,s FROM t ORDER BY id LIMIT 10; ordinal=17 failed_bytes=32 allocations=17 injected=1\n[0x40f610]\n[0x461fba]\n[0x51f5e9]\n[0x461746]\n[0x52e637]\n[0x52f27d]\n[0x43e8fe]\n[0x43e922]\n[0x430f66]\n[0x434612]\n[0x436316]\n[0x40d410]\n[0x532a64]\n[0x534160]\n[0x40f4a1]\n"
+    },
+    "typed": {
+      "source_commit": "6412cbf862959655f351b4d908c430a98c5eabfe",
+      "exit_code": 86,
+      "stderr": "mvdb: fanout wake_us=16.09 (measured, median of 200 handshakes)\nOOM_TERMINATE query=SELECT id,s FROM t ORDER BY id LIMIT 10; ordinal=17 failed_bytes=32 allocations=17 injected=1\n[0x40f760]\n[0x46320a]\n[0x520839]\n[0x462996]\n[0x52f887]\n[0x5304cd]\n[0x442114]\n[0x442149]\n[0x431b86]\n[0x43519b]\n[0x436f46]\n[0x40d560]\n[0x533cb4]\n[0x5353b0]\n[0x40f5f1]\n"
+    },
+    "lazy": {
+      "source_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+      "exit_code": 86,
+      "stderr": "mvdb: fanout wake_us=0.45 (measured, median of 200 handshakes)\nOOM_TERMINATE query=SELECT id,s FROM t ORDER BY id LIMIT 10; ordinal=17 failed_bytes=32 allocations=17 injected=1\n[0x40f700]\n[0x46315a]\n[0x520789]\n[0x4628e6]\n[0x52f7d7]\n[0x53041d]\n[0x442134]\n[0x442169]\n[0x431c36]\n[0x4350dd]\n[0x436f66]\n[0x40d500]\n[0x533c04]\n[0x535300]\n[0x40f591]\n"
+    }
+  },
+  "performance_pairs": 0,
+  "release_gate_passed": false,
+  "source_changes": false,
+  "scope": "Same original sweep and assertions; added no-allocation ordinal log and terminate backtrace only. All failures retained."
+}

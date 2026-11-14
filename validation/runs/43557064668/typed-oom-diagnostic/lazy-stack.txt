@@ -1,0 +1,30 @@
+(anonymous namespace)::diagnostic_terminate()
+/harness/test_typed_oom.cpp:25
+__cxxabiv1::__terminate(void (*)())
+??:?
+__cxa_call_terminate
+??:?
+__gxx_personality_v0
+??:?
+_Unwind_RaiseException_Phase2
+/usr/src/gcc/libgcc/unwind.inc:66
+_Unwind_Resume
+/usr/src/gcc/libgcc/unwind.inc:246
+nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::json_value::destroy(nlohmann::json_abi_v3_11_3::detail::value_t)
+??:?
+nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::~basic_json()
+/src/src/../third_party/json.hpp:20559
+mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::{lambda()#1}::operator()() const
+/src/src/exec.cpp:415
+mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)
+/usr/local/include/c++/13.3.0/bits/stl_iterator.h:1077
+mvdb::execute_json(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, bool)
+/src/src/exec.cpp:833 (discriminator 1)
+main
+/harness/test_typed_oom.cpp:84 (discriminator 1)
+__libc_start_call_main
+libc-start.o:?
+__libc_start_main
+??:?
+_start
+??:?
