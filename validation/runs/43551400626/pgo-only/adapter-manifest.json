@@ -1,0 +1,24 @@
+{
+  "status": "frozen_before_native_execution",
+  "runtime_base": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "sha256": {
+    "minivec/tools/ci_score.sh": "9cf3d204889cc61fa5c8bef10d74e6c33df96c976a507a00073ab42bafb53564",
+    "minivec/tools/ci_pgo_only_1114.sh": "7ba26634653526053cb53473649a84fae08b652c55d98447049f2ca70bae1c11",
+    "validation/pgo-only-plan-20261114.json": "9bf46412721e68262376f1140307487834298cf3835ada548bdcc7ba68e0d66b",
+    "validation/pgo-only-source-20261114.json": "017496fb4fc0ba5e9f20ff705033fa8b73024f86ade24de456f741492824d0ce",
+    "minivec/tools/best_screen_1114.py": "496181803c3ba8949ab16ff994eac144bc531d73bae9fafe48255268ede891d5",
+    "minivec/tools/retained_guards1114/plan-only.json": "cf71e6d545751d53f98bc3b0eebc4d87cf9df1b81564d4ab391b10ad474016b9",
+    "minivec/tools/retained_guards1114/retained_guards.py": "6384d0f51c06e5333e16584393639127e8def10642c8b163ae49ba77ce2f62db",
+    "minivec/tools/retained_guards1114/evidence/evaluate_highest_primary24_screen.py": "40b8e003b715cb3b3c570ad3d733c7490d2de72837cffab92024a971364153c2",
+    "minivec/tools/confirmation1114/plan.json": "ffb481bcbd1334033d8472e2aa14026df007b0019c0edbe010b12dbc9bb6cb6c",
+    "minivec/tools/pgo_only1114/build_audit.py": "080a5a96ad0f1c3a2bcd9df23bc8f95f860c6b4006457a57c13d1ca175c563df",
+    "minivec/tools/pgo_only1114/source_factor.py": "73992381648a097224bf0c272be9d1bd8811ddafb9ec71a3a819d43dd9754884",
+    "minivec/tools/pgo_only1114/test_adapter.py": "6f7e3ee4860082d24628ab2f72a1a5d6d15f7de7d414b4d768be471850342aac",
+    "minivec/tools/pgo_only1114/verify_source.py": "77e4498e803de2fbe34787c9829aa07a21bce21d1f6b27af2d189e23a1aaf4be"
+  },
+  "native_builds_completed_at_freeze": 0,
+  "database_pairs_completed_at_freeze": 0,
+  "policy_changes": "None; adapter identity hooks only; finalEE/R gates deferred unchanged",
+  "dispatch_authorized_by_parent": true,
+  "binding": "exact staged Git blobs; no working-tree or archive eol conversion"
+}

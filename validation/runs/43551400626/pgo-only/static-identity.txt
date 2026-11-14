@@ -1,0 +1,1 @@
+{"status": "static_identity_passed", "runtime_files": 16, "third_party_files": 2, "native_builds": 0, "performance_pairs": 0, "official_score": null, "automatic_adoption": false}

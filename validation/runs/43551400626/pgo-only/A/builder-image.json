@@ -1,0 +1,74 @@
+[
+    {
+        "Id": "sha256:ffad349508b317eaef96f3808c11be611c1181e65b70099ab73b217e664af3c3",
+        "RepoTags": [
+            "minivec:pgo-only-builder-43551400626-A"
+        ],
+        "RepoDigests": [],
+        "Parent": "",
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-11-14T03:25:02.672554581Z",
+        "DockerVersion": "",
+        "Author": "",
+        "Config": {
+            "Hostname": "",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "GPG_KEYS=B215C1633BCA0477615F1B35A5B3A004745C015A \tB3C42148A44E6983B3E4CC0793FA9B1AB75C61B8 \t90AA470469D3965A87A5DCB494D03953902C9419 \t80F98B2E0DAB6C8281BDF541A7C8C3B2F71EDF1C \t7F74F97C103468EE5D750B583AB00996FC26A641 \t33C235A34C46AA3FFB293709A328C3A2C3C45C06 \tD3A93CAD751C2AF4F8C7AD516C35B99309B5FA62",
+                "GCC_MIRRORS=https://ftpmirror.gnu.org/gcc \t\thttps://mirrors.kernel.org/gnu/gcc \t\thttps://bigsearcher.com/mirrors/gcc/releases \t\thttp://www.netgull.com/gcc/releases \t\thttps://ftpmirror.gnu.org/gcc \t\thttps://sourceware.org/pub/gcc/releases \t\tftp://ftp.gnu.org/gnu/gcc",
+                "GCC_VERSION=13.3.0"
+            ],
+            "Cmd": [
+                "bash"
+            ],
+            "Image": "",
+            "Volumes": null,
+            "WorkingDir": "/src",
+            "Entrypoint": null,
+            "OnBuild": null,
+            "Labels": null
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 1432217053,
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/kpu9pasmu6vvlhk9cx7480xri/diff:/var/lib/docker/overlay2/mamffvf4kza9nyplxmt73ej44/diff:/var/lib/docker/overlay2/s6syld752mhwd3gjdge750rq0/diff:/var/lib/docker/overlay2/c31gdapc9ixl5m39a2eqm5dsy/diff:/var/lib/docker/overlay2/w6pste5r551fchzn2ft0g9ro9/diff:/var/lib/docker/overlay2/ec48c9bb4abcfe350d19329e6238e73e438194cd721e7e2029665201e40dfe4c/diff:/var/lib/docker/overlay2/540b5bdd9212b9eaae4dd351f291c45364c3281285d96a4c0dede68c64359700/diff:/var/lib/docker/overlay2/0414a84a91286a7cb5bb7a90ac4aaafc7a1edad8c600a4c8cfd78133e8a7fce4/diff:/var/lib/docker/overlay2/2db0db084c4d3e21c59238049b6a986212427b7da4b04371fad6f7c092aa18dc/diff:/var/lib/docker/overlay2/264e7bf32be6e000fcad63ad9e3ad680f87aa2691fe70a4923ba54475d98475d/diff:/var/lib/docker/overlay2/00ea323c54fd48c93072a90f38d55daf7e8e7096d46f8e82b655b5a445f69c4f/diff:/var/lib/docker/overlay2/e2f995d7cdd07b7f06b08916ec5a0db2d8e7a3ac2ac02bb72f9ab008dcd876a4/diff:/var/lib/docker/overlay2/b0d558c46d1f66d39cf8938d423093b0a62c0c9c9e3b8976e12f2e8ee3093915/diff",
+                "MergedDir": "/var/lib/docker/overlay2/ls8yod7bm25p21liummn25bfd/merged",
+                "UpperDir": "/var/lib/docker/overlay2/ls8yod7bm25p21liummn25bfd/diff",
+                "WorkDir": "/var/lib/docker/overlay2/ls8yod7bm25p21liummn25bfd/work"
+            },
+            "Name": "overlay2"
+        },
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:2f7436e79a0bc6cdec6536da54ae6a5863c8e3b5f145e0f8ac0b96306baddbc9",
+                "sha256:6428cc293366f93395949a2d1efd9b89c898c7a4a124051c3793c1faf7664269",
+                "sha256:e4dc8cd9ecc886f56babec383662506d94a28645c1a31085deaf7870366ec225",
+                "sha256:ce84ba212e49beebef47aad10b1e672eb0532e91d313994f6db7fb16e16c7a78",
+                "sha256:c7458a0601d57ba8720cb2dda69dde9ebd05bbe895d582dfac1ecb7381209954",
+                "sha256:06d81ad2153e0f8a960acbf93b16bb7c412ad044ee031f3b067eadef0f169bdb",
+                "sha256:766054479aec6f00cecedec3f0310572e4766235eab5b7d73721198ada4c04f5",
+                "sha256:964347297b79200a96bb7b5098c5854984f1457c8edb18d7b112617e67b66ce8",
+                "sha256:95503ce1c6158a39a79b710f2e8e98729dadb3af52d160cbe45dddfa9cb5ab31",
+                "sha256:42ed582f42cf27b65a97456aa0741b288984aeef7d1a063452246876c8c1eea4",
+                "sha256:5420ac8821a0a8f3f0af24f6e25eaf2b6deab095cd2f1313f2d21abf162080d9",
+                "sha256:6780ec733b6a171260fc1d2fab38e1e61fc494424154dd1dbf7c241bcc2b78ed",
+                "sha256:12bd8026ee0af42a3d7016558b58e143ff3c20ae2882d46debe759ff078ba5cc",
+                "sha256:d5af437b7e7f377181ff216dba3471d98f382a2e904cd3d1e065e9c475d47e03"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-11-14T03:25:04.949820422Z"
+        }
+    }
+]

@@ -1,0 +1,1 @@
+{"status": "static_adapter_tests_passed", "database_runs": 0, "tested": ["equal-build identity", "different-build blocking", "missing feedback rejection", "source-factor frozen plan"]}

@@ -1,0 +1,32 @@
+{
+  "datasets": [
+    {
+      "dimensions": 16,
+      "main_queries": 100,
+      "rows": 1024,
+      "unindexed_queries": 10
+    },
+    {
+      "dimensions": 128,
+      "main_queries": 500,
+      "rows": 10000,
+      "unindexed_queries": 30
+    },
+    {
+      "dimensions": 512,
+      "main_queries": 100,
+      "rows": 1024,
+      "unindexed_queries": 10
+    }
+  ],
+  "generator": "splitmix64 + sum of twelve 12-bit uniforms / 4096",
+  "kind": "build_only_general_PGO_training",
+  "limitations": "Inputs are deterministic; profile counters may vary with scheduling and startup calibration. No evaluation data is read.",
+  "oracle": "independent exact double squared distances; distance then primary-key order",
+  "phase_requests": [
+    950,
+    40,
+    13
+  ],
+  "seed": 2026111201
+}

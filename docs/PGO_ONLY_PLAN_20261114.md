@@ -135,3 +135,27 @@ policy and plan input to the staged Git blob, not the working-tree conversion.
 The complete failed log and zero-build/zero-pair record are retained under
 `validation/runs/43551046410`. No runtime, training, threshold or corpus change
 is part of this correction; it is not a negative PGO performance result.
+
+## Observed identity block, run43551400626
+
+The corrected preflight passed. Two fresh no-cache builder stages each passed
+all six original training verifications (2012 responses per build, 4024 total),
+and their corpus hashes matched. Their stripped ELF hashes differed:
+
+- A: `2bdd665f0f0e9071ac97c71a3c231da6fc25e254ea11d017461e0dd004422a64`
+- B: `9c1ecd684376a22302243fc872b23a82bc5f95789b794e2e9c37689ca36c7169`
+
+The release-stage cache also reused A for B. The adapter rejected B at its
+builder/release identity check before reaching the A/B comparison. Both builder
+images and hashes are recorded, so their inequality independently establishes
+the predeclared same-ELF blocker. Source safety, actual-image public gates and
+all performance pairs had not started; this is neither a measured speed loss
+nor a full runtime correctness failure. No fastest build was selected.
+
+The complete log, both training records, profile/corpus hashes and image
+identities are retained in `validation/runs/43551400626`, with derived details
+in `build-identity-block-analysis.json`. Different feedback hashes are not by
+themselves proof of a particular scheduling cause, and no binary-section
+comparison was collected. The unchanged-training PGO candidate is blocked; any
+deterministic training or release-packaging repair requires a separate frozen
+experiment, not relaxation of the existing confirmation rule.

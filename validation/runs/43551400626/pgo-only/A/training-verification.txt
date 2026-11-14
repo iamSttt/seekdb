@@ -1,0 +1,6 @@
+{"actual_file":"responses-1-0.jsonl","expected_file":"phase-0.expected.jsonl","oracle":"independent exact dyadic distance and complete response comparison","responses":951,"status":"passed"}
+{"actual_file":"responses-1-1.jsonl","expected_file":"phase-1.expected.jsonl","oracle":"independent exact dyadic distance and complete response comparison","responses":41,"status":"passed"}
+{"actual_file":"responses-1-2.jsonl","expected_file":"phase-2.expected.jsonl","oracle":"independent exact dyadic distance and complete response comparison","responses":14,"status":"passed"}
+{"actual_file":"responses-2-0.jsonl","expected_file":"phase-0.expected.jsonl","oracle":"independent exact dyadic distance and complete response comparison","responses":951,"status":"passed"}
+{"actual_file":"responses-2-1.jsonl","expected_file":"phase-1.expected.jsonl","oracle":"independent exact dyadic distance and complete response comparison","responses":41,"status":"passed"}
+{"actual_file":"responses-2-2.jsonl","expected_file":"phase-2.expected.jsonl","oracle":"independent exact dyadic distance and complete response comparison","responses":14,"status":"passed"}

@@ -1,0 +1,190 @@
+{
+  "status": "blocked_nonreproducible_builder_ELFs_and_release_cache_identity_mismatch",
+  "run": 43551400626,
+  "job": 132314441927,
+  "commit": "d57748700e56be0201f016f6397c1f50c2a7b477",
+  "download": {
+    "run": 43551400626,
+    "job": 132314441927,
+    "exit": 0,
+    "bytes": 203881,
+    "sha256": "775a23c2b413704bcfe95f7042b15d4145454f6a4dd73e13fa7c1cad11b6c3bb",
+    "commit": "d57748700e56be0201f016f6397c1f50c2a7b477",
+    "conclusion": "failure"
+  },
+  "builds": {
+    "A": {
+      "builder_ELF_sha256": "2bdd665f0f0e9071ac97c71a3c231da6fc25e254ea11d017461e0dd004422a64",
+      "builder_image_id": "sha256:ffad349508b317eaef96f3808c11be611c1181e65b70099ab73b217e664af3c3",
+      "release_image_id": "sha256:b39090d5fe1ac0e4210679012d273406158c7935d599be9e0917cc53a6b24439",
+      "training_verifications": [
+        {
+          "actual_file": "responses-1-0.jsonl",
+          "expected_file": "phase-0.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 951,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-1-1.jsonl",
+          "expected_file": "phase-1.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 41,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-1-2.jsonl",
+          "expected_file": "phase-2.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 14,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-2-0.jsonl",
+          "expected_file": "phase-0.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 951,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-2-1.jsonl",
+          "expected_file": "phase-1.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 41,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-2-2.jsonl",
+          "expected_file": "phase-2.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 14,
+          "status": "passed"
+        }
+      ],
+      "training_responses": 2012,
+      "profile_hashes": [
+        "a42468f48782275db55fac01259812c2a15b85419d1b118d313d97e090ed43d2  /pgo/minivec-db.gcda",
+        "9c8492ddfbf9b9208d88391e90a5f5627bbd4f48a99c67e4028cd73983b8758f  /pgo/minivec-exec.gcda",
+        "dab3ca79553ea27d2d9a3ea59ec37bcefb298ee78a13fb223ea162da1f059e19  /pgo/minivec-flat_index.gcda",
+        "95068032901c41fb9790d674174dc9ac25950e1610b2a25575335ef3a765c727  /pgo/minivec-main.gcda",
+        "93ff3f1dcbe76fb38461043983a6ca7f2478b64f6a4067be6ee5e78b34957a2f  /pgo/minivec-sql.gcda",
+        "b7b2bd19b5abc2e3342b70bf8ae583534a409fbef81f00f059ea04832052d3fa  /pgo/minivec-value.gcda"
+      ],
+      "corpus_hashes": [
+        "310c11aa556016bce2897c37366d29f2d9374b2da22fcb8a1b156a7947f68e37  /training/corpus/phase-0.expected.jsonl",
+        "1050a6bf765d43b0a78b1ab8c21e8d9eba5637f8331828e4e0ed442e925e84f9  /training/corpus/phase-0.jsonl",
+        "d99e0bfcd58082e9800a373c591925a01cabc61119fb658e23d98d8557808d22  /training/corpus/phase-1.expected.jsonl",
+        "00de9bf85bfbcf4e35ae8edb24353a263995c48e57df387859312dcd47ab7ebe  /training/corpus/phase-1.jsonl",
+        "98cd444dcc6c08bc3fb22c294c3eac62f1893518aec1bd2a18ff34fe9d645fd1  /training/corpus/phase-2.expected.jsonl",
+        "fe235014ed3c24c7c7244c44379d9828ac4b03d3001afe9c07581a43a7a24883  /training/corpus/phase-2.jsonl",
+        "da55ce487334d869b52a12d864a302c445c7b968a528a9bba3d40a4de251e774  /training/corpus/manifest.json"
+      ]
+    },
+    "B": {
+      "builder_ELF_sha256": "9c1ecd684376a22302243fc872b23a82bc5f95789b794e2e9c37689ca36c7169",
+      "builder_image_id": "sha256:2c469005d79b32b6a72e6661c9cb56c32a178d925ad2bbcb870107bc39d300ea",
+      "release_image_id": "sha256:b39090d5fe1ac0e4210679012d273406158c7935d599be9e0917cc53a6b24439",
+      "training_verifications": [
+        {
+          "actual_file": "responses-1-0.jsonl",
+          "expected_file": "phase-0.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 951,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-1-1.jsonl",
+          "expected_file": "phase-1.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 41,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-1-2.jsonl",
+          "expected_file": "phase-2.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 14,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-2-0.jsonl",
+          "expected_file": "phase-0.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 951,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-2-1.jsonl",
+          "expected_file": "phase-1.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 41,
+          "status": "passed"
+        },
+        {
+          "actual_file": "responses-2-2.jsonl",
+          "expected_file": "phase-2.expected.jsonl",
+          "oracle": "independent exact dyadic distance and complete response comparison",
+          "responses": 14,
+          "status": "passed"
+        }
+      ],
+      "training_responses": 2012,
+      "profile_hashes": [
+        "779921f6bd5a1ee2d8e237b028c9afbd01f11fd6303ed5e07590011161c8d303  /pgo/minivec-db.gcda",
+        "7196c588ede8291b0eb945d44a9ca78d93bad40ade2962936bc16f0462a7318d  /pgo/minivec-exec.gcda",
+        "a01b64a3c9cfab7c745c657b79411ceeaa3571cf8396dc60bb160568727d74de  /pgo/minivec-flat_index.gcda",
+        "8be6e293c6688f645e25b1b16eaaadec593e5d865ab77077ce3707e8f905e38a  /pgo/minivec-main.gcda",
+        "d680fd9b3d3f0fda1d9daf360fed230fc6180e425633e475ee7fe99a90047e15  /pgo/minivec-sql.gcda",
+        "20bd04fa3e400de2f8c743fdd3e2693f5e1438187ca051211d6ee68cc4dd0737  /pgo/minivec-value.gcda"
+      ],
+      "corpus_hashes": [
+        "310c11aa556016bce2897c37366d29f2d9374b2da22fcb8a1b156a7947f68e37  /training/corpus/phase-0.expected.jsonl",
+        "1050a6bf765d43b0a78b1ab8c21e8d9eba5637f8331828e4e0ed442e925e84f9  /training/corpus/phase-0.jsonl",
+        "d99e0bfcd58082e9800a373c591925a01cabc61119fb658e23d98d8557808d22  /training/corpus/phase-1.expected.jsonl",
+        "00de9bf85bfbcf4e35ae8edb24353a263995c48e57df387859312dcd47ab7ebe  /training/corpus/phase-1.jsonl",
+        "98cd444dcc6c08bc3fb22c294c3eac62f1893518aec1bd2a18ff34fe9d645fd1  /training/corpus/phase-2.expected.jsonl",
+        "fe235014ed3c24c7c7244c44379d9828ac4b03d3001afe9c07581a43a7a24883  /training/corpus/phase-2.jsonl",
+        "da55ce487334d869b52a12d864a302c445c7b968a528a9bba3d40a4de251e774  /training/corpus/manifest.json"
+      ]
+    }
+  },
+  "fresh_no_cache_PGO_builder_executions": 2,
+  "training_runs": 12,
+  "training_responses": 4024,
+  "both_training_oracles_passed": true,
+  "corpus_hashes_equal": true,
+  "builder_ELF_equal": false,
+  "release_images_equal": true,
+  "A_release_ELF_verified_equal_builder": true,
+  "B_release_ELF_verified_equal_builder": false,
+  "observed_first_exception": "ValueError: release binary differs from the trained builder product",
+  "failure_order": "B record() gate ran before planned compare(); cached releaseB selected A image. Existing A/B builder hashes independently establish the frozen unequal-ELF blocker.",
+  "log_evidence_lines": {
+    "A_builder_training": [
+      206,
+      220
+    ],
+    "A_release_cached_compilation": 266,
+    "B_builder_training": [
+      318,
+      332
+    ],
+    "B_release_cached_compilation": 384,
+    "B_record_rejection": 400
+  },
+  "not_executed": [
+    "fresh760f nonPGO control build",
+    "actual-image20public/JSONL/TopK gates",
+    "source safety regressions",
+    "A/B source-factor performance",
+    "EE/R acceptance",
+    "independent confirmation"
+  ],
+  "database_performance_pairs": 0,
+  "causal_limit": "Different feedback hashes and stripped ELF hashes observed. No ELF section comparison or counter-value comparison was collected; do not attribute the difference solely to scheduling, or infer a speed result.",
+  "decision": "Reject current unchanged-original-training PGO path for same-ELF acceptance. No fastest-build choice, no performance rerun and no weakened confirmation. Any deterministic training/packaging repair is a separately preregistered change.",
+  "formal_submission": false,
+  "official_score": null,
+  "release_gate_passed": false,
+  "automatic_adoption": false
+}

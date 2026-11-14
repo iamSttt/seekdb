@@ -1,0 +1,109 @@
+{
+  "status": "prepared_not_built",
+  "baseline_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "R_training_commit": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+  "runtime_source_count": 16,
+  "runtime_and_third_party": {
+    "minivec/src/db.cpp": {
+      "sha256": "908cf567016786d7783eec263e8d4b20a7585b13ee20d0b48b984314d74c42d4",
+      "bytes": 84565
+    },
+    "minivec/src/db.h": {
+      "sha256": "b2b045c5c869633596a435e2e8a94a8d0abfe3a4d3563d5f95615d7cbd529607",
+      "bytes": 6422
+    },
+    "minivec/src/distance.h": {
+      "sha256": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+      "bytes": 17386
+    },
+    "minivec/src/exec.cpp": {
+      "sha256": "326d72a903f117be08428f355a7f39364fcca58deff6b480cc1a9bf59fd82df5",
+      "bytes": 33276
+    },
+    "minivec/src/exec.h": {
+      "sha256": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5",
+      "bytes": 1135
+    },
+    "minivec/src/flat_index.cpp": {
+      "sha256": "6a2e8d2e09f6fa0365b6354f798a4901669c48cc27dae873aa7ed13225f2e070",
+      "bytes": 19253
+    },
+    "minivec/src/flat_index.h": {
+      "sha256": "5bd63a4ea1a0f268e4137ff6e0c49be8860b64626f990a8fd96499fb292b4010",
+      "bytes": 5714
+    },
+    "minivec/src/main.cpp": {
+      "sha256": "557524d9a1e1dfc62dbb28ace78056876201f87a5e49e8d00e6c45431a351b3f",
+      "bytes": 20881
+    },
+    "minivec/src/parse_pool.h": {
+      "sha256": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e",
+      "bytes": 5498
+    },
+    "minivec/src/quantized_bound.h": {
+      "sha256": "331a1c2f0fe3681ece30e74c24aa12f97094fac7815d3f48808c1ac814404e12",
+      "bytes": 14383
+    },
+    "minivec/src/query_pool.h": {
+      "sha256": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b",
+      "bytes": 11202
+    },
+    "minivec/src/result_sort.h": {
+      "sha256": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361",
+      "bytes": 5423
+    },
+    "minivec/src/sql.cpp": {
+      "sha256": "339d6d704a18b2f0fe04ff97edac4d2be90ff5f908f0ad085284021e0f47cbb5",
+      "bytes": 44122
+    },
+    "minivec/src/sql.h": {
+      "sha256": "564e8aab64e3fe8fc884b9cb95f9411e031e51900de924c9ee2c56dfea67b843",
+      "bytes": 1666
+    },
+    "minivec/src/value.cpp": {
+      "sha256": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8",
+      "bytes": 3025
+    },
+    "minivec/src/value.h": {
+      "sha256": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12",
+      "bytes": 1255
+    },
+    "minivec/third_party/LICENSE.MIT": {
+      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14",
+      "bytes": 1076
+    },
+    "minivec/third_party/json.hpp": {
+      "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6",
+      "bytes": 919975
+    }
+  },
+  "training_inputs": {
+    "minivec/tools/pgo/train.cpp": {
+      "sha256": "0af3ab5c00f8238e6a8dc627799d8ffe0ad7bb530dc3b83002f02b3f2f7bd69f",
+      "bytes": 13663
+    },
+    "minivec/tools/pgo/run-training.sh": {
+      "sha256": "e5af635da202155dd21b84418cb729fd4a10858bbfb963132941412eaabf27d5",
+      "bytes": 1407
+    }
+  },
+  "build_inputs": {
+    "Dockerfile": {
+      "sha256": "82e80c579c873a9f02d157de39dcc3713dd2faf110a778c17416d300973b7a61",
+      "bytes": 1446
+    },
+    ".dockerignore": {
+      "sha256": "395634ec31dfc28a6b728a3e27594441770830e360148bf85a61c7fe946ed83d",
+      "bytes": 200
+    }
+  },
+  "R_Dockerfile_sha256": "8014b651f2974844a411fdc1b88b9b6e46a6010eb31be14f28d909e77eeb8b5b",
+  "exact_R_Dockerfile_transform": [
+    "remove ARG FEATURE_FLAGS line",
+    "remove flags=\"$flags $FEATURE_FLAGS\" assignment; leave all other bytes unchanged"
+  ],
+  "forbidden_added_feature_macros": true,
+  "baseline_ELF_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+  "native_execution": false,
+  "formal_submission": false
+}

@@ -1,0 +1,6 @@
+minivec ready data=/training/data-2
+mvdb: fanout wake_us=16.62 (measured, median of 200 handshakes)
+mvdb: fanout rows=1024 -> 2 threads (forced)
+mvdb: fanout rows=1024 -> 2 threads (forced)
+mvdb: fanout rows=1024 -> 2 threads (forced)
+mvdb: fanout rows=1024 -> 2 threads (forced)
