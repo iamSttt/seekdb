@@ -1,0 +1,25 @@
+{
+  "run_id": 43551432852,
+  "driver_commit": "ee6d130cc8ddfe30c31961421d7549a42640890a",
+  "runtime_commit": "6412cbf862959655f351b4d908c430a98c5eabfe",
+  "status": "failed_test_compilation_before_performance",
+  "error": "Copied historical test_typed_response.cpp passed a fifth false argument to parse_sql; 760f exposes the four-argument interface.",
+  "repair": "Remove only that obsolete parse_sql argument and correct its comment. Preserve execute_json ann_mode=false, all54 invalid-UTF8 scenarios and all output/error assertions.",
+  "production_source_changed": false,
+  "performance_thresholds_changed": false,
+  "performance_pairs_completed": 0,
+  "earlier_checks": [
+    "runtime source and actual root image identity",
+    "integer-cap and spill-cache guards",
+    "root Docker build and20 public cases",
+    "inherited make test, interactive JSONL, TopK and sanitizer tests",
+    "pinned GCC13.3 O3 writer byte-equality unit"
+  ],
+  "not_completed": [
+    "direct executor UTF8 test",
+    "typed-specific sanitized units and live paired response oracle",
+    "parent12 performance measurement"
+  ],
+  "release_gate_passed": false,
+  "official_score": null
+}

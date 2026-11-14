@@ -1,6 +1,6 @@
 // Direct executor complement to test_typed_response.py: prove out.empty(), not
 // merely that the protocol wrapper omitted a failed result. Link engine sources
-// except main.cpp, once with and once without MVDB_ENABLE_TYPED_JSON.
+// except main.cpp. Adapted to 760f's four-argument parse_sql; no bulk flag exists.
 #include "db.h"
 #include "exec.h"
 #include "sql.h"
@@ -18,7 +18,7 @@ int main() {
   {
     Database db;std::string error,out;int code=0;assert(db.open(path,&error));
     auto call=[&](const std::string& text) {
-      Statement statement;assert(parse_sql(text,&statement,&error,&code,false));
+      Statement statement;assert(parse_sql(text,&statement,&error,&code));
       return execute_json(db,statement,&out,&error,&code,false);
     };
     // 30,000 codepoints fit VARCHAR while their 90,000 UTF-8 bytes ensure the
