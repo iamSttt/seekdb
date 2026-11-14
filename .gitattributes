@@ -4,3 +4,9 @@
 /STDIO_PROTOCOL.md -text
 /mysqltest/** -text
 /protocol_check/** -text
+# Hash-bound imported evidence must preserve original report and diff bytes.
+/validation/batch-factors-43551514234-* -text
+/validation/typed-wide-43552265888-* -text
+/validation/raw-copy1114-rejected-* -text
+/validation/pgo1114-rejected-* -text
+/validation/formal-source-* -text

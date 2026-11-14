@@ -1,0 +1,94 @@
+{
+  "status": "rejected_by_frozen_performance_gates",
+  "branch": "codex/round2-raw-copy-1114",
+  "raw_evidence_commit": "38738715800ee735499d835349d338096a65f676",
+  "runtime_commit": "b981375f14e74f33a01e9afde5543e24ebc6e3ca",
+  "base_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "run": 43551463045,
+  "job": 132314644050,
+  "runtime_and_build_source_inputs_verified_against_immutable_Git": true,
+  "candidate_ELF": "96b53ca132d649b59a56a541cf81a4cdfd34a61e2d6ab07cd75c779a9b0a47f9",
+  "baseline_ELF": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+  "correctness": "actual root/public20,JSONL,numeric,TopK,unit/sanitizer and specialized guards passed before performance decision",
+  "generic_pairs": 12,
+  "extra_protection_pairs": 12,
+  "complete_performance_pairs": 24,
+  "extra_guard_metric_count": 31,
+  "original_reports_preserved": 69,
+  "ingest_CPU_C_over_parent": {
+    "1": {
+      "median_candidate_over_baseline": 0.9783819549202228,
+      "candidate_strictly_faster_pairs": 4,
+      "candidate_slower_pairs": 2,
+      "order_median_candidate_over_baseline": {
+        "AB": 1.0156510042632743,
+        "BA": 0.955919972296384
+      }
+    },
+    "2": {
+      "median_candidate_over_baseline": 0.9966336178082829,
+      "candidate_strictly_faster_pairs": 3,
+      "candidate_slower_pairs": 3,
+      "order_median_candidate_over_baseline": {
+        "AB": 0.9880978369194848,
+        "BA": 1.0051693986970809
+      }
+    }
+  },
+  "decision": {
+    "status": "source_factor_blocked",
+    "ingest_checks": {
+      "1": false,
+      "2": false
+    },
+    "stable_default_regression_triggers": [
+      {
+        "cpu": "2",
+        "metric": "ingest_wall_seconds",
+        "threshold": 1.02
+      }
+    ],
+    "extra_protection_exit": 20,
+    "extra_protection_passed": false,
+    "source_factor_passed": false,
+    "release_gate_passed": false,
+    "official_score": null,
+    "scope": "760f parent raw-retention factor; original source-generic12 plus separate protection12; all samples retained."
+  },
+  "extra_guard_triggers": [
+    {
+      "group": "retained:1:standard10k",
+      "metric": "first_query_wall_seconds",
+      "threshold": 1.02
+    },
+    {
+      "group": "retained:1:spill_high_q16",
+      "metric": "max_process_rss_bytes",
+      "threshold": 1.05
+    },
+    {
+      "group": "retained:2:standard10k",
+      "metric": "ingest_wall_seconds",
+      "threshold": 1.02
+    }
+  ],
+  "all_negative_and_order_adverse_samples_retained": true,
+  "raw_metric_recomputation": "generic28 summaries and all31 extra guards exactly recomputed",
+  "whole_program_scope": "This is a parent760f factor experiment, not a new EE/R release qualification or official score.",
+  "archive": {
+    "path": "validation/raw-copy1114-rejected-raw-20261114.zip",
+    "bytes": 6121292,
+    "sha256": "278629afe42ebe5ab1fa38cc040f3384e52ea9dffd786a9578861eb8c5441f9c",
+    "entries": 94,
+    "contains": "complete original joblog losslessly gzipped,69 original reports,analysis,immutable20 source/build files and frozenplan",
+    "original_joblog_sha256": "e02801a5c508131a62dadf091031026933c4e4bee39151dce4418546276572c7",
+    "all_report_hashes_verified": true
+  },
+  "main_import_scope": "Ready to copy only this receipt and evidence ZIP; no runtime merge or new evaluation authorized by this receipt.",
+  "runtime_modified_for_archival": false,
+  "performance_reruns": 0,
+  "formal_submission": false,
+  "official_score": null,
+  "release_gate_passed": false,
+  "automatic_adoption": false
+}

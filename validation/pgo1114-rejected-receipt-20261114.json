@@ -1,0 +1,54 @@
+{
+  "status": "rejected_not_adopted",
+  "experiment": "PGO-only original R33 training on exact760f runtime",
+  "branch": "codex/round2-pgo-only-1114",
+  "evidence_commit": "67ddd14bda9d0d01540075583d663277db26f9ea",
+  "evidence_url": "https://github.com/iamSttt/seekdb/tree/67ddd14bda9d0d01540075583d663277db26f9ea/validation/runs",
+  "runtime_base": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "runs": [
+    {
+      "run": 43551046410,
+      "commit": "b16c834d298a21d1e6fbea362c1c1f97fec8670d",
+      "status": "diagnostic_manifest_CRLF_binding_failure",
+      "fresh_builds": 0,
+      "performance_pairs": 0,
+      "log_sha256": "91078ebb3787ac5415df48df5fe655d6ce01b2746141fe30f80f0eba9029fb11"
+    },
+    {
+      "run": 43551400626,
+      "commit": "d57748700e56be0201f016f6397c1f50c2a7b477",
+      "status": "builder_ELF_inequality_and_release_cache_identity_failure",
+      "fresh_builds": 2,
+      "training_checks_per_build": "6/6 passed",
+      "training_responses_total": 4024,
+      "corpus_hashes_equal": true,
+      "performance_pairs": 0,
+      "log_sha256": "775a23c2b413704bcfe95f7042b15d4145454f6a4dd73e13fa7c1cad11b6c3bb"
+    }
+  ],
+  "fresh_builder_ELF_sha256": {
+    "A": "2bdd665f0f0e9071ac97c71a3c231da6fc25e254ea11d017461e0dd004422a64",
+    "B": "9c1ecd684376a22302243fc872b23a82bc5f95789b794e2e9c37689ca36c7169"
+  },
+  "two_distinct_reasons": [
+    "Two fresh no-cache original-training builder products had different ELF hashes; this independently blocks the frozen same-ELF acceptance rule.",
+    "B release build selected cached A image, so the separate builder-to-release identity check rejected it before A/B comparison."
+  ],
+  "not_a_performance_failure": true,
+  "actual_image_full_public_and_safety_gates": "not reached; only build-time training oracles and root smoke passed",
+  "database_performance_pairs": 0,
+  "decision": "No PGO import, no altered training, no faster-build selection, no retry and no weakening existing confirmation.",
+  "main_import_scope": "This receipt and raw evidence zip only. No Dockerfile, training inputs, CI adapter or runtime code imported.",
+  "archive": {
+    "path": "validation/pgo1114-rejected-raw-20261114.zip",
+    "bytes": 98377,
+    "sha256": "5e17d36deae63ad81a98c4d03fe1dc96aa2713525a4bce3f881764e6a974c841",
+    "entries": 47,
+    "all_original_report_hashes_verified": true,
+    "complete_original_job_logs_included": true
+  },
+  "official_score": null,
+  "formal_submission": false,
+  "release_gate_passed": false,
+  "automatic_adoption": false
+}
