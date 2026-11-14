@@ -1,0 +1,39 @@
+{
+  "status": "research_candidate_not_recommended_for_formal_replacement",
+  "repository": "https://github.com/iamSttt/seekdb",
+  "branch": "codex/round2-from-best-20261114",
+  "runtime_identical_to_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "tested_root_ELF_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+  "highest_observed_formal_commit": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "highest_observed_formal_E": 3014.419039,
+  "current_candidate_formal_E": null,
+  "formal_evaluation_submitted_by_assistant": false,
+  "original_combination_run": 43548698762,
+  "original_root_public20_and_regressions": "passed_with_recorded_scope",
+  "EE_initial_primary_gate": "passed_12_pairs",
+  "retained_R_protection": "failed_12_pairs_completed_11_triggers",
+  "independent_new_seed_confirmation": "not_started_because_preconditions_failed",
+  "additional_global_allocation_failure_injection": {
+    "run": 43557064668,
+    "status": "existing_JSON_noexcept_destructor_termination_in_all_three_arms",
+    "arms": ["760f", "6412_old_typed", "9595_lazy_typed"],
+    "first_query": "SELECT id,s FROM t ORDER BY id LIMIT 10;",
+    "allocation_ordinal": 17,
+    "allocation_bytes": 32,
+    "new_lazy_state_reached": false,
+    "limitation_fixed": false
+  },
+  "post_combination_runtime_imports": [],
+  "failed_or_unmeasured_factors": [
+    {"factor": "typed_wide", "pairs": 12, "status": "default_CPU1_protection_failed"},
+    {"factor": "index_batch", "pairs": 12, "status": "benefit_and_protection_failed"},
+    {"factor": "payload_batch", "pairs": 12, "status": "protection_failed"},
+    {"factor": "omit_SQL_raw_copy", "pairs": 24, "status": "benefit_and_protection_failed"},
+    {"factor": "disk_no_initialization", "pairs": 12, "status": "benefit_and_protection_failed"},
+    {"factor": "lazy_typed_state", "pairs": 0, "status": "allocation_failure_gate_blocked_performance_unmeasured"},
+    {"factor": "PGO_only", "pairs": 0, "status": "build_identity_checks_failed_performance_unmeasured"}
+  ],
+  "report": "docs/ROUND2_RESULT_20261114.md",
+  "official_score_prediction": null,
+  "release_acceptance_passed": false
+}

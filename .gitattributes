@@ -10,3 +10,5 @@
 /validation/raw-copy1114-rejected-* -text
 /validation/pgo1114-rejected-* -text
 /validation/formal-source-* -text
+/validation/disk-noinit1114-rejected-* -text
+/validation/typed-lazy-43555885054-* -text

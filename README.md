@@ -2,9 +2,13 @@
 
 单进程C++17数据库，通过stdin/stdout JSONL执行SQL子集，支持事务、WAL恢复和向量检索。未使用SQLite、RocksDB、Faiss、VSAG或HNSWlib实现数据库/索引操作。
 
-## 最新正式结果
+## 当前分支状态与正式结果
 
-2026-11-12 19:52（北京时间）提交 `ee299adb296a2922d01982aa6c5707d37e767b41`：MySQL准入通过，性能原始指标 **E=3014.419039**，Agent Prompt仍显示无效/待复核等泛化提示，未参与排名。
+本分支是从最高分版本重新验证的研究候选，**尚未通过完整性能采用条件，不作为已验证的正式提分版推荐**。运行组合760f已通过真实根镜像、公开20用例和数值/事务/协议回归；同机EE默认查询初筛通过，但相对保留专项版本的宽表、落盘和部分导入指标仍有退步。完整结果及所有未通过实验见[2026-11-14报告](docs/ROUND2_RESULT_20261114.md)。
+
+新增全局分配失败注入还在760f及两个宽表实验中复现基础JSON库noexcept析构的终止路径，发生在宽表新状态创建之前；该资源异常限制尚未修复，不能将上述普通回归通过表述为所有OOM均可恢复。
+
+2026-11-14重新核对六次正式结果，最高仍为2026-11-12 19:52（北京时间）提交 `ee299adb296a2922d01982aa6c5707d37e767b41` 的 **E=3014.419039**。后两次e020fde/7ca3baa为2937.367246/2567.716075；六次均通过MySQL，Agent Prompt均未参与排名。本轮没有提交正式评测，当前分支没有新正式成绩。
 
 [技术报告](docs/TECHNICAL_REPORT_20261112.md)记录本次结果、整体架构、正确性边界、性能瓶颈与清理复验；[正式结果记录](validation/formal-ee299adb-20261112.json)保存脱敏字段。该成绩属于已评测的ee299adb，不能视为清理后提交的新正式成绩。两份conversation.json及专属材料工具已按仓库所有者要求移除，当前版本不包含Agent Prompt对话材料。
 
@@ -52,7 +56,7 @@ python3 minivec/tests/image_interactive.py --image minivec --output protocol-res
 
 CI会构建根镜像，测试源码和镜像的公开用例、保持stdin打开的交互、退出/恢复、COMMIT后SIGKILL、精确TopK、线程池/跨表spill/WAL故障及sanitizer。公开用例与本地回归不计算正式E，也不包含隐藏用例。
 
-清理候选已通过[本轮CI](https://github.com/iamSttt/seekdb/actions/runs/43219423574)，源码/镜像公开用例各20/20；镜像内程序SHA256与清理前运行核心相同。详细结果见[复验记录](validation/cleanup-ci-20261112.json)。工作流支持手动dispatch，提交分支push不会自动触发。
+历史清理候选通过[清理CI](https://github.com/iamSttt/seekdb/actions/runs/43219423574)，其程序字节与EE相同，见[清理复验](validation/cleanup-ci-20261112.json)；这不是当前已修改运行代码的程序身份。当前组合的[实际根镜像与配对验证](https://github.com/iamSttt/seekdb/actions/runs/43548698762)完成正确性与EE初筛，但R专项保护未通过；数值结论以原报告为准，不能只看工作流颜色。工作流支持手动dispatch，提交分支push不会自动触发。
 
 旧SQL文本适配器仅供引擎回归：`--protocol sql`或`MVDB_PROTOCOL=sql`；`minivec/run.sh`与harness显式选该模式，不能替代JSONL准入。
 
@@ -63,9 +67,9 @@ CI会构建根镜像，测试源码和镜像的公开用例、保持stdin打开�
 | 目录 | 内容 |
 | --- | --- |
 | minivec/src、third_party | 必要运行源文件与JSON依赖/许可证 |
-| minivec/tests、tools | 有效回归与JSONL测量工具 |
+| minivec/tests、tools | 回归、JSONL测量工具及明确标记的未采用历史原型 |
 | mysqltest、protocol_check | 原样保留的官方公开fixtures与驱动，已去除pyc缓存 |
-| docs | 本轮技术报告 |
-| validation | 最新正式结果、本轮复验与清理记录 |
+| docs | 本轮技术报告与实验取舍 |
+| validation | 六次正式结果、配对原始证据与历史清理记录 |
 
-旧日志和实验可从[清理前固定提交](https://github.com/iamSttt/seekdb/tree/ee299adb296a2922d01982aa6c5707d37e767b41)找回。清单见[cleanup-manifest-20261112.json](validation/cleanup-manifest-20261112.json)。本次清理不宣称新的性能提升；正式评测由仓库所有者提交。
+旧清理记录见[cleanup-manifest-20261112.json](validation/cleanup-manifest-20261112.json)，清理前代码可从[固定提交](https://github.com/iamSttt/seekdb/tree/ee299adb296a2922d01982aa6c5707d37e767b41)找回。本轮原始结果及拒绝采用的理由保留在当前validation/docs中；正式评测由仓库所有者提交。
