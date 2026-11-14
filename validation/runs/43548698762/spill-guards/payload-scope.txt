@@ -1,0 +1,1 @@
+PASS payload-resident disk-index exclusion, two-column spill admission and rollback/reopen equivalence

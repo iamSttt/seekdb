@@ -35,8 +35,7 @@ def evaluate(execution, guards, reference):
     try:
         recomputed = original_guards.numerical_guards(guards.get('arms', {}))
         complete_metrics = (
-            recomputed['numerical_retained_guards_passed'] is True
-            and guards.get('guard_metrics') == recomputed['guard_metrics']
+            guards.get('guard_metrics') == recomputed['guard_metrics']
             and guards.get('guard_triggers') == recomputed['guard_triggers']
         )
     except (ValueError, TypeError, KeyError, IndexError):

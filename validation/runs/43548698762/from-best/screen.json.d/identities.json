@@ -1,0 +1,30 @@
+{
+  "baseline": {
+    "source_commit": "ee299adb296a2922d01982aa6c5707d37e767b41",
+    "binary": "/home/runner/work/_temp/minivec-from-best-4z6hKk/baseline-binary",
+    "binary_sha256": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+    "evidence_file": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/screen.json.d/baseline-file-identity.json",
+    "evidence_sha256": "c78747ea41bc95ecee2235e2745452e77d23c93fd91d4ee4e7b0b1243b074201",
+    "evidence_binary_pointer": [
+      "binary_sha256"
+    ],
+    "evidence_commit_pointer": [
+      "source_commit"
+    ],
+    "environment": {}
+  },
+  "candidate": {
+    "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+    "binary": "/home/runner/work/_temp/minivec-from-best-4z6hKk/candidate-binary",
+    "binary_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+    "evidence_file": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/screen.json.d/candidate-file-identity.json",
+    "evidence_sha256": "4b8831296cebc5dae1b945ae44e9f2553aa5ffad95cf54737e7ccf457e3eb014",
+    "evidence_binary_pointer": [
+      "binary_sha256"
+    ],
+    "evidence_commit_pointer": [
+      "source_commit"
+    ],
+    "environment": {}
+  }
+}

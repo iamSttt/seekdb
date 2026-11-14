@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "status": "completed",
+  "numerical_retained_guards_passed": false,
+  "release_gate_passed": false,
+  "automatic_adoption": false,
+  "scope": "Only retained protection; failure, missing guard or missing rebuilt-reference identity is never pass."
+}

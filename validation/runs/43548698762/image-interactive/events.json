@@ -1,0 +1,223 @@
+[
+  {
+    "request": "CREATE TABLE probe (id BIGINT PRIMARY KEY, value VARCHAR(32));",
+    "response": {
+      "id": 1,
+      "ok": true,
+      "affected_rows": 0
+    },
+    "seconds": 0.0036460670000053597,
+    "stdin_open": true
+  },
+  {
+    "request": "INSERT INTO probe VALUES (1,'first;line');",
+    "response": {
+      "id": 2,
+      "ok": true,
+      "affected_rows": 1
+    },
+    "seconds": 0.0005977330000064285,
+    "stdin_open": true
+  },
+  {
+    "request": "INSERT INTO probe VALUES (1,'duplicate');",
+    "response": {
+      "id": 3,
+      "error": {
+        "code": "1062",
+        "message": "Duplicate entry '1' for key 'PRIMARY'"
+      },
+      "ok": false
+    },
+    "seconds": 0.0001822349999827111,
+    "stdin_open": true
+  },
+  {
+    "request": "SELECT id,value FROM probe ORDER BY id;",
+    "response": {
+      "id": 4,
+      "ok": true,
+      "columns": [
+        "id",
+        "value"
+      ],
+      "rows": [
+        [
+          1,
+          "first;line"
+        ]
+      ]
+    },
+    "seconds": 0.00016346700002145553,
+    "stdin_open": true
+  },
+  {
+    "request": "unsupported_operation",
+    "response": {
+      "id": 5,
+      "error": {
+        "code": "invalid_request",
+        "message": "unsupported operation"
+      },
+      "ok": false
+    },
+    "seconds": 0.0002279939999993985,
+    "stdin_open": true
+  },
+  {
+    "request": "SELECT id FROM probe;",
+    "response": {
+      "id": 6,
+      "error": {
+        "code": "invalid_request",
+        "message": "search_mode must be exact or ann"
+      },
+      "ok": false
+    },
+    "seconds": 0.00012679099998536003,
+    "stdin_open": true
+  },
+  {
+    "fragmented_utf8_request": true,
+    "response": {
+      "id": "split-utf8",
+      "ok": true,
+      "columns": [
+        "id"
+      ],
+      "rows": []
+    },
+    "stdin_open": true
+  },
+  {
+    "request": "BEGIN;",
+    "response": {
+      "id": 7,
+      "ok": true,
+      "affected_rows": 0
+    },
+    "seconds": 0.00033671500000309607,
+    "stdin_open": true
+  },
+  {
+    "request": "INSERT INTO probe VALUES (2,'rollback');",
+    "response": {
+      "id": 8,
+      "ok": true,
+      "affected_rows": 1
+    },
+    "seconds": 0.00019357499999728134,
+    "stdin_open": true
+  },
+  {
+    "request": "shutdown",
+    "response": {
+      "id": 9,
+      "ok": true
+    },
+    "seconds": 0.00019457300001590738,
+    "stdin_open": true
+  },
+  {
+    "exit_before_stdin_close": true
+  },
+  {
+    "request": "SELECT id FROM probe ORDER BY id;",
+    "response": {
+      "id": 10,
+      "ok": true,
+      "columns": [
+        "id"
+      ],
+      "rows": [
+        [
+          1
+        ]
+      ]
+    },
+    "seconds": 0.0038778009999873575,
+    "stdin_open": true
+  },
+  {
+    "request": "BEGIN;",
+    "response": {
+      "id": 11,
+      "ok": true,
+      "affected_rows": 0
+    },
+    "seconds": 0.00020384999999123465,
+    "stdin_open": true
+  },
+  {
+    "request": "INSERT INTO probe VALUES (3,'committed');",
+    "response": {
+      "id": 12,
+      "ok": true,
+      "affected_rows": 1
+    },
+    "seconds": 0.00026629900000330053,
+    "stdin_open": true
+  },
+  {
+    "request": "COMMIT;",
+    "response": {
+      "id": 13,
+      "ok": true,
+      "affected_rows": 0
+    },
+    "seconds": 0.0004017159999989417,
+    "stdin_open": true
+  },
+  {
+    "request": "BEGIN;",
+    "response": {
+      "id": 14,
+      "ok": true,
+      "affected_rows": 0
+    },
+    "seconds": 0.00014510900001596383,
+    "stdin_open": true
+  },
+  {
+    "request": "INSERT INTO probe VALUES (4,'uncommitted');",
+    "response": {
+      "id": 15,
+      "ok": true,
+      "affected_rows": 1
+    },
+    "seconds": 0.00016512199999851873,
+    "stdin_open": true
+  },
+  {
+    "request": "SELECT id FROM probe ORDER BY id;",
+    "response": {
+      "id": 16,
+      "ok": true,
+      "columns": [
+        "id"
+      ],
+      "rows": [
+        [
+          1
+        ],
+        [
+          3
+        ]
+      ]
+    },
+    "seconds": 0.003430298000012044,
+    "stdin_open": true
+  },
+  {
+    "request": "shutdown",
+    "response": {
+      "id": 17,
+      "ok": true
+    },
+    "seconds": 0.00027334600000017417,
+    "stdin_open": true
+  },
+  {
+    "exit_before_stdin_close": true
+  }
+]

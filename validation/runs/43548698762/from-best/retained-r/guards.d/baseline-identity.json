@@ -1,0 +1,8 @@
+{
+  "status": "verified",
+  "source_commit": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+  "binary_sha256": "acddca115ab183bfc6419e27c9e3383cfd1a9046e3897e5ea516cd7bc0f29f54",
+  "external_evidence": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/retained-r/reference-build-proof.json",
+  "external_evidence_sha256": "6c8e278f729767097fb3eb9f6024381d649bf54286e622d456852f0f1b16edee",
+  "scope": "File/source identity binding only; does not independently certify full correctness gate inventory."
+}

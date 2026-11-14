@@ -1,0 +1,24 @@
+{
+  "status": "retained_guard_stage_blocked",
+  "retained_guard_stage_passed": false,
+  "checks": {
+    "execution_completed": true,
+    "execution_numerical_pass": false,
+    "guard_completed": false,
+    "guard_numerical_pass": false,
+    "all_twelve_pairs": true,
+    "both_cpu_arms": true,
+    "no_guard_trigger": false,
+    "all_original_metrics_recomputed": false,
+    "fresh_R_build": true,
+    "R_source_and_ELF": true
+  },
+  "release_gate_passed": false,
+  "full_24_pair_gate_passed": false,
+  "automatic_adoption": false,
+  "official_score": null,
+  "scope": "Original R protection portion only; no EE or final release claim.",
+  "candidate_source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "candidate_binary_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+  "guards_report_sha256": "e88d649b6d7b1f91618ffca7b12b6c2c732553d05bb4c23f72b80185309458a2"
+}
