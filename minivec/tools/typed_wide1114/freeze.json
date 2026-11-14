@@ -1,9 +1,17 @@
 {
-  "status": "frozen_before_native_execution",
+  "status": "frozen_before_last_bounded_lazy_native_and_performance",
   "files": [
+    {
+      "path": "docs/TYPED_LAZY_PLAN_20261114.md",
+      "sha256": "d28c07c386c5ac9388992e558d090f203c10ba6e6443233b05f85106e6402c09"
+    },
     {
       "path": "minivec/tests/test_json_row_writer.cpp",
       "sha256": "1e6dbd9978e28e870ec9ddc56d9d81f9d4a65a845029da94e401ebcf77215078"
+    },
+    {
+      "path": "minivec/tests/test_typed_oom.cpp",
+      "sha256": "8914764ce6367c16ff8775e0f203428e4d0902bd9db333a524a6478780ac86d3"
     },
     {
       "path": "minivec/tests/test_typed_response.cpp",
@@ -23,11 +31,11 @@
     },
     {
       "path": "minivec/tools/ci_score.sh",
-      "sha256": "55a9c81896c46a41a9fda075b56d89cf24e97f7f0137741f263b6980dd71d9b7"
+      "sha256": "1d4ee1eec3c79bb417bac99df0c8a66a22cfe4be8f34c2740edf4ea74046f7be"
     },
     {
       "path": "minivec/tools/ci_typed_wide_1114.sh",
-      "sha256": "e3cf341a8f59a75ac5f23c78bf2a2ca05b6d3d436b4da886632ab4baf3b1ec5d"
+      "sha256": "9990a66050627ff2077eef4dc01765e5793688cfcabe4d8a8b077c2a11b7fd5b"
     },
     {
       "path": "minivec/tools/typed_wide1114/.gitattributes",
@@ -35,7 +43,7 @@
     },
     {
       "path": "minivec/tools/typed_wide1114/README.md",
-      "sha256": "09355569c7daafe7f5cc6f5d82e2f5ce840a5cf5d9c66ef6cf895fc08bbdd22a"
+      "sha256": "d75b8d81c4311ae2590246f01c341901942cea7f1d630603be671f036e0280c7"
     },
     {
       "path": "minivec/tools/typed_wide1114/failed-attempt-43551432852.json",
@@ -47,7 +55,7 @@
     },
     {
       "path": "minivec/tools/typed_wide1114/plan.json",
-      "sha256": "8c468c29d904677e65638c3c3cf5ca83a33f75d06ca762d14583c8284002191f"
+      "sha256": "9cc891056e665c4d621e864367f4c40fc1b757e8df7c397403ae6aa2f254104e"
     },
     {
       "path": "minivec/tools/typed_wide1114/policy/evaluate_highest_primary24_screen.py",
@@ -63,11 +71,11 @@
     },
     {
       "path": "minivec/tools/typed_wide1114/provenance.json",
-      "sha256": "301ded62a7e7a10a22270bec3d526fcfa58f8ccbc3441eae795cca0b2f8fd85e"
+      "sha256": "bbb4205c12bd47c0eb7a4686441268b95169b7ae668020c961c0db02bfba1e68"
     },
     {
       "path": "minivec/tools/typed_wide1114/reader-preflight.json",
-      "sha256": "74092cc9e2514857e7183e5eaf65380e9e18986a4cff4ade3e1d63b4f1c1cec9"
+      "sha256": "c20fac1247c13035da675e254316b98520a8f82dacea1123067d237803425953"
     },
     {
       "path": "minivec/tools/typed_wide1114/run_ablation.py",
@@ -84,6 +92,11 @@
     {
       "path": "minivec/tools/typed_wide1114/verify_source.py",
       "sha256": "a28db2733fb2c9ebb9ebb41c5459b57762510f4317dc7cef37700153bd775894"
+    },
+    {
+      "path": "validation/typed-lazy-assembly-result-20261114.json",
+      "sha256": "90c0ca2f3a8913e76933b28193b72dc89841d8971b08fa4eb83679992de7df7b"
     }
-  ]
+  ],
+  "identity_policy": "Staged Git blob bytes used, not Windows autocrlf checkout bytes."
 }

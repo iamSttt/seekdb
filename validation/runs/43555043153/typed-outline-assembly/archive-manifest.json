@@ -1,0 +1,126 @@
+{
+  "compressed_bytes": 5625214,
+  "sha256": "3bff2a51192189b88dd354fa6d26ed3fe82dbe571f634f2ff8837e7382eb5035",
+  "members": [
+    {
+      "path": "base/build.txt",
+      "bytes": 1536,
+      "sha256": "e476ee9350a2b36f205607d7980ece841cb10b804230bef693826e6a9115f32e"
+    },
+    {
+      "path": "base/interesting-disassembly.asm",
+      "bytes": 3401080,
+      "sha256": "e38f3295906621c418b1f1c8514282752a47dc053d70d9e29ec78908d042ca01"
+    },
+    {
+      "path": "base/root-equivalent.elf",
+      "bytes": 1563584,
+      "sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456"
+    },
+    {
+      "path": "base/sections.size",
+      "bytes": 1415,
+      "sha256": "722d68f79083d8f76bdf13af6c362c223134a76851a23f98fef19bb2f9a10814"
+    },
+    {
+      "path": "base/symbols.nm",
+      "bytes": 280200,
+      "sha256": "437300b04a1c7cf94432e5171af0d2f091f90e1e60c4ca88303a171d0ee5cf15"
+    },
+    {
+      "path": "base/unstripped.elf",
+      "bytes": 2093184,
+      "sha256": "a2302d5513c5bc5514ada9fa435a310dce6975955facaeacc61cdc4c125ef819"
+    },
+    {
+      "path": "lazy/build.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "lazy/interesting-disassembly.asm",
+      "bytes": 3540862,
+      "sha256": "cfcf6ffd4451bbaf379035d0290ed61dfede95216332b57e98924f8cc70b4035"
+    },
+    {
+      "path": "lazy/root-equivalent.elf",
+      "bytes": 1567680,
+      "sha256": "01d5d67adf3f0746eda48518be658d614b9205a88e97354a26d2b09d95ed018c"
+    },
+    {
+      "path": "lazy/sections.size",
+      "bytes": 1415,
+      "sha256": "572360d277e74508d60a21ea2dbbd58bbd43dbe2be5bb257ad968918b5095d27"
+    },
+    {
+      "path": "lazy/symbols.nm",
+      "bytes": 281537,
+      "sha256": "99dfd519898d3a2526b9c89cabf9ea5018fdb18be952fdd91abee7e8d6349b52"
+    },
+    {
+      "path": "lazy/unstripped.elf",
+      "bytes": 2098544,
+      "sha256": "262778e0bd5f871355e5cdfd814910493bddb7c1ae91e3238fb4d1d42b24435b"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 2022795,
+      "sha256": "85f868523bb4b5762fa168f23c92fd6d6f958df7e4ffc001ff4c9969ef475de3"
+    },
+    {
+      "path": "typed/build.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "typed/interesting-disassembly.asm",
+      "bytes": 3527826,
+      "sha256": "42ef2c8f54d2e8375c5b0b56597ff1c310f36304b926531eda1414dbd7f201b4"
+    },
+    {
+      "path": "typed/root-equivalent.elf",
+      "bytes": 1567680,
+      "sha256": "41f20159c3b8ae4992bcbfd45ace6264e84125fa841140c84094d5dd6619cb06"
+    },
+    {
+      "path": "typed/sections.size",
+      "bytes": 1415,
+      "sha256": "769935643e2f3247e6915c56005b653932889df138a794e2a00289945a27c909"
+    },
+    {
+      "path": "typed/symbols.nm",
+      "bytes": 281307,
+      "sha256": "a6db7c26fac3c4b3150309ea28b34826c484d7e5ce9a9d7d13d200687dc3f790"
+    },
+    {
+      "path": "typed/unstripped.elf",
+      "bytes": 2098328,
+      "sha256": "db90b194d55ac88f78ded24556c91e22185a20b9dd00dfd3c6a0f35472afd77e"
+    },
+    {
+      "path": "variant.patch",
+      "bytes": 1371,
+      "sha256": "74b2e8c8d17bd26012815a8f41b7fff8d54d4bcf0d7097bd1dbb6ae90591713a"
+    }
+  ],
+  "omitted_reconstructible_files": [
+    {
+      "path": "base/full-disassembly.asm",
+      "bytes": 26279720,
+      "sha256": "47d546d4bb6e40c1b7c5031fd4572bb3f5430589234b88614f4b786b9e32b8f6",
+      "reason": "Reconstructible with pinned GNU objdump -d -C on the included unstripped ELF; selected assembly and all symbols are included."
+    },
+    {
+      "path": "lazy/full-disassembly.asm",
+      "bytes": 26462232,
+      "sha256": "11b1091e9f091b1b5982c36164dd6509c87dc2357cb5b7797b3c217331c91810",
+      "reason": "Reconstructible with pinned GNU objdump -d -C on the included unstripped ELF; selected assembly and all symbols are included."
+    },
+    {
+      "path": "typed/full-disassembly.asm",
+      "bytes": 26458950,
+      "sha256": "d7537ffa17d7512c4c3ef98a4843ac6d4042806d3a618190b0e3bb2175f8181c",
+      "reason": "Reconstructible with pinned GNU objdump -d -C on the included unstripped ELF; selected assembly and all symbols are included."
+    }
+  ]
+}

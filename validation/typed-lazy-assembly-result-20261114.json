@@ -1,0 +1,34 @@
+{
+  "status": "actual_assembly_mechanism_confirmed_no_performance_measurement",
+  "runtime_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+  "run_id": 43555043153,
+  "base_elf": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+  "candidate_elf": "01d5d67adf3f0746eda48518be658d614b9205a88e97354a26d2b09d95ed018c",
+  "execute_impl": {
+    "base": {
+      "bytes": 17059,
+      "stack_frame": 1152,
+      "call_instruction_count": 331
+    },
+    "old_typed": {
+      "bytes": 17586,
+      "stack_frame": 1216,
+      "call_instruction_count": 334
+    },
+    "lazy": {
+      "bytes": 17446,
+      "stack_frame": 1152,
+      "call_instruction_count": 331
+    }
+  },
+  "formatter_bytes": {
+    "old_typed": 2229,
+    "lazy": 2421
+  },
+  "prior_noinline_diagnostic": "43554050534 had no core/frame/text size benefit and failed only12MiB full-ASM export cap;0 performance pairs. Original summary retained. No noinline annotation is included in candidate.",
+  "archive_policy": "Phase2 returns actual unstripped and stripped ELFs, nm, sections and selected assembly; giant full assembly omitted with SHA and reconstructible from included ELF, archive fully verified after return.",
+  "last_bounded_candidate": true,
+  "full_correctness_pending": true,
+  "performance_pairs": 0,
+  "release_gate_passed": false
+}

@@ -7,7 +7,7 @@ out="$repo/protocol-results/typed-wide"
 mkdir "$out"
 scratch=$(mktemp -d "${RUNNER_TEMP:-/tmp}/minivec-typed-wide-XXXXXX")
 baseline=760f66220f2c7186b4ba295f9e3065650e549f9e
-candidate=6412cbf862959655f351b4d908c430a98c5eabfe
+candidate=9595e1477af1325795b0f9fed52e6a44bb217b1c
 compiler='gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818'
 git fetch --no-tags --depth=1 origin "$baseline"
 for role in baseline candidate; do
@@ -43,6 +43,14 @@ ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 "$scratch/writer-san" 
 g++ -O1 -g -std=c++17 -pthread -Iminivec/src -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
   minivec/tests/test_typed_response.cpp "${sources[@]}" -o "$scratch/response-san"
 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 "$scratch/response-san" | tee "$out/response-san.txt"
+# One-shot allocation failures including lazy state and all response allocations.
+docker run --rm -v "$repo:/work:ro" -v "$scratch:/out" -w /work "$compiler" \
+  g++ -O3 -std=c++17 -fno-math-errno -static -pthread -Iminivec/src \
+  minivec/tests/test_typed_oom.cpp "${sources[@]}" -o /out/oom-o3
+"$scratch/oom-o3" | tee "$out/oom-o3.txt"
+g++ -O1 -g -std=c++17 -pthread -Iminivec/src -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
+  minivec/tests/test_typed_oom.cpp "${sources[@]}" -o "$scratch/oom-san"
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 "$scratch/oom-san" | tee "$out/oom-san.txt"
 for role in baseline candidate; do
   python3 -B minivec/tests/test_typed_response.py --binary "$scratch/$role-binary" --output "$out/utf8-$role.json"
 done

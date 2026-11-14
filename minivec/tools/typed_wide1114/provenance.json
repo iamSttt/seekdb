@@ -21,6 +21,6 @@
     }
   ],
   "vendor_manifest_sha256": "1158bd265fb09f4ee27f69e352b3702a73df627b2d97faeb7b4614343093f936",
-  "plan_sha256": "8c468c29d904677e65638c3c3cf5ca83a33f75d06ca762d14583c8284002191f",
-  "scope": "Original measured spill-ablation adapter reused for typed-wide; measurement vendor, pure readers, policies and schedule unchanged. Added predeclared per-pair wide benefit checks; runtime identity uses 760f and typed-wide only."
+  "plan_sha256": "9cc891056e665c4d621e864367f4c40fc1b757e8df7c397403ae6aa2f254104e",
+  "scope": "Original measured spill-ablation adapter reused for typed-wide; measurement vendor, pure readers, policies and schedule unchanged. Added predeclared per-pair wide benefit checks; runtime identity uses 760f and typed-wide only. Last bounded variant: lazy owned writer state; same original workload/rules and wide benefit thresholds."
 }

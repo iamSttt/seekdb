@@ -1,6 +1,6 @@
 {
   "status": "frozen_before_measurement",
-  "family": "parent_source_typed_wide_ablation12_20261114",
+  "family": "parent_source_typed_lazy_wide_ablation12_20261114",
   "roles": {
     "baseline": {
       "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
@@ -29,15 +29,15 @@
       }
     },
     "candidate": {
-      "source_commit": "6412cbf862959655f351b4d908c430a98c5eabfe",
-      "expected_binary_sha256": null,
+      "source_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+      "expected_binary_sha256": "01d5d67adf3f0746eda48518be658d614b9205a88e97354a26d2b09d95ed018c",
       "build_inputs": {
         ".dockerignore": "dd9b806988a5bcc72875b9cee43b90025efa58b75770ba975d9347584d8444ce",
         "Dockerfile": "d262b689634801e3280f004c7b918afd87a696365fc50ad9e718932c4c63035e",
         "minivec/src/db.cpp": "908cf567016786d7783eec263e8d4b20a7585b13ee20d0b48b984314d74c42d4",
         "minivec/src/db.h": "b2b045c5c869633596a435e2e8a94a8d0abfe3a4d3563d5f95615d7cbd529607",
         "minivec/src/distance.h": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
-        "minivec/src/exec.cpp": "92feac2554a3430eaaee7e3df033ac1720cd11f2e0d4ac723efce72fe2c07411",
+        "minivec/src/exec.cpp": "b5e0c1aadb58fe84fb8a08390f0101aaa84aa6d4c24a0de02030ab738faecb7a",
         "minivec/src/exec.h": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5",
         "minivec/src/flat_index.cpp": "6a2e8d2e09f6fa0365b6354f798a4901669c48cc27dae873aa7ed13225f2e070",
         "minivec/src/flat_index.h": "5bd63a4ea1a0f268e4137ff6e0c49be8860b64626f990a8fd96499fb292b4010",
@@ -207,5 +207,19 @@
   "runtime_paths_changed": [
     "minivec/src/exec.cpp",
     "minivec/src/json_row_writer.h"
-  ]
+  ],
+  "bounded_last_candidate": "Old typed runtime6412 was rejected on CPU1 default guards. Only lazy query-owned writer lifetime added; last typed variant in this round. Same original12/31 and wide benefit conditions, no post-observation retries.",
+  "extra_correctness": "Test-only nth-allocation sweep on scalar and projected128 queries including streaming, sorted and empty result. One-shot failure must clear output and following request must match exact prior bytes.",
+  "assembly_evidence": {
+    "run_id": 43555043153,
+    "summary_sha256": "85f868523bb4b5762fa168f23c92fd6d6f958df7e4ffc001ff4c9969ef475de3",
+    "manifest_sha256": "d27516e67e8a4ce92fa1026a197438ee1ad5a7d3c74291fe8cb09525ff2f94e1",
+    "performance_pairs": 0,
+    "observed_frame_bytes": {
+      "760f": 1152,
+      "old_typed": 1216,
+      "lazy": 1152
+    },
+    "interpretation": "Real64B stack-frame reduction and3 fewer main-body call instructions vs old typed; no performance guarantee and no noinline annotation."
+  }
 }

@@ -1,0 +1,62 @@
+{
+  "run_id": 43555043153,
+  "job_id": 132325883835,
+  "ci_commit": "d18f8f703e282bd5b422bfbb1b06510db8528b7a",
+  "runtime_commit": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
+  "url": "https://github.com/iamSttt/seekdb/actions/runs/43555043153",
+  "files": {
+    "compiler.txt": {
+      "bytes": 245,
+      "sha256": "0c45c2417cda20b1ea33e8f54aee9aa0443c940cb9f23b71c6f126148cb8ff9c"
+    },
+    "docker-version.txt": {
+      "bytes": 769,
+      "sha256": "8402d8b7679b4087fa4fb62264e49054f974146c5d134195d8b7a341747ab4ed"
+    },
+    "input-sha256.txt": {
+      "bytes": 12243,
+      "sha256": "1fa30deb9bbd88c3df974488a5339087b3ccb8a97bcec317ba8a02f802a67e38"
+    },
+    "lscpu.txt": {
+      "bytes": 3189,
+      "sha256": "4476e601951bb5e5dc85ca4b9d2e3bc795bb83c0d4e62b8d9f2bdec6659b0e7a"
+    },
+    "runtime-commit.txt": {
+      "bytes": 41,
+      "sha256": "1e50a44d245735b4f214534fa5b3014f2979f2e711fd6960b2b0b547465cf67f"
+    },
+    "typed-outline-assembly/archive-manifest.json": {
+      "bytes": 4229,
+      "sha256": "d27516e67e8a4ce92fa1026a197438ee1ad5a7d3c74291fe8cb09525ff2f94e1"
+    },
+    "typed-outline-assembly/assembly-raw.tar.gz.b64.txt": {
+      "bytes": 7578416,
+      "sha256": "5cc60e6ad0fd6f5c73b45cbe48e3d6892977734d8070bca4fb806acb012df7a7"
+    },
+    "typed-outline-assembly/base/build.txt": {
+      "bytes": 1536,
+      "sha256": "e476ee9350a2b36f205607d7980ece841cb10b804230bef693826e6a9115f32e"
+    },
+    "typed-outline-assembly/lazy/build.txt": {
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    "typed-outline-assembly/summary.json": {
+      "bytes": 2022795,
+      "sha256": "85f868523bb4b5762fa168f23c92fd6d6f958df7e4ffc001ff4c9969ef475de3"
+    },
+    "typed-outline-assembly/typed/build.txt": {
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    }
+  },
+  "uncompressed_log": {
+    "bytes": 12194173,
+    "sha256": "fbfdfe62884fa5d1057544157bfe64c9046537270320b8c7b6eede12b69223b3"
+  },
+  "compressed_log": {
+    "bytes": 6354446,
+    "sha256": "132c83b6ccd8895fd4f372a9608e4d740b32cc09fb8f71d9da78a5717f7b3183"
+  },
+  "log_format": "Exact raw job log via authenticated redirect; uncompressed/compressed hashes refer to original bytes, no artificial gh-tab prefix."
+}

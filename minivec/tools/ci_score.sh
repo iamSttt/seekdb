@@ -35,11 +35,7 @@ git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec
 lscpu > protocol-results/lscpu.txt
 docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
-if [[ -f validation/typed-outline-assembly-plan-20261114.json ]]; then
-  bash minivec/tools/ci_typed_outline_assembly_1114.sh
-  exit 0
-fi
-git fetch --no-tags --depth=1 origin 6412cbf862959655f351b4d908c430a98c5eabfe
+git fetch --no-tags --depth=1 origin 9595e1477af1325795b0f9fed52e6a44bb217b1c
 python3 -B minivec/tools/typed_wide1114/verify_source.py
 if [[ -f validation/confirmation-run-20261114.json ]]; then
   bash minivec/tools/ci_confirm_combined_1114.sh

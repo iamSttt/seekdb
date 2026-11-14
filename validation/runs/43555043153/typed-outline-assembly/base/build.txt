@@ -1,0 +1,41 @@
+Unable to find image 'gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818' locally
+docker.io/library/gcc@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818: Pulling from library/gcc
+3e6b9d1a9511: Pulling fs layer
+37927ed901b1: Pulling fs layer
+79b2f47ad444: Pulling fs layer
+e23f099911d6: Pulling fs layer
+9c7cdde13eb2: Pulling fs layer
+5f1573972ce2: Pulling fs layer
+b3ca46212b92: Pulling fs layer
+3d6d761f627d: Pulling fs layer
+5f1573972ce2: Waiting
+b3ca46212b92: Waiting
+e23f099911d6: Waiting
+3d6d761f627d: Waiting
+9c7cdde13eb2: Waiting
+37927ed901b1: Verifying Checksum
+37927ed901b1: Download complete
+3e6b9d1a9511: Verifying Checksum
+3e6b9d1a9511: Download complete
+79b2f47ad444: Verifying Checksum
+79b2f47ad444: Download complete
+9c7cdde13eb2: Verifying Checksum
+9c7cdde13eb2: Download complete
+b3ca46212b92: Verifying Checksum
+b3ca46212b92: Download complete
+3d6d761f627d: Verifying Checksum
+3d6d761f627d: Download complete
+5f1573972ce2: Verifying Checksum
+5f1573972ce2: Download complete
+e23f099911d6: Verifying Checksum
+e23f099911d6: Download complete
+3e6b9d1a9511: Pull complete
+37927ed901b1: Pull complete
+79b2f47ad444: Pull complete
+e23f099911d6: Pull complete
+9c7cdde13eb2: Pull complete
+5f1573972ce2: Pull complete
+b3ca46212b92: Pull complete
+3d6d761f627d: Pull complete
+Digest: sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818
+Status: Downloaded newer image for gcc@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818
