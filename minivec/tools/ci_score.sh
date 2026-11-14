@@ -6,6 +6,9 @@ repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$repo"
 export RUNTIME_COMMIT
 RUNTIME_COMMIT=$(git rev-parse HEAD)
+if [[ -f validation/pgo-only-plan-20261114.json ]]; then
+  exec bash minivec/tools/ci_pgo_only_1114.sh
+fi
 export IMAGE="${IMAGE:-minivec:verify-${RUNTIME_COMMIT:0:12}}"
 # Public drivers require fresh outputs; preserve earlier runs for inspection.
 test ! -e protocol-results

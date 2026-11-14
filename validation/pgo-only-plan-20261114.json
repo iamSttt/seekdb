@@ -1,0 +1,189 @@
+{
+  "status": "frozen_before_independent_PGO_only_execution",
+  "baseline_source": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "candidate_source": null,
+  "baseline_expected_ELF": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+  "factor": "Only original R33 build-time PGO. All16 runtime source files and2 third-party files identical to760f. No R feature macros.",
+  "source_identity_manifest": "validation/pgo-only-source-20261114.json",
+  "source_identity_manifest_sha256": "017496fb4fc0ba5e9f20ff705033fa8b73024f86ade24de456f741492824d0ce",
+  "compiler": "gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818",
+  "non_PGO_flags": "-O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc",
+  "training": {
+    "source": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+    "seed": 2026111201,
+    "generator_and_script_exact_bytes": true,
+    "dimensions": [
+      16,
+      128,
+      512
+    ],
+    "threads": [
+      1,
+      2
+    ],
+    "phases": [
+      0,
+      1,
+      2
+    ],
+    "expected_responses_per_thread": [
+      951,
+      41,
+      14
+    ],
+    "new_training_behavior": false,
+    "profile_correction": false,
+    "strict_missing_and_coverage_profile_errors": true
+  },
+  "builds": {
+    "count": 2,
+    "labels": [
+      "A",
+      "B"
+    ],
+    "order": [
+      "A",
+      "B"
+    ],
+    "fresh_no_cache": true,
+    "same_context_and_flags": true,
+    "build_A_primary_label_fixed_before_measurement": true,
+    "retain": [
+      "source_and_context_sha256",
+      "image_id",
+      "ELF_sha256",
+      "full_build_log",
+      "profile_sha256_per_translation_unit",
+      "corpus_and_expected_response_sha256",
+      "training_verification_jsonl",
+      "training_stderr"
+    ],
+    "no_cherry_pick": true,
+    "ELF_equality_not_promised": true,
+    "on_different_ELFs": "Record both objectively, block existing same-ELF independent confirmation; evaluate deterministic repair or reject PGO separately. Do not amend confirmation rules or select the faster build.",
+    "training_environment_or_thread_changes": false
+  },
+  "correctness": {
+    "each_actual_PGO_image": [
+      "ready handshake",
+      "unchanged20 public cases",
+      "live interactive JSONL, shutdown, rollback, crash and restart",
+      "464-request differential plus raw-NUL atomicity",
+      "56-row numeric protocol with bitwise float32 reads and restart",
+      "exact TopK default and forced2threads",
+      "independent shared-bound TopK oracle"
+    ],
+    "ordinary_runtime_guards": [
+      "full make test",
+      "WAL/recovery/query-pool/cross-table ASan and UBSan",
+      "intcap equivalence/all-ISA/fallback/layout guards",
+      "spill budgets,payload scope,write/read faults,rollback,reopen"
+    ],
+    "existing_oracles_and_thresholds_unchanged": true,
+    "failed_or_missing_is_block": true
+  },
+  "same_source_factor_measurement": {
+    "reference": "fresh exact760f non-PGO root build",
+    "reference_hash_must_equal_baseline_expected_ELF": true,
+    "candidates": [
+      "A",
+      "B"
+    ],
+    "pairs_per_build": 12,
+    "schedule_per_build": [
+      {
+        "cpu": 1,
+        "scenario": "standard10k",
+        "pairs": 4
+      },
+      {
+        "cpu": 1,
+        "scenario": "spill_high_q16",
+        "pairs": 2
+      },
+      {
+        "cpu": 2,
+        "scenario": "standard10k",
+        "pairs": 4
+      },
+      {
+        "cpu": 2,
+        "scenario": "wide768",
+        "pairs": 2
+      }
+    ],
+    "seed": 7319,
+    "order": "AB/BA alternating within each scenario",
+    "workload": "original retained_guards1114 vendor definitions and counters; source-factor adapter requires separate review",
+    "memory_bytes": 2147483648,
+    "swap_bytes": 0,
+    "ratios": "candidate/nonPGO-reference; lower faster",
+    "frozen_regression_rules": {
+      "time_threshold": 1.02,
+      "memory_threshold": 1.05,
+      "pair_and_order_logic": "unchanged historical stable_regression; special scenarios require both pairs adverse"
+    },
+    "required_metrics": "all original guard metrics including default ingest/firstquery; spill writes,COMMIT,index,firstquery,querybeforeupdate,full lifecycle,restart; wide seven query phases,lifecycle,memory",
+    "retain_all_raw_pairs": true,
+    "report_both_AB_BA_medians": true,
+    "no_dropped_slow_samples": true
+  },
+  "whole_program_acceptance": {
+    "EE_primary_pairs_per_build": 12,
+    "retained_R_pairs_per_build": 12,
+    "frozen_policies": {
+      "minivec/tools/best_screen_1114.py": "27044bbedd1965b17a636965eded3c9eb2157caac6e9f83c3e4d49c5c0c6d715",
+      "minivec/tools/retained_guards1114/plan-only.json": "cf71e6d545751d53f98bc3b0eebc4d87cf9df1b81564d4ab391b10ad474016b9",
+      "minivec/tools/retained_guards1114/retained_guards.py": "6384d0f51c06e5333e16584393639127e8def10642c8b163ae49ba77ce2f62db",
+      "minivec/tools/retained_guards1114/evidence/evaluate_highest_primary24_screen.py": "40b8e003b715cb3b3c570ad3d733c7490d2de72837cffab92024a971364153c2",
+      "minivec/tools/confirmation1114/plan.json": "ffb481bcbd1334033d8472e2aa14026df007b0019c0edbe010b12dbc9bb6cb6c"
+    },
+    "R": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+    "R_expected_ELF": "acddca115ab183bfc6419e27c9e3383cfd1a9046e3897e5ea516cd7bc0f29f54",
+    "EE": "ee299adb296a2922d01982aa6c5707d37e767b41",
+    "EE_expected_ELF": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+    "thresholds_unchanged": true,
+    "source_factor_results_do_not_replace_acceptance_gates": true,
+    "existing_independent_confirmation_unchanged": true,
+    "independent_confirmation_requires_same_candidate_ELF_and_new_run_boot_seed19087": true,
+    "candidate_ELF_mismatch_blocks_confirmation": true,
+    "no_automatic_adoption": true,
+    "execution_stage": "deferred_final_combination; this PGO-only experiment executes zero EE/R whole-program pairs"
+  },
+  "historical_negative_evidence": {
+    "source": "R33 docs/ITERATION2_20261112.md and validation/iteration2-final-performance.json",
+    "run": 43247796185,
+    "PGO_candidate": "58354ffb8b019bd6f8fdce2f671780fd9dca1c43",
+    "same_source_control": "5a67f1690c46239cf4340ee40437bab5988c82ca",
+    "pairs_total": 105,
+    "ratios_baseline_over_PGO": {
+      "spill_query": 0.995485,
+      "spill_restart_query": 0.966053,
+      "spill_index_build": 0.963603,
+      "spill_lifecycle": 0.999375,
+      "default_query": 1.0146
+    },
+    "earlier_dot_source_isolation_spill_query_ratio": 0.9703,
+    "inference_limit": "Different source and runner. These negatives motivate protections, not a current speed prediction."
+  },
+  "integration_blocker": null,
+  "builds_executed": 0,
+  "database_pairs_executed": 0,
+  "formal_submission": false,
+  "official_score": null,
+  "release_gate_passed": false,
+  "automatic_adoption": false,
+  "execution_adapter": "minivec/tools/ci_pgo_only_1114.sh",
+  "adapter_manifest": "validation/pgo-only-adapter-20261114.json",
+  "actual_current_experiment": {
+    "fresh_PGO_builds": 2,
+    "ELF_mismatch_stops_before_performance": true,
+    "source_factor_pairs_per_build": 12,
+    "source_factor_total_pairs_if_eligible": 24,
+    "EE_pairs": 0,
+    "retained_R_pairs": 0,
+    "source_safety_passes": 1,
+    "both_actual_image_gates": true,
+    "no_release_claim": true
+  }
+}

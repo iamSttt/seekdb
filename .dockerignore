@@ -5,3 +5,7 @@
 !minivec/src/**
 !minivec/third_party/
 !minivec/third_party/**
+!minivec/tools/
+!minivec/tools/pgo/
+!minivec/tools/pgo/train.cpp
+!minivec/tools/pgo/run-training.sh
