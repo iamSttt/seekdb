@@ -1,0 +1,8 @@
+{
+  "status": "verified",
+  "source_commit": "b981375f14e74f33a01e9afde5543e24ebc6e3ca",
+  "binary_sha256": "96b53ca132d649b59a56a541cf81a4cdfd34a61e2d6ab07cd75c779a9b0a47f9",
+  "external_evidence": "/home/runner/work/seekdb/seekdb/protocol-results/raw-copy/candidate-proof.json",
+  "external_evidence_sha256": "ca2ab1513ea7eb9c30baa9c0b9884218a9f001773b2c797ffd4499cca98f0b1e",
+  "scope": "Actual build identity for raw-retention source factor; not a release assertion."
+}
