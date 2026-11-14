@@ -1,0 +1,12 @@
+standard10k  0 baseline
+standard10k  0 candidate
+standard10k  1 candidate
+standard10k  1 baseline
+standard10k  2 baseline
+standard10k  2 candidate
+standard10k  3 candidate
+standard10k  3 baseline
+spill_high_q16  0 baseline
+spill_high_q16  0 candidate
+spill_high_q16  1 candidate
+spill_high_q16  1 baseline

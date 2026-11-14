@@ -1,0 +1,841 @@
+{
+  "status": "passed",
+  "requests": 165,
+  "dimensions": [
+    16,
+    127,
+    128,
+    129,
+    768
+  ],
+  "byte_identical_response_sha256": "386961a59a0145dc7ec78a6fc981c44858843cbf45dcac359b73dc25943f747f",
+  "checks": [
+    {
+      "sequence": 1,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 2,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 3,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 4,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 5,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 6,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 7,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 8,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 9,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 10,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 11,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 12,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 13,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 14,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 15,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 16,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 17,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 18,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 19,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 20,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 21,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 22,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 23,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 24,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 25,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 26,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 27,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 28,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 29,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 30,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 31,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 32,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 33,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 34,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 35,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 36,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 37,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 38,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 39,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 40,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 41,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 42,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 43,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 44,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 45,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 46,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 47,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 48,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 49,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 50,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 51,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 52,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 53,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 54,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 55,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 56,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 57,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 58,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 59,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 60,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 61,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 62,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 63,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 64,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 65,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 66,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 67,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 68,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 69,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 70,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 71,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 72,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 73,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 74,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 75,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 76,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 77,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 78,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 79,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 80,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 81,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 82,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 83,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 84,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 85,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 86,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 87,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 88,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 89,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 90,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 91,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 92,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 93,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 94,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 95,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 96,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 97,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 98,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 99,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 100,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 101,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 102,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 103,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 104,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 105,
+      "ok": false,
+      "independent_rows": false
+    },
+    {
+      "sequence": 106,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 107,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 108,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 109,
+      "ok": true,
+      "independent_rows": false
+    },
+    {
+      "sequence": 110,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 111,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 112,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 113,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 114,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 115,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 116,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 117,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 118,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 119,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 120,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 121,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 122,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 123,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 124,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 125,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 126,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 127,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 128,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 129,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 130,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 131,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 132,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 133,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 134,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 135,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 136,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 137,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 138,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 139,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 140,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 141,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 142,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 143,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 144,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 145,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 146,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 147,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 148,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 149,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 150,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 151,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 152,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 153,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 154,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 155,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 156,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 157,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 158,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 159,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 160,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 161,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 162,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 163,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 164,
+      "ok": true,
+      "independent_rows": true
+    },
+    {
+      "sequence": 165,
+      "ok": true,
+      "independent_rows": true
+    }
+  ],
+  "typed_path_directly_instrumented": false,
+  "scope": "Live paired byte equality plus independent numeric/type/string/order fixtures; no performance or internal branch-counter claim."
+}

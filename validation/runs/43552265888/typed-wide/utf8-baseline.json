@@ -1,0 +1,384 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "malformed_hex": "ff",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "ff",
+      "path": "unbounded",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "ff",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "c080",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "c080",
+      "path": "unbounded",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "c080",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "eda080",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "eda080",
+      "path": "unbounded",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "eda080",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "e4b8",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "e4b8",
+      "path": "unbounded",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "e4b8",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "f4908080",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "f4908080",
+      "path": "unbounded",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "f4908080",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "80",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "80",
+      "path": "unbounded",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "80",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": null,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "ff",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "ff",
+      "path": "unbounded",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "ff",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "c080",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "c080",
+      "path": "unbounded",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "c080",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "eda080",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "eda080",
+      "path": "unbounded",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "eda080",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "e4b8",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "e4b8",
+      "path": "unbounded",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "e4b8",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "f4908080",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "f4908080",
+      "path": "unbounded",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "f4908080",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "80",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "80",
+      "path": "unbounded",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "80",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 127,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "ff",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "ff",
+      "path": "unbounded",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "ff",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "c080",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "c080",
+      "path": "unbounded",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "c080",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "eda080",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "eda080",
+      "path": "unbounded",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "eda080",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "e4b8",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "e4b8",
+      "path": "unbounded",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "e4b8",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "f4908080",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "f4908080",
+      "path": "unbounded",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "f4908080",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "80",
+      "path": "ORDER BY id LIMIT 10",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "80",
+      "path": "unbounded",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    },
+    {
+      "malformed_hex": "80",
+      "path": "ORDER BY id LIMIT 4096",
+      "projected_vector_dimension": 128,
+      "valid_prefix_bytes": 90000,
+      "status": "passed"
+    }
+  ],
+  "scope": "54 scalar/127d/128d stored UTF-8 response failures followed by valid requests; not performance"
+}

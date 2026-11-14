@@ -1,0 +1,12 @@
+standard10k  0 baseline
+standard10k  0 candidate
+standard10k  1 candidate
+standard10k  1 baseline
+standard10k  2 baseline
+standard10k  2 candidate
+standard10k  3 candidate
+standard10k  3 baseline
+wide768  0 baseline
+wide768  0 candidate
+wide768  1 candidate
+wide768  1 baseline

@@ -1,0 +1,8 @@
+{
+  "status": "verified",
+  "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "binary_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+  "external_build_evidence": "/home/runner/work/seekdb/seekdb/protocol-results/typed-wide/baseline-proof.json",
+  "external_build_evidence_sha256": "52200344f2e3ca6526e52db6f0a5de71bd0dd3f9b082e843202055f63ddbab60",
+  "scope": "Actual ELF from unchanged pinned root Docker context, with complete input hashes verified; not an official platform executable claim."
+}

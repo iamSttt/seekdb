@@ -1,0 +1,1 @@
+PASS typed JSON matches pinned serializer, exact int64, float roundtrip, negative zero and strict UTF8
