@@ -1,0 +1,352 @@
+{
+  "status": "single_factor_parent_screen_passed",
+  "run": "https://github.com/iamSttt/seekdb/actions/runs/43546998875",
+  "tested_full_commit": "be9dde5ab3fd51b81e4c287391779a7fd83912e9",
+  "runtime_first_commit": "be966a6e8440d425016d9b48be7aa6fdfe80ce26",
+  "runtime_unchanged_after_diagnostic_correction": true,
+  "baseline_source": "9ed5baa1b1363ebd388850e74271b353954902da",
+  "candidate_binary_sha256": "7e9ba3686055add3c19763ffa5a29b0a08264e70fada1dd1b44f37496a9a7b1f",
+  "baseline_binary_sha256": "07af43283446b85e73f14a5c378183bb0855d83858b7925ce77561d276b44799",
+  "frozen_plan_sha256": "3f11aac124facb95b396fc0d85ffadf0eeebc0b8c7a429fbc23df770b9fdc118",
+  "completed_pairs": 12,
+  "query_checks": {
+    "1:first_1000_queries_wall_seconds": true,
+    "1:first_1000_queries_cpu_usec": true,
+    "2:first_1000_queries_wall_seconds": true,
+    "2:first_1000_queries_cpu_usec": true
+  },
+  "stable_regression_triggers": [],
+  "metrics": {
+    "1": {
+      "first_lifecycle_wall_seconds": {
+        "median_candidate_over_baseline": 0.965123945236586,
+        "candidate_strictly_faster_pairs": 6,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9725681668891326,
+          "BA": 0.9576797235840393
+        }
+      },
+      "first_lifecycle_cpu_to_before_shutdown_usec": {
+        "median_candidate_over_baseline": 0.951429560656202,
+        "candidate_strictly_faster_pairs": 6,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.960015501139564,
+          "BA": 0.94284362017284
+        }
+      },
+      "first_1000_queries_wall_seconds": {
+        "median_candidate_over_baseline": 0.9383758233722909,
+        "candidate_strictly_faster_pairs": 6,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9539265352294385,
+          "BA": 0.9203575863793115
+        }
+      },
+      "first_query_wall_seconds": {
+        "median_candidate_over_baseline": 0.9462680085315098,
+        "candidate_strictly_faster_pairs": 4,
+        "candidate_slower_pairs": 2,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9755680293771067,
+          "BA": 0.9112467466158495
+        }
+      },
+      "max_process_rss_bytes": {
+        "median_candidate_over_baseline": 1.0001575795776867,
+        "candidate_strictly_faster_pairs": 0,
+        "candidate_slower_pairs": 3,
+        "order_median_candidate_over_baseline": {
+          "AB": 1.0,
+          "BA": 1.0003151591553734
+        }
+      },
+      "first_1000_queries_cpu_usec": {
+        "median_candidate_over_baseline": 0.9213518901231645,
+        "candidate_strictly_faster_pairs": 6,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9353276926170552,
+          "BA": 0.9058721357472109
+        }
+      },
+      "ingest_wall_seconds": {
+        "median_candidate_over_baseline": 0.9882129350535327,
+        "candidate_strictly_faster_pairs": 4,
+        "candidate_slower_pairs": 2,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9842987060450452,
+          "BA": 1.0006309109663813
+        }
+      },
+      "ingest_cpu_usec": {
+        "median_candidate_over_baseline": 0.9778690821467646,
+        "candidate_strictly_faster_pairs": 6,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9759384818918472,
+          "BA": 0.979799682401682
+        }
+      },
+      "ingest_begin_wall_seconds": {
+        "median_candidate_over_baseline": 0.8921486179571462,
+        "candidate_strictly_faster_pairs": 4,
+        "candidate_slower_pairs": 2,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.8722333416473927,
+          "BA": 0.9120638942668996
+        }
+      },
+      "ingest_insert_wall_seconds": {
+        "median_candidate_over_baseline": 0.9884725463430509,
+        "candidate_strictly_faster_pairs": 5,
+        "candidate_slower_pairs": 1,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9881929153961633,
+          "BA": 0.9887521772899386
+        }
+      },
+      "ingest_commit_wall_seconds": {
+        "median_candidate_over_baseline": 0.9815115492527049,
+        "candidate_strictly_faster_pairs": 4,
+        "candidate_slower_pairs": 2,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.956107703953334,
+          "BA": 1.0333933474761785
+        }
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 0.9630546881722639,
+        "candidate_strictly_faster_pairs": 5,
+        "candidate_slower_pairs": 1,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9854833319842006,
+          "BA": 0.9273251483720237
+        }
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 0.9955287963882542,
+        "candidate_strictly_faster_pairs": 5,
+        "candidate_slower_pairs": 1,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9958553994934377,
+          "BA": 0.9952021932830706
+        }
+      },
+      "device_write_bytes": {
+        "median_candidate_over_baseline": 1.0,
+        "candidate_strictly_faster_pairs": 0,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 1.0,
+          "BA": 1.0
+        }
+      }
+    },
+    "2": {
+      "first_lifecycle_wall_seconds": {
+        "median_candidate_over_baseline": 0.9591040851978196,
+        "candidate_strictly_faster_pairs": 6,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9582222347904616,
+          "BA": 0.9599859356051775
+        }
+      },
+      "first_lifecycle_cpu_to_before_shutdown_usec": {
+        "median_candidate_over_baseline": 0.9669503857452626,
+        "candidate_strictly_faster_pairs": 5,
+        "candidate_slower_pairs": 1,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9851561584904857,
+          "BA": 0.9392203193721291
+        }
+      },
+      "first_1000_queries_wall_seconds": {
+        "median_candidate_over_baseline": 0.9327271604732723,
+        "candidate_strictly_faster_pairs": 6,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9493331170896884,
+          "BA": 0.8991326067030594
+        }
+      },
+      "first_query_wall_seconds": {
+        "median_candidate_over_baseline": 0.9546660353246634,
+        "candidate_strictly_faster_pairs": 3,
+        "candidate_slower_pairs": 3,
+        "order_median_candidate_over_baseline": {
+          "AB": 1.0376370439323759,
+          "BA": 0.8950290726902609
+        }
+      },
+      "max_process_rss_bytes": {
+        "median_candidate_over_baseline": 1.0,
+        "candidate_strictly_faster_pairs": 1,
+        "candidate_slower_pairs": 1,
+        "order_median_candidate_over_baseline": {
+          "AB": 1.0,
+          "BA": 1.0
+        }
+      },
+      "first_1000_queries_cpu_usec": {
+        "median_candidate_over_baseline": 0.934270450626113,
+        "candidate_strictly_faster_pairs": 5,
+        "candidate_slower_pairs": 1,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9843895759339296,
+          "BA": 0.8759894248356617
+        }
+      },
+      "ingest_wall_seconds": {
+        "median_candidate_over_baseline": 0.9701799142174719,
+        "candidate_strictly_faster_pairs": 4,
+        "candidate_slower_pairs": 2,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9352908928698282,
+          "BA": 0.9864031008390709
+        }
+      },
+      "ingest_cpu_usec": {
+        "median_candidate_over_baseline": 0.9853989315064031,
+        "candidate_strictly_faster_pairs": 6,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9941023006939774,
+          "BA": 0.9832171632966339
+        }
+      },
+      "ingest_begin_wall_seconds": {
+        "median_candidate_over_baseline": 0.966759109892406,
+        "candidate_strictly_faster_pairs": 4,
+        "candidate_slower_pairs": 2,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9747342098990448,
+          "BA": 0.9587840098857671
+        }
+      },
+      "ingest_insert_wall_seconds": {
+        "median_candidate_over_baseline": 0.9802153904780718,
+        "candidate_strictly_faster_pairs": 6,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9546937373140493,
+          "BA": 0.9957584161697838
+        }
+      },
+      "ingest_commit_wall_seconds": {
+        "median_candidate_over_baseline": 0.9578603309988614,
+        "candidate_strictly_faster_pairs": 4,
+        "candidate_slower_pairs": 2,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9615606608183951,
+          "BA": 0.9541600011793275
+        }
+      },
+      "complete_lifecycle_cpu_usec": {
+        "median_candidate_over_baseline": 0.9763807301154384,
+        "candidate_strictly_faster_pairs": 4,
+        "candidate_slower_pairs": 2,
+        "order_median_candidate_over_baseline": {
+          "AB": 0.9780253647662794,
+          "BA": 0.9747360954645972
+        }
+      },
+      "memory_peak_bytes": {
+        "median_candidate_over_baseline": 1.0030073905061696,
+        "candidate_strictly_faster_pairs": 2,
+        "candidate_slower_pairs": 4,
+        "order_median_candidate_over_baseline": {
+          "AB": 1.0004605111673959,
+          "BA": 1.0055542698449433
+        }
+      },
+      "device_write_bytes": {
+        "median_candidate_over_baseline": 1.0,
+        "candidate_strictly_faster_pairs": 0,
+        "candidate_slower_pairs": 0,
+        "order_median_candidate_over_baseline": {
+          "AB": 1.0,
+          "BA": 1.0
+        }
+      }
+    }
+  },
+  "native_image_correctness": {
+    "runtime_commit": "be9dde5ab3fd51b81e4c287391779a7fd83912e9",
+    "image_tag": "minivec:verify-be9dde5ab3fd",
+    "image_id": "sha256:5beded5ceae968af9fe13660e851bb64011d5edf851e68f74da9a516f9edc978",
+    "scope": "current-checkout build and regression verification; not formal scoring",
+    "passed": true,
+    "checks": {
+      "root_docker_build": true,
+      "image_official_handshake_and_public_cases": true,
+      "source_official_handshake_and_public_cases": true,
+      "live_stdin_errors_utf8_fragment_shutdown_restart_commit_sigkill": true,
+      "make_test": true,
+      "image_binary_json_and_exact_topk_serial_parallel": true,
+      "eight_wal_failure_cases_asan_ubsan": true,
+      "query_pool_both_modes_asan_ubsan": true,
+      "cross_table_spill_asan_ubsan": true,
+      "full_binary_json_ubsan": true
+    },
+    "limitations": [
+      "No hidden formal cases or score.",
+      "Paired performance screening is recorded separately in intcap/screen.json.",
+      "WAL fixture injects short/failed writes; not fdatasync or allocation failure.",
+      "ASan leak detection disabled; memory-safety and undefined-behavior checks enabled."
+    ]
+  },
+  "request_differential": {
+    "cases": 464,
+    "sha256": "db2c5ed1b540aa1d5fc2e945ffc5b58557e8c423d7b22c4dc6320ac1ed30be08",
+    "intentional_raw_nul_rejections": 4,
+    "intentional_raw_nul_differential_changes": 0,
+    "nul_atomicity_cases": 4,
+    "nul_atomicity_sha256": "7ffbea440784659a07c4b768ae19bacab9e34b7d3f0b470373069b16182bf4d0",
+    "result": "pass"
+  },
+  "fraction_topk_result": "pass",
+  "quantized_object_size": {
+    "baseline": 88,
+    "candidate": 88
+  },
+  "git_blob_hashes_rechecked": 145,
+  "raw_arm_sha256_rechecked": [
+    {
+      "cpu": "1",
+      "sha256": "3670ebbae9e5a3e2bdd11851b3f736db114d72222bb97794ef49ee57d2ede579",
+      "matches_embedded_raw": true
+    },
+    {
+      "cpu": "2",
+      "sha256": "b08f61d0f22d1b32eaef412b55881904f6beea0d2ca5b5c775508aa0c6cd947f",
+      "matches_embedded_raw": true
+    }
+  ],
+  "release_gate_passed": false,
+  "official_score": null,
+  "automatic_adoption": false,
+  "scope": "Single-factor parent9ed screen only. Future combined candidate needs own EE/R guards and independent confirmation. First query remains noisy; adverse pairs retained.",
+  "archive": {
+    "path": "validation/intcap1114-43546998875-raw.zip",
+    "sha256": "ba2e54a548bf356c73a25605df2b315601d45ac817f2bfced72b9b514dbb8142",
+    "bytes": 3369818,
+    "full_log_sha256": "b3371068a419b31f40e19f9d9b5928375a7ad4c1718bae5dae035457cc5d09db",
+    "files": "Full downloaded log/run identity/all47 reports/extraction manifest/independent recheck"
+  },
+  "prior_failed_run": {
+    "prior_plan_sha256": "a70738e851f2d465d030c5f52ca1e901c1582c7af200a863adfab6f4a6d89c8e",
+    "failed_run": "https://github.com/iamSttt/seekdb/actions/runs/43546448144",
+    "prior_candidate_commit": "be966a6e8440d425016d9b48be7aa6fdfe80ce26",
+    "actual_candidate_elf_sha256": "7e9ba3686055add3c19763ffa5a29b0a08264e70fada1dd1b44f37496a9a7b1f",
+    "reason": "EE-only test expected2 intentional raw-NUL behavior differences, but parent9ed and candidate already reject identically. Explicit parent expectation0, default EE2 unchanged. All requests and atomicity assertions preserved.",
+    "production_changed": false,
+    "performance_thresholds_changed": false,
+    "completed_performance_pairs": 0,
+    "failed_raw_archive": "validation/intcap-43546448144-failed-raw.zip",
+    "failed_raw_archive_sha256": "54c7b662f2b08269f77bba7313aa2a3657b41e726b4197b92d40d3f093d5163f"
+  }
+}
