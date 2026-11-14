@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "scope": "Synthetic metric reader validation only; zero database executions",
+  "checks": [
+    "all-pass",
+    "query-too-slow",
+    "too-few-faster",
+    "order-not-improved",
+    "stable-lifecycle-regression",
+    "stable-memory-regression",
+    "mixed-order-not-stable-guard",
+    "incomplete-rejected"
+  ]
+}

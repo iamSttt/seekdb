@@ -254,7 +254,7 @@ class QuantizedQueryBound {
     if(!enabled_ || !row || !std::isfinite(threshold) || threshold<0)return false;
     if(!cached_ || threshold!=cached_threshold_)update_cap(threshold);
     if(!usable_cap_)return false;
-    return static_cast<double>(kernel_(row,query_.data(),n_))>cap_;
+    return kernel_(row,query_.data(),n_)>integer_cap_;
   }
  private:
   void update_cap(double threshold) const {
@@ -273,6 +273,12 @@ class QuantizedQueryBound {
     const double sum=quantized_detail::up(root+root_n_);
     cap_=quantized_detail::up(sum*sum);
     usable_cap_=std::isfinite(cap_);
+    // Every exact uint32_t kernel sum is representable in double. For this
+    // nonnegative cap, integer > cap is exactly integer > floor(cap). Saturate
+    // before conversion and still run the kernel when rejection is impossible.
+    if(usable_cap_)integer_cap_=
+        cap_>=static_cast<double>(std::numeric_limits<uint32_t>::max())
+        ? std::numeric_limits<uint32_t>::max() : static_cast<uint32_t>(cap_);
   }
   size_t n_=0;
   bool enabled_=false;
@@ -280,6 +286,7 @@ class QuantizedQueryBound {
   quantized_detail::Distance kernel_=nullptr;
   std::vector<int8_t> query_;
   mutable bool cached_=false,usable_cap_=false;
+  mutable uint32_t integer_cap_=0;
   mutable double cached_threshold_=0,cap_=0;
 };
 } // namespace mvdb

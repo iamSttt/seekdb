@@ -35,6 +35,9 @@ git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec
 lscpu > protocol-results/lscpu.txt
 docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
+# Freeze and verify this isolated integer-cap candidate before any build/test.
+git fetch --no-tags --depth=1 origin 9ed5baa1b1363ebd388850e74271b353954902da
+python3 -B minivec/tools/intcap1114/evaluate.py verify --output protocol-results/intcap-source-before.json
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
 docker image inspect "$IMAGE" > protocol-results/image-inspect.json
@@ -76,7 +79,7 @@ g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -Imin
 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 minivec/tests/json_protocol.py --binary "$scratch/minivec-ubsan" --timeout 15 2>&1 | tee "$reports/fullbinary-json-ubsan.log"
 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 minivec/tests/shared_bound_topk.py --binary "$scratch/minivec-ubsan" --output "$reports/shared-bound-ubsan.json"
 
-bash minivec/tools/ci_from_best_1114.sh
+bash minivec/tools/ci_intcap_1114.sh
 
 # Cleanup must not change any official fixtures or source while tests run.
 git diff --exit-code -- STDIO_PROTOCOL.md protocol_check mysqltest minivec/src minivec/third_party Dockerfile .dockerignore
@@ -102,7 +105,7 @@ report = {
         'full_binary_json_ubsan': True
     },
     'limitations': ['No hidden formal cases or score.',
-                    'Paired performance screening is recorded separately in from-best/screen.json.',
+                    'Paired performance screening is recorded separately in intcap/screen.json.',
                     'WAL fixture injects short/failed writes; not fdatasync or allocation failure.',
                     'ASan leak detection disabled; memory-safety and undefined-behavior checks enabled.']
 }

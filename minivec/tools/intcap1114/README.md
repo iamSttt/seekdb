@@ -1,0 +1,15 @@
+# Isolated integer-cap diagnostic
+
+This branch starts at `9ed5baa1b1363ebd388850e74271b353954902da`. Only `minivec/src/quantized_bound.h` changes runtime behavior: retain the existing double cap, cache a saturated nonnegative integer floor on each existing cap update, and compare the exact unsigned kernel result against that cache. The field occupies the existing padding after the mutable booleans; the pinned compiler must confirm unchanged object size. High caps use `UINT32_MAX` and still execute the kernel. Per-row threshold checks, update timing, outward rounding and small-radius fallback are unchanged. There is no JSON row reuse, validation hoisting, kernel skip, short-decimal parser, lazy prefix or spill-cache overlay.
+
+The integer sum is bounded by `65536 * 65025 = 4261478400 < UINT32_MAX`. Every possible sum is exactly representable as double. For a finite nonnegative cap the strict floating comparison equals `sum > floor(cap)`; saturation avoids out-of-range conversion and conservatively prevents rejection above the unsigned range. The original safe double-cap derivation remains the authority for exact search semantics.
+
+The legacy `legacy_reject` and `check_integer_cap_equivalence` functions were copied verbatim from `991d10572a974c7384b6a30a9d57acf8ece3394f:minivec/tests/test_quantized_bound.cpp`. That earlier runtime also changed JSON reuse, cached legality checks and high-cap kernel skipping; its combined performance result is not this candidate's outcome. Existing independent float32 Fraction TopK and fixed128 integer tests remain unchanged.
+
+`plan.json` freezes all production/build/helper hashes and the 12-pair schedule before native execution. The unchanged original benchmark generator, oracle, metric extraction and wrapper are reused, with `--baseline-source` explicitly naming9ed. The underlying historical `ee` schedule selector is not an EE identity declaration.
+
+Both CPU arms must independently have median candidate/baseline query wall and CPU ratios at most0.97, at least five of six faster pairs per metric, and both AB/BA medians below1. A first-lifecycle wall/CPU regression blocks when overall, AB and BA medians all exceed1.02; memory peak/RSS use1.05. A green workflow only indicates execution completed: `intcap/decision.json` separately records eligibility or failure with every raw pair retained. This does not replace main EE improvement gates, retained-reference protections, independent confirmation, or formal scoring.
+
+The diagnostic `ci_score.sh` retains the original native/root-image/public/sanitizer checks, then invokes `ci_intcap_1114.sh` for additional equivalence/fixed128 tests, size comparison, actual-image request/Fraction checks and same-runner paired measurements. Neither the production Docker recipe nor workflow YAML changes. Do not import this branch's diagnostic CI entry into the production branch when considering the one-file feature.
+
+`reader-preflight.json` records synthetic decision-reader checks only; it is not a native or performance result. Actual reports will be retained by the normal log report trap, including failed or incomplete execution.
