@@ -6,25 +6,16 @@ out="$repo/protocol-results/typed-outline-assembly"
 mkdir "$out"
 scratch=$(mktemp -d "${RUNNER_TEMP:-/tmp}/typed-outline-assembly-XXXXXX")
 compiler='gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce845bfc32a4168818'
-for role in base typed; do
+for role in base typed lazy; do
   commit=760f66220f2c7186b4ba295f9e3065650e549f9e
   if [[ $role == typed ]]; then commit=6412cbf862959655f351b4d908c430a98c5eabfe; fi
+  if [[ $role == lazy ]]; then commit=9595e1477af1325795b0f9fed52e6a44bb217b1c; fi
   git fetch --no-tags --depth=1 origin "$commit"
   mkdir "$scratch/$role"
   git archive "$commit" Dockerfile .dockerignore minivec/src minivec/third_party | tar -x -C "$scratch/$role"
 done
-cp -a "$scratch/typed" "$scratch/noinline"
-python3 - "$scratch/noinline/minivec/src/exec.cpp" "$out/variant.patch" <<'PY'
-from pathlib import Path
-import difflib,sys
-p=Path(sys.argv[1]);old=p.read_text()
-needle='auto encode_typed_json_row = [&](const Row& row, const Candidate* candidate = nullptr) -> const std::string& {'
-assert old.count(needle)==1
-new=old.replace(needle,needle.replace(' -> ', ' __attribute__((noinline)) -> '))
-p.write_text(new)
-Path(sys.argv[2]).write_text(''.join(difflib.unified_diff(old.splitlines(True),new.splitlines(True),fromfile='a/minivec/src/exec.cpp',tofile='b/minivec/src/exec.cpp')))
-PY
-for role in base typed noinline; do
+git diff 6412cbf862959655f351b4d908c430a98c5eabfe 9595e1477af1325795b0f9fed52e6a44bb217b1c -- minivec/src > "$out/variant.patch"
+for role in base typed lazy; do
   mkdir "$out/$role"
   docker run --rm -v "$scratch/$role/minivec:/src:ro" -v "$out/$role:/out" -w /src "$compiler" bash -c '
     set -euo pipefail

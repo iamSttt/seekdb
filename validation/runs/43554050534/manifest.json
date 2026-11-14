@@ -1,0 +1,53 @@
+{
+  "run_id": 43554050534,
+  "job_id": 132322763805,
+  "ci_commit": "3db91f16b20d0a9a53dfc27c6e23309029ea8d1a",
+  "runtime_commit": "6412cbf862959655f351b4d908c430a98c5eabfe",
+  "url": "https://github.com/iamSttt/seekdb/actions/runs/43554050534",
+  "files": {
+    "compiler.txt": {
+      "bytes": 245,
+      "sha256": "0c45c2417cda20b1ea33e8f54aee9aa0443c940cb9f23b71c6f126148cb8ff9c"
+    },
+    "docker-version.txt": {
+      "bytes": 769,
+      "sha256": "8402d8b7679b4087fa4fb62264e49054f974146c5d134195d8b7a341747ab4ed"
+    },
+    "input-sha256.txt": {
+      "bytes": 12243,
+      "sha256": "02a1d23df2a627d78441a3f52e74bcf8ad3261206f90ea30ca05e79a23196b15"
+    },
+    "lscpu.txt": {
+      "bytes": 3339,
+      "sha256": "f714a1ad57457d4b047ce52351754eb0eca05dc8afa599139612cda2bf4ee4b5"
+    },
+    "runtime-commit.txt": {
+      "bytes": 41,
+      "sha256": "753c44484c7d6bbf2eb7ece809a7c5f1652c11838affca76320845e03749645d"
+    },
+    "typed-outline-assembly/base/build.txt": {
+      "bytes": 1514,
+      "sha256": "07a397c6f97ca1510be8138c6f6ba348d380b6b85e1c04a5fc2492ceceff53f2"
+    },
+    "typed-outline-assembly/noinline/build.txt": {
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    "typed-outline-assembly/summary.json": {
+      "bytes": 1725336,
+      "sha256": "d3b656b3a5c86d8e5eefd157ccc8a7a03e0fe7842651766bef3f4bdd8f9d5f05"
+    },
+    "typed-outline-assembly/typed/build.txt": {
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    }
+  },
+  "uncompressed_log": {
+    "bytes": 2421806,
+    "sha256": "d9927d900121591edcacbf6d09478fa431fb30df09c87d2d0824e667cc3ec3bc"
+  },
+  "compressed_log": {
+    "bytes": 144839,
+    "sha256": "731d0889334a18998c75a59361a2391d2274647cd870c2d359a82ad6032ac2b3"
+  }
+}

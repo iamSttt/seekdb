@@ -2,6 +2,7 @@
   "status": "assembly_diagnostic_before_new_performance",
   "base": "760f66220f2c7186b4ba295f9e3065650e549f9e",
   "typed": "6412cbf862959655f351b4d908c430a98c5eabfe",
+  "lazy": "9595e1477af1325795b0f9fed52e6a44bb217b1c",
   "expected_stripped_sha256": {
     "base": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
     "typed": "41f20159c3b8ae4992bcbfd45ace6264e84125fa841140c84094d5dd6619cb06"
@@ -10,11 +11,12 @@
   "flags": "-O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc",
   "working_directory": "/src",
   "output": "/minivec",
-  "variant": "Copy typed source, add only GNU noinline to encode_typed_json_row local lambda; never modify repository production files in this phase.",
+  "variant": "Lazy owned string/writer state, constructed only inside the existing out-of-line wide formatter on its first actual row. No noinline label is added.",
+  "previous_diagnostic": "43554050534: old typed lambda was already outlined; noinline did not reduce execute_impl17586B or0x4c0 frame versus typed. Base was17059B/0x480. Full summary preserved; only full archive exceeded12MiB cap, no measurements occurred.",
   "questions": [
     "Does the original typed formatter inline into execute_impl or already have an out-of-line operator?",
-    "Does noinline change real core code size/calls, or is it an ineffective label?",
-    "Does default SELECT retain unconditional encoded_row and JsonRowWriter stack/lifetime work?"
+    "Does lazy owned state reduce actual default-path stack or initialization/lifetime work?",
+    "Does the formatter stay out-of-line without relying on a noinline label?"
   ],
   "not_authorized_by_this_plan": ["performance measurement", "release adoption", "score prediction"],
   "performance_pairs": 0,
