@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "status": "frozen_prepared_not_executed",
+  "seed": 19087,
+  "comparison": "same candidate ELF vs EE, independent of seed7319",
+  "expected_pairs": 12,
+  "plan": [
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 2,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 3,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 4,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 5,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 2,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 3,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 4,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 19087,
+      "pair_index": 5,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    }
+  ],
+  "thresholds": {
+    "first_lifecycle_wall_seconds": 0.95,
+    "first_lifecycle_cpu_to_before_shutdown_usec": 0.95,
+    "first_1000_queries_wall_seconds": 0.9,
+    "first_1000_queries_cpu_usec": 0.9
+  },
+  "each_primary_metric_rule": {
+    "paired_median_at_most_threshold": true,
+    "strictly_faster_pairs_at_least": 5,
+    "both_AB_BA_medians_strictly_below": 1,
+    "each_CPU_separately": true
+  },
+  "new_runner_required": {
+    "different_GITHUB_RUN_ID": true,
+    "different_boot_id": true,
+    "confirmation_attempt": 1
+  },
+  "retain_negative_samples": true,
+  "merge_seed7319_and_19087": false,
+  "repeat_until_pass": false,
+  "new_database_pairs": 0,
+  "new_pgo_builds": 0,
+  "release_gate_passed": false,
+  "automatic_adoption": false
+}

@@ -1,0 +1,42 @@
+{
+  "status": "prepared_for_combined_native_execution_not_yet_run",
+  "tested_full_commit": "be9dde5ab3fd51b81e4c287391779a7fd83912e9",
+  "original_runtime_commit": "be966a6e8440d425016d9b48be7aa6fdfe80ce26",
+  "evidence_commit": "0d7c1d4820a415e71715239b2378e66050fb6b51",
+  "imported_header_sha256": "331a1c2f0fe3681ece30e74c24aa12f97094fac7815d3f48808c1ac814404e12",
+  "legacy_cap_functions_sha256": "83c7bff1fd4849c6f0f9f7fa66beef925160b3349420e7580e2fe96741d30b43",
+  "independent_uint64_oracle_sha256": "83940e8ba98441cdf7de0d46fdaa3fc07c34486226b4b120b0d5a93e9ea08096",
+  "new_test_sha256": "055a4e0d564e2f5c2de73185eca9814765c65ae1f3418d214e59d2860d76c110",
+  "existing_tests_unchanged": [
+    "minivec/tests/test_quantized_bound.cpp",
+    "minivec/tests/test_fixed128_quantized.cpp",
+    "minivec/tests/shared_bound_topk.py"
+  ],
+  "archive_alias": {
+    "original_path_at_evidence_commit": "validation/intcap-43546448144-failed-raw.zip",
+    "local_path": "validation/intcap1114-43546448144-failed-raw.zip",
+    "sha256": "54c7b662f2b08269f77bba7313aa2a3657b41e726b4197b92d40d3f093d5163f"
+  },
+  "scope": "Only tested header imported. Standalone test reuses tested function bytes but its new entrypoint needs combined CI execution. No performance, release or score inference for combination.",
+  "prepared_guard_helper_sha256": "7b374d68850f59d974660b2c488abe7b88ec60caed5c2141bd60bec1f28b967f",
+  "frozen_plan_history": {
+    "explanation": "Not a CRLF/LF difference. The original pre-native plan was updated only after the failed EE-specific NUL diagnostic and before any performance pair, to bind the corrected parent-NUL driver and unchanged actual ELF. No threshold, schedule, seed, sample count, resource limit, runtime or build input changed.",
+    "first_ci_git_blob_commit": "be966a6e8440d425016d9b48be7aa6fdfe80ce26",
+    "first_ci_git_blob_sha256": "a70738e851f2d465d030c5f52ca1e901c1582c7af200a863adfab6f4a6d89c8e",
+    "failed_run": 43546448144,
+    "failed_run_performance_pairs": 0,
+    "measured_ci_git_blob_commit": "be9dde5ab3fd51b81e4c287391779a7fd83912e9",
+    "measured_ci_git_blob_sha256": "3f11aac124facb95b396fc0d85ffadf0eeebc0b8c7a429fbc23df770b9fdc118",
+    "measured_run": 43546998875,
+    "changed_top_level_fields": [
+      "candidate_inputs",
+      "premeasurement_driver_correction"
+    ],
+    "changed_helper_hashes_only": [
+      "minivec/tests/validated_request_diff.py",
+      "minivec/tools/ci_intcap_1114.sh",
+      "minivec/tools/intcap1114/evaluate.py"
+    ],
+    "all_other_plan_fields_byte_equivalent_after_JSON_parse": true
+  }
+}

@@ -82,6 +82,10 @@ def main():
         values = [json.loads((args.output / name).read_bytes()) for name in
                   ('execution.json', 'guards.json', 'reference-build-proof.json')]
         report = evaluate(*values)
+        guards = values[1]
+        report['candidate_source_commit'] = guards.get('candidate_source')
+        report['candidate_binary_sha256'] = guards.get('identities', {}).get('candidate', {}).get('binary_sha256')
+        report['guards_report_sha256'] = hashlib.sha256((args.output / 'guards.json').read_bytes()).hexdigest()
     except (OSError, ValueError, TypeError, KeyError) as exc:
         report = {'status': 'retained_guard_stage_blocked', 'retained_guard_stage_passed': False,
                   'error': type(exc).__name__ + ': ' + str(exc), 'release_gate_passed': False,

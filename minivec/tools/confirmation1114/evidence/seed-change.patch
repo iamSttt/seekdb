@@ -1,0 +1,151 @@
+--- frozen-small_compute.py
+
++++ confirmation-small_compute.py
+
+@@ -73,21 +73,27 @@
+
+ 
+ 
+ HIGHEST_PRIMARY_FAMILY = 'highest_primary24_v1'
+-
+-
+-def highest_primary_plan(reference, count):
++HIGHEST_PRIMARY_CONFIRMATION_SEED = 19087
++
++
++def highest_primary_seed(confirmation=False):
++    require(type(confirmation) is bool, 'confirmation flag must be explicit bool')
++    return HIGHEST_PRIMARY_CONFIRMATION_SEED if confirmation else SEED
++
++
++def highest_primary_plan(reference, count, confirmation=False):
+     """Independent EE-primary screen: EE12 + retained8 + retained protection4."""
+     require(reference in ('ee', 'retained') and type(count) is int and count in (1, 2),
+             'unknown highest-primary plan')
+     specs = [('standard10k', 6 if reference == 'ee' else 4)]
+     if reference == 'retained': specs.append(('spill_high_q16' if count == 1 else 'wide768', 2))
+-    return [{'scenario': name, 'seed': SEED, 'pair_index': index,
++    return [{'scenario': name, 'seed': highest_primary_seed(confirmation), 'pair_index': index,
+              'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline']}
+             for name, pairs in specs for index in range(pairs)]
+ 
+ 
+-def check_highest_primary_plan(items, reference, count):
+-    require(items == highest_primary_plan(reference, count), 'highest-primary fixed plan/order differs')
++def check_highest_primary_plan(items, reference, count, confirmation=False):
++    require(items == highest_primary_plan(reference, count, confirmation), 'highest-primary fixed plan/order differs')
+ 
+ 
+ def thread_control_plan():
+@@ -410,13 +416,13 @@
+
+         base.process_snapshot, projection.exchange = original_snapshot, original_exchange
+ 
+ 
+-def workload(name, base, writes, projection, query_mode="mixed"):
+-    if name == 'wide768': return projection.workload(name, SEED, query_mode=query_mode)
+-    if name.startswith('spill_'): return writes.make_workload(name, SEED, cycles=4, batch_size=100, query_mode=query_mode)
+-    return base.make_workload(base.FULL_CASES[name], SEED, 1000, 100, 10, query_mode=query_mode)
+-
+-
+-def workload_identity(name, work, base):
++def workload(name, base, writes, projection, query_mode="mixed", *, seed=SEED):
++    if name == 'wide768': return projection.workload(name, seed, query_mode=query_mode)
++    if name.startswith('spill_'): return writes.make_workload(name, seed, cycles=4, batch_size=100, query_mode=query_mode)
++    return base.make_workload(base.FULL_CASES[name], seed, 1000, 100, 10, query_mode=query_mode)
++
++
++def workload_identity(name, work, base, *, seed=SEED):
+     if name == 'wide768':
+         payload = {'requests': work['requests'], 'phases': work['phases']}
+     elif name.startswith('spill_'):
+@@ -436,7 +442,7 @@
+
+                                                         for i in range(len(work['queries']))])
+     if name == 'wide768': payload['search_mode'] = work.get('search_mode', 'exact')
+     digest = hashlib.sha256(base.encoded(payload)).hexdigest()
+-    return {'scenario': name, 'seed': SEED, 'sha256': digest, 'generator_sha256': work.get('sha256'),
++    return {'scenario': name, 'seed': seed, 'sha256': digest, 'generator_sha256': work.get('sha256'),
+             'rows': work['rows'], 'dimension': work['dimension']}
+ 
+ 
+@@ -504,6 +510,8 @@
+
+                    help='separate four-pair standard10k screen per CPU, using matched root builds')
+     p.add_argument('--highest-primary-reference', choices=('ee', 'retained'),
+                    help='independent highest_primary24_v1: EE six or retained four defaults plus two protection pairs')
++    p.add_argument('--highest-primary-confirmation', action='store_true',
++                   help='opt-in fixed fresh seed19087; only the highest-primary family')
+     p.add_argument('--memory-max'); p.add_argument('--swap-max')
+     p.add_argument('--timeout', type=float, default=120)
+     p.add_argument('--case-timeout', type=float, default=1800)
+@@ -514,6 +522,9 @@
+
+     for value in (args.memory_max, args.swap_max):
+         require(value is None or value == 'max' or (value.isdigit() and int(value) >= 0), 'limit must be bytes or max')
+     require(not args.protection_only or args.db_cpu_count == 2, 'protection plan requires two DB CPUs')
++    require(not args.highest_primary_confirmation or args.highest_primary_reference,
++            'confirmation seed19087 is restricted to the highest-primary family')
++    benchmark_seed = highest_primary_seed(args.highest_primary_confirmation)
+     cases = PROTECTION_CASES if args.protection_only else CASES
+     if args.highest_primary_reference:
+         require(not args.matched_insert_roots and not args.insert_thread_control and
+@@ -521,8 +532,8 @@
+
+                 args.query_mode == 'exact' and args.cpu_quota_us == args.db_cpu_count * 100000 and
+                 args.cpu_period_us == 100000 and args.memory_max == '2147483648' and args.swap_max == '0',
+                 'highest-primary requires its fixed exact/CPU/2GiB/swap0 version-contrast plan')
+-        items = highest_primary_plan(args.highest_primary_reference, args.db_cpu_count)
+-        check_highest_primary_plan(items, args.highest_primary_reference, args.db_cpu_count)
++        items = highest_primary_plan(args.highest_primary_reference, args.db_cpu_count, args.highest_primary_confirmation)
++        check_highest_primary_plan(items, args.highest_primary_reference, args.db_cpu_count, args.highest_primary_confirmation)
+         cases = tuple(dict.fromkeys(item['scenario'] for item in items))
+     elif args.matched_insert_roots:
+         require(not args.insert_thread_control and not args.insert_copy_reference and not args.protection_only and
+@@ -552,6 +563,8 @@
+
+         if args.matched_insert_roots: preview['matched_insert_roots'] = True
+         if args.highest_primary_reference:
+             preview.update(measurement_family=HIGHEST_PRIMARY_FAMILY, highest_primary_reference=args.highest_primary_reference)
++        if args.highest_primary_confirmation:
++            preview.update(highest_primary_confirmation=True, benchmark_seed=benchmark_seed)
+         save(args.output, preview); return
+     require(sys.platform.startswith('linux') and args.identities and args.launcher, 'Linux, identities and launcher required')
+     source = args.tools.resolve(); sys.path.insert(0, str(source))
+@@ -596,6 +609,8 @@
+
+             'IO counters use the shared host filesystem; bounded post-exit stability is not dedicated-device writeback proof.',
+             'Iteration keeps its existing first/second/last TopK oracle, all restart IDs and sampled vectors; write-query and projection retain their stronger full oracles.',
+             'Base iteration errors may not expose partial phase timers; adapter preserves transport count, stderr, cgroup evidence and preceding completed side.']}
++    if args.highest_primary_confirmation:
++        report.update(highest_primary_confirmation=True, benchmark_seed=benchmark_seed)
+     save(args.output, report)
+     if args.insert_copy_reference:
+         report['limitations'][3] = 'INSERT screen: six retained and four historical default pairs per CPU, two retained protection pairs per selected case, one fixed seed. Screening only, no statistical floor, score conversion or automatic adoption.'
+@@ -613,8 +628,8 @@
+
+         (parent / 'cgroup.subtree_control').write_text('+cpu +memory +io')
+         report['driver_cgroup'] = Path('/proc/self/cgroup').read_text().strip()
+         for name in cases:
+-            work = workload(name, base, writes, projection, args.query_mode)
+-            report['workloads'].append(workload_identity(name, work, base))
++            work = workload(name, base, writes, projection, args.query_mode, seed=benchmark_seed)
++            report['workloads'].append(workload_identity(name, work, base, seed=benchmark_seed))
+             for entry in (v for v in items if v['scenario'] == name):
+                 current_pair = dict(entry)
+                 for role in entry['order']:
+@@ -655,11 +670,11 @@
+
+                         partial['thread_policy_observations']['requested_parse_threads'] = effective_environment.get('MVDB_PARSE_THREADS', 'automatic')
+                 compare(current_pair)
+                 report['pairs'].append(current_pair); report['summary'] = summary(report['pairs']); save(args.output, report)
+-            require(workload_identity(name, work, base) == report['workloads'][-1], 'workload mutated during paired runs')
++            require(workload_identity(name, work, base, seed=benchmark_seed) == report['workloads'][-1], 'workload mutated during paired runs')
+         require(len(report['pairs']) == expected_pairs, 'incomplete plan')
+         keys = ('scenario', 'seed', 'pair_index', 'order', 'policy') if args.insert_thread_control else ('scenario', 'seed', 'pair_index', 'order')
+         measured_plan = [{key: pair[key] for key in keys} for pair in report['pairs']]
+-        if args.highest_primary_reference: check_highest_primary_plan(measured_plan, args.highest_primary_reference, args.db_cpu_count)
++        if args.highest_primary_reference: check_highest_primary_plan(measured_plan, args.highest_primary_reference, args.db_cpu_count, args.highest_primary_confirmation)
+         elif args.matched_insert_roots: check_matched_insert_plan(measured_plan, args.db_cpu_count)
+         elif args.insert_thread_control: check_thread_control_plan(measured_plan)
+         elif args.insert_copy_reference: check_insert_copy_plan(measured_plan, args.insert_copy_reference, args.db_cpu_count)

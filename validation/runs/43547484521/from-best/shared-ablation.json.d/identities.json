@@ -1,0 +1,30 @@
+{
+  "baseline": {
+    "source_commit": "9ed5baa1b1363ebd388850e74271b353954902da",
+    "binary": "/home/runner/work/_temp/minivec-from-best-pWGNWv/pre-share-binary",
+    "binary_sha256": "07af43283446b85e73f14a5c378183bb0855d83858b7925ce77561d276b44799",
+    "evidence_file": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/shared-ablation.json.d/baseline-file-identity.json",
+    "evidence_sha256": "5d916f42437b5677b9c9daeeeceb22f3f4f0df4634b4ffc505579028e764bdc6",
+    "evidence_binary_pointer": [
+      "binary_sha256"
+    ],
+    "evidence_commit_pointer": [
+      "source_commit"
+    ],
+    "environment": {}
+  },
+  "candidate": {
+    "source_commit": "f788781b4f163a2410ebd7163ece85cc744c246a",
+    "binary": "/home/runner/work/_temp/minivec-from-best-pWGNWv/candidate-binary",
+    "binary_sha256": "fe1ed03333b4c1dcf88d9a86a8488933d3af23e8d3f779b2033c0756d1c737de",
+    "evidence_file": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/shared-ablation.json.d/candidate-file-identity.json",
+    "evidence_sha256": "9c41fabc92abc7a13986ae6262b4d454b970008b8bdbc429a056c36aad47e35a",
+    "evidence_binary_pointer": [
+      "binary_sha256"
+    ],
+    "evidence_commit_pointer": [
+      "source_commit"
+    ],
+    "environment": {}
+  }
+}

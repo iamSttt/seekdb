@@ -1,0 +1,84 @@
+{
+  "status": "frozen_before_combined_native_and_performance_run",
+  "baseline_source": "ee299adb296a2922d01982aa6c5707d37e767b41",
+  "baseline_rebuilt_elf_sha256": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+  "prior_runtime_base": "9ed5baa1b1363ebd388850e74271b353954902da",
+  "retained_changes": [
+    "validated execute envelope and explicit raw-NUL rejection",
+    "fixed128 exact integer distance kernels",
+    "private-heap shared K-witness bound with cached thresholds",
+    "unsigned integer cap comparison only; original certificate and high-cap kernel calls retained",
+    "bounded BIGINT filter cache only when payload and vector index are both disk backed"
+  ],
+  "new_factor_evidence": {
+    "integer_cap": {
+      "tested_commit": "be9dde5ab3fd51b81e4c287391779a7fd83912e9",
+      "run": 43546998875,
+      "kind": "12-pair isolated parent comparison; frozen numerical gates passed"
+    },
+    "spill_cache": {
+      "tested_commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "correctness_run": 43542440254,
+      "performance_run": 43543849779,
+      "kind": "12-pair isolated parent/default/spill/wide guard; no stable trigger; default1CPU overall query still 2.48% slower"
+    }
+  },
+  "rejected_changes": {
+    "lazy_interval_topk": 43541684844,
+    "decimal15": 43544203031,
+    "decimal19": 43547484521
+  },
+  "unchanged": [
+    "original root Docker compiler and flags, no PGO",
+    "original SQL float parser restored byte-for-byte from9ed",
+    "exact search and PK tie semantics",
+    "thread policy, storage format, transaction and WAL rules",
+    "all official public fixtures"
+  ],
+  "correctness": [
+    "actual root image handshake and20 cases",
+    "interactive JSON,56-vector numerical differential,464-request differential plusNUL atomicity",
+    "exact TopK and independent shared-bound oracle",
+    "WAL/recovery/cross-table and query-pool sanitizers",
+    "cap/kernel correctness,disabled ISA modes,88-byte layout",
+    "spill cache budgets,allocation/read/write faults,payload-resident exclusion,mutation/rollback/restart"
+  ],
+  "EE_primary": {
+    "schedule": "same immutable best_screen_1114.py/research1114 vendor",
+    "seed": 7319,
+    "pairs_per_cpu": 6,
+    "cpu_counts": [
+      1,
+      2
+    ],
+    "memory_bytes": 2147483648,
+    "swap_bytes": 0,
+    "order": "AB/BA alternating",
+    "lifecycle_wall_and_CPU_median_max": 0.95,
+    "query_wall_and_CPU_median_max": 0.9,
+    "minimum_faster_pairs_per_metric": 5,
+    "both_order_medians_strictly_below": 1.0
+  },
+  "retained_R": {
+    "source": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+    "expected_fresh_root_PGO_elf": "acddca115ab183bfc6419e27c9e3383cfd1a9046e3897e5ea516cd7bc0f29f54",
+    "plan": "minivec/tools/retained_guards1114/plan-only.json",
+    "pairs": 12,
+    "thresholds_unchanged": true,
+    "missing_or_failed_guard_is_block": true
+  },
+  "confirmation": {
+    "plan": "minivec/tools/confirmation1114/plan.json",
+    "seed": 19087,
+    "pairs_per_cpu": 6,
+    "new_run_and_boot_required": true,
+    "same_candidate_and_EE_ELF_required": true,
+    "same_primary_thresholds": true,
+    "only_after_EE_and_R_pass": true,
+    "no_replacement_or_selected_samples": true
+  },
+  "decision": "EE initial pass plus retained-R protection plus one independent confirmation required for an improvement recommendation; all negatives preserved. This staged plan does not reproduce the historical interleaved24-pair experiment.",
+  "official_submission": false,
+  "official_score": null,
+  "automatic_adoption": false
+}

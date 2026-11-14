@@ -1,0 +1,33 @@
+{
+  "status": "preparation_checks_passed_not_executed",
+  "source_checks": {
+    "status": "confirmation_sources_verified_not_executed",
+    "seed": 19087,
+    "plan_sha256": "ffb481bcbd1334033d8472e2aa14026df007b0019c0edbe010b12dbc9bb6cb6c",
+    "summarize_function_sha256": "0c3386e1b3700848f9d8e3b16f59f0d0865ba9aed2b1e4e4d51f8df0b173d800",
+    "draft_small_compute_sha256": "6b7121ec7e6ca96c6c122d7d8be3d63c9cf222a620a7a1f6ceea279121a2c8fb",
+    "new_database_pairs": 0,
+    "new_pgo_builds": 0
+  },
+  "compiled_python_files": 14,
+  "actual_historical_screen_statistics_recomputed": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-10-30\\yan\\work\\round2-20261114-from-best\\validation\\runs\\43544203031\\from-best\\screen.json",
+  "historical_screen_sha256": "79835665292aa083ffed2dfc9ab18d40dc6ccf0731d34c67fa77bf7f037c552b",
+  "invalid_evidence_rejected": [
+    "missing_cpu_arm",
+    "missing_pair",
+    "wrong_source",
+    "wrong_elf",
+    "wrong_seed",
+    "wrong_limits",
+    "false_threshold_flag",
+    "missing_metric",
+    "same_run",
+    "same_boot",
+    "retry_attempt",
+    "missing_boot"
+  ],
+  "stubbed_generator_seed_checks": 6,
+  "new_database_pairs": 0,
+  "new_pgo_builds": 0,
+  "scope": "Read-only old data and pure in-memory fixture/stub checks; not a new confirmation or candidate result."
+}

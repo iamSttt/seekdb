@@ -35,13 +35,21 @@ git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec
 lscpu > protocol-results/lscpu.txt
 docker version > protocol-results/docker-version.txt
 g++ --version > protocol-results/compiler.txt
+if [[ -f validation/confirmation-run-20261114.json ]]; then
+  bash minivec/tools/ci_confirm_combined_1114.sh
+  exit 0
+fi
 if [[ -f validation/profile-only-plan-20261114.json ]]; then
   # Explicit diagnostic phase: previous candidate correctness and paired runs
   # remain separate evidence. This run samples only the immutable EE root.
   bash minivec/tools/ci_profile_only_1114.sh
   exit 0
 fi
-bash minivec/tools/ci_short_decimal_1114.sh
+# Decimal parser prototypes are rejected; reproduce their frozen commits separately.
+if [[ -f validation/combined-plan-20261114.json ]]; then
+  bash minivec/tools/ci_intcap_guard_1114.sh
+  bash minivec/tools/ci_spill_guard_1114.sh
+fi
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
 docker image inspect "$IMAGE" > protocol-results/image-inspect.json

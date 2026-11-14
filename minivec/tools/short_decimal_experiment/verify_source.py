@@ -7,6 +7,8 @@ import re
 import sys
 
 root = Path(__file__).resolve().parent
+if (root / 'short_decimal.h').exists():
+    raise SystemExit('Rejected v2 is archived, not bound to current production. Reproduce binding from isolated commit f788781b4f163a2410ebd7163ece85cc744c246a.')
 # read_text uses universal-newline normalization: original SQL Git blobs may
 # be CRLF while frozen numerical snapshots are LF. Binding ignores only that.
 source = Path(sys.argv[1]).read_text(encoding='utf-8')

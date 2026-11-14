@@ -1,3 +1,15 @@
+# Archived short-decimal experiment — v1 and v2 rejected
+
+Production parsing has been restored byte-for-byte to 9ed; this directory now holds the exact rejected v2 header and numerical snapshot. The generic actual-ELF 56-row numerical protocol regression remains enabled independently of this optimization.
+
+Reproduce the original complete CI and production source binding only from an isolated checkout of `f788781b4f163a2410ebd7163ece85cc744c246a`. Current `ci_short_decimal_1114.sh` and `verify_source.py` intentionally reject production-binding claims for this archive. Standalone numerical snapshot tests use the local archived header and do not test current production parsing.
+
+V2 passed all correctness checks and EE primary thresholds, but parent9ed ablation showed no stable ingest benefit; the realistic 128D repr17 micro ratio was 0.941589 (baseline/candidate). All 24 micro results, the favorable EE comparison, negative parent comparison, and checked uint64 conversion/division assembly are recorded in `docs/SHORT_DECIMAL_CERTIFICATE.md` and `validation/runs/43547484521/short-decimal-decision-analysis.json`. Original reports and the v1 history are retained. No experimental rerun or formal submission was made during archival.
+
+The premeasurement README below is retained as historical documentation; its pending status and adoption instructions describe the original freeze, not the current decision.
+
+---
+
 # Short-decimal v2: 19 digits and two parser loops
 
 This independent directory changes no production files. V1 remains archived and unadopted: its correctness passed, but actual ingest did not improve and parent ablation showed query regression. V2 is compared to the unchanged EE/9ed parser, not to that slower v1 version.

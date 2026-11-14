@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "original_best_screen_sha256": "496181803c3ba8949ab16ff994eac144bc531d73bae9fafe48255268ede891d5",
+  "summarize_function_sha256": "0c3386e1b3700848f9d8e3b16f59f0d0865ba9aed2b1e4e4d51f8df0b173d800",
+  "original_small_compute_sha256": "dab4df913efa3860c63fce3f3102af35609931e47b756f21b613878928c8b9bb",
+  "draft_small_compute_sha256": "6b7121ec7e6ca96c6c122d7d8be3d63c9cf222a620a7a1f6ceea279121a2c8fb",
+  "source_draft": "W/confirmation19087-draft/minivec/tools/small_compute.py",
+  "vendor_file_count": 10,
+  "vendor_modified_files": [
+    "minivec/tools/small_compute.py"
+  ],
+  "files": {
+    ".gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+    "evidence/best_screen-original.py": "496181803c3ba8949ab16ff994eac144bc531d73bae9fafe48255268ede891d5",
+    "evidence/seed-change.patch": "71c3c1cab5a6f0b85f1031d4dfbe7d8a02460443ae66f9385d708c61ec77fb93",
+    "evidence/small_compute-original.py": "dab4df913efa3860c63fce3f3102af35609931e47b756f21b613878928c8b9bb",
+    "evidence/source-manifest-original.json": "1158bd265fb09f4ee27f69e352b3702a73df627b2d97faeb7b4614343093f936",
+    "plan.json": "ffb481bcbd1334033d8472e2aa14026df007b0019c0edbe010b12dbc9bb6cb6c",
+    "seed_screen.py": "e58b02c440651d4febab6f1a7544789c463b4d65891082dd8c83d2fd89f8694a",
+    "vendor/cgroup_exec.c": "5fb4bfd5f311adc7cff1261e9ccdd8175d71673952bc21b71536e38d3ebeb6d7",
+    "vendor/metrics.py": "77ab5d3b7d610cc34cc2734589774805a69f4bb23743fd037599eef594988af9",
+    "vendor/minivec/tests/json_protocol.py": "de937fdfb42b4915a7ef3847aea2fe46554a49c55438c447cf6ad4bb9e543088",
+    "vendor/minivec/tools/benchmark_index_delta.py": "bdc09a1b37625acd5b0f6d942ce01e9f253a279f997a237555abb031e1db7695",
+    "vendor/minivec/tools/benchmark_iteration.py": "58d04ec53b7a574b0b8d56535a066b0adedb394222418e8fcb6c5991b397d9a9",
+    "vendor/minivec/tools/benchmark_projection.py": "74417730cf5d3874be1a4e973321b40821f1f5cbdaeb8f055c7f9ed1a0d1f417",
+    "vendor/minivec/tools/benchmark_write_query.py": "d83cb8c5a13a3c5a9e84036be86c154f7a2d2ade439e4eae2202d1206f0991a2",
+    "vendor/minivec/tools/small_compute.py": "6b7121ec7e6ca96c6c122d7d8be3d63c9cf222a620a7a1f6ceea279121a2c8fb",
+    "vendor/protocol_check/_transport.py": "fb3a820105e6e94fc348167c7644ce23a270c63f57b026065f4b563d6ef0674f",
+    "vendor/protocol_check/config.json": "63fe51cac3aaaf45c3739b53b1de8420e5d001e8abb6cf88532d9f190d72d904",
+    "vendor/source-manifest.json": "4bdfa1489c9b4123024bf98d5be8b3a3958b9b9d6c40517a38277265a2f06fa5"
+  },
+  "scope": "Frozen source copies and seed/plan/statistics identity. No execution.",
+  "measurement_helper_AST_changes": [
+    "check_highest_primary_plan",
+    "highest_primary_plan",
+    "highest_primary_seed",
+    "main",
+    "workload",
+    "workload_identity"
+  ]
+}

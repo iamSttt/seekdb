@@ -1790,11 +1790,21 @@ void Database::build_vector_index(Table& table) {
   // payloads in the rebuildable file and gets the disk-backed index, whose
   // records are copies in its own file, exactly as before.
   auto index=std::make_shared<FlatIndex>(dir_,dimension,count,table.payload_store?0:budget);
+  size_t scalar_columns[2]={},scalar_count=0;
+  if(table.payload_store && index->disk_backed()) {
+    // Cache a deterministic bounded prefix; the PK is already in index records.
+    for(size_t column=0;column<table.schema.cols.size() && scalar_count<2;++column)
+      if(static_cast<int>(column)!=table.schema.pk_idx && table.schema.cols[column].type==Type::BIGINT)
+        scalar_columns[scalar_count++]=column;
+    scalar_count=index->configure_spill_integers(scalar_columns,scalar_count,budget);
+  }
   auto add_slot=[&](size_t slot) {
     Row scratch;
     const Row& row=table.read_row(slot,scratch);
     const auto& vector=row.vals[table.schema.vec_idx].v;
-    index->add(row.vals[table.schema.pk_idx].i,slot,vector.data(),vector.size());
+    int64_t integers[2]={};
+    for(size_t i=0;i<scalar_count;++i)integers[i]=row.vals[scalar_columns[i]].i;
+    index->add(row.vals[table.schema.pk_idx].i,slot,vector.data(),vector.size(),integers,scalar_count);
   };
 #ifndef MVDB_DISABLE_NORM_ORDER
   struct NormSlot { double norm;size_t slot; };
@@ -1850,6 +1860,48 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
   Pred predicate;
   if (!compile_pred(table, conds, &predicate) || predicate.never) return;
   build_vector_index(table);
+  if(table.payload_store && table.vector_index->disk_backed() && !predicate.c.empty()) {
+    std::vector<RCond> cached;
+    Pred remaining;
+    for(const RCond& term:predicate.c) {
+      if(term.vt==static_cast<uint8_t>(Type::BIGINT) && term.op<=static_cast<uint8_t>(Cond::GE) &&
+         (static_cast<int>(term.col)==table.schema.pk_idx || table.vector_index->has_spill_integer(term.col)))
+        cached.push_back(term);
+      else remaining.c.push_back(term);
+    }
+    if(!cached.empty()) {
+      const auto matches=[&](size_t ordinal,int64_t pk,uint64_t slot) {
+        if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[static_cast<size_t>(slot)]))
+          throw std::runtime_error("stale flat vector index slot");
+        for(const RCond& term:cached) {
+          int64_t value=pk;
+          if(static_cast<int>(term.col)!=table.schema.pk_idx &&
+             !table.vector_index->spill_integer_value(ordinal,term.col,&value))
+            throw std::runtime_error("stale flat scalar cache");
+          const int64_t literal=term.lit->i;
+          bool match=false;
+          switch(static_cast<Cond::Op>(term.op)) {
+            case Cond::EQ: match=value==literal;break;
+            case Cond::NE: match=value!=literal;break;
+            case Cond::LT: match=value<literal;break;
+            case Cond::LE: match=value<=literal;break;
+            case Cond::GT: match=value>literal;break;
+            case Cond::GE: match=value>=literal;break;
+          }
+          if(!match)return false;
+        }
+        if(!remaining.c.empty()) {
+          Row scratch;
+          if(!row_matches(remaining,table.read_row(static_cast<size_t>(slot),scratch)))return false;
+        }
+        return true;
+      };
+      table.vector_index->scan_filtered(matches,[&](int64_t pk,uint64_t,const float* vector,size_t dimension) {
+        return cb(pk,vector,dimension);
+      });
+      return;
+    }
+  }
   // Exact equality subset. When the whole predicate is a single BIGINT equality
   // the posting list is already the complete filter, so the candidate walk
   // needs neither a row materialisation nor a second predicate evaluation: the

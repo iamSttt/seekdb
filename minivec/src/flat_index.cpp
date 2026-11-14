@@ -95,9 +95,115 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
   }
 }
 FlatIndex::~FlatIndex(){if(fd_>=0)::close(fd_);}
-void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimension) {
-  if(ready_ || count_>=expected_ || dimension!=dimension_)
+size_t FlatIndex::configure_spill_integers(const size_t* columns,size_t count,size_t budget) {
+  if(ready_ || count_ || spill_integer_count_)
+    throw std::runtime_error("flat scalar cache must precede index construction");
+  if(fd_<0 || !expected_ || !count || !columns)return 0;
+  count=std::min(count,spill_integers_.size());
+  if(count==2 && columns[0]==columns[1])
+    throw std::runtime_error("duplicate flat scalar cache column");
+  spill_integer_budget_=std::min<size_t>(budget,2u<<20);
+  size_t available=spill_integer_budget_;
+  for(size_t i=0;i<count;++i) {
+    if(expected_>available/sizeof(int64_t))break;
+    const size_t bytes=expected_*sizeof(int64_t);
+    std::unique_ptr<uint8_t[]> values(new(std::nothrow) uint8_t[bytes]);
+    if(!values)break;
+    auto& column=spill_integers_[i];
+    column.column=columns[i];column.bytes=bytes;column.values=std::move(values);
+    available-=bytes;++spill_integer_count_;
+  }
+  return spill_integer_count_;
+}
+
+void FlatIndex::compress_spill_integers() {
+  for(size_t i=0;i<spill_integer_count_;++i) {
+    SpillInteger& column=spill_integers_[i];
+    // Unsigned subtraction is the exact nonnegative difference even across
+    // INT64_MIN/MAX. No signed subtraction, negation, or endpoint increment.
+    const uint64_t span=uint64_t(column.maximum)-uint64_t(column.minimum);
+    const size_t width=span==0 ? 0 : span<=UINT8_MAX ? 1 : span<=UINT16_MAX ? 2 :
+                       span<=UINT32_MAX ? 4 : 8;
+    if(width==8)continue;
+    const size_t bytes=count_*width,retained=resident_bytes();
+    if(retained>spill_integer_budget_ || bytes>spill_integer_budget_-retained)continue;
+    std::unique_ptr<uint8_t[]> packed;
+    if(bytes) {
+      packed.reset(new(std::nothrow) uint8_t[bytes]);
+      if(!packed)continue; // The already complete raw column remains usable.
+      for(size_t ordinal=0;ordinal<count_;++ordinal) {
+        int64_t value;
+        std::memcpy(&value,column.values.get()+ordinal*sizeof(value),sizeof(value));
+        const uint64_t delta=uint64_t(value)-uint64_t(column.minimum);
+        uint8_t* dest=packed.get()+ordinal*width;
+        if(width==1)*dest=static_cast<uint8_t>(delta);
+        else if(width==2) {const uint16_t v=static_cast<uint16_t>(delta);std::memcpy(dest,&v,sizeof(v));}
+        else {const uint32_t v=static_cast<uint32_t>(delta);std::memcpy(dest,&v,sizeof(v));}
+      }
+    }
+    column.values=std::move(packed);column.width=width;column.bytes=bytes;
+  }
+}
+
+bool FlatIndex::has_spill_integer(size_t column) const {
+  if(!ready_ || fd_<0)return false;
+  for(size_t i=0;i<spill_integer_count_;++i)if(spill_integers_[i].column==column)return true;
+  return false;
+}
+
+bool FlatIndex::spill_integer_value(size_t ordinal,size_t column,int64_t* value) const {
+  if(!value || !ready_ || fd_<0 || ordinal>=count_)return false;
+  for(size_t i=0;i<spill_integer_count_;++i) {
+    const SpillInteger& stored=spill_integers_[i];
+    if(stored.column!=column)continue;
+    if(stored.width==0) {*value=stored.minimum;return true;}
+    const uint8_t* source=stored.values.get()+ordinal*stored.width;
+    if(stored.width==8) {std::memcpy(value,source,sizeof(*value));return true;}
+    uint64_t delta=0;
+    if(stored.width==1)delta=*source;
+    else if(stored.width==2) {uint16_t v;std::memcpy(&v,source,sizeof(v));delta=v;}
+    else {uint32_t v;std::memcpy(&v,source,sizeof(v));delta=v;}
+    const uint64_t bits=uint64_t(stored.minimum)+delta;
+    std::memcpy(value,&bits,sizeof(*value));return true;
+  }
+  return false;
+}
+
+void FlatIndex::scan_filtered(const MetadataPredicate& predicate,const Visitor& visitor) const {
+  if(!ready_)throw std::runtime_error("flat vector index is not ready");
+  if(fd_<0) {
+    for(size_t i=0;i<count_;++i)
+      if(predicate(i,keys_[i],slots_[i]) && !visitor(keys_[i],slots_[i],row_at(i),dimension_))return;
+    return;
+  }
+  const size_t words=dimension_+4,stride=words*sizeof(float);
+  const size_t per_block=std::max<size_t>(1,(1u<<20)/stride);
+  std::vector<float> block(std::min(count_,per_block)*words);
+  for(size_t first=0;first<count_;) {
+    const size_t count=std::min(per_block,count_-first);
+    transfer(fd_,block.data(),count*stride,static_cast<uint64_t>(first)*stride,false);
+    for(size_t i=0;i<count;++i) {
+      const float* record=block.data()+i*words;
+      int64_t pk;uint64_t slot;
+      std::memcpy(&pk,record,sizeof(pk));std::memcpy(&slot,record+2,sizeof(slot));
+      if(predicate(first+i,pk,slot) && !visitor(pk,slot,record+4,dimension_))return;
+    }
+    first+=count;
+  }
+}
+void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimension,
+    const int64_t* integer_values,size_t integer_count) {
+  if(ready_ || count_>=expected_ || dimension!=dimension_ || !values)
     throw std::runtime_error("invalid flat index build row");
+  if(integer_count!=spill_integer_count_ || (integer_count && !integer_values))
+    throw std::runtime_error("invalid flat index scalar build row");
+  for(size_t i=0;i<integer_count;++i) {
+    SpillInteger& column=spill_integers_[i];
+    const int64_t value=integer_values[i];
+    std::memcpy(column.values.get()+count_*sizeof(value),&value,sizeof(value));
+    if(!count_)column.minimum=column.maximum=value;
+    else {column.minimum=std::min(column.minimum,value);column.maximum=std::max(column.maximum,value);}
+  }
   if(fd_<0) {
     if(!values)throw std::runtime_error("invalid flat index build row");
     // Borrow, never copy: the table's row storage owns this payload and rebuilds
@@ -118,6 +224,7 @@ void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimensio
 void FlatIndex::finish() {
   if(count_!=expected_)throw std::runtime_error("incomplete flat vector index build");
   if(ready_)return;
+  if(fd_>=0)compress_spill_integers();
 #ifndef MVDB_DISABLE_QUANTIZED_BOUND
   if(quantized_budget_) {
     double max_abs=0;
@@ -252,10 +359,12 @@ bool FlatIndex::resident_view(ResidentView* view) const {
   return true;
 }
 size_t FlatIndex::resident_bytes() const {
-  return rows_.capacity()*sizeof(const float*)+keys_.capacity()*sizeof(int64_t)+
+  size_t bytes=rows_.capacity()*sizeof(const float*)+keys_.capacity()*sizeof(int64_t)+
          slots_.capacity()*sizeof(uint64_t)+posting_budget_+quantized_budget_+
          ann_centroids_.capacity()*sizeof(float)+ann_members_.capacity()*sizeof(uint32_t)+
          ann_offsets_.capacity()*sizeof(uint32_t);
+  for(size_t i=0;i<spill_integer_count_;++i)bytes+=spill_integers_[i].bytes;
+  return bytes;
 }
 bool FlatIndex::equal_ordinals(size_t column,int64_t value,
     const std::function<int64_t(uint64_t)>& read_value,

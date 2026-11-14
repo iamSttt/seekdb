@@ -1,0 +1,1 @@
+{"status":"PASS","oracle_cases":554561,"semantic_cases":586001,"checks":3316553,"direct_token_accepted":418030,"direct_token_midpoint_fallback":128872,"direct_token_syntax_fallback":7659,"high_uint64_accepted":273,"high_uint64_guarded":998,"vector_accepted":118875,"vector_midpoint_fallback":84,"vector_syntax_fallback":372,"vector_bypassed":69824}

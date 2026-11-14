@@ -1,0 +1,4 @@
+d20383edc3b1d0de979a49e03a1a03f714b9aa669109354a81175e23ee32f7f8  /home/runner/work/_temp/minivec-short-decimal-XeNcyH/oracle-rootflags
+d20383edc3b1d0de979a49e03a1a03f714b9aa669109354a81175e23ee32f7f8  /home/runner/work/_temp/minivec-short-decimal-XeNcyH/oracle-strict
+91c9e43d74f2a972b8c97bf5460cd4802a52cdb6a033fee403b6eb39d7d0b57a  /home/runner/work/_temp/minivec-short-decimal-XeNcyH/oracle-san
+6c6ee54e847911dad4e6749135e7b7dbf183b67c44a4446e730a7180d730539d  /home/runner/work/_temp/minivec-short-decimal-XeNcyH/bench

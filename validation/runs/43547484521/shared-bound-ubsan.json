@@ -1,0 +1,1276 @@
+{
+  "result": "pass",
+  "oracle": "exact integer float32 square sum rounded once to binary64; ties use signed BIGINT PK",
+  "fixture_sha256": "4fc7c00b0d7d5924b2665f09218d8c19f290b741ff5b63f9b4faafff9b4d2daf",
+  "modes": {
+    "forced_two": {
+      "queries": 63,
+      "cases": [
+        {
+          "case": "cross_half_equal-zero-k1",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k32",
+          "count": 1153,
+          "dimension": 128,
+          "k": 32,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k575",
+          "count": 1153,
+          "dimension": 128,
+          "k": 575,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k577",
+          "count": 1153,
+          "dimension": 128,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k1024",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "cross_half_equal-zero-k1154",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1154,
+          "fanout_k_gate_allows": false,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k1",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k10",
+          "count": 2049,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k127",
+          "count": 2049,
+          "dimension": 128,
+          "k": 127,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k1024",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k1025",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1025,
+          "fanout_k_gate_allows": false,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k1",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k10",
+          "count": 2049,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k127",
+          "count": 2049,
+          "dimension": 128,
+          "k": 127,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k1024",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k1025",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1025,
+          "fanout_k_gate_allows": false,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-left-k1",
+          "count": 1153,
+          "dimension": 16,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-left-k10",
+          "count": 1153,
+          "dimension": 16,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-left-k577",
+          "count": 1153,
+          "dimension": 16,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-left-k1024",
+          "count": 1153,
+          "dimension": 16,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "non128_dim16-right-k1",
+          "count": 1153,
+          "dimension": 16,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-right-k10",
+          "count": 1153,
+          "dimension": 16,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-right-k577",
+          "count": 1153,
+          "dimension": 16,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-right-k1024",
+          "count": 1153,
+          "dimension": 16,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "non128_dim129-left-k1",
+          "count": 1153,
+          "dimension": 129,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-left-k10",
+          "count": 1153,
+          "dimension": 129,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-left-k577",
+          "count": 1153,
+          "dimension": 129,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-left-k1024",
+          "count": 1153,
+          "dimension": 129,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "non128_dim129-right-k1",
+          "count": 1153,
+          "dimension": 129,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-right-k10",
+          "count": 1153,
+          "dimension": 129,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-right-k577",
+          "count": 1153,
+          "dimension": 129,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-right-k1024",
+          "count": 1153,
+          "dimension": 129,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k1",
+          "count": 1153,
+          "dimension": 8,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k2",
+          "count": 1153,
+          "dimension": 8,
+          "k": 2,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k4",
+          "count": 1153,
+          "dimension": 8,
+          "k": 4,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k10",
+          "count": 1153,
+          "dimension": 8,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k577",
+          "count": 1153,
+          "dimension": 8,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k64",
+          "count": 129,
+          "dimension": 128,
+          "k": 64,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k65",
+          "count": 129,
+          "dimension": 128,
+          "k": 65,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k66",
+          "count": 129,
+          "dimension": 128,
+          "k": 66,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k128",
+          "count": 129,
+          "dimension": 128,
+          "k": 128,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k129",
+          "count": 129,
+          "dimension": 128,
+          "k": 129,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k130",
+          "count": 129,
+          "dimension": 128,
+          "k": 130,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-k1",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-k32",
+          "count": 1153,
+          "dimension": 128,
+          "k": 32,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-k33",
+          "count": 1153,
+          "dimension": 128,
+          "k": 33,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-projection-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "projection",
+          "lazy128_shape_eligible": true
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-descending-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "descending",
+          "lazy128_shape_eligible": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-where-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "where",
+          "lazy128_shape_eligible": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k1",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k2",
+          "count": 1153,
+          "dimension": 128,
+          "k": 2,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k4",
+          "count": 1153,
+          "dimension": 128,
+          "k": 4,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k32",
+          "count": 1153,
+          "dimension": 128,
+          "k": 32,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k33",
+          "count": 1153,
+          "dimension": 128,
+          "k": 33,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-projection-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "projection",
+          "lazy128_shape_eligible": true
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-k1",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-k32",
+          "count": 1153,
+          "dimension": 128,
+          "k": 32,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-k33",
+          "count": 1153,
+          "dimension": 128,
+          "k": 33,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-projection-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "projection",
+          "lazy128_shape_eligible": true
+        }
+      ],
+      "fanout_two_threads_logged": true,
+      "fanout_logs": [
+        "mvdb: fanout wake_us=4.38 (measured, median of 200 handshakes)",
+        "mvdb: fanout rows=1153 -> 2 threads (forced)",
+        "mvdb: fanout rows=1153 -> 2 threads (forced)",
+        "mvdb: fanout rows=1153 -> 2 threads (forced)",
+        "mvdb: fanout rows=1153 -> 2 threads (forced)"
+      ]
+    },
+    "normal": {
+      "queries": 63,
+      "cases": [
+        {
+          "case": "cross_half_equal-zero-k1",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k32",
+          "count": 1153,
+          "dimension": 128,
+          "k": 32,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k575",
+          "count": 1153,
+          "dimension": 128,
+          "k": 575,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k577",
+          "count": 1153,
+          "dimension": 128,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "cross_half_equal-zero-k1024",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "cross_half_equal-zero-k1154",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1154,
+          "fanout_k_gate_allows": false,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k1",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k10",
+          "count": 2049,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k127",
+          "count": 2049,
+          "dimension": 128,
+          "k": 127,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k1024",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-left_hot-k1025",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1025,
+          "fanout_k_gate_allows": false,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k1",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k10",
+          "count": 2049,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k127",
+          "count": 2049,
+          "dimension": 128,
+          "k": 127,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k1024",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "half_distribution_skew-right_hot-k1025",
+          "count": 2049,
+          "dimension": 128,
+          "k": 1025,
+          "fanout_k_gate_allows": false,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-left-k1",
+          "count": 1153,
+          "dimension": 16,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-left-k10",
+          "count": 1153,
+          "dimension": 16,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-left-k577",
+          "count": 1153,
+          "dimension": 16,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-left-k1024",
+          "count": 1153,
+          "dimension": 16,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "non128_dim16-right-k1",
+          "count": 1153,
+          "dimension": 16,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-right-k10",
+          "count": 1153,
+          "dimension": 16,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-right-k577",
+          "count": 1153,
+          "dimension": 16,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim16-right-k1024",
+          "count": 1153,
+          "dimension": 16,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "non128_dim129-left-k1",
+          "count": 1153,
+          "dimension": 129,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-left-k10",
+          "count": 1153,
+          "dimension": 129,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-left-k577",
+          "count": 1153,
+          "dimension": 129,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-left-k1024",
+          "count": 1153,
+          "dimension": 129,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "non128_dim129-right-k1",
+          "count": 1153,
+          "dimension": 129,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-right-k10",
+          "count": 1153,
+          "dimension": 129,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-right-k577",
+          "count": 1153,
+          "dimension": 129,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "non128_dim129-right-k1024",
+          "count": 1153,
+          "dimension": 129,
+          "k": 1024,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k1",
+          "count": 1153,
+          "dimension": 8,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k2",
+          "count": 1153,
+          "dimension": 8,
+          "k": 2,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k4",
+          "count": 1153,
+          "dimension": 8,
+          "k": 4,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k10",
+          "count": 1153,
+          "dimension": 8,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "rounded_ties_no_int8-near-k577",
+          "count": 1153,
+          "dimension": 8,
+          "k": 577,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k64",
+          "count": 129,
+          "dimension": 128,
+          "k": 64,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k65",
+          "count": 129,
+          "dimension": 128,
+          "k": 65,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k66",
+          "count": 129,
+          "dimension": 128,
+          "k": 66,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k128",
+          "count": 129,
+          "dimension": 128,
+          "k": 128,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k129",
+          "count": 129,
+          "dimension": 128,
+          "k": 129,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "both_halves_smaller_than_k-zero-k130",
+          "count": 129,
+          "dimension": 128,
+          "k": 130,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": true,
+          "k_exceeds_both_halves": true
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-k1",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-k32",
+          "count": 1153,
+          "dimension": 128,
+          "k": 32,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-k33",
+          "count": 1153,
+          "dimension": 128,
+          "k": 33,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-projection-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "projection",
+          "lazy128_shape_eligible": true
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-descending-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "descending",
+          "lazy128_shape_eligible": false
+        },
+        {
+          "case": "lazy128_dense_equal_norm-zero-where-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "where",
+          "lazy128_shape_eligible": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k1",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k2",
+          "count": 1153,
+          "dimension": 128,
+          "k": 2,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k4",
+          "count": 1153,
+          "dimension": 128,
+          "k": 4,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k32",
+          "count": 1153,
+          "dimension": 128,
+          "k": 32,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-k33",
+          "count": 1153,
+          "dimension": 128,
+          "k": 33,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_rounded_ties-near-projection-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "projection",
+          "lazy128_shape_eligible": true
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-k1",
+          "count": 1153,
+          "dimension": 128,
+          "k": 1,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-k32",
+          "count": 1153,
+          "dimension": 128,
+          "k": 32,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": true,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-k33",
+          "count": 1153,
+          "dimension": 128,
+          "k": 33,
+          "fanout_k_gate_allows": true,
+          "lazy128_shape_eligible": false,
+          "k_exceeds_first_half": false,
+          "k_exceeds_both_halves": false
+        },
+        {
+          "case": "lazy128_finite_overflow-zero-projection-k10",
+          "count": 1153,
+          "dimension": 128,
+          "k": 10,
+          "check": "projection",
+          "lazy128_shape_eligible": true
+        }
+      ],
+      "fanout_two_threads_logged": false,
+      "fanout_logs": [
+        "mvdb: fanout wake_us=4.56 (measured, median of 200 handshakes)",
+        "mvdb: fanout rows=1153 scan=11.5us wake=4.56us predicted_gain=-3.4us -> 1 thread",
+        "mvdb: fanout rows=1153 scan=11.5us wake=4.56us predicted_gain=-3.4us -> 1 thread",
+        "mvdb: fanout rows=1153 scan=11.5us wake=4.56us predicted_gain=-3.4us -> 1 thread",
+        "mvdb: fanout rows=1153 scan=11.5us wake=4.56us predicted_gain=-3.4us -> 1 thread"
+      ]
+    }
+  },
+  "shared_cutoff_execution_directly_observed": false,
+  "lazy_interval_execution_directly_observed": false,
+  "observability_limit": "Fanout selection logs are collected, but this binary has no shared-cutoff publication/use or lazy-interval execution counter. Correct answers and eligible SQL shapes cannot prove either optimization executed. Forced mode may fall back when fewer than two online CPUs or worker creation fails."
+}

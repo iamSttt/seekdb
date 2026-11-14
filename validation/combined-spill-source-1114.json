@@ -1,0 +1,113 @@
+{
+  "status": "combined_spill_sources_prepared_not_executed",
+  "target_base_commit": "f788781b4f163a2410ebd7163ece85cc744c246a",
+  "spill_source_commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+  "tested_source_worktree": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-10-30\\yan\\work\\round2-spill-1114-diagnostic",
+  "unchanged_tests_reference_commit": "47e6d7ba499f38891f008abd2a58eb2348f20d97",
+  "runtime_scope": "Exactly db.cpp, flat_index.cpp, flat_index.h from measured spill-only candidate. This export preserves v2 parser files and does not modify/copy CI scripts; parent separately owns combined-stage registrations.",
+  "files": [
+    {
+      "path": "minivec/src/db.cpp",
+      "source_commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "git_blob": "4a832fed64b9fc8249dd8b712bd9f03b39f3ae11",
+      "sha256": "908cf567016786d7783eec263e8d4b20a7585b13ee20d0b48b984314d74c42d4",
+      "bytes": 84565,
+      "exported_bytes_equal_source_git_blob": true
+    },
+    {
+      "path": "minivec/src/flat_index.cpp",
+      "source_commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "git_blob": "987fa2a1ec93f1a3accedf6919bc5dbb1ccc944f",
+      "sha256": "6a2e8d2e09f6fa0365b6354f798a4901669c48cc27dae873aa7ed13225f2e070",
+      "bytes": 19253,
+      "exported_bytes_equal_source_git_blob": true
+    },
+    {
+      "path": "minivec/src/flat_index.h",
+      "source_commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "git_blob": "b7de1be84ae03b640e3eb7412d48c9d3a02e8d73",
+      "sha256": "5bd63a4ea1a0f268e4137ff6e0c49be8860b64626f990a8fd96499fb292b4010",
+      "bytes": 5714,
+      "exported_bytes_equal_source_git_blob": true
+    },
+    {
+      "path": "minivec/tests/test_spill_filter.cpp",
+      "source_commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "git_blob": "14a040b9c530790df5e4b38a01a08b3a0120669d",
+      "sha256": "cc1df47d8c9f0bd4b8136225948d3aee014242984e0ea969d8eb7f53ee4661a2",
+      "bytes": 17624,
+      "same_test_blob_at": "47e6d7ba499f38891f008abd2a58eb2348f20d97",
+      "exported_bytes_equal_source_git_blob": true
+    },
+    {
+      "path": "minivec/tests/test_storage_index_budget.cpp",
+      "source_commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "git_blob": "2598ca6e1adb4a6c603472cd96e8e25fcd6ae490",
+      "sha256": "49f486741410a0ca125b933de4098dc6179dac4e1085062c0202a8fe6c02d800",
+      "bytes": 4805,
+      "same_test_blob_at": "47e6d7ba499f38891f008abd2a58eb2348f20d97",
+      "exported_bytes_equal_source_git_blob": true
+    },
+    {
+      "path": "minivec/tests/test_spill_payload_scope.cpp",
+      "source_commit": "2bbe6d00f2dc97182d3021f21449473581d623d2",
+      "git_blob": "445521951710126efd8f492f2499aeedf61177f0",
+      "sha256": "8b0b616634ee189c3f96e9ed7f6fc681a0baf7244426f3619312f86e0433d671",
+      "bytes": 3665,
+      "same_test_blob_at": "47e6d7ba499f38891f008abd2a58eb2348f20d97",
+      "exported_bytes_equal_source_git_blob": true
+    }
+  ],
+  "guard_audit": {
+    "script": "minivec/tools/ci_spill_guard_1114.sh",
+    "sha256": "f5819322ed40999cdcc3f938cb257bc3fcac67d8e760f7d1d2efa23430d83b4c",
+    "original_script": "2bbe6d00f2dc97182d3021f21449473581d623d2:minivec/tools/ci_spill_diagnostic_1114.sh",
+    "budget_native_and_spill_sanitizer_stages_equal_ignoring_blank_lines": true,
+    "budgets_bytes": [
+      16777216,
+      8192,
+      1
+    ],
+    "preserved_checks": [
+      "spill filter correctness/budgets/allocation/read-write faults under pread/pwrite wrappers",
+      "storage index budget tests at all three budgets",
+      "payload-resident disk-index exclusion at 8192 bytes",
+      "spill filter ASan+UBSan with forced spill and I/O wrappers"
+    ],
+    "other_original_sanitizers_retained_in_main_ci": [
+      "ci_score.sh:75-76 recovery ASan+UBSan --wal-staging",
+      "ci_score.sh:80-81 cross-table spill ASan+UBSan"
+    ],
+    "notes": [
+      "Independent guard omits duplicate cross-table/recovery sanitizer commands because current main ci_score already executes equivalent tests with halt_on_error and timeouts.",
+      "Guard not enabled by this preparation; combined production and parser/spill interaction still need full CI.",
+      "No CI run, commit, formal submission or speed/score claim made by this preparation."
+    ],
+    "retained_sanitizer_test_blob_identity": {
+      "minivec/tests/test_cross_table_spill.cpp": {
+        "source_git_blob": "ceb500e8edcce60eb8fbfc809e2eeaf159716b62",
+        "main_git_blob": "ceb500e8edcce60eb8fbfc809e2eeaf159716b62",
+        "equal": true
+      },
+      "minivec/tests/test_recovery_regressions.cpp": {
+        "source_git_blob": "9eafa3a53db057d8d177a9f66d6b8fcd2975a878",
+        "main_git_blob": "9eafa3a53db057d8d177a9f66d6b8fcd2975a878",
+        "equal": true
+      }
+    },
+    "parent_ci_registration_note": "Parent concurrently registered conditional combined-plan stages in ci_score/ci_from_best after export. Export-time CI SHA is historical context, not a pin on those parent-owned edits. No combined plan was created by this preparation."
+  },
+  "formal_submission": false,
+  "ci_started": false,
+  "commit_created": false,
+  "protected_files_at_export_sha256": {
+    "minivec/src/sql.cpp": "3f8c588e97b6e5e760bea3a3148cbc803f70cb81c661b6537d2b171a9fb65959",
+    "minivec/src/short_decimal.h": "513cc8b66cf0d861721a3537aa7da70e7c1322571b8b4f6f0068d5eb89d063f6",
+    "minivec/tools/ci_score.sh": "d799bbdce1b4c0c8fca958c996744409bc2750e2a9a1288dd18c1a930bc1089d",
+    "minivec/tools/ci_spill_guard_1114.sh": "f5819322ed40999cdcc3f938cb257bc3fcac67d8e760f7d1d2efa23430d83b4c"
+  },
+  "protected_v2_parser_current_sha256": {
+    "minivec/src/sql.cpp": "3f8c588e97b6e5e760bea3a3148cbc803f70cb81c661b6537d2b171a9fb65959",
+    "minivec/src/short_decimal.h": "513cc8b66cf0d861721a3537aa7da70e7c1322571b8b4f6f0068d5eb89d063f6"
+  }
+}

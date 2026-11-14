@@ -1,7 +1,52 @@
-# Nineteen-digit decimal prototype: correctness certificate
+# Short-decimal v1/v2：正确性通过，性能不足，均撤回
 
-This v2 certificate was frozen in the standalone work directory before integration. The candidate is now integrated for validation; v2 native correctness and performance remain unmeasured. The Python diagnostic is separate evidence, not proof of the compiled operation graph or speed. V1 raw reports remain under validation/runs/43544203031; its prior plan, certificate, oracle and complete micro summaries are preserved in minivec/tools/short_decimal_experiment/history. V1 is not the performance control: EE and parent 9ed remain the references.
+当前生产 `sql.cpp` 已逐字节恢复为 `9ed5baa1b1363ebd388850e74271b353954902da`，生产 `src/short_decimal.h` 已移除。v2 原头文件精确归档到 `minivec/tools/short_decimal_experiment/short_decimal.h`；通用的 56 行 JSONL 数值回归继续保留。冻结计划及旧报告是当时的历史记录，不表示当前启用或采用。
 
+v1 提交 `83bc170` 的正确性通过，但对父版本未体现写入 CPU 收益，2 CPU 查询 wall 回退约 7.36%；其旧计划、证书和全部 24 组微测保存在实验目录 `history/`，原始结果仍在 `validation/runs/43544203031/`。
+
+## v2 实测与拒绝原因
+
+本轮测量提交 `f788781b4f163a2410ebd7163ece85cc744c246a`，CI run `43547484521` 成功。完整日志以流式方式下载，命令退出码 0 后才提取，共 54 份报告；日志 SHA256 为 `6555f1c648b8b6ddbade1c2790463e2c37fb0b45d5529acad0d6d1d49fca8f1e`。原始报告位于 `validation/runs/43547484521/`，派生汇总见其中的 `short-decimal-decision-analysis.json`。
+
+三个 native 构建（release flags、strict rounding、ASan/UBSan）均通过 554,561 条独立整数 oracle，结果一致；实际 ELF 协议通过 89 次完整响应比较、100,352 个 float32 坐标位模式回读及提交后重启检查。正确性没有被用于推断性能。
+
+以下四指标均为候选耗时 / 参考耗时，低于 1 更快；每种 CPU 限额 6 对，AB/BA 各 3 对。
+
+| 参考 | CPU 限额 | 查询 wall | 查询 CPU | 首生命周期 wall | 首生命周期 CPU |
+|---|---:|---:|---:|---:|---:|
+| EE | 1 | 0.876996 | 0.838172 | 0.938700 | 0.891913 |
+| EE | 2 | 0.823519 | 0.748433 | 0.918268 | 0.850850 |
+| parent9ed | 1 | 1.004574 | 0.999891 | 1.005062 | 1.005005 |
+| parent9ed | 2 | 1.021253 | 1.006085 | 0.998674 | 0.992768 |
+
+对 EE 的四项主阈值在两种 CPU 限额下均通过，且每项 6/6 对更快；这是整个候选程序相对 EE 的正面结果，完整 release gate 仍未通过，不能归因给短十进制解析器。对 9ed 的消融中，写入 CPU 比值为 1.012259 / 0.992021：1 CPU 的 6/6 对全部变慢，2 CPU 仅 4/6 对改善。
+
+2 CPU 查询 wall 的顺序分组差异很大：AB 为 1.078767，BA 为 0.971353；生命周期 wall 也为 AB 1.032223、BA 0.965326。查询 CPU 的 AB/BA 则均略慢（1.004331 / 1.007839）。这不支持把 wall 的部分改善当成稳定的解析收益，也不能将两次独立对照块的中位数相除来估计贡献。
+
+## 全部 24 组 parser 微测
+
+下表为 baseline / candidate 的 wall 中位比值，高于 1 更快。每格固定 8 对 AB/BA，所有原始慢样本保留；不能换算数据库倍率或正式分数。
+
+| 输入族 | 1 维 | 16 维 | 128 维 | 768 维 |
+|---|---:|---:|---:|---:|
+| short_fixed6 | 0.967141 | 1.347642 | 1.208793 | 1.208866 |
+| mixed_25pct_exponent | 1.017040 | 0.998266 | 0.957824 | 0.956266 |
+| all_exponent | 0.978322 | 0.971422 | 0.981337 | 0.987760 |
+| all_17digit_decimal | 1.002257 | 0.904634 | 0.893378 | 0.895043 |
+| float32_as_double_repr17 | 0.996506 | 0.876279 | 0.941589 | 0.954583 |
+| midpoint_fallback | 1.012945 | 0.948535 | 0.982028 | 0.987799 |
+
+fixed6 的 128/768 维约快 1.209 倍，但全 17 位十进制 128 维只有 0.893378 倍；该组 16,384 个坐标全部走快速路径，说明更多接受并不等于更快。实际 float32 扩展到 double 的 repr17 128 维接受 8,922/16,384 个坐标，仍只有 0.941589 倍；16 维为 0.876279 倍。长十进制的扫描、整数转换、除法及分支成本没有被吞吐收益覆盖。
+
+## 编译结果核验与重现边界
+
+已查看实际 release-flags 微测汇编，计时使用的 `round<true>`（不是带计数的独立预检）在第 3491/3695 行使用 `divsd`，3503 行使用 `cvtsd2ss`；3488 行是普通整数转换，3680–3687 行的高位 uint64 分支为 `shrq/orq/cvtsi2sdq/addsd`，随后回到同一除法点。中点保护实际编译为减去 `2^28-4` 后与 8 比较。所检查分支没有近似倒数替换。汇编文件为 `short-decimal/micro-translation-unit.txt`；这不表示生产 PGO 指令布局与微测完全相同。
+
+要重现当时的完整 CI 和生产绑定，请使用独立 checkout `f788781b4f163a2410ebd7163ece85cc744c246a`。当前 `ci_short_decimal_1114.sh` / `verify_source.py` 会明确拒绝把归档实验当成当前生产绑定。归档快照仍可作为独立数值实验运行，原测试、oracle、54 份报告和 v1 负结果均保留。没有重跑实验、删除慢样本或发起正式评测。
+
+## 冻结时的数学证书（保留历史前提）
+
+以下数学和测试计划在 native 运行前写成；其中“待验证”的时间描述属于冻结时点，当前实测结果以上文为准。
 ## Scope and arithmetic assumptions
 
 The fast subset is `-?[0-9]+(\.[0-9]+)?` with at most **19 total digit characters**, counting leading zeroes, and at least one integer digit. The fraction length is at most 18. An explicit end, comma or one of the original six ASCII whitespace characters must follow. Exponents, leading plus/dot, trailing dot, hexadecimal, special values, unsupported suffixes and longer spellings go through the unchanged original `from_chars(float)` / conditional `strtof` path.

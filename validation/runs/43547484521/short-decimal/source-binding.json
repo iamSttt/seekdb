@@ -1,0 +1,14 @@
+{
+  "status": "identical_after_removing_test_counters_and_renaming",
+  "production_parser_normalized_sha256": "786d7a0f1d933359e309d8bbedef1cf0515e3c44a9bb2c10999151a83920735b",
+  "baseline_parser_normalized_sha256": "229669aba4294fff3a26d5a70e5fe06ec548699a866d890ed9bed0a791226afd",
+  "original_remainder_loop_normalized_sha256": "3f8ecb31a0d273fe7e9c5f3deb986fbbeaf3135a5f6d8e96b2ccc32b232c1d74",
+  "original_remainder_loop_verbatim_after_newline_normalization": true,
+  "snapshot_sha256": "d80895489d028406f9901ee6f042756a567cdbe04480d06c01d8e0d5f7a1822e",
+  "production_header_sha256": "513cc8b66cf0d861721a3537aa7da70e7c1322571b8b4f6f0068d5eb89d063f6",
+  "production_header_normalized_sha256": "513cc8b66cf0d861721a3537aa7da70e7c1322571b8b4f6f0068d5eb89d063f6",
+  "oracle_sha256": "869fd03cb39616e01d38e71e2115612dc30eac6d8d5d753a722dc14d75fdb4f1",
+  "oracle_cases": 554561,
+  "candidate": "v2 integrated for validation, not adopted; header work-only comment preserved to retain frozen identity",
+  "scope": "Full parser binding after CRLF normalization and removal of test-only counters; actual production header and frozen v2 fixture binding. Native and actual-binary tests remain separate."
+}

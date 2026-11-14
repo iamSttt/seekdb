@@ -17,7 +17,6 @@
 // savepoints, ...). Nothing in here ever crashes: every failure path throws a
 // ParseError that parse_sql converts into (false, message, code).
 #include "sql.h"
-#include "short_decimal.h"
 #include "parse_pool.h"
 
 #include <cerrno>
@@ -319,28 +318,6 @@ bool parse_float_list(std::string_view body, std::vector<float>* out) {
   if (out->capacity() == 0) out->reserve(body.size() / 8 + 4);
   const size_t n = body.size();
   size_t i = 0;
-  const short_decimal::Context context(body.size() >= 128);
-  if(context.enabled()) {
-    while (i < n) {
-      while (i < n && is_space((unsigned char)body[i])) ++i;
-      if (i >= n) break;
-      const char* begin = body.data() + i;
-      const auto fast = context.parse(begin, body.data() + n);
-      if(!fast.accepted())break; // i is unchanged at the first non-space byte.
-      const char* endp=fast.ptr;
-      const float stored=fast.value;
-      out->push_back(stored);
-      i += (size_t)(endp - begin);
-      while (i < n && is_space((unsigned char)body[i])) ++i;
-      if (i < n) {
-        if (body[i] != ',') return false;
-        ++i;
-        size_t probe = i;
-        while (probe < n && is_space((unsigned char)body[probe])) ++probe;
-        if (probe >= n) return false;  // trailing comma
-      }
-    }
-  }
   while (i < n) {
     while (i < n && is_space((unsigned char)body[i])) ++i;
     if (i >= n) break;

@@ -2,6 +2,10 @@
 set -euo pipefail
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$repo"
+if [ ! -f minivec/src/short_decimal.h ]; then
+  echo 'Rejected experiment archived: reproduce full CI/source binding from an isolated checkout of f788781b4f163a2410ebd7163ece85cc744c246a. Current production parsing has reverted to 9ed.' >&2
+  exit 2
+fi
 out="${MINIVEC_REPORTS:?}/short-decimal"
 mkdir -p "$out"
 scratch=$(mktemp -d "${RUNNER_TEMP:-/tmp}/minivec-short-decimal-XXXXXX")
