@@ -1,0 +1,7 @@
+{
+  "exit_code": 1,
+  "status": "failed_or_blocked",
+  "release_gate_passed": false,
+  "automatic_adoption": false,
+  "official_score": null
+}

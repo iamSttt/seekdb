@@ -1,0 +1,25 @@
+{
+  "run_id": 43551046410,
+  "job_id": 132313328851,
+  "ci_commit": "b16c834d298a21d1e6fbea362c1c1f97fec8670d",
+  "runtime_commit": "b16c834d298a21d1e6fbea362c1c1f97fec8670d",
+  "url": "https://github.com/iamSttt/seekdb/actions/runs/43551046410",
+  "files": {
+    "pgo-only/execution.json": {
+      "bytes": 143,
+      "sha256": "6be57d87e4f9ff94f625491b3f4b1352fbc8d6666bfd3dda2fc233d7d5500933"
+    },
+    "pgo-only/static-identity.txt": {
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    }
+  },
+  "uncompressed_log": {
+    "bytes": 21167,
+    "sha256": "91078ebb3787ac5415df48df5fe655d6ce01b2746141fe30f80f0eba9029fb11"
+  },
+  "compressed_log": {
+    "bytes": 3718,
+    "sha256": "99df62ca7a04728f29de11c5be68ebadd557f5aa073e6f2e0e829f7f434f46ec"
+  }
+}

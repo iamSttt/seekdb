@@ -1,0 +1,18 @@
+{
+  "run": 43551046410,
+  "job": 132313328851,
+  "commit": "b16c834d298a21d1e6fbea362c1c1f97fec8670d",
+  "status": "pre_native_identity_gate_failure",
+  "reason": "best_screen_1114.py diagnostic-manifest hash was computed from an autocrlf-converted archive extraction instead of its committed Git blob",
+  "incorrect_worktree_hash": "27044bbedd1965b17a636965eded3c9eb2157caac6e9f83c3e4d49c5c0c6d715",
+  "actual_committed_blob_sha256": "496181803c3ba8949ab16ff994eac144bc531d73bae9fafe48255268ede891d5",
+  "native_builds": 0,
+  "training_runs": 0,
+  "database_pairs": 0,
+  "runtime_changes": false,
+  "training_or_threshold_changes": false,
+  "performance_result": null,
+  "full_log_sha256": "91078ebb3787ac5415df48df5fe655d6ce01b2746141fe30f80f0eba9029fb11",
+  "download_exit_code": 0,
+  "correction": "All referenced hashes rebound and cross-checked against staged Git blobs, preserving original raw CRLF where committed."
+}

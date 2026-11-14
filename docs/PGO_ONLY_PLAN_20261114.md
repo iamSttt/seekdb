@@ -124,3 +124,14 @@ its just-built stage; it never knowingly retrains or selects another product.
 The independent branch may now be committed and dispatched after static review.
 This document records the pre-run plan, not a successful native build,
 correctness/performance result, or submission recommendation.
+
+## Preserved pre-native adapter failure
+
+Run43551046410 on b16c834 stopped in static identity verification before any
+Docker build, training run, or database pair. The diagnostic manifest bound
+`best_screen_1114.py` to an autocrlf-converted archive extraction; the committed
+script itself was unchanged. The corrected manifest binds every adapter,
+policy and plan input to the staged Git blob, not the working-tree conversion.
+The complete failed log and zero-build/zero-pair record are retained under
+`validation/runs/43551046410`. No runtime, training, threshold or corpus change
+is part of this correction; it is not a negative PGO performance result.
