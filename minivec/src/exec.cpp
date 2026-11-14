@@ -429,9 +429,19 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             return !item.is_distance && sch.cols[item.col].type == Type::VECTOR &&
                 sch.cols[item.col].len >= 128;
           });
-      std::string encoded_row;
-      JsonRowWriter row_writer(encoded_row);
+      struct TypedJsonState {
+        std::string encoded_row;
+        JsonRowWriter row_writer;
+        TypedJsonState() : row_writer(encoded_row) {}
+      };
+      // Keep the writer's referenced string at a stable address, but construct
+      // both only when a wide row is actually emitted. Scalar/distance-only
+      // requests and empty results keep only an empty owning pointer.
+      std::unique_ptr<TypedJsonState> typed_json_state;
       auto encode_typed_json_row = [&](const Row& row, const Candidate* candidate = nullptr) -> const std::string& {
+        if (!typed_json_state) typed_json_state = std::make_unique<TypedJsonState>();
+        auto& encoded_row = typed_json_state->encoded_row;
+        auto& row_writer = typed_json_state->row_writer;
         encoded_row.clear();encoded_row+='[';
         for(size_t j=0;j<items.size();++j) {
           if(j)encoded_row+=',';
