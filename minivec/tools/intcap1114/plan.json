@@ -72,11 +72,11 @@
     "minivec/tests/test_quantized_bound.cpp": "cec21557fe08f330d292b11cc2c7d666079153852bd3f9e79b2f270ca82575d1",
     "minivec/tests/test_fixed128_quantized.cpp": "1fd4792c4ff6ad5d7a081a55bb1d6997efac2340c601d57c86ca4488839e1e06",
     "minivec/tests/shared_bound_topk.py": "6286e4f97f839995c208f2952a2bf95233acee3c54e6d3bc4a1a3f64b8cd285d",
-    "minivec/tests/validated_request_diff.py": "78ba5dca678a37eb200f41be9be07a9fbf07ca77330283924c8384594394a83e",
+    "minivec/tests/validated_request_diff.py": "a16f307ad76dbb89f3d6d0c3fedb1a3d97220b2bc6c07074ff932a8f01c19b5b",
     "minivec/tools/best_screen_1114.py": "496181803c3ba8949ab16ff994eac144bc531d73bae9fafe48255268ede891d5",
     "minivec/tools/ci_score.sh": "0908d6cea9166173f7a1dc9a9c526c9341df60cfb9bb11be8b82ee0c2175fb12",
-    "minivec/tools/ci_intcap_1114.sh": "f8b899dc4445fdc006b38fa67da04d8c112b9d2a9f4e20a92cfd78471065d9e5",
-    "minivec/tools/intcap1114/evaluate.py": "990fea31887c5d405c43d1710f81fe835bc84758645d26097b9f2abc3463142c",
+    "minivec/tools/ci_intcap_1114.sh": "c6ddf6f7f2b095b6b128460453bfaecc95b05a2fdaf19ee61a90d604c536197a",
+    "minivec/tools/intcap1114/evaluate.py": "f57d5639b11d09f0758f5fe6bc30f983b56b5382ca64e465f20e6cb235657314",
     "minivec/tools/research1114/minivec/tools/small_compute.py": "dab4df913efa3860c63fce3f3102af35609931e47b756f21b613878928c8b9bb",
     "minivec/tools/research1114/minivec/tools/benchmark_iteration.py": "58d04ec53b7a574b0b8d56535a066b0adedb394222418e8fcb6c5991b397d9a9",
     "minivec/tools/research1114/minivec/tools/benchmark_index_delta.py": "bdc09a1b37625acd5b0f6d942ce01e9f253a279f997a237555abb031e1db7695",
@@ -257,5 +257,17 @@
   "decision_scope": "Conditional isolated-parent screen only; not EE .90/.95 or retained guards or independent confirmation. No automatic adoption/official score. All adverse pairs retained.",
   "legacy_test_source_commit": "991d10572a974c7384b6a30a9d57acf8ece3394f",
   "native_execution_count_at_freeze": 0,
-  "performance_pairs_at_freeze": 0
+  "performance_pairs_at_freeze": 0,
+  "premeasurement_driver_correction": {
+    "prior_plan_sha256": "a70738e851f2d465d030c5f52ca1e901c1582c7af200a863adfab6f4a6d89c8e",
+    "failed_run": "https://github.com/iamSttt/seekdb/actions/runs/43546448144",
+    "prior_candidate_commit": "be966a6e8440d425016d9b48be7aa6fdfe80ce26",
+    "actual_candidate_elf_sha256": "7e9ba3686055add3c19763ffa5a29b0a08264e70fada1dd1b44f37496a9a7b1f",
+    "reason": "EE-only test expected2 intentional raw-NUL behavior differences, but parent9ed and candidate already reject identically. Explicit parent expectation0, default EE2 unchanged. All requests and atomicity assertions preserved.",
+    "production_changed": false,
+    "performance_thresholds_changed": false,
+    "completed_performance_pairs": 0,
+    "failed_raw_archive": "validation/intcap-43546448144-failed-raw.zip",
+    "failed_raw_archive_sha256": "54c7b662f2b08269f77bba7313aa2a3657b41e726b4197b92d40d3f093d5163f"
+  }
 }

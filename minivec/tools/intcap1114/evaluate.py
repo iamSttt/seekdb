@@ -63,6 +63,9 @@ def proof(binary, role, image_inspect, output):
                 role + ' source/blob mismatch: ' + path)
     if role == 'baseline':
         require(digest == data['baseline_expected_elf_sha256'], 'parent root ELF changed')
+    elif 'premeasurement_driver_correction' in data:
+        require(digest == data['premeasurement_driver_correction']['actual_candidate_elf_sha256'],
+                'driver-only correction changed the actual candidate ELF')
     save(output, dict(status='verified_original_root_build_inputs', source_commit=source,
          binary_sha256=digest, binary=str(binary), build_inputs=inputs,
          image_inspect_sha256=sha(image_inspect), frozen_plan_sha256=sha(HERE/'plan.json'),

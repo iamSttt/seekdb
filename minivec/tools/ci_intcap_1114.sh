@@ -54,7 +54,7 @@ for role in baseline candidate; do
 done
 cmp "$out/layout-baseline.txt" "$out/layout-candidate.txt"
 python3 -B minivec/tests/validated_request_diff.py --baseline "$scratch/baseline-binary" \
-  --candidate "$scratch/candidate-binary" --output "$out/request-differential.json"
+  --candidate "$scratch/candidate-binary" --expected-raw-nul-changes 0 --output "$out/request-differential.json"
 python3 -B minivec/tests/shared_bound_topk.py --binary "$scratch/candidate-binary" --output "$out/fraction-topk.json"
 
 gcc -O2 -Wall -Wextra -static minivec/tools/research1114/cgroup_exec.c -o "$scratch/cgroup-exec"
