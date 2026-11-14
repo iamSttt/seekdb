@@ -3,7 +3,6 @@
 #include "result_sort.h"
 #include "distance.h"
 #include "quantized_bound.h"
-#include "lazy_interval128.h"
 #include "query_pool.h"
 #include "../third_party/json.hpp"
 #include <limits>
@@ -549,65 +548,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             // The normal merge of both heaps retains all global Top-K winners.
             const bool fanout=!approximate && bounded && !st.order_desc && k>=1 &&
                 k<=kFanoutTopKMax && query_fanout_wanted(view.count);
-            if(fanout && !ann_mode && k<=32 && view.dimension==lazy128::kDimension &&
-               lazy128::supported()) {
-              // Experimental narrow scope: explicit exact, resident, no WHERE,
-              // 128D, ascending bounded K<=32, and the existing fan-out decision.
-              std::vector<Candidate> halves[2];
-              halves[0].reserve(k);halves[1].reserve(k);
-              struct alignas(64) PublishedUpper {
-                std::atomic<double> value{std::numeric_limits<double>::infinity()};
-              };
-              PublishedUpper published[2];
-              constexpr bool share_upper=std::atomic<double>::is_always_lock_free;
-              const float* query=order.qvec->data();
-              std::function<void(unsigned)> scan_half=[&](unsigned worker) {
-                const size_t middle=view.count/2;
-                const size_t first=worker?middle:0,last=worker?view.count:middle;
-                if(first>=last)return;
-                lazy128::TopK128<> heap(query,k);
-                const QuantizedQueryBound quantized(query,lazy128::kDimension,
-                    view.quantized ? view.quantization_step : 0);
-                double last_published=std::numeric_limits<double>::infinity();
-                auto publish_upper=[&] {
-                  if constexpr(share_upper) {
-                    // This is a historical K-witness ceiling, not an exact kth
-                    // key. Never publish a peer-only ceiling as our own proof.
-                    const double own=heap.local_upper();
-                    if(std::isfinite(own) && own>=0 && own<last_published) {
-                      published[worker].value.store(own,std::memory_order_relaxed);
-                      last_published=own;
-                    }
-                  }
-                };
-                for(size_t i=first;i<last;++i) {
-                  if constexpr(share_upper) {
-                    if(((i-first)&63)==0) {
-                      publish_upper();
-                      heap.set_peer_upper(published[worker^1].value.load(std::memory_order_relaxed));
-                    }
-                  }
-                  const double threshold=heap.pruning_upper();
-                  if(quantized.enabled() && std::isfinite(threshold) &&
-                     quantized.definitely_greater(view.quantized+i*lazy128::kDimension,threshold))
-                    continue;
-                  heap.offer(view.keys[i],view.rows[i]);
-                }
-                publish_upper();
-                // Only local survivors become the original Candidate; merge,
-                // output projection and canonical primary-key ties stay below.
-                heap.for_each_materialized([&](int64_t pk,double distance) {
-                  Candidate c;c.pk=pk;c.distance=distance;
-                  halves[worker].push_back(std::move(c));
-                });
-              };
-              auto run_half=+[](void* ctx,unsigned worker) {
-                (*static_cast<std::function<void(unsigned)>*>(ctx))(worker);
-              };
-              query_fanout_run(&scan_half,run_half,true);
-              for(unsigned worker=0;worker<2;++worker)
-                for(auto& candidate:halves[worker])offer(std::move(candidate));
-            } else if(fanout) {
+            if(fanout) {
               std::vector<Candidate> halves[2];
               halves[0].reserve(k);halves[1].reserve(k);
               struct alignas(64) PublishedKth {

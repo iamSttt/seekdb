@@ -1,0 +1,217 @@
+{
+  "run_id": 43541684844,
+  "job_id": 132283447552,
+  "ci_commit": "8033b9781dcbf673536b631e7291aff5ceba3bd7",
+  "runtime_commit": "8033b9781dcbf673536b631e7291aff5ceba3bd7",
+  "url": "https://github.com/iamSttt/seekdb/actions/runs/43541684844",
+  "files": {
+    "compiler.txt": {
+      "bytes": 245,
+      "sha256": "0c45c2417cda20b1ea33e8f54aee9aa0443c940cb9f23b71c6f126148cb8ff9c"
+    },
+    "docker-version.txt": {
+      "bytes": 769,
+      "sha256": "8402d8b7679b4087fa4fb62264e49054f974146c5d134195d8b7a341747ab4ed"
+    },
+    "from-best/baseline-image.json": {
+      "bytes": 2176,
+      "sha256": "5ffc0a7e7c39f89585f67f284a0492f32f810293d3d890ac99243793f865a4b1"
+    },
+    "from-best/binary-sha256.txt": {
+      "bytes": 263,
+      "sha256": "259f4d6e79d624ac47d8e2ceaf1ea66b7f305a599ad1923fdcda5c00d11e98c8"
+    },
+    "from-best/build-input-diff.txt": {
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    "from-best/candidate-image.json": {
+      "bytes": 2188,
+      "sha256": "d2eacb5800a5e0718ac72a6701473af7aa3398bcc6c05907b28099e273ae6715"
+    },
+    "from-best/fixed128-MVDB_DISABLE_AVX512_QUANTIZED.txt": {
+      "bytes": 149,
+      "sha256": "ead6f883ef7d75db326f5a45037e0e15c6e50168b0e743033d9ae04e8b5c554e"
+    },
+    "from-best/fixed128-MVDB_DISABLE_FIXED128_QUANTIZED.txt": {
+      "bytes": 149,
+      "sha256": "ead6f883ef7d75db326f5a45037e0e15c6e50168b0e743033d9ae04e8b5c554e"
+    },
+    "from-best/fixed128-sanitized.txt": {
+      "bytes": 149,
+      "sha256": "ead6f883ef7d75db326f5a45037e0e15c6e50168b0e743033d9ae04e8b5c554e"
+    },
+    "from-best/fixed128.txt": {
+      "bytes": 5477,
+      "sha256": "cb908b6942af5da95971c5bc95e993048222359f8523ac575b48c4be053f9d37"
+    },
+    "from-best/pre-share-binary-sha256.txt": {
+      "bytes": 132,
+      "sha256": "e1271d7846949ce1564de3afca538db5ee44207bb484cf336069a2be7f618d27"
+    },
+    "from-best/pre-share-image.json": {
+      "bytes": 2183,
+      "sha256": "5986c54dbdab848b9a00409a25633f12d813ed9c1f57da79dad15ae2f62ecb2c"
+    },
+    "from-best/request-differential.json": {
+      "bytes": 329,
+      "sha256": "adf208319691a2a9d326fd354359d0a9ed314276bc71d082c16d77b3542c9b4c"
+    },
+    "from-best/runtime-change.txt": {
+      "bytes": 102241,
+      "sha256": "4d4b30914ac5f44714447f230b2d66c16581f9c73428026f682edbc4445e2ade"
+    },
+    "from-best/screen.json": {
+      "bytes": 4570732,
+      "sha256": "f28b73f75f654653e3e730bbd689d5999c5ccf85a9ebbe71acdf8533963c7c98"
+    },
+    "from-best/screen.json.d/baseline-file-identity.json": {
+      "bytes": 356,
+      "sha256": "c78747ea41bc95ecee2235e2745452e77d23c93fd91d4ee4e7b0b1243b074201"
+    },
+    "from-best/screen.json.d/candidate-file-identity.json": {
+      "bytes": 356,
+      "sha256": "6a225411b6f343e0e5409d362c9f718309762ce17278dfecd1c3462ff54dc2e2"
+    },
+    "from-best/screen.json.d/ee-1cpu.json": {
+      "bytes": 1893079,
+      "sha256": "c596fb1b95d5719cdb958463942afea24370517545a9e5cb390fe3a265bcfe49"
+    },
+    "from-best/screen.json.d/ee-2cpu.json": {
+      "bytes": 1895360,
+      "sha256": "fd3c68defb3e24d25629876e0371a535d8462854df85cb353071acb5322a85aa"
+    },
+    "from-best/screen.json.d/identities.json": {
+      "bytes": 1244,
+      "sha256": "d820e28c09c4ee95431da04d3445bab5dfe636026ae14f00d3d8961373ef8b37"
+    },
+    "from-best/shared-ablation.json": {
+      "bytes": 4570373,
+      "sha256": "fa0dbb76b064cc2a21adf342dbf1a0079a6328969487fdbf1c6e2d670a76140d"
+    },
+    "from-best/shared-ablation.json.d/baseline-file-identity.json": {
+      "bytes": 356,
+      "sha256": "5d916f42437b5677b9c9daeeeceb22f3f4f0df4634b4ffc505579028e764bdc6"
+    },
+    "from-best/shared-ablation.json.d/candidate-file-identity.json": {
+      "bytes": 356,
+      "sha256": "6a225411b6f343e0e5409d362c9f718309762ce17278dfecd1c3462ff54dc2e2"
+    },
+    "from-best/shared-ablation.json.d/comparison-1cpu.json": {
+      "bytes": 1893480,
+      "sha256": "cb156c5b676cb1f04d463dd3eae79193a3b106c15504d4a78dd0849824824eb6"
+    },
+    "from-best/shared-ablation.json.d/comparison-2cpu.json": {
+      "bytes": 1894803,
+      "sha256": "3987b51ca7efc362f5a6d47fe03acfc9f749b6abeaa414cc23b1b7729f589adc"
+    },
+    "from-best/shared-ablation.json.d/identities.json": {
+      "bytes": 1263,
+      "sha256": "a82d7e296990aba5da441f6621f757ad3914e8fa4c76a5da4a9a2f3b1d54fecf"
+    },
+    "from-best/shared-bound-topk.json": {
+      "bytes": 39750,
+      "sha256": "61827fe4b489d2052d6751c7b8623fc7261ef61c6110e1583f531accff117a87"
+    },
+    "image-binary-sha256.txt": {
+      "bytes": 125,
+      "sha256": "4a203c1442ae2db898e4b38702b67bd6d6e97eea3bab4550cd2ad24ebd92aaa8"
+    },
+    "image-handshake/cases.json": {
+      "bytes": 99,
+      "sha256": "9c8acf0823dcc8def8666c6e384638eb0fc76aed54cf99c8d96458331c822cb7"
+    },
+    "image-handshake/result.json": {
+      "bytes": 269,
+      "sha256": "cf519c00a27c2568a265f0467797d453e60b698763f37d5e058faea30bed820e"
+    },
+    "image-id.txt": {
+      "bytes": 72,
+      "sha256": "d5c82c4a8c9d94589342d5e456dad8c19c5f66e69741c46bf6fa1792da6df9a5"
+    },
+    "image-inspect.json": {
+      "bytes": 2188,
+      "sha256": "d2eacb5800a5e0718ac72a6701473af7aa3398bcc6c05907b28099e273ae6715"
+    },
+    "image-interactive/events.json": {
+      "bytes": 4176,
+      "sha256": "5632eaa0b98664d37018758983a616f32687cfbef64233db0e6a194329d27f65"
+    },
+    "image-public/cases.json": {
+      "bytes": 2090,
+      "sha256": "686878bdf3fcdf6a946ec3f2d4a2b98462843505ad47c2ccb56edba4054b0cae"
+    },
+    "image-public/result.json": {
+      "bytes": 2488,
+      "sha256": "d2ce244afa2444133abcbc9671f0fd90b9549451ac9c2254226370c28c1c3c90"
+    },
+    "input-sha256.txt": {
+      "bytes": 11511,
+      "sha256": "55910f4de70e4b5dc5cf964244e874f67c055be094b967328e4458834d5ac63e"
+    },
+    "lazy128/binary-sha256.txt": {
+      "bytes": 655,
+      "sha256": "323f10ab099b01f709cad34b145d72c48e3dbad49a0ca1b6d0e06522e15cc077"
+    },
+    "lazy128/micro.txt": {
+      "bytes": 34005,
+      "sha256": "78b00466909b8a26f996a4c5523f9ee47b71b90bfc7b4010a5011d6d374b89cb"
+    },
+    "lazy128/oracle-MVDB_DISABLE_AVX512_BOUND.txt": {
+      "bytes": 656,
+      "sha256": "4611d3b02a10959a2e658f186773cc3bc75e8e850647cb3b9460292531040bd4"
+    },
+    "lazy128/oracle-MVDB_DISABLE_SIMD_BOUND.txt": {
+      "bytes": 384,
+      "sha256": "3f100dc25d692c41167f97f10491261deaf341c4dfbb9d2aa001fc989f078b4d"
+    },
+    "lazy128/oracle-default.txt": {
+      "bytes": 792,
+      "sha256": "a2c7428d77ab3b9ff0b9c0b130040310d8acfdb75915f1c59029fa930f5ea8ec"
+    },
+    "lazy128/oracle-sanitized.txt": {
+      "bytes": 792,
+      "sha256": "a2c7428d77ab3b9ff0b9c0b130040310d8acfdb75915f1c59029fa930f5ea8ec"
+    },
+    "lscpu.txt": {
+      "bytes": 3339,
+      "sha256": "f714a1ad57457d4b047ce52351754eb0eca05dc8afa599139612cda2bf4ee4b5"
+    },
+    "runtime-commit.txt": {
+      "bytes": 41,
+      "sha256": "9cc9b4f6a7cc88d8ef987ab6e373ef520ae351cc2c3d9d9a2225350afd9b7124"
+    },
+    "shared-bound-ubsan.json": {
+      "bytes": 39750,
+      "sha256": "44ed1d0eea972258c93abd96f3d247695d20a07e4164a4dc6c62a9fd9d7fd7ca"
+    },
+    "source-handshake/cases.json": {
+      "bytes": 97,
+      "sha256": "003eeeb993ddbd037ffdceb55e1523100a387b6b8616691d426e188c54c38e83"
+    },
+    "source-handshake/result.json": {
+      "bytes": 267,
+      "sha256": "aa338db29df27e503a04edc0f14605e754707d07ba1642b162ffa55f8c17cdfc"
+    },
+    "source-public/cases.json": {
+      "bytes": 2057,
+      "sha256": "76b9e1d93b73145a169c38334b20e2ac15de0e2fbf5c1a92de4a90438651bf81"
+    },
+    "source-public/result.json": {
+      "bytes": 2455,
+      "sha256": "e331e5f5f10f463f1fc50d28bed1a7778fc6ae4814f29d3f1fe0e1ab3c4bd0ed"
+    },
+    "verification-summary.json": {
+      "bytes": 1122,
+      "sha256": "6c8667df13dd1f40467cc60887a483b2188524cace08b4db772219a44c9a7918"
+    }
+  },
+  "uncompressed_log": {
+    "bytes": 61621894,
+    "sha256": "cb3c594f01348040faa5b5a3d2b0f6c2edab561c1efc78fa03597c32ce1ecf1f"
+  },
+  "compressed_log": {
+    "bytes": 4405031,
+    "sha256": "dc704a5a085e870ae69e838b215e7521160bba094159930627942450a4b9ac5e"
+  }
+}

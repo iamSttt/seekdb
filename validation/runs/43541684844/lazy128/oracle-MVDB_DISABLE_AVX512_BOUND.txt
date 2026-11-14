@@ -1,0 +1,9 @@
+PASS numeric kernel=selected envelopes=9984 rejects=1536 exact_fallback=6912
+PASS directed kernel=selected cases=41 interval=30 overflow=11
+PASS numeric kernel=sse2 envelopes=9984 rejects=1536 exact_fallback=6912
+PASS directed kernel=sse2 cases=41 interval=30 overflow=11
+PASS numeric kernel=avx2 envelopes=9984 rejects=1536 exact_fallback=6912
+PASS directed kernel=avx2 cases=41 interval=30 overflow=11
+PASS heap fixture families=240 (single + three schedules), threaded=3
+DIAGNOSTIC separated offered=4096 float_reject=4028 interval_compares=361 overlap_compares=0 canonical_calls=10 final_calls=10
+No throughput/official score is measured by this test.

@@ -41,7 +41,6 @@ if [[ -f validation/profile-only-plan-20261114.json ]]; then
   bash minivec/tools/ci_profile_only_1114.sh
   exit 0
 fi
-bash minivec/tools/ci_lazy128_1114.sh
 # Build the submitted root Dockerfile
 docker build --platform linux/amd64 --progress=plain -t "$IMAGE" . 2>&1 | tee protocol-results/docker-build.log
 docker image inspect "$IMAGE" > protocol-results/image-inspect.json

@@ -1,6 +1,6 @@
 # Experimental certified lazy exact Top-K, 128 dimensions
 
-Status: experimental candidate integrated after the `9ed5baa1b1363ebd388850e74271b353954902da` runtime. At integration time no native correctness or performance result is claimed. See `validation/lazy128-plan-20261114.json` and subsequent raw CI reports for execution evidence and adoption decisions.
+Status: **rejected on measured performance** after candidate `8033b97` passed native and database correctness checks. Runtime integration was reverted to the preceding implementation; the prototype lives only in `minivec/tools/lazy128_rejected/`. See `validation/runs/43541684844/` and `docs/OPTIMIZATION_20261114.md` for all results. The mathematical discussion below does not override the performance rejection.
 
 ## Scope and canonical value
 

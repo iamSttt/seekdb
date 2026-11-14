@@ -1,0 +1,5 @@
+PASS numeric kernel=selected envelopes=0 rejects=0 exact_fallback=18432
+PASS directed kernel=selected cases=41 interval=0 overflow=0
+PASS heap fixture families=240 (single + three schedules), threaded=3
+DIAGNOSTIC separated offered=4096 float_reject=0 interval_compares=4385 overlap_compares=0 canonical_calls=4096 final_calls=0
+No throughput/official score is measured by this test.
