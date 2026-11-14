@@ -1,0 +1,64 @@
+[
+    {
+        "Id": "sha256:1620bbb716eac443b46c43e94dc2ffa08c8b92cc3c7e9c6b9bf1039b74db178e",
+        "RepoTags": [
+            "minivec:verify-8171c98e32be"
+        ],
+        "RepoDigests": [],
+        "Parent": "",
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-11-14T00:43:20.705978144Z",
+        "DockerVersion": "",
+        "Author": "",
+        "Config": {
+            "Hostname": "",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": null,
+            "Image": "",
+            "Volumes": {
+                "/data": {}
+            },
+            "WorkingDir": "/data",
+            "Entrypoint": [
+                "/minivec",
+                "--data",
+                "/data"
+            ],
+            "OnBuild": null,
+            "Labels": null
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 1555392,
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/4fttccs0nde3pktl6rgcewlmf/diff:/var/lib/docker/overlay2/vpsm1v1weci1nfdykdus5exn8/diff",
+                "MergedDir": "/var/lib/docker/overlay2/r2ro57of08yyz17qmfgdeazfp/merged",
+                "UpperDir": "/var/lib/docker/overlay2/r2ro57of08yyz17qmfgdeazfp/diff",
+                "WorkDir": "/var/lib/docker/overlay2/r2ro57of08yyz17qmfgdeazfp/work"
+            },
+            "Name": "overlay2"
+        },
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:3cc033f035c3351ae125f03e25e2d7f32d2e03e1f9ba21d1296604ffa7c450fa",
+                "sha256:270c4eed7234eab518ffa7ff643934752cbffa716331a04f31d132f940779236",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-11-14T00:43:21.006510225Z"
+        }
+    }
+]

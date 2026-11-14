@@ -1,0 +1,10 @@
+{
+  "status": "frozen_before_native_execution",
+  "parent_candidate": "8171c98e32beee9d7e6b4ba88e5c1b70d47297c3",
+  "change": "Cache each half's effective certified ceiling. Refresh only after an actual heap change or a tighter peer ceiling, removing repeated heap/front/minimum calculations from rejected rows.",
+  "unchanged": ["64-row publication and read cadence", "Strict-greater rejection", "Original exact distances, tie ordering and merge", "Root compiler, no PGO, thread policy"],
+  "prediction": "Less work per scanned row may improve query CPU; full lifecycle and wall gains may be diluted by parsing, storage and scheduling. No claimed improvement before native tests.",
+  "native_checks": ["Previous root and image gates", "88 exact oracle queries on image and UBSan builds", "464-input envelope test with intentional NUL fix"],
+  "performance": "Unchanged EE 12-pair screen, then 12 pairs against the immediate parent on the same host. Every sample retained; original EE thresholds unchanged.",
+  "profile": "Separate, source-uninstrumented EE CPU profiling after paired timing, if perf permissions permit. Profile results cannot be used as paired speed measurements."
+}

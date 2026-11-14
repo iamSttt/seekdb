@@ -1,0 +1,7 @@
+{
+  "status": "verified",
+  "source_commit": "8171c98e32beee9d7e6b4ba88e5c1b70d47297c3",
+  "binary_sha256": "8aaa7b12f6e31a6eb61d5e31bc46bbae3555d25c109f35279496c9cb5dbf3366",
+  "verification_scope": "Binary file SHA256 measured now; source_commit is caller-declared, not independently source-to-ELF verified.",
+  "official_binary_identity_known": false
+}

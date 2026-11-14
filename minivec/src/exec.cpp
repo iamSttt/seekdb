@@ -561,11 +561,14 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 if(heap.size()<k) {
                   heap.push_back(std::move(c));
                   std::push_heap(heap.begin(),heap.end(),better);
+                  return true;
                 } else if(better(c,heap.front())) {
                   std::pop_heap(heap.begin(),heap.end(),better);
                   heap.back()=std::move(c);
                   std::push_heap(heap.begin(),heap.end(),better);
+                  return true;
                 }
+                return false;
               };
               const size_t dimension=view.dimension;
               const float* query=order.qvec->data();
@@ -581,6 +584,8 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 std::vector<Candidate>& heap=halves[worker];
                 const double infinity=std::numeric_limits<double>::infinity();
                 double peer_threshold=infinity,last_published=infinity;
+                double local_threshold=infinity,threshold=infinity;
+                bool may_reject=false;
                 auto publish_kth=[&] {
                   if constexpr(share_kth) {
                     if(heap.size()==k) {
@@ -597,16 +602,13 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                     if(((i-first)&63)==0) {
                       publish_kth();
                       const double peer=published[worker^1].value.load(std::memory_order_relaxed);
-                      if(std::isfinite(peer) && peer>=0 && peer<peer_threshold)
+                      if(std::isfinite(peer) && peer>=0 && peer<peer_threshold) {
                         peer_threshold=peer;
+                        threshold=peer<local_threshold ? peer : local_threshold;
+                        may_reject=true;
+                      }
                     }
                   }
-                  const bool full=heap.size()==k;
-                  const double local=full ? heap.front().distance : infinity;
-                  // Keep a NaN local boundary conservative. Stale peer values
-                  // remain valid upper bounds; no heap state crosses threads.
-                  const double threshold=peer_threshold<local ? peer_threshold : local;
-                  const bool may_reject=full || peer_threshold<infinity;
                   if(quantized.enabled() && may_reject &&
                      quantized.definitely_greater(view.quantized+i*dimension,threshold))
                     continue;
@@ -614,7 +616,17 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   if(may_reject && bound.definitely_greater(row,query,threshold))
                     continue;
                   Candidate c;c.pk=view.keys[i];c.distance=distance_squared(row,query,dimension);
-                  keep(heap,std::move(c));
+                  if(keep(heap,std::move(c)) && heap.size()==k) {
+                    const double local=heap.front().distance;
+                    if(local!=local_threshold) {
+                      // Valid heap distances only decrease. Also refresh NaN/
+                      // infinity transitions so the original conservative
+                      // behavior survives without inspecting the heap per row.
+                      local_threshold=local;
+                      threshold=peer_threshold<local ? peer_threshold : local;
+                      may_reject=true;
+                    }
+                  }
                 }
                 publish_kth(); // A short/finished half can still help its peer.
               };
