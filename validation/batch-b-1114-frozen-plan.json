@@ -1,0 +1,42 @@
+{
+  "kind": "isolated_payload_private_migration_batch_preparation",
+  "status": "prepared_not_native_tested",
+  "baseline_source": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+  "port_source": "33a52a7dd4426af059ec2334b7c93a07c38c93c9",
+  "scope": [
+    "Reuse R33 encode_payload and PayloadBatchWriter",
+    "Use batch only for current table.rows during first private-store migration",
+    "Flush before publishing payload_offsets and payload_store; no resident-Undo import"
+  ],
+  "excluded": [
+    "FlatIndex batch writes",
+    "resident undo",
+    "index delta",
+    "admission changes",
+    "PGO changes",
+    "typed JSON"
+  ],
+  "runtime_files": {
+    "minivec/src/db.cpp": {
+      "working_lf_sha256": "0351a39dbdf0d8d905a37be067134e5ce5df4ad7360663a786858aaf4d3b0196"
+    },
+    "minivec/tests/test_payload_batch.cpp": {
+      "working_lf_sha256": "3f1e198b5e4851c4a6777aa7acc4e7be9808387e69a5cb3a23040b18040f63cf"
+    },
+    "minivec/tools/run_batch_b_1114.sh": {
+      "working_lf_sha256": "480fc977f3d89b34ca7fa4d253c296b675b2f65350a58509e726b47af04e1791"
+    }
+  },
+  "validation": [
+    "run_batch_b_1114.sh optimized plus ASan+UBSan, enabled and disabled same-source controls",
+    "original R33 offset byte/oversized-row/EINTR/repeated-short/partial+ENOSPC/zero/final-flush guards",
+    "bad_alloc for exact256KiB batch: resident state and old index unchanged, retry succeeds",
+    "database failed statement inside explicit transaction, rollback after failed and successful migration, committed WAL replay and checkpoint restart",
+    "original scalar-cache fallback/storage budgets/cross-scope guards unchanged",
+    "real root Docker build and public20 required; dispatched separately by parent"
+  ],
+  "measurement": "No performance run scheduled or claimed here. Parent freezes isolated baseline760f identities and schedule before dispatch; B is a second factor, not implicitly bundled with A. Original EE/R acceptance gates unchanged.",
+  "memory": "Additional lazily allocated256KiB batch plus reusable encoding string whose capacity follows largest row; oversized rows flush and write directly without growing batch. Both buffers private to spill_payloads lifetime, not charged by payload_bytes or global index admission. Original offsets vector remains. Ordinary INSERT/UPDATE retains per-row immediate store_payload.",
+  "durability": "Exact original record encoding, offsets, positional_io retry loop, unlink behavior, WAL/snapshot/fsync unchanged. No offsets/store publication until tail flush completes.",
+  "allocation_failure": "Keep R33 exception abort; no new fallback. Failed append restores resident rows/bytes, then statement/transaction rollback/retry must work."
+}

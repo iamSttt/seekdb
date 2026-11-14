@@ -298,18 +298,62 @@ void positional_io(int fd, void* data, size_t size, uint64_t off, bool writing) 
   }
 }
 
-uint64_t store_payload(PayloadStore& store, const Row& row) {
-  std::string b;
+void encode_payload(std::string& b, const Row& row) {
+  b.clear();
   put_u32(b,0);
   put_row(b,row);
   if (b.size()-4 > kMaxRec) throw std::runtime_error("row exceeds storage record limit");
   const uint32_t len=static_cast<uint32_t>(b.size()-4);
   std::memcpy(&b[0],&len,4);
+}
+
+uint64_t store_payload(PayloadStore& store, const Row& row) {
+  std::string b;
+  encode_payload(b,row);
   const uint64_t off=store.end;
   positional_io(store.fd,&b[0],b.size(),off,true);
   store.end+=b.size();
   return off;
 }
+
+#ifndef MVDB_DISABLE_PAYLOAD_BATCH
+// Used only while a new spill store is private. Ordinary INSERT/UPDATE writes
+// must remain immediately readable and continue to use store_payload().
+class PayloadBatchWriter {
+ public:
+  explicit PayloadBatchWriter(PayloadStore& store) : store_(store) {}
+  uint64_t append(const Row& row) {
+    encode_payload(record_,row);
+    if (record_.size() > kBytes) {
+      flush();
+      const uint64_t off=store_.end;
+      positional_io(store_.fd,&record_[0],record_.size(),off,true);
+      store_.end+=record_.size();
+      return off;
+    }
+    if (record_.size() > kBytes-used_) flush();
+    if (!buffer_) buffer_.reset(new char[kBytes]);
+    const uint64_t off=store_.end+used_;
+    std::memcpy(buffer_.get()+used_,record_.data(),record_.size());
+    used_+=record_.size();
+    return off;
+  }
+  void flush() {
+    if (!used_) return;
+    positional_io(store_.fd,buffer_.get(),used_,store_.end,true);
+    store_.end+=used_;
+    used_=0;
+  }
+ private:
+  static constexpr size_t kBytes=256u<<10;
+  PayloadStore& store_;
+  // One reusable encoding buffer (capacity follows its largest row) plus this
+  // fixed aggregation buffer. Oversized rows never enlarge the batch.
+  std::string record_;
+  std::unique_ptr<char[]> buffer_;
+  size_t used_=0;
+};
+#endif
 
 void spill_payloads(Table& table, bool force = false) {
   if (table.payload_store || (!force && table.payload_bytes <= kSpillBytes)) return;
@@ -321,7 +365,14 @@ void spill_payloads(Table& table, bool force = false) {
   ::unlink(path.data()); // source of truth is snapshot + WAL, never this cache
   std::vector<uint64_t> offsets;
   offsets.reserve(table.rows.size());
+#ifndef MVDB_DISABLE_PAYLOAD_BATCH
+  PayloadBatchWriter batch(*store);
+  for (const Row& row : table.rows) offsets.push_back(batch.append(row));
+  // Publish only after the final private-store write has completed.
+  batch.flush();
+#else
   for (const Row& row : table.rows) offsets.push_back(store_payload(*store,row));
+#endif
   table.payload_offsets=std::move(offsets);
   table.payload_store=std::move(store);
   // Global budget enforcement may spill another table with a live borrowed index.
