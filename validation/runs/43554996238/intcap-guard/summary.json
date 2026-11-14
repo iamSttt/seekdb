@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "scope": "Current combined-tree cap/kernel correctness and layout only; no performance or release inference.",
+  "runtime_commit": "26e3e3616cb895dbe3963a03b3edcdeda7700a63",
+  "tests": [
+    "legacy cap equivalence standalone",
+    "existing complete quantized bound",
+    "existing fixed1286600",
+    "same three ASan+UBSan tests",
+    "fixed128 AVX512-disabled and fixed128-disabled",
+    "pinned GCC layout equality"
+  ],
+  "sizeof_baseline_and_candidate": 88,
+  "leak_detection_enabled": false,
+  "database_pairs": 0,
+  "release_gate_passed": false,
+  "official_score": null
+}

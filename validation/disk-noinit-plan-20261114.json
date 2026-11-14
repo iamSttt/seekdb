@@ -75,7 +75,7 @@
     "minivec/tests/test_sql.cpp": "0c882485f4182840a3963a71a7902598b25e9699c7cf11dd02cf0292cb739f07",
     "minivec/tests/test_storage_index_budget.cpp": "49f486741410a0ca125b933de4098dc6179dac4e1085062c0202a8fe6c02d800",
     "minivec/tests/topk_bounds.py": "3d049f061c5cb8142b853ce3ca06ab94e0021c3f63ad5e575588df49fc503521",
-    "minivec/tests/validated_request_diff.py": "78ba5dca678a37eb200f41be9be07a9fbf07ca77330283924c8384594394a83e",
+    "minivec/tests/validated_request_diff.py": "a16f307ad76dbb89f3d6d0c3fedb1a3d97220b2bc6c07074ff932a8f01c19b5b",
     "minivec/tools/ci_disk_noinit_1114.sh": "6d5acb50c98cdbad03c924db7e02c409a33094425495822cf3e4fcb84d0234ef",
     "minivec/tools/ci_intcap_guard_1114.sh": "7b374d68850f59d974660b2c488abe7b88ec60caed5c2141bd60bec1f28b967f",
     "minivec/tools/ci_score.sh": "bc41448ea45690ca2221bce120ffe77f11c3be019919f77a289d6841c120fab3",
@@ -214,5 +214,12 @@
   "release_gate_passed": false,
   "automatic_adoption": false,
   "official_score": null,
-  "formal_submission": false
+  "formal_submission": false,
+  "diagnostic_erratum": {
+    "prior_run": 43554996238,
+    "completed_pairs": 0,
+    "change": "One diagnostic helper version update only, preserving full corpus and assertions; no runtime/schedule/threshold modifications",
+    "original_plan_commit": "26e3e3616cb895dbe3963a03b3edcdeda7700a63",
+    "helper_source_commit": "b981375f14e74f33a01e9afde5543e24ebc6e3ca"
+  }
 }
