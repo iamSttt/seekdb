@@ -1,0 +1,246 @@
+{
+  "phase": "query",
+  "pid": 2768,
+  "directory": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/query",
+  "status": "collected",
+  "software": {
+    "kind": "record",
+    "pid": 2768,
+    "status": "collected",
+    "control_events": [
+      {
+        "command": "enable",
+        "ack_monotonic": 98.625397954
+      },
+      {
+        "command": "disable",
+        "ack_monotonic": 98.942279598
+      }
+    ],
+    "command": [
+      "/usr/bin/perf",
+      "--buildid-dir",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+      "record",
+      "--no-buildid-cache",
+      "-e",
+      "cpu-clock:u",
+      "-F",
+      "999",
+      "--inherit",
+      "-o",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/query/perf.data",
+      "-p",
+      "2768",
+      "-D",
+      "-1",
+      "--control=fd:7,10"
+    ],
+    "output": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/query/perf.data",
+    "control": "fd with acknowledgement",
+    "event": "cpu-clock:u",
+    "exit_code": -2,
+    "disable_acknowledged": true,
+    "own_sigint_sent": true
+  },
+  "hardware_status": "blocked_or_not_attempted_after_block",
+  "data_sha256": "6b4a88e57cee6b3d3cd5c112d3f12368520bfc76c0228a8f2e4bfb013567190b",
+  "gzip_sha256": "df2b972b24eb72f100c8ac7dd1bf8140c6993cb058c2661aab7e0721e4dbe325",
+  "gzip_bytes": 2500,
+  "unparsed_sample_lines": [],
+  "samples": 159,
+  "unknown_samples": 0,
+  "sampled_period_sum": 159159159,
+  "symbols": [
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::{lambda(unsigned int)#1}::operator()(unsigned int) const",
+      "samples": 67,
+      "period_sum": 67067067
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::quantized_detail::distance_avx2(signed char const*, signed char const*, unsigned long)",
+      "samples": 50,
+      "period_sum": 50050050
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::distance_detail::bound_sum_avx2(float const*, float const*, unsigned long)",
+      "samples": 12,
+      "period_sum": 12012012
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)",
+      "samples": 4,
+      "period_sum": 4004004
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "emit_json_text(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)",
+      "samples": 2,
+      "period_sum": 2002002
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::{lambda(mvdb::Row const&, mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate const*)#1}::operator()(mvdb::Row const&, mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate const*) const",
+      "samples": 2,
+      "period_sum": 2002002
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::query_fanout_run(void*, void (*)(void*, unsigned int), bool)",
+      "samples": 2,
+      "period_sum": 2002002
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "new_do_write",
+      "samples": 2,
+      "period_sum": 2002002
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::~basic_json()",
+      "samples": 2,
+      "period_sum": 2002002
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "__memmove_avx_unaligned_erms",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "_int_free",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "_int_malloc",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "fputc",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "free",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::(anonymous namespace)::parse_float_list(std::basic_string_view<char, std::char_traits<char> >, std::vector<float, std::allocator<float> >*) [clone .constprop.0]",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::DistanceBoundContext::definitely_greater(float const*, float const*, double) const",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::distance_exact(float const*, float const*, unsigned long)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::distance_scalar(float const*, float const*, unsigned long)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>& std::vector<nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>, std::allocator<nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> > >::emplace_back<nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> >(nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>&&) [clone .isra.0]",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "nlohmann::json_abi_v3_11_3::detail::dtoa_impl::boundaries nlohmann::json_abi_v3_11_3::detail::dtoa_impl::compute_boundaries<double>(double)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::_Function_handler<long (unsigned long), mvdb::Database::scan_vectors(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<mvdb::Cond, std::allocator<mvdb::Cond> > const&, std::function<bool (long, float const*, unsigned long)> const&, mvdb::QuantizedQueryBound const*, double const*)::{lambda(unsigned long)#1}>::_M_invoke(std::_Any_data const&, unsigned long&&)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_create(unsigned long&, unsigned long)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_erase(unsigned long, unsigned long)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::find(char, unsigned long) const",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "void std::__insertion_sort<__gnu_cxx::__normal_iterator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate*, std::vector<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate, std::allocator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate> > >, __gnu_cxx::__ops::_Iter_comp_iter<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::{lambda(auto:1 const&, auto:2 const&)#1}> >(__gnu_cxx::__normal_iterator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate*, std::vector<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate, std::allocator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate> > >, __gnu_cxx::__normal_iterator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate*, std::vector<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate, std::allocator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate> > >, __gnu_cxx::__ops::_Iter_comp_iter<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::{lambda(auto:1 const&, auto:2 const&)#1}>)",
+      "samples": 1,
+      "period_sum": 1001001
+    }
+  ],
+  "report_command": {
+    "command": [
+      "/usr/bin/perf",
+      "--buildid-dir",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+      "report",
+      "--symfs",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/symfs",
+      "--stdio",
+      "--header",
+      "--no-children",
+      "--percent-limit",
+      "0.5",
+      "--sort",
+      "dso,symbol",
+      "-n",
+      "-i",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/query/perf.data"
+    ],
+    "stdout": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/query/perf-report.stdout",
+    "stderr": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/query/perf-report.stderr",
+    "exit_code": 0
+  },
+  "script_command": {
+    "command": [
+      "/usr/bin/perf",
+      "--buildid-dir",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+      "script",
+      "--symfs",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/symfs",
+      "-i",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/query/perf.data",
+      "-F",
+      "event,period,ip,sym,dso"
+    ],
+    "stdout": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/query/perf-script.stdout",
+    "stderr": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/query/perf-script.stderr",
+    "exit_code": 0
+  }
+}

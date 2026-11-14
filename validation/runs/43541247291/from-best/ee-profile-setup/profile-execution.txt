@@ -1,0 +1,1 @@
+{"status": "completed", "completed_repetitions": 12, "capabilities": {"software": "available", "hardware": "blocked"}, "summary": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/summary.json"}

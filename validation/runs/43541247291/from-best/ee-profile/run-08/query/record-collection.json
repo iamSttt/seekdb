@@ -1,0 +1,40 @@
+{
+  "kind": "record",
+  "pid": 2968,
+  "status": "collected",
+  "control_events": [
+    {
+      "command": "enable",
+      "ack_monotonic": 116.070520914
+    },
+    {
+      "command": "disable",
+      "ack_monotonic": 116.357320045
+    }
+  ],
+  "command": [
+    "/usr/bin/perf",
+    "--buildid-dir",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+    "record",
+    "--no-buildid-cache",
+    "-e",
+    "cpu-clock:u",
+    "-F",
+    "999",
+    "--inherit",
+    "-o",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-08/query/perf.data",
+    "-p",
+    "2968",
+    "-D",
+    "-1",
+    "--control=fd:7,10"
+  ],
+  "output": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-08/query/perf.data",
+  "control": "fd with acknowledgement",
+  "event": "cpu-clock:u",
+  "exit_code": -2,
+  "disable_acknowledged": true,
+  "own_sigint_sent": true
+}

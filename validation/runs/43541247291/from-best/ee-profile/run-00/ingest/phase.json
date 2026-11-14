@@ -1,0 +1,217 @@
+{
+  "phase": "ingest",
+  "pid": 2768,
+  "directory": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest",
+  "status": "collected",
+  "hardware_error": "ProfileBlocked: stat closed acknowledgement pipe",
+  "software": {
+    "kind": "record",
+    "pid": 2768,
+    "status": "collected",
+    "control_events": [
+      {
+        "command": "enable",
+        "ack_monotonic": 97.931907811
+      },
+      {
+        "command": "disable",
+        "ack_monotonic": 98.245281972
+      }
+    ],
+    "command": [
+      "/usr/bin/perf",
+      "--buildid-dir",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+      "record",
+      "--no-buildid-cache",
+      "-e",
+      "cpu-clock:u",
+      "-F",
+      "999",
+      "--inherit",
+      "-o",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf.data",
+      "-p",
+      "2768",
+      "-D",
+      "-1",
+      "--control=fd:7,10"
+    ],
+    "output": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf.data",
+    "control": "fd with acknowledgement",
+    "event": "cpu-clock:u",
+    "exit_code": -2,
+    "disable_acknowledged": true,
+    "own_sigint_sent": true
+  },
+  "hardware_status": "blocked_or_not_attempted_after_block",
+  "data_sha256": "78577a4302a8d4777ffbff8cb0f19f8fc345a7ab62ee0a36a30d640f4fc46a2c",
+  "gzip_sha256": "cb2a9d9e50faa6e3135d1848278f1b7734c0e546e4ef15c260ff5f171f114888",
+  "gzip_bytes": 1847,
+  "unparsed_sample_lines": [],
+  "samples": 82,
+  "unknown_samples": 0,
+  "sampled_period_sum": 82082082,
+  "symbols": [
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::from_chars(char const*, char const*, float&, std::chars_format)",
+      "samples": 27,
+      "period_sum": 27027027
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::Database::insert(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<mvdb::Value, std::allocator<mvdb::Value> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*)",
+      "samples": 11,
+      "period_sum": 11011011
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "__memmove_avx_unaligned_erms",
+      "samples": 10,
+      "period_sum": 10010010
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "_int_malloc",
+      "samples": 5,
+      "period_sum": 5005005
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "__memchr_avx2",
+      "samples": 4,
+      "period_sum": 4004004
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "_int_free",
+      "samples": 4,
+      "period_sum": 4004004
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::(anonymous namespace)::Tok& std::vector<mvdb::(anonymous namespace)::Tok, std::allocator<mvdb::(anonymous namespace)::Tok> >::emplace_back<mvdb::(anonymous namespace)::Tok>(mvdb::(anonymous namespace)::Tok&&) [clone .isra.0]",
+      "samples": 3,
+      "period_sum": 3003003
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::(anonymous namespace)::parse_float_list(std::basic_string_view<char, std::char_traits<char> >, std::vector<float, std::allocator<float> >*) [clone .constprop.0]",
+      "samples": 3,
+      "period_sum": 3003003
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "mvdb::parse_sql(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, mvdb::Statement*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*)",
+      "samples": 3,
+      "period_sum": 3003003
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_mutate(unsigned long, unsigned long, char const*, unsigned long)",
+      "samples": 2,
+      "period_sum": 2002002
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "__pthread_mutex_cond_lock",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "free",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "json_request(mvdb::Database&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, int*)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "nlohmann::json_abi_v3_11_3::detail::lexer<nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>, nlohmann::json_abi_v3_11_3::detail::iterator_input_adapter<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >::scan_string()",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "scan_simple_json_string(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned long*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*) [clone .constprop.0] [clone .isra.0]",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::_Function_handler<void (unsigned long), mvdb::(anonymous namespace)::Parser::parse_insert(mvdb::Statement*)::{lambda()#1}::operator()() const::{lambda(unsigned long)#1}>::_M_invoke(std::_Any_data const&, unsigned long&&)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::_Hashtable<long, std::pair<long const, unsigned long>, std::allocator<std::pair<long const, unsigned long> >, std::__detail::_Select1st, std::equal_to<long>, std::hash<long>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct(unsigned long, char)",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::operator=(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&&) [clone .isra.0]",
+      "samples": 1,
+      "period_sum": 1001001
+    },
+    {
+      "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+      "symbol": "unlink_chunk.constprop.0",
+      "samples": 1,
+      "period_sum": 1001001
+    }
+  ],
+  "report_command": {
+    "command": [
+      "/usr/bin/perf",
+      "--buildid-dir",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+      "report",
+      "--symfs",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/symfs",
+      "--stdio",
+      "--header",
+      "--no-children",
+      "--percent-limit",
+      "0.5",
+      "--sort",
+      "dso,symbol",
+      "-n",
+      "-i",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf.data"
+    ],
+    "stdout": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf-report.stdout",
+    "stderr": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf-report.stderr",
+    "exit_code": 0
+  },
+  "script_command": {
+    "command": [
+      "/usr/bin/perf",
+      "--buildid-dir",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+      "script",
+      "--symfs",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/symfs",
+      "-i",
+      "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf.data",
+      "-F",
+      "event,period,ip,sym,dso"
+    ],
+    "stdout": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf-script.stdout",
+    "stderr": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-00/ingest/perf-script.stderr",
+    "exit_code": 0
+  }
+}

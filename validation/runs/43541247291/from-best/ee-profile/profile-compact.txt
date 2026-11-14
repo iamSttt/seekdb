@@ -1,0 +1,522 @@
+{
+  "status": "completed",
+  "completed_repetitions": 12,
+  "binary_sha256": "9a437ae19ff20dbd7ab2e3242ce16c3b814d80536a0768c628d93d53a7b14bbd",
+  "capabilities": {
+    "software": "available",
+    "hardware": "blocked"
+  },
+  "phase_summary": {
+    "ingest": {
+      "samples": 867,
+      "unknown_samples": 0,
+      "sufficient_samples_and_symbols": true,
+      "status": "usable_flat_profile",
+      "top_symbols": [
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::from_chars(char const*, char const*, float&, std::chars_format)",
+          "samples": 299,
+          "period_sum": 299299299,
+          "sample_fraction": 0.34486735870818913,
+          "period_fraction": 0.34486735870818913
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::Database::insert(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<mvdb::Value, std::allocator<mvdb::Value> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*)",
+          "samples": 110,
+          "period_sum": 110110110,
+          "sample_fraction": 0.12687427912341406,
+          "period_fraction": 0.12687427912341406
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "__memmove_avx_unaligned_erms",
+          "samples": 91,
+          "period_sum": 91091091,
+          "sample_fraction": 0.104959630911188,
+          "period_fraction": 0.104959630911188
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::(anonymous namespace)::parse_float_list(std::basic_string_view<char, std::char_traits<char> >, std::vector<float, std::allocator<float> >*) [clone .constprop.0]",
+          "samples": 77,
+          "period_sum": 77077077,
+          "sample_fraction": 0.08881199538638986,
+          "period_fraction": 0.08881199538638986
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "_int_malloc",
+          "samples": 50,
+          "period_sum": 50050050,
+          "sample_fraction": 0.05767012687427912,
+          "period_fraction": 0.05767012687427912
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "scan_simple_json_string(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned long*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*) [clone .constprop.0] [clone .isra.0]",
+          "samples": 37,
+          "period_sum": 37037037,
+          "sample_fraction": 0.04267589388696655,
+          "period_fraction": 0.04267589388696655
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "__memchr_avx2",
+          "samples": 36,
+          "period_sum": 36036036,
+          "sample_fraction": 0.04152249134948097,
+          "period_fraction": 0.04152249134948097
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::(anonymous namespace)::Tok& std::vector<mvdb::(anonymous namespace)::Tok, std::allocator<mvdb::(anonymous namespace)::Tok> >::emplace_back<mvdb::(anonymous namespace)::Tok>(mvdb::(anonymous namespace)::Tok&&) [clone .isra.0]",
+          "samples": 28,
+          "period_sum": 28028028,
+          "sample_fraction": 0.03229527104959631,
+          "period_fraction": 0.03229527104959631
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::parse_sql(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, mvdb::Statement*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*)",
+          "samples": 20,
+          "period_sum": 20020020,
+          "sample_fraction": 0.02306805074971165,
+          "period_fraction": 0.02306805074971165
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "_int_free",
+          "samples": 14,
+          "period_sum": 14014014,
+          "sample_fraction": 0.016147635524798153,
+          "period_fraction": 0.016147635524798153
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "malloc",
+          "samples": 10,
+          "period_sum": 10010010,
+          "sample_fraction": 0.011534025374855825,
+          "period_fraction": 0.011534025374855825
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_mutate(unsigned long, unsigned long, char const*, unsigned long)",
+          "samples": 7,
+          "period_sum": 7007007,
+          "sample_fraction": 0.008073817762399077,
+          "period_fraction": 0.008073817762399077
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::(anonymous namespace)::Parser::materialize_into(mvdb::(anonymous namespace)::LiteralJob const&, mvdb::Value*) const",
+          "samples": 6,
+          "period_sum": 6006006,
+          "sample_fraction": 0.006920415224913495,
+          "period_fraction": 0.006920415224913495
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "unlink_chunk.constprop.0",
+          "samples": 6,
+          "period_sum": 6006006,
+          "sample_fraction": 0.006920415224913495,
+          "period_fraction": 0.006920415224913495
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "__strchr_avx2",
+          "samples": 5,
+          "period_sum": 5005005,
+          "sample_fraction": 0.0057670126874279125,
+          "period_fraction": 0.0057670126874279125
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::(anonymous namespace)::Parser::parse_insert(mvdb::Statement*)",
+          "samples": 5,
+          "period_sum": 5005005,
+          "sample_fraction": 0.0057670126874279125,
+          "period_fraction": 0.0057670126874279125
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::_Hashtable<long, std::pair<long const, unsigned long>, std::allocator<std::pair<long const, unsigned long> >, std::__detail::_Select1st, std::equal_to<long>, std::hash<long>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)",
+          "samples": 5,
+          "period_sum": 5005005,
+          "sample_fraction": 0.0057670126874279125,
+          "period_fraction": 0.0057670126874279125
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct(unsigned long, char)",
+          "samples": 5,
+          "period_sum": 5005005,
+          "sample_fraction": 0.0057670126874279125,
+          "period_fraction": 0.0057670126874279125
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::(anonymous namespace)::check_vector_value(mvdb::Column const&, mvdb::Value const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*)",
+          "samples": 3,
+          "period_sum": 3003003,
+          "sample_fraction": 0.0034602076124567475,
+          "period_fraction": 0.0034602076124567475
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::(anonymous namespace)::put_u32(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, unsigned int)",
+          "samples": 3,
+          "period_sum": 3003003,
+          "sample_fraction": 0.0034602076124567475,
+          "period_fraction": 0.0034602076124567475
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_replace(unsigned long, unsigned long, char const*, unsigned long)",
+          "samples": 3,
+          "period_sum": 3003003,
+          "sample_fraction": 0.0034602076124567475,
+          "period_fraction": 0.0034602076124567475
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::operator=(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&&) [clone .isra.0]",
+          "samples": 3,
+          "period_sum": 3003003,
+          "sample_fraction": 0.0034602076124567475,
+          "period_fraction": 0.0034602076124567475
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "_IO_new_file_sync",
+          "samples": 2,
+          "period_sum": 2002002,
+          "sample_fraction": 0.002306805074971165,
+          "period_fraction": 0.002306805074971165
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "__libc_write",
+          "samples": 2,
+          "period_sum": 2002002,
+          "sample_fraction": 0.002306805074971165,
+          "period_fraction": 0.002306805074971165
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "free",
+          "samples": 2,
+          "period_sum": 2002002,
+          "sample_fraction": 0.002306805074971165,
+          "period_fraction": 0.002306805074971165
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "json_request(mvdb::Database&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, int*)",
+          "samples": 2,
+          "period_sum": 2002002,
+          "sample_fraction": 0.002306805074971165,
+          "period_fraction": 0.002306805074971165
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)",
+          "samples": 2,
+          "period_sum": 2002002,
+          "sample_fraction": 0.002306805074971165,
+          "period_fraction": 0.002306805074971165
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::json_value::destroy(nlohmann::json_abi_v3_11_3::detail::value_t)",
+          "samples": 2,
+          "period_sum": 2002002,
+          "sample_fraction": 0.002306805074971165,
+          "period_fraction": 0.002306805074971165
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::_Function_handler<void (unsigned long), mvdb::(anonymous namespace)::Parser::parse_insert(mvdb::Statement*)::{lambda()#1}::operator()() const::{lambda(unsigned long)#1}>::_M_invoke(std::_Any_data const&, unsigned long&&)",
+          "samples": 2,
+          "period_sum": 2002002,
+          "sample_fraction": 0.002306805074971165,
+          "period_fraction": 0.002306805074971165
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_append(char const*, unsigned long)",
+          "samples": 2,
+          "period_sum": 2002002,
+          "sample_fraction": 0.002306805074971165,
+          "period_fraction": 0.002306805074971165
+        }
+      ]
+    },
+    "query": {
+      "samples": 1766,
+      "unknown_samples": 0,
+      "sufficient_samples_and_symbols": true,
+      "status": "usable_flat_profile",
+      "top_symbols": [
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::{lambda(unsigned int)#1}::operator()(unsigned int) const",
+          "samples": 686,
+          "period_sum": 686686686,
+          "sample_fraction": 0.3884484711211778,
+          "period_fraction": 0.3884484711211778
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::quantized_detail::distance_avx2(signed char const*, signed char const*, unsigned long)",
+          "samples": 543,
+          "period_sum": 543543543,
+          "sample_fraction": 0.3074745186862967,
+          "period_fraction": 0.3074745186862967
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::query_fanout_run(void*, void (*)(void*, unsigned int), bool)",
+          "samples": 127,
+          "period_sum": 127127127,
+          "sample_fraction": 0.07191392978482446,
+          "period_fraction": 0.07191392978482446
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::distance_detail::bound_sum_avx2(float const*, float const*, unsigned long)",
+          "samples": 115,
+          "period_sum": 115115115,
+          "sample_fraction": 0.06511891279728199,
+          "period_fraction": 0.06511891279728199
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)",
+          "samples": 37,
+          "period_sum": 37037037,
+          "sample_fraction": 0.020951302378255945,
+          "period_fraction": 0.020951302378255945
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::{lambda(mvdb::Row const&, mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate const*)#1}::operator()(mvdb::Row const&, mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate const*) const",
+          "samples": 23,
+          "period_sum": 23023023,
+          "sample_fraction": 0.013023782559456399,
+          "period_fraction": 0.013023782559456399
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "_int_free",
+          "samples": 15,
+          "period_sum": 15015015,
+          "sample_fraction": 0.008493771234428085,
+          "period_fraction": 0.008493771234428085
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::distance_scalar(float const*, float const*, unsigned long)",
+          "samples": 11,
+          "period_sum": 11011011,
+          "sample_fraction": 0.00622876557191393,
+          "period_fraction": 0.00622876557191393
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::distance_exact(float const*, float const*, unsigned long)",
+          "samples": 10,
+          "period_sum": 10010010,
+          "sample_fraction": 0.0056625141562853904,
+          "period_fraction": 0.0056625141562853904
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "free",
+          "samples": 9,
+          "period_sum": 9009009,
+          "sample_fraction": 0.005096262740656852,
+          "period_fraction": 0.005096262740656852
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::dump(int, char, bool, nlohmann::json_abi_v3_11_3::detail::error_handler_t) const",
+          "samples": 9,
+          "period_sum": 9009009,
+          "sample_fraction": 0.005096262740656852,
+          "period_fraction": 0.005096262740656852
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "void nlohmann::json_abi_v3_11_3::detail::dtoa_impl::grisu2<double>(char*, int&, int&, double)",
+          "samples": 9,
+          "period_sum": 9009009,
+          "sample_fraction": 0.005096262740656852,
+          "period_fraction": 0.005096262740656852
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "__libc_write",
+          "samples": 8,
+          "period_sum": 8008008,
+          "sample_fraction": 0.004530011325028313,
+          "period_fraction": 0.004530011325028313
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::json_value::destroy(nlohmann::json_abi_v3_11_3::detail::value_t)",
+          "samples": 8,
+          "period_sum": 8008008,
+          "sample_fraction": 0.004530011325028313,
+          "period_fraction": 0.004530011325028313
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::from_chars(char const*, char const*, float&, std::chars_format)",
+          "samples": 8,
+          "period_sum": 8008008,
+          "sample_fraction": 0.004530011325028313,
+          "period_fraction": 0.004530011325028313
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::_Function_handler<long (unsigned long), mvdb::Database::scan_vectors(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<mvdb::Cond, std::allocator<mvdb::Cond> > const&, std::function<bool (long, float const*, unsigned long)> const&, mvdb::QuantizedQueryBound const*, double const*)::{lambda(unsigned long)#1}>::_M_invoke(std::_Any_data const&, unsigned long&&)",
+          "samples": 7,
+          "period_sum": 7007007,
+          "sample_fraction": 0.003963759909399773,
+          "period_fraction": 0.003963759909399773
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "__memmove_avx_unaligned_erms",
+          "samples": 6,
+          "period_sum": 6006006,
+          "sample_fraction": 0.0033975084937712344,
+          "period_fraction": 0.0033975084937712344
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "__strlen_avx2",
+          "samples": 6,
+          "period_sum": 6006006,
+          "sample_fraction": 0.0033975084937712344,
+          "period_fraction": 0.0033975084937712344
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void>::~basic_json()",
+          "samples": 6,
+          "period_sum": 6006006,
+          "sample_fraction": 0.0033975084937712344,
+          "period_fraction": 0.0033975084937712344
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "nlohmann::json_abi_v3_11_3::detail::dtoa_impl::boundaries nlohmann::json_abi_v3_11_3::detail::dtoa_impl::compute_boundaries<double>(double)",
+          "samples": 6,
+          "period_sum": 6006006,
+          "sample_fraction": 0.0033975084937712344,
+          "period_fraction": 0.0033975084937712344
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "_int_malloc",
+          "samples": 5,
+          "period_sum": 5005005,
+          "sample_fraction": 0.0028312570781426952,
+          "period_fraction": 0.0028312570781426952
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "malloc",
+          "samples": 5,
+          "period_sum": 5005005,
+          "sample_fraction": 0.0028312570781426952,
+          "period_fraction": 0.0028312570781426952
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "mvdb::DistanceBoundContext::definitely_greater(float const*, float const*, double) const",
+          "samples": 5,
+          "period_sum": 5005005,
+          "sample_fraction": 0.0028312570781426952,
+          "period_fraction": 0.0028312570781426952
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "unlink_chunk.constprop.0",
+          "samples": 5,
+          "period_sum": 5005005,
+          "sample_fraction": 0.0028312570781426952,
+          "period_fraction": 0.0028312570781426952
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "void std::__push_heap<__gnu_cxx::__normal_iterator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate*, std::vector<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate, std::allocator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate> > >, long, mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate, __gnu_cxx::__ops::_Iter_comp_val<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::{lambda(auto:1 const&, auto:2 const&)#1}> >(__gnu_cxx::__normal_iterator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate*, std::vector<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate, std::allocator<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate> > >, long, long, mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::Candidate, __gnu_cxx::__ops::_Iter_comp_val<mvdb::execute_impl(mvdb::Database&, mvdb::Statement const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, int*, std::function<void (std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)> const&, bool, bool)::{lambda(auto:1 const&, auto:2 const&)#1}>&)",
+          "samples": 5,
+          "period_sum": 5005005,
+          "sample_fraction": 0.0028312570781426952,
+          "period_fraction": 0.0028312570781426952
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "new_do_write",
+          "samples": 4,
+          "period_sum": 4004004,
+          "sample_fraction": 0.0022650056625141564,
+          "period_fraction": 0.0022650056625141564
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_mutate(unsigned long, unsigned long, char const*, unsigned long)",
+          "samples": 4,
+          "period_sum": 4004004,
+          "sample_fraction": 0.0022650056625141564,
+          "period_fraction": 0.0022650056625141564
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "void std::__introsort_loop<__gnu_cxx::__normal_iterator<unsigned int*, std::vector<unsigned int, std::allocator<unsigned int> > >, long, __gnu_cxx::__ops::_Iter_comp_iter<mvdb::FlatIndex::equal_ordinals(unsigned long, long, std::function<long (unsigned long)> const&, unsigned int const**, unsigned long*)::{lambda(unsigned int, unsigned int)#1}> >(__gnu_cxx::__normal_iterator<unsigned int*, std::vector<unsigned int, std::allocator<unsigned int> > >, __gnu_cxx::__normal_iterator<unsigned int*, std::vector<unsigned int, std::allocator<unsigned int> > >, long, __gnu_cxx::__ops::_Iter_comp_iter<mvdb::FlatIndex::equal_ordinals(unsigned long, long, std::function<long (unsigned long)> const&, unsigned int const**, unsigned long*)::{lambda(unsigned int, unsigned int)#1}>)",
+          "samples": 4,
+          "period_sum": 4004004,
+          "sample_fraction": 0.0022650056625141564,
+          "period_fraction": 0.0022650056625141564
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "json_request(mvdb::Database&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, int*)",
+          "samples": 3,
+          "period_sum": 3003003,
+          "sample_fraction": 0.0016987542468856172,
+          "period_fraction": 0.0016987542468856172
+        },
+        {
+          "dso": "/home/runner/work/_temp/minivec-profile-only-JU8C0W/baseline-binary",
+          "symbol": "nlohmann::json_abi_v3_11_3::detail::serializer<nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> >::dump(nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char> >, void> const&, bool, bool, unsigned int, unsigned int)",
+          "samples": 3,
+          "period_sum": 3003003,
+          "sample_fraction": 0.0016987542468856172,
+          "period_fraction": 0.0016987542468856172
+        }
+      ]
+    }
+  },
+  "raw_archive": {
+    "archive": "perf-raw.tar.gz",
+    "archive_bytes": 744991,
+    "archive_sha256": "b072853b9319914064ceb25ff4c226b39ff37f5b0b6429766bb8a962a57bc0e2",
+    "maximum_encoded_archive_bytes": 8388608,
+    "raw_perf_data_files": 24,
+    "raw_archive_transported": false,
+    "scope": "Manifest and base64 text emitted by the existing CI report trap; decode bytes and verify SHA256 before extracting.",
+    "status": "prepared_for_text_transport",
+    "base64_file": "perf-raw.tar.gz.b64.txt",
+    "base64_bytes": 1006395,
+    "base64_sha256": "18d8738064e923a7431f24dab2fff1332ddad76c5845b0509b7a0a4128e23bab",
+    "raw_archive_transport_prepared": true
+  },
+  "error": null
+}

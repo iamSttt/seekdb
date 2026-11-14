@@ -48,8 +48,8 @@ sudo --preserve-env=PATH python3 minivec/tools/best_screen_1114.py \
   --baseline "$scratch/baseline-binary" --candidate "$scratch/candidate-binary" \
   --candidate-source "$RUNTIME_COMMIT" --launcher "$scratch/cgroup-exec" --output "$out/screen.json"
 
-# Isolate cached threshold maintenance from the preceding shared-ceiling version.
-pre_share=8171c98e32beee9d7e6b4ba88e5c1b70d47297c3
+# Isolate the lazy interval heap from its immediate runtime parent.
+pre_share=9ed5baa1b1363ebd388850e74271b353954902da
 git fetch --no-tags --depth=1 origin "$pre_share"
 mkdir "$scratch/pre-share"
 git archive "$pre_share" Dockerfile .dockerignore minivec/src minivec/third_party | tar -x -C "$scratch/pre-share"
@@ -64,8 +64,5 @@ sudo --preserve-env=PATH python3 minivec/tools/best_screen_1114.py \
   --candidate "$scratch/candidate-binary" --candidate-source "$RUNTIME_COMMIT" \
   --launcher "$scratch/cgroup-exec" --output "$out/shared-ablation.json"
 
-# Separate diagnostics: sample the actual historical EE ELF, with no source
-# instrumentation, after all paired measurements have finished.
-docker run --rm -v "$scratch/baseline/minivec:/src:ro" -v "$scratch:/out" -w /src "$compiler" \
-  sh -c 'g++ -O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc src/*.cpp -o /out/ee-symbols'
-bash minivec/tools/ci_profile_ee_1114.sh "$scratch/baseline-binary" "$scratch/ee-symbols" "$scratch/cgroup-exec" "$out/ee-profile"
+# EE sampling runs in its separate diagnostic workflow; do not repeat it or
+# mix sampling overhead into the paired measurements above.

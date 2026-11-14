@@ -1,0 +1,11 @@
+{
+  "command": [
+    "strip",
+    "-o",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/symbol-strip-verification",
+    "/home/runner/work/_temp/minivec-profile-only-JU8C0W/ee-symbols"
+  ],
+  "stdout": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/strip-symbol-copy.stdout",
+  "stderr": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/strip-symbol-copy.stderr",
+  "exit_code": 0
+}

@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from fractions import Fraction
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import random
@@ -99,6 +100,37 @@ def fixtures():
     add("both_halves_smaller_than_k", 128, 129,
         lambda i: [(i % 11) / 8.0] + [0.0]*127,
         [("zero", [0.0]*128)], [64, 65, 66, 128, 129, 130])
+
+    # Dense equal norms force canonical/PK comparisons throughout each half;
+    # sparse equal-distance rows above do not exercise the same arithmetic.
+    # Append new fixtures so the prior seeded row/PK families remain intact.
+    add("lazy128_dense_equal_norm", 128, 1153,
+        lambda i: [rng.choice((-1.0, 1.0)) for _ in range(128)],
+        [("zero", [0.0]*128)], [1, 10, 32, 33])
+    result[-1]["extra_checks"] = ("projection", "descending", "where")
+    assert all(distance(value, result[-1]["queries"][0][1]) == 128.0
+               for _, value in result[-1]["rows"])
+
+    # Pad the established midpoint fixture to the new 128D admission shape.
+    # Unequal exact real distances can still have the same rounded key.
+    add("lazy128_rounded_ties", 128, 1153,
+        lambda i: near_row(i) + [0.0]*120,
+        [("near", near_query + [0.0]*120)], [1, 2, 4, 10, 32, 33])
+    result[-1]["extra_checks"] = ("projection",)
+    padded = result[-1]
+    q = padded["queries"][0][1]
+    assert distance(padded["rows"][0][1], q) == distance(padded["rows"][-1][1], q) == 2.0**60 + 256
+    assert padded["queries"][0][2][0] == -9007199254740997
+
+    # Every finite nonzero square here overflows binary32. Binary64 canonical
+    # distances remain finite, so a float overflow must use exact fallback.
+    max_f32 = F32.unpack(bytes.fromhex("7f7fffff"))[0]
+    add("lazy128_finite_overflow", 128, 1153,
+        lambda i: [(-1.0 if (i+d) & 1 else 1.0) *
+                   (max_f32 if (i+3*d) % 7 < 3 else max_f32/2.0)
+                   for d in range(128)],
+        [("zero", [0.0]*128)], [1, 10, 32, 33])
+    result[-1]["extra_checks"] = ("projection",)
     return result
 
 
@@ -149,8 +181,35 @@ def run_fixture(session, fixture, results):
             assert actual == expected, (label, actual, expected)
             results.append({"case": label, "count": len(rows), "dimension": dim, "k": k,
                             "fanout_k_gate_allows": 1 <= k <= FANOUT_TOPK_MAX,
+                            "lazy128_shape_eligible": dim == 128 and 1 <= k <= 32,
                             "k_exceeds_first_half": k > len(rows)//2,
                             "k_exceeds_both_halves": k > (len(rows)+1)//2})
+        # These retain the same independent integer/Fraction oracle. Eligibility
+        # labels describe SQL shape only, never prove an internal path executed.
+        for check in fixture.get("extra_checks", ()):
+            k = 10
+            label = f"{name}-{query_name}-{check}-k{k}"
+            if check == "projection":
+                response = sql(session, f"SELECT id,L2_DISTANCE(embedding,{query[2]}) AS d FROM {name} ORDER BY d ASC LIMIT {k};", label)
+                lookup = dict(rows)
+                expected = [[key, math.sqrt(distance(lookup[key], query))] for key in ranking[:k]]
+                assert response.get("columns") == ["id", "d"], (label, response)
+                eligible = dim == 128
+            elif check == "descending":
+                response = sql(session, f"SELECT id FROM {name} ORDER BY L2_DISTANCE(embedding,{query[2]}) DESC LIMIT {k};", label)
+                descending = sorted((-distance(value, query), key) for key, value in rows)
+                expected = [[key] for _, key in descending[:k]]
+                assert response.get("columns") == ["id"], (label, response)
+                eligible = False
+            else:
+                assert check == "where"
+                response = sql(session, f"SELECT id FROM {name} WHERE id >= 0 ORDER BY L2_DISTANCE(embedding,{query[2]}) ASC LIMIT {k};", label)
+                expected = [[key] for key in ranking if key >= 0][:k]
+                assert response.get("columns") == ["id"], (label, response)
+                eligible = False
+            assert response.get("rows") == expected, (label, response.get("rows"), expected)
+            results.append({"case": label, "count": len(rows), "dimension": dim, "k": k,
+                            "check": check, "lazy128_shape_eligible": eligible})
     # Free old fixtures so dimensions and cumulative index memory cannot force
     # a different residency decision in a later test.
     sql(session, f"DROP TABLE {name};", "drop-" + name)
@@ -170,10 +229,12 @@ def main():
             fingerprint.update(f"{key}:{value[2]}\n".encode())
         for label, query, ranking in fixture["queries"]:
             fingerprint.update((label + query[2] + repr(fixture["ks"])).encode())
+        fingerprint.update(repr(fixture.get("extra_checks", ())).encode())
     summary = {"result": "pass", "oracle": "exact integer float32 square sum rounded once to binary64; ties use signed BIGINT PK",
                "fixture_sha256": fingerprint.hexdigest(), "modes": {},
                "shared_cutoff_execution_directly_observed": False,
-               "observability_limit": "Fanout selection logs are collected, but this binary has no shared-cutoff publication/use counter. Correct answers cannot prove that a shared threshold was consumed. Forced mode may fall back when fewer than two online CPUs or worker creation fails."}
+               "lazy_interval_execution_directly_observed": False,
+               "observability_limit": "Fanout selection logs are collected, but this binary has no shared-cutoff publication/use or lazy-interval execution counter. Correct answers and eligible SQL shapes cannot prove either optimization executed. Forced mode may fall back when fewer than two online CPUs or worker creation fails."}
     with tempfile.TemporaryDirectory(prefix="mvdb-shared-bound-") as temp:
         root = Path(temp)
         for mode in ("forced_two", "normal"):
@@ -191,7 +252,8 @@ def main():
     args.output.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"result": "pass", "fixture_sha256": summary["fixture_sha256"],
                       "queries_per_mode": {mode: value["queries"] for mode, value in summary["modes"].items()},
-                      "shared_cutoff_execution_directly_observed": False}))
+                      "shared_cutoff_execution_directly_observed": False,
+                      "lazy_interval_execution_directly_observed": False}))
 
 
 if __name__ == "__main__":

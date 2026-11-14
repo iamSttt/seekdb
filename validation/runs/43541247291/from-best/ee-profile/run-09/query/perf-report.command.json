@@ -1,0 +1,23 @@
+{
+  "command": [
+    "/usr/bin/perf",
+    "--buildid-dir",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/buildid-cache",
+    "report",
+    "--symfs",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/symfs",
+    "--stdio",
+    "--header",
+    "--no-children",
+    "--percent-limit",
+    "0.5",
+    "--sort",
+    "dso,symbol",
+    "-n",
+    "-i",
+    "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-09/query/perf.data"
+  ],
+  "stdout": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-09/query/perf-report.stdout",
+  "stderr": "/home/runner/work/seekdb/seekdb/protocol-results/from-best/ee-profile/run-09/query/perf-report.stderr",
+  "exit_code": 0
+}
