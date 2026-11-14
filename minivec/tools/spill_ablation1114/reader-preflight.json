@@ -1,0 +1,26 @@
+{
+  "status": "reader_preflight_only_no_new_measurement",
+  "metric_summaries_equal_to_original_guard_reader": 31,
+  "invalid_evidence_rejected": [
+    "missing_cpu",
+    "missing_pair",
+    "missing_memory",
+    "zero_first_request_denominator",
+    "missing_spill_request",
+    "missing_wide_phase"
+  ],
+  "frozen_plan_sha256": "e1464dab498a64b59856682adc2c2883ba4b16f0acdd69470ed882f1f8f2c60e",
+  "original_reader_sha256": "98ad2e17c8f11dc6a9f05ab8de5a042f0c5730db9a567fab64247c232e4edac2",
+  "new_database_pairs": 0,
+  "retained_identity_wrapper_modified": false,
+  "historical_raw": [
+    {
+      "path": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-11-12\\iamsttt-seekdb-https-github-com-iamsttt\\work\\highest-primary-quantizer-raw\\highest-primary-root\\retained-1cpu.json",
+      "sha256": "ba25519d74ba819752a3ca8c1150dae82458147fc5e5b4b5fe51f869e55227ce"
+    },
+    {
+      "path": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-11-12\\iamsttt-seekdb-https-github-com-iamsttt\\work\\highest-primary-quantizer-raw\\highest-primary-root\\retained-2cpu.json",
+      "sha256": "c87bfaacc48ed26fd62b52e45e0a4473941d6cf65abd42786d45907d7d86be26"
+    }
+  ]
+}

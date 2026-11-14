@@ -1,0 +1,26 @@
+{
+  "source_reader": "C:\\Users\\Lenovo\\Documents\\Codex\\2026-10-30\\yan\\work\\retained-guards-1114\\retained_guards.py",
+  "source_reader_sha256": "98ad2e17c8f11dc6a9f05ab8de5a042f0c5730db9a567fab64247c232e4edac2",
+  "extracted_functions": {
+    "plan": "4ffdf854e4ba1ded674ae1c47d7f7cca66ff58d8e54aca63266f2fb028f3792c",
+    "observed_metrics": "4b530b35b7b8d3b0a526768f5bb36b63a4b9f485d59986bdc990158c9f55d8f1"
+  },
+  "guard_metrics_sha256": "d50a271cc68e4ba4fc12cc2e98327be211f7ce6673ba4e213fc1f5cda9c8ba7d",
+  "policies": [
+    {
+      "path": "policy/highest-primary24-preregistration-v2.json",
+      "sha256": "a930984922150c82eea6c95fa56679cf7f0fe48ff0e88c72cdb5c36986a46d4d"
+    },
+    {
+      "path": "policy/highest-primary24-spill-field-erratum.json",
+      "sha256": "cf2a1823f392f1baef512cc968f7068ed4b0529f786430770e026a18a5c63a1d"
+    },
+    {
+      "path": "policy/evaluate_highest_primary24_screen.py",
+      "sha256": "40b8e003b715cb3b3c570ad3d733c7490d2de72837cffab92024a971364153c2"
+    }
+  ],
+  "vendor_manifest_sha256": "1158bd265fb09f4ee27f69e352b3702a73df627b2d97faeb7b4614343093f936",
+  "plan_sha256": "e1464dab498a64b59856682adc2c2883ba4b16f0acdd69470ed882f1f8f2c60e",
+  "scope": "Measurement vendor and historical rules unchanged. Two pure reader functions copied with LF normalization; R identity/build wrapper neither changed nor invoked."
+}

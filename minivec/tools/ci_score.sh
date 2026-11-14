@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# This isolated branch diagnoses the three-file spill cache only.
-# The unchanged workflow calls this entry; no paired performance matrix runs.
+# This isolated branch now runs the separately frozen parent/spill ablation.
+# The unchanged workflow calls this entry; no main EE or retained-R stage runs.
 set -euo pipefail
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$repo"
@@ -23,4 +23,4 @@ PYREPORT
   exit "$result"
 }
 trap dump_reports EXIT
-bash minivec/tools/ci_spill_diagnostic_1114.sh
+bash minivec/tools/ci_spill_ablation_1114.sh
