@@ -1,0 +1,201 @@
+{
+  "status": "frozen_before_measurement",
+  "family": "parent760f_source_batch_B_ablation12_20261114",
+  "roles": {
+    "baseline": {
+      "source_commit": "760f66220f2c7186b4ba295f9e3065650e549f9e",
+      "expected_binary_sha256": "fbeeb83977779eae977f5bec4f570b68ed7bfd5c87bb6642b7e5ffeafa76d456",
+      "build_inputs": {
+        ".dockerignore": "dd9b806988a5bcc72875b9cee43b90025efa58b75770ba975d9347584d8444ce",
+        "Dockerfile": "d262b689634801e3280f004c7b918afd87a696365fc50ad9e718932c4c63035e",
+        "minivec/src/db.cpp": "908cf567016786d7783eec263e8d4b20a7585b13ee20d0b48b984314d74c42d4",
+        "minivec/src/db.h": "b2b045c5c869633596a435e2e8a94a8d0abfe3a4d3563d5f95615d7cbd529607",
+        "minivec/src/distance.h": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+        "minivec/src/exec.cpp": "326d72a903f117be08428f355a7f39364fcca58deff6b480cc1a9bf59fd82df5",
+        "minivec/src/exec.h": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5",
+        "minivec/src/flat_index.cpp": "6a2e8d2e09f6fa0365b6354f798a4901669c48cc27dae873aa7ed13225f2e070",
+        "minivec/src/flat_index.h": "5bd63a4ea1a0f268e4137ff6e0c49be8860b64626f990a8fd96499fb292b4010",
+        "minivec/src/main.cpp": "557524d9a1e1dfc62dbb28ace78056876201f87a5e49e8d00e6c45431a351b3f",
+        "minivec/src/parse_pool.h": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e",
+        "minivec/src/quantized_bound.h": "331a1c2f0fe3681ece30e74c24aa12f97094fac7815d3f48808c1ac814404e12",
+        "minivec/src/query_pool.h": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b",
+        "minivec/src/result_sort.h": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361",
+        "minivec/src/sql.cpp": "339d6d704a18b2f0fe04ff97edac4d2be90ff5f908f0ad085284021e0f47cbb5",
+        "minivec/src/sql.h": "564e8aab64e3fe8fc884b9cb95f9411e031e51900de924c9ee2c56dfea67b843",
+        "minivec/src/value.cpp": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8",
+        "minivec/src/value.h": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12",
+        "minivec/third_party/LICENSE.MIT": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14",
+        "minivec/third_party/json.hpp": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6"
+      }
+    },
+    "candidate": {
+      "source_commit": "8d364e83b225dba54988a727b52cfa4a74fd241a",
+      "expected_binary_sha256": null,
+      "build_inputs": {
+        ".dockerignore": "dd9b806988a5bcc72875b9cee43b90025efa58b75770ba975d9347584d8444ce",
+        "Dockerfile": "d262b689634801e3280f004c7b918afd87a696365fc50ad9e718932c4c63035e",
+        "minivec/src/db.cpp": "0351a39dbdf0d8d905a37be067134e5ce5df4ad7360663a786858aaf4d3b0196",
+        "minivec/src/db.h": "b2b045c5c869633596a435e2e8a94a8d0abfe3a4d3563d5f95615d7cbd529607",
+        "minivec/src/distance.h": "7094c0892de1b56377a65675a119a942cd07959f22e128673738c6c953fc1fe9",
+        "minivec/src/exec.cpp": "326d72a903f117be08428f355a7f39364fcca58deff6b480cc1a9bf59fd82df5",
+        "minivec/src/exec.h": "fa1ae073fe0f6036eda6f889a373c97bc9eb60381cc9a37eff0e705385d9aec5",
+        "minivec/src/flat_index.cpp": "6a2e8d2e09f6fa0365b6354f798a4901669c48cc27dae873aa7ed13225f2e070",
+        "minivec/src/flat_index.h": "5bd63a4ea1a0f268e4137ff6e0c49be8860b64626f990a8fd96499fb292b4010",
+        "minivec/src/main.cpp": "557524d9a1e1dfc62dbb28ace78056876201f87a5e49e8d00e6c45431a351b3f",
+        "minivec/src/parse_pool.h": "ffa3108f0576cc7dfffd85e87470bd75a2ea7ab34f413078e418c8c1750eb83e",
+        "minivec/src/quantized_bound.h": "331a1c2f0fe3681ece30e74c24aa12f97094fac7815d3f48808c1ac814404e12",
+        "minivec/src/query_pool.h": "e9cb278a8b99a1c485e672167b83a608d2925f82215b01ef03b2409f8090616b",
+        "minivec/src/result_sort.h": "572d655688703acdb715d8336f058acab4732b71033e011326992c1033ac0361",
+        "minivec/src/sql.cpp": "339d6d704a18b2f0fe04ff97edac4d2be90ff5f908f0ad085284021e0f47cbb5",
+        "minivec/src/sql.h": "564e8aab64e3fe8fc884b9cb95f9411e031e51900de924c9ee2c56dfea67b843",
+        "minivec/src/value.cpp": "7716348ba0b5ce34bdfa1111a4b8c1a3968372de2a968c64f04a20c9e18764b8",
+        "minivec/src/value.h": "7e2b28c75de45c6dfb0e6e56e543bd87f782ffa027d79dfcb2dddab08668bd12",
+        "minivec/third_party/LICENSE.MIT": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14",
+        "minivec/third_party/json.hpp": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6"
+      }
+    }
+  },
+  "plan": [
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 2,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 3,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "spill_high_q16",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "spill_high_q16",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 2,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 3,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "wide768",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "wide768",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    }
+  ],
+  "expected_pairs": 12,
+  "cpu_period_us": 100000,
+  "memory_max": "2147483648",
+  "memory_swap_max": "0",
+  "query_mode": "exact",
+  "runtime_environment": {},
+  "thresholds": {
+    "time_cpu": 1.02,
+    "memory": 1.05,
+    "default": "overall+AB+BA medians must all exceed threshold to block",
+    "spill_wide": "both individual pairs must exceed threshold on same metric to block"
+  },
+  "underlying_selector": "retained supplies original twelve-pair schedule only; identities are fresh760f and isolated batch B",
+  "supplemental_q1_pairs": 0,
+  "performance_measured": false,
+  "release_gate_passed": false,
+  "full_24_pair_gate_passed": false,
+  "formal_submission": false,
+  "factor": "B",
+  "factor_thresholds": "each spill pair ingest wall and first lifecycle wall candidate/base <1.0",
+  "source_preparation_plan_sha256": "83d3257552bdab7d9f79902b40941239efd928107a3d948bc123cf0b0f8521e7"
+}
