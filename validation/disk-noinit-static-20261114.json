@@ -1,0 +1,160 @@
+{
+  "status": "static_preflight_passed_native_not_executed",
+  "runtime_input_count": 20,
+  "driver_input_count": 122,
+  "python_files_ast_passed": 29,
+  "embedded_python_ast": [
+    {
+      "file": "minivec/tools/ci_score.sh",
+      "tag": "PYREPORT",
+      "lines": 9
+    },
+    {
+      "file": "minivec/tools/ci_score.sh",
+      "tag": "PYSUMMARY",
+      "lines": 27
+    },
+    {
+      "file": "minivec/tools/ci_disk_noinit_1114.sh",
+      "tag": "PY",
+      "lines": 3
+    },
+    {
+      "file": "minivec/tools/ci_disk_noinit_1114.sh",
+      "tag": "PY",
+      "lines": 6
+    }
+  ],
+  "sh_n_passed": [
+    "minivec/tools/ci_score.sh",
+    "minivec/tools/ci_disk_noinit_1114.sh"
+  ],
+  "snapshot_kind": "exact staged Git blobs independent of Windows autocrlf",
+  "schedule": [
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 2,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 3,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "spill_high_q16",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 1,
+      "scenario": "spill_high_q16",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 2,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "standard10k",
+      "seed": 7319,
+      "pair_index": 3,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "wide768",
+      "seed": 7319,
+      "pair_index": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "cpu_count": 2,
+      "scenario": "wide768",
+      "seed": 7319,
+      "pair_index": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ]
+    }
+  ],
+  "pairs_planned": 12,
+  "completed_pairs": 0,
+  "native_executed": false,
+  "performance_claim": null,
+  "plan_sha256": "04527966503c63e1abf2baea0c7c2a2773e2bc40166b6ebd3fe9d83a291cf045"
+}

@@ -30,6 +30,8 @@ PYREPORT
 }
 trap dump_reports EXIT
 
+python3 minivec/tools/disk_noinit1114/verify_inputs.py
+
 git rev-parse HEAD > protocol-results/runtime-commit.txt
 git ls-files -z Dockerfile .dockerignore minivec/src minivec/third_party minivec/Makefile minivec/tests minivec/tools/ci_score.sh STDIO_PROTOCOL.md protocol_check mysqltest | xargs -0 sha256sum > protocol-results/input-sha256.txt
 lscpu > protocol-results/lscpu.txt
@@ -91,7 +93,7 @@ g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -Imin
 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 minivec/tests/json_protocol.py --binary "$scratch/minivec-ubsan" --timeout 15 2>&1 | tee "$reports/fullbinary-json-ubsan.log"
 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 minivec/tests/shared_bound_topk.py --binary "$scratch/minivec-ubsan" --output "$reports/shared-bound-ubsan.json"
 
-bash minivec/tools/ci_from_best_1114.sh
+bash minivec/tools/ci_disk_noinit_1114.sh
 
 # Cleanup must not change any official fixtures or source while tests run.
 git diff --exit-code -- STDIO_PROTOCOL.md protocol_check mysqltest minivec/src minivec/third_party Dockerfile .dockerignore
@@ -117,7 +119,7 @@ report = {
         'full_binary_json_ubsan': True
     },
     'limitations': ['No hidden formal cases or score.',
-                    'Paired performance screening is recorded separately in from-best/screen.json.',
+                    'Paired performance screening is recorded separately in disk-noinit/guards.json.',
                     'WAL fixture injects short/failed writes; not fdatasync or allocation failure.',
                     'ASan leak detection disabled; memory-safety and undefined-behavior checks enabled.']
 }

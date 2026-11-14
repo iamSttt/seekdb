@@ -178,12 +178,12 @@ void FlatIndex::scan_filtered(const MetadataPredicate& predicate,const Visitor& 
   }
   const size_t words=dimension_+4,stride=words*sizeof(float);
   const size_t per_block=std::max<size_t>(1,(1u<<20)/stride);
-  std::vector<float> block(std::min(count_,per_block)*words);
+  std::unique_ptr<float[]> block(count_ ? new float[std::min(count_,per_block)*words] : nullptr);
   for(size_t first=0;first<count_;) {
     const size_t count=std::min(per_block,count_-first);
-    transfer(fd_,block.data(),count*stride,static_cast<uint64_t>(first)*stride,false);
+    transfer(fd_,block.get(),count*stride,static_cast<uint64_t>(first)*stride,false);
     for(size_t i=0;i<count;++i) {
-      const float* record=block.data()+i*words;
+      const float* record=block.get()+i*words;
       int64_t pk;uint64_t slot;
       std::memcpy(&pk,record,sizeof(pk));std::memcpy(&slot,record+2,sizeof(slot));
       if(predicate(first+i,pk,slot) && !visitor(pk,slot,record+4,dimension_))return;
@@ -422,12 +422,12 @@ void FlatIndex::scan(const Visitor& visitor) const {
   }
   const size_t words=dimension_+4,stride=words*sizeof(float);
   const size_t per_block=std::max<size_t>(1,(1u<<20)/stride);
-  std::vector<float> block(std::min(count_,per_block)*words);
+  std::unique_ptr<float[]> block(count_ ? new float[std::min(count_,per_block)*words] : nullptr);
   for(size_t first=0;first<count_;) {
     const size_t count=std::min(per_block,count_-first);
-    transfer(fd_,block.data(),count*stride,static_cast<uint64_t>(first)*stride,false);
+    transfer(fd_,block.get(),count*stride,static_cast<uint64_t>(first)*stride,false);
     for(size_t i=0;i<count;++i) {
-      const float* record=block.data()+i*words;
+      const float* record=block.get()+i*words;
       int64_t pk;uint64_t slot;
       std::memcpy(&pk,record,sizeof(pk));std::memcpy(&slot,record+2,sizeof(slot));
       if(!visitor(pk,slot,record+4,dimension_))return;
