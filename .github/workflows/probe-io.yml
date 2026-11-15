@@ -1,0 +1,42 @@
+name: probe io
+on:
+  push:
+    branches: [perf/probe-io]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  p:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - run: docker build --platform linux/amd64 -t mv:io .
+      - name: Workload then inspect /data
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/in.jsonl
+          import json
+          DIM=128
+          def vec(): return "[" + ",".join(["0.013"]*DIM) + "]"
+          n=0
+          print(json.dumps({"id":n,"op":"execute","sql":"CREATE TABLE t(id BIGINT PRIMARY KEY, grp BIGINT, v VECTOR(%d));"%DIM,"search_mode":"exact"}))
+          for b in range(100):
+              rows=",".join("(%d,%d,'%s')"%(100+b*100+k,(b*100+k)%10,vec()) for k in range(100))
+              for sql in ("BEGIN;", "INSERT INTO t VALUES "+rows+";", "COMMIT;"):
+                  n+=1; print(json.dumps({"id":n,"op":"execute","sql":sql,"search_mode":"exact"}))
+          n+=1; print(json.dumps({"id":n,"op":"execute","sql":"CREATE VECTOR INDEX t_v ON t(v);","search_mode":"exact"}))
+          for q in range(20):
+              n+=1; print(json.dumps({"id":n,"op":"execute","sql":"SELECT id,L2_DISTANCE(v,'%s') AS d FROM t ORDER BY d LIMIT 10;"%vec(),"search_mode":"exact"}))
+          n+=1; print(json.dumps({"id":n,"op":"shutdown"}))
+          PY
+          rm -rf /tmp/data && mkdir -p /tmp/data
+          /usr/bin/time -v docker run --rm -i --cpus=2 --memory=2g -v /tmp/data:/data mv:io < /tmp/in.jsonl > /tmp/out.jsonl 2>/tmp/err.txt || true
+          echo "=== /data 文件 ==="
+          ls -l /tmp/data
+          echo "=== /data 总字节 ==="
+          du -sb /tmp/data
+          echo "=== 响应行数 ==="
+          wc -l /tmp/out.jsonl
+          echo "=== 最后一行 ==="
+          tail -1 /tmp/out.jsonl
