@@ -48,7 +48,7 @@ def main():
     ap.add_argument("--repeat", type=int, default=1000)
     args = ap.parse_args()
     config = json.loads((PROTOCOL_CHECK / "config.json").read_text(encoding="utf-8"))
-    log = tempfile.NamedTemporaryFile(prefix="probe-split-", suffix=".stderr.log", delete=False)
+    log = tempfile.mkstemp(prefix="probe-split-", suffix=".stderr.log")[1]
     command = json.loads(args.command) if args.command else None
     session = Session(config, log, image=args.image, command=command)
     results = []
