@@ -1,0 +1,17 @@
+name: probe split
+on:
+  push:
+    branches: [perf/probe-ee]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build submitted image
+        run: docker build --platform linux/amd64 -t minivec:probe .
+      - name: Split the round trip
+        run: python3 minivec/tools/probe_split.py --image minivec:probe --repeat 1000
