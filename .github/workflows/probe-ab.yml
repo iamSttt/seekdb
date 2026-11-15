@@ -1,0 +1,37 @@
+name: probe ab
+on:
+  push:
+    branches: [perf/probe-ee]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Build both versions
+        run: |
+          set -euo pipefail
+          A=ee299adb296a2922d01982aa6c5707d37e767b41
+          B=8de8101d5614b1040b92290e98763c3392da832c
+          git fetch --depth=1 origin $A $B
+          for v in A B; do
+            ref=$A; if [ "$v" = B ]; then ref=$B; fi
+            mkdir -p /tmp/$v
+            git archive $ref | tar -x -C /tmp/$v
+            docker build --platform linux/amd64 -t mv:$v /tmp/$v
+          done
+          docker images | head
+      - name: Interleaved split measurement
+        run: |
+          set -euo pipefail
+          for round in 1 2 3; do
+            for v in A B; do
+              echo "### round=$round version=$v"
+              python3 minivec/tools/probe_split.py --image mv:$v --repeat 500
+            done
+          done
