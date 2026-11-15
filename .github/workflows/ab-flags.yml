@@ -1,0 +1,29 @@
+name: ab flags
+on:
+  push:
+    branches: [perf/ab-flags]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build variants
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 -t mv:base .
+          docker build --platform linux/amd64 --build-arg EXTRA_FLAGS=-DMVDB_NO_FANOUT -t mv:nofanout .
+          docker build --platform linux/amd64 --build-arg EXTRA_FLAGS=-DMVDB_NO_FLOAT_BOUND -t mv:nobound .
+          docker build --platform linux/amd64 --build-arg EXTRA_FLAGS="-DMVDB_NO_FANOUT -DMVDB_NO_FLOAT_BOUND" -t mv:both .
+      - name: Interleaved measurement
+        run: |
+          set -euo pipefail
+          for round in 1 2; do
+            for v in base nofanout nobound both; do
+              echo "### round=$round variant=$v"
+              python3 minivec/tools/probe_split.py --image mv:$v --repeat 400
+            done
+          done

@@ -545,8 +545,12 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
             // the merge below is their only meeting point. Their union holds the
             // K best rows under (exact distance, primary key), a total order, so
             // the winner set cannot depend on how the span was cut.
+#if defined(MVDB_NO_FANOUT)
+            const bool fanout=false;
+#else
             const bool fanout=!approximate && bounded && !st.order_desc && k>=1 &&
                 k<=kFanoutTopKMax && query_fanout_wanted(view.count);
+#endif
             if(fanout) {
               std::vector<Candidate> halves[2];
               halves[0].reserve(k);halves[1].reserve(k);
@@ -580,8 +584,10 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                      quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance))
                     continue;
                   const float* row=view.rows[i];
+#if !defined(MVDB_NO_FLOAT_BOUND)
                   if(heap.size()==k && bound.definitely_greater(row,query,heap.front().distance))
                     continue;
+#endif
                   Candidate c;c.pk=view.keys[i];c.distance=distance_squared(row,query,dimension);
                   keep(heap,std::move(c));
                 }
