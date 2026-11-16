@@ -3,7 +3,7 @@ FROM gcc:13.3.0-bookworm@sha256:1d71f0f3450214bef38fe09e6f610fb6cca90cf97b43f4ce
 WORKDIR /src
 COPY minivec/src ./src
 COPY minivec/third_party ./third_party
-RUN g++ -O3 -std=c++17 -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc src/*.cpp -o /minivec \
+RUN g++ -O3 -std=c++17 -DMVDB_DISABLE_QUANTIZED_BOUND -fno-math-errno -ffunction-sections -fdata-sections -Wl,--gc-sections -static -pthread -Isrc src/*.cpp -o /minivec \
  && strip /minivec \
  && mkdir /data /smoke \
  && printf '{"id":1,"op":"shutdown"}\n' | /minivec --data /smoke > /smoke.out \
