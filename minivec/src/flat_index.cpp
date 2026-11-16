@@ -103,6 +103,7 @@ void FlatIndex::add(int64_t pk,uint64_t slot,const float* values,size_t dimensio
     // Borrow, never copy: the table's row storage owns this payload and rebuilds
     // the index whenever that storage changes.
     keys_.push_back(pk);slots_.push_back(slot);rows_.push_back(values);
+    packed_.insert(packed_.end(),values,values+dimension_);
   } else {
     // Float-aligned storage: the first four float-sized words contain raw key
     // metadata and are accessed only via memcpy, never as floating point values.
@@ -247,6 +248,8 @@ bool FlatIndex::resident_view(ResidentView* view) const {
   *view=ResidentView{};
   if(!ready_ || fd_>=0)return false;
   view->rows=rows_.data();view->keys=keys_.data();view->slots=slots_.data();
+  view->vectors=packed_.empty()?nullptr:packed_.data();
+  view->stride=dimension_;
   view->dimension=dimension_;view->count=count_;
   view->quantized=quantized_.get();view->quantization_step=quantization_step_;
   return true;

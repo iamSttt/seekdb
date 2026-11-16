@@ -579,7 +579,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   if(quantized.enabled() && heap.size()==k &&
                      quantized.definitely_greater(view.quantized+i*dimension,heap.front().distance))
                     continue;
-                  const float* row=view.rows[i];
+                  const float* row=view.vectors?view.vectors+i*view.stride:view.rows[i];
                   if(heap.size()==k && bound.definitely_greater(row,query,heap.front().distance))
                     continue;
                   Candidate c;c.pk=view.keys[i];c.distance=distance_squared(row,query,dimension);
@@ -601,7 +601,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                 if(quantized.enabled() && result.size()==k &&
                    quantized.definitely_greater(view.quantized+i*view.dimension,result.front().distance))
                   return true;
-                return consider(view.keys[i],view.rows[i],view.dimension);
+                return consider(view.keys[i],view.vectors?view.vectors+i*view.stride:view.rows[i],view.dimension);
               };
               if(approximate) {
                 for(size_t j=0;j<ordinal_count;++j)
@@ -611,7 +611,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   if(!scan_ordinal(i))break;
               } else {
                 for(size_t i=0;i<view.count;++i)
-                  if(!consider(view.keys[i],view.rows[i],view.dimension))break;
+                  if(!consider(view.keys[i],view.vectors?view.vectors+i*view.stride:view.rows[i],view.dimension))break;
               }
             }
           } else {

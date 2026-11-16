@@ -1,0 +1,37 @@
+name: packed ab
+on:
+  push:
+    branches: [perf/packed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Build base and packed
+        run: |
+          set -euo pipefail
+          B=ee299adb296a2922d01982aa6c5707d37e767b41
+          git fetch --depth=1 origin $B
+          mkdir -p /tmp/base && git archive $B | tar -x -C /tmp/base
+          docker build --platform linux/amd64 -t mv:base /tmp/base
+          docker build --platform linux/amd64 -t mv:packed .
+      - name: Correctness
+        run: |
+          set -euo pipefail
+          make -C minivec -j2 test
+          python3 protocol_check/run.py --command '["./minivec/minivec","--data","{data_dir}"]' --output protocol-results/packed-public
+      - name: Paired timing
+        run: |
+          set -euo pipefail
+          for r in 1 2; do
+            for v in base packed; do
+              echo "### round=$r variant=$v"
+              python3 minivec/tools/probe_split.py --image mv:$v --repeat 400
+            done
+          done
