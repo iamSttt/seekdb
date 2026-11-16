@@ -74,7 +74,9 @@ class FlatIndex {
   bool disk_backed() const {return fd_>=0;}
   size_t size() const {return count_;}
  private:
-  const float* row_at(size_t i) const {return rows_[i];}
+  // Prefer the packed copy: it turns a scan into a sequential stream instead of
+  // following one heap pointer per row.
+  const float* row_at(size_t i) const {return packed_.empty()?rows_[i]:packed_.data()+i*dimension_;}
   void build_partition();
   size_t dimension_=0,expected_=0,count_=0;
   int fd_=-1;

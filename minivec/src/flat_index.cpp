@@ -66,6 +66,7 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
     throw std::runtime_error("flat index exceeds file offset range");
   if(count<=budget/stride) {
     rows_.reserve(count);
+    packed_.reserve(count*dimension_);
     keys_.reserve(count);slots_.reserve(count);
     // Reserve accounting room up front so lazy construction cannot exceed the
     // database's combined resident-index budget. At most 1 MiB per index.
