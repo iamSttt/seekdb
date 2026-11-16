@@ -1,0 +1,15 @@
+name: ingest split
+on:
+  push:
+    branches: [perf/probe-ingest2]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  p:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - run: docker build --platform linux/amd64 -t mv:ing .
+      - run: python3 minivec/tools/probe_ingest2.py --image mv:ing
