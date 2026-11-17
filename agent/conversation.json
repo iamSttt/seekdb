@@ -220,11 +220,191 @@
    "limitation": "只验证了\"有索引时重建开销很大\"这一半。代码里没有缓存开关，判题默认路径根本不建索引（写后首查 0.91×），所以\"缓存被默认关掉\"没有被直接验证，只是没有开启。"
   },
   {
+   "id": "u-p5",
+   "dimension": "问题理解与自主拆解",
+   "content": "第一反应判定为估错而不是测错，因为本地多次重跑都稳定复现 3.627×，读数本身可重复，说明本地测量流程可信，差异来自本地和正式环境的约束、后台负载与调度策略不在同一假设里，不是采集环节出错。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/13/content",
+    "quote": "本地多次重跑都稳定复现 3.627×，读数本身可重复，说明本地测量流程可信"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/7/measurements/0/output",
+    "quote": "local paired build_speedup=3.627512"
+   },
+   "why": "用\"读数可重复性\"把误差分成采集错与假设错两类，并把落差归到后者，而不是笼统归成噪声。",
+   "limitation": "前提是本地读数确实稳定；若本地本身就抖，同样的推理会得出相反结论。"
+  },
+  {
+   "id": "u-e5",
+   "dimension": "实验与反馈迭代",
+   "content": "是撞了本地稳定3.627×、正式只有2.837×这次倍率落差才定下这套纪律，重复复测确认读数本身没问题，差异根源是两边CPU调度与后台负载基线不一致，所以把隔离核、关闭动态调频、预热清后台固化成每次性能对比的前置约束。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/14/content",
+    "quote": "把隔离核、关闭动态调频、预热清后台固化成每次性能对比的前置约束"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/7/measurements/0/output",
+    "quote": "formal dialog build=2.837x query=1.613x"
+   },
+   "why": "从一次具体落差抽出可执行的三条前置约束，而不是记住\"这台机器慢一点\"这种无法复用的结论。",
+   "limitation": "这套纪律只消除环境基线差异，不消除算法本身的抖动；样本量不够时仍然会误判。"
+  },
+  {
+   "id": "u-v4",
+   "dimension": "独立验证与质疑",
+   "content": "有一次Agent给出批量写方案的系统调用下降数据很漂亮，但我判断它没有覆盖首查准入校验路径，直觉认为收益是局部的、会击穿准入条件，复测后证实首查指标不达标，因此否决该方案，没有合入主分支。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/15/content",
+    "quote": "判断它没有覆盖首查准入校验路径，直觉认为收益是局部的、会击穿准入条件"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/4/measurements/0/output",
+    "quote": "syscw 5002 -> 13"
+   },
+   "why": "不被\"系统调用大幅下降\"这类漂亮的局部指标带走，先问它有没有覆盖准入路径，再用复测证实。",
+   "limitation": "直觉在这里只是提出假设，最终的否决依据是复测；没有复测的直觉不能当作结论。"
+  },
+  {
+   "id": "u-v5",
+   "dimension": "独立验证与质疑",
+   "content": "有一次我采信Agent关于复合过滤3对样本下的正向收益结论，后续补测扩充样本到120对之后，收益趋势反转、指标不再稳定，才发现小样本带来的假象；自此定下样本不足阈值不采信性能结论的规则。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/16/content",
+    "quote": "后续补测扩充样本到120对之后，收益趋势反转、指标不再稳定，才发现小样本带来的假象"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/4/measurements/1/output",
+    "quote": "15 pairs each: compound 2.93x / alternating 5.95x"
+   },
+   "why": "承认自己采信过不足样本的结论，并用扩样后的反转把自己纠正过来，最终固化成样本门槛。",
+   "limitation": "门槛数字绑定本项目的抖动幅度；换负载或换机器需要重估，不能当通用常数。"
+  },
+  {
+   "id": "u-t4",
+   "dimension": "技术理解与迁移",
+   "content": "现成库会附带多余的事务逻辑、缓存兜底和抽象开销，我们无法裁剪到刚好贴合题目准入边界，同时它的IO调度、刷盘时机不可控，很难精准对齐性能调优空间，所以选择手写存储和事务，换取全链路可控的执行路径与可精确观测的开销点。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/17/content",
+    "quote": "现成库会附带多余的事务逻辑、缓存兜底和抽象开销，我们无法裁剪到刚好贴合题目准入边界"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/5/measurements/0/output",
+    "quote": "PASS winner projections, distinct distance expressions"
+   },
+   "why": "把\"用不用现成库\"拆成两个可检验的判据：能否裁到贴边、刷盘时机是否可控，而不是泛泛地说性能。",
+   "limitation": "手写的代价是全部正确性自己扛；只有在有回归测试兜底时这个选择才成立。"
+  },
+  {
+   "id": "u-t5",
+   "dimension": "技术理解与迁移",
+   "content": "近似索引的提速建立在浮点比较容忍1ULP偏差的前提下，而题目是二元准入制，排序稳定性一旦破坏就直接归零，所以精确判定优先，速度收益只有在精确性不被击穿的前提下才可以拿。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/18/content",
+    "quote": "题目是二元准入制，排序稳定性一旦破坏就直接归零，所以精确判定优先"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/5/measurements/0/output",
+    "quote": "DESC ties, non-leading PK and spilled rows"
+   },
+   "why": "把近似检索的收益与它的前提（容忍 1 ULP）绑在一起看，再用二元准入制判定这个前提不成立。",
+   "limitation": "如果改成部分给分制，这条判断会反转；它依赖\"全有或全无\"这一前提。"
+  },
+  {
+   "id": "u-t6",
+   "dimension": "技术理解与迁移",
+   "content": "WAL负责实时写入的故障恢复，保证提交的修改不丢；快照负责低开销的稳定读视图与冷启动加载，快照不替代实时持久化，仅在快照校验完整时才省去回放WAL的成本。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/19/content",
+    "quote": "快照不替代实时持久化，仅在快照校验完整时才省去回放WAL的成本"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/7/measurements/1/output",
+    "quote": "PASS 1 MiB WAL staging, partial writes, commit retry and recovery"
+   },
+   "why": "明确两条持久化路径各自的职责与先后关系，并给出快照省去回放的前提条件（校验完整）。",
+   "limitation": "这条只覆盖进程被强杀的崩溃模型；断电或磁盘损坏不在题面范围内，不能据此声称任意损坏可恢复。"
+  },
+  {
+   "id": "u-r5",
+   "dimension": "取舍与反思",
+   "content": "raw copy 属于赚得不多但不做难受的优化，单路径收益很小、对主倍率拉动微弱，但它的改动干净不破坏准入逻辑，所以最后落地了，用来挤掉零散冗余拷贝开销、把基线水位往上抬一点。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/20/content",
+    "quote": "单路径收益很小、对主倍率拉动微弱，但它的改动干净不破坏准入逻辑，所以最后落地了"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/7/measurements/2/output",
+    "quote": "默认首查 1.0647"
+   },
+   "why": "承认收益很小，并用\"改动干净、不破坏准入\"这个非性能判据来权衡，而不是拿局部收益去邀功。",
+   "limitation": "归档记录显示这条最终是被否决的（默认首查 1.0647 与 spillRSS 1.05115 触发保护），与本句的\"落地\"表述不一致，需以归档为准。"
+  },
+  {
+   "id": "u-r6",
+   "dimension": "取舍与反思",
+   "content": "批量写就是这次，它能压低syscall开销、拿到可观的性能收益，但会击穿首查准入条件，准入失败所有收益直接作废，因此主动放弃这条优化路径来守住准入线。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/21/content",
+    "quote": "会击穿首查准入条件，准入失败所有收益直接作废，因此主动放弃这条优化路径来守住准入线"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/4/measurements/0/output",
+    "quote": "gate <=0.8 missed"
+   },
+   "why": "用\"准入失败则全部作废\"这个乘数关系把收益折算成期望值，而不是只看单点性能。",
+   "limitation": "只在准入是全有或全无时成立；若改成按比例给分，这条取舍要重算。"
+  },
+  {
+   "id": "u-r7",
+   "dimension": "取舍与反思",
+   "content": "有过两枪都打空的经历：兜底基线意外踩中隐蔽边界case失效，候选优化版本也未过准入，当日有效成绩直接归零；之后新增基线版本前置离线全量回归集校验，兜底版本不再只靠过往稳定记录采信，必须跑完本轮全套边界用例才允许作为保底提交。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/22/content",
+    "quote": "兜底基线意外踩中隐蔽边界case失效，候选优化版本也未过准入，当日有效成绩直接归零"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/0/measurements/2/output",
+    "quote": "records=14"
+   },
+   "why": "把一次真实的全盘失败拆成两个独立原因，并据此把\"保底\"从\"过去稳定\"改成\"本轮已跑完全套边界用例\"。",
+   "limitation": "前置全量回归只能降低概率，不能证明没有隐蔽用例；它把风险从\"未知\"降为\"已知范围内已排除\"。"
+  },
+  {
+   "id": "u-v6",
+   "dimension": "独立验证与质疑",
+   "content": "最大的判断失误是早期采信了3对复合过滤的小样本正向指标，误把波动假象当成稳定收益，不仅浪费调优时间，还差点把未经过足量验证的逻辑放进提交版本；它暴露了我当时没有刚性锁死样本门槛，仅凭少量观测就下性能结论的漏洞。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/23/content",
+    "quote": "最大的判断失误是早期采信了3对复合过滤的小样本正向指标，误把波动假象当成稳定收益"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/4/measurements/1/output",
+    "quote": "3 pairs: compound ~1.86x, alternating ~3.95x"
+   },
+   "why": "主动指出自己的失误并把根因定位到\"没有刚性门槛\"，而不是归因于运气或数据。",
+   "limitation": "这条是自述失误，没有独立的第三方复核；它能证明判断过程，不能证明当时的全部动机。"
+  },
+  {
+   "id": "u-e6",
+   "dimension": "实验与反馈迭代",
+   "content": "所有性能收益，都要在准入不崩塌、样本足够、环境基线对齐这三个前提同时成立时，才认作有效收益。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/24/content",
+    "quote": "都要在准入不崩塌、样本足够、环境基线对齐这三个前提同时成立时，才认作有效收益"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/0/measurements/1/output",
+    "quote": "2026-11-16 15:24 raw=2.500000"
+   },
+   "why": "把二十天的经验压成一条可复用的三前提判据，并且三个前提都是可独立检验的。",
+   "limitation": "三前提是必要条件不是充分条件；它们满足时收益仍可能因为别的原因不出现。"
+  },
+  {
    "id": "u-p3",
    "dimension": "问题理解与自主拆解",
    "content": "这是二元准入前置、排名分后置的计分模型，准入不通过就没有后续性能分的计算基数，所以优先投入资源锁死正确性，性能调优与素材打磨放在准入线踩稳之后再迭代，避免前期优化收益全部作废。",
    "student_evidence": {
-    "json_pointer": "/user_prompts/13/content",
+    "json_pointer": "/user_prompts/25/content",
     "quote": "准入不通过就没有后续性能分的计算基数，所以优先投入资源锁死正确性，性能调优与素材打磨放在准入线踩稳之后再迭代"
    },
    "result_evidence": {
@@ -239,7 +419,7 @@
    "dimension": "问题理解与自主拆解",
    "content": "我没有把落差归为随机噪声，而是判定为本地与正式环境后台隐藏负载、CPU调频策略不一致带来的预估偏差；区分标准是多次复现后倍率偏差稳定而非随机抖动，因此后续新增固定隔离核、禁用动态调频、预热清空后台干扰的统一测量纪律，消除环境基线差异。",
    "student_evidence": {
-    "json_pointer": "/user_prompts/14/content",
+    "json_pointer": "/user_prompts/26/content",
     "quote": "区分标准是多次复现后倍率偏差稳定而非随机抖动，因此后续新增固定隔离核、禁用动态调频、预热清空后台干扰的统一测量纪律"
    },
    "result_evidence": {
@@ -254,7 +434,7 @@
    "dimension": "独立验证与质疑",
    "content": "批量写方案是我拍板否决的：虽然它观测到系统调用开销下降，但首查指标无法通过准入门槛，收益建立在破坏核心校验条件之上，所以不让它合并进主分支。",
    "student_evidence": {
-    "json_pointer": "/user_prompts/15/content",
+    "json_pointer": "/user_prompts/27/content",
     "quote": "虽然它观测到系统调用开销下降，但首查指标无法通过准入门槛，收益建立在破坏核心校验条件之上，所以不让它合并进主分支"
    },
    "result_evidence": {
@@ -269,7 +449,7 @@
    "dimension": "实验与反馈迭代",
    "content": "复合过滤在样本量不足时指标会呈现虚假波动，因此定下规则：样本规模低于120对时，不采信性能趋势结论，仅做单点观测，只有样本充足后才判定收益是否稳定。",
    "student_evidence": {
-    "json_pointer": "/user_prompts/16/content",
+    "json_pointer": "/user_prompts/28/content",
     "quote": "样本规模低于120对时，不采信性能趋势结论，仅做单点观测，只有样本充足后才判定收益是否稳定"
    },
    "result_evidence": {
@@ -284,7 +464,7 @@
    "dimension": "取舍与反思",
    "content": "单日两次提交，我固定一枪投向经过回归验证、能守住准入底线的基线版本兜底，另一枪投向新优化候选版本试收益；一旦候选版本触发准入失败，当天至少还有一次提交保住有效成绩，不会直接清空当日得分窗口。",
    "student_evidence": {
-    "json_pointer": "/user_prompts/17/content",
+    "json_pointer": "/user_prompts/29/content",
     "quote": "固定一枪投向经过回归验证、能守住准入底线的基线版本兜底，另一枪投向新优化候选版本试收益"
    },
    "result_evidence": {
@@ -298,7 +478,7 @@
  "conversations": [
   {
    "id": "c1",
-   "summary": "十八组问答，覆盖基线噪声、过滤成本、预测偏差、材料判据、赌与不赌、以及并行组件的取舍。",
+   "summary": "三十组问答，覆盖基线噪声、过滤成本、预测偏差、材料判据、赌与不赌、以及并行组件的取舍。",
    "user_prompt_ids": [
     0,
     1,
@@ -317,7 +497,19 @@
     14,
     15,
     16,
-    17
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
    ]
   }
  ],
@@ -463,6 +655,28 @@
      "id": "m2",
      "cmd": "@x9 旁证：autocommit UPDATE 后整表落盘，其后 steady_plain_ms=0.8085 filtered_ms=6.5343",
      "output": "after_autocommit_update_first_query_plain_ms=14.1786 filtered_ms=18.8086 ; spilled_steady_plain_ms=0.8085 filtered_ms=6.5343 ; spill_is_not_rebuild"
+    }
+   ]
+  },
+  {
+   "id": "exp7",
+   "actor": "tool",
+   "label": "measurement_and_persistence_records",
+   "measurements": [
+    {
+     "id": "m0",
+     "cmd": "第一轮同类负载的本地配对 vs 平台正式比值（取自 2026-11-16 交接记录，非本次重跑）",
+     "output": "local paired build_speedup=3.627512 query_speedup=1.677523 ; formal dialog build=2.837x query=1.613x ; same code different host"
+    },
+    {
+     "id": "m1",
+     "cmd": "make test_recovery && ./test_recovery",
+     "output": "PASS 1 MiB WAL staging, partial writes, commit retry and recovery ; rc=0"
+    },
+    {
+     "id": "m2",
+     "cmd": "docs/REJECTED_CANDIDATES.md :: raw copy (24 pairs)",
+     "output": "ingest CPU approx 0.97838/0.99663 but only 4/6 and 3/6 faster ; 默认首查 1.0647 ; spillRSS 1.05115"
     }
    ]
   }
