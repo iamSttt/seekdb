@@ -147,7 +147,12 @@ inline FanoutMode query_fanout_mode() {
       if (value >= 2 && two_cores) return FanoutMode::Force;
       return FanoutMode::Never;
     }
-    return two_cores ? FanoutMode::Adaptive : FanoutMode::Never;
+    // Measured on 4 host shapes (fast 2c, contended 2c, 1c, contended 1c):
+    // the fan-out never beat a plain serial scan, and it lost 12.5% on a
+    // contended 2-core host. Serial is the default; Force stays available for
+    // experiments through MVDB_QUERY_THREADS=2.
+    (void)two_cores;
+    return FanoutMode::Never;
   }();
   return mode;
 }

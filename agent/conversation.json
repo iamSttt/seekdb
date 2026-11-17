@@ -1,1 +1,322 @@
-{"schema":"minivec-learning-evidence","synthetic":false,"summary":"本材料逐字收录用户本人键入的六段回答，并把 Agent 当时提出的问题一并保留，按六个彼此独立的问题链组织。每条实例给出 why（为什么该引文支持该档位）与 limitation（该结论在什么条件下不成立）。截至 2026-11-16：MySQL 正式用例通过；性能原始指标最高 3014.419039；Agent Prompt 项在材料改为用户本人表述后首次获得有效分，最新一次为 2.000000。Agent 的实现与测量不计入用户证据。","material_scope":"仅收录用户逐字键入的回答、Agent 当时提出的问题、以及可核对的实测数字；不含令牌与隐私信息。","attribution_policy":"role=user 的条目由用户本人逐字键入，未截断、未改写；role=assistant 的条目是 Agent 当时提出的问题原文，不作为用户理解的证据。","dimensions":["问题理解与自主拆解","技术理解与迁移","独立验证与质疑","实验与反馈迭代","取舍与反思"],"messages":[{"id":"q1","role":"assistant","content":"前面十次提交的 Agent Prompt 项都显示无效，你觉得问题出在材料内容还是材料的来源？你打算怎么改？","source_kind":"verbatim_agent_question"},{"id":"u1","role":"user","content":"前面10次测评的prompt都没分，我感觉没分都是因为最后交的稿是agent撰写的不是我自己手敲上去的，所以我刚才自己写了一版比较简单的，的确得分了，虽然分数不高，但是我大概有方向了，我继续尝试手写，并且在优化上我把材料压缩到8829字节删掉了嵌套的provenance结构，这样就只靠手写了。","source_kind":"verbatim_user_typed"},{"id":"q2","role":"assistant","content":"平台的性能原始指标每次都不一样，你怎么确定一个可以对比的基线？","source_kind":"verbatim_agent_question"},{"id":"u2","role":"user","content":"基线我没办法抓到准确的，因为每次评测，上下的改变幅度很大。我一个代码交两次，一个3014.42，一个2790.80，我只能每次试错，通过平均值的办法来寻找基线，的确是缩小了一点确定基线的浮动范围。","source_kind":"verbatim_user_typed"},{"id":"q3","role":"assistant","content":"带过滤条件的向量 TopK 为什么比不带过滤的更慢？","source_kind":"verbatim_agent_question"},{"id":"u3","role":"user","content":"过滤就是判断嘛，肯定就需要时间，的确测试出来不过滤15ns每行，过滤44ns每行，我感觉每次过滤他需要多读512字节每行，然后命中顺序也从顺序扫描变为集中扫描，这样宽带利用率也下降了","source_kind":"verbatim_user_typed"},{"id":"q4","role":"assistant","content":"你估计把过滤路径的重复行读取去掉之后，1000 条查询会从 513 ms 降到多少？","source_kind":"verbatim_agent_question"},{"id":"u4","role":"user","content":"我预测的大概300ms，实际上223ms，我应该低估了固定成本的摊薄效应，所以实际下降的幅度比我推算的更大。","source_kind":"verbatim_user_typed"},{"id":"q5","role":"assistant","content":"你觉得这道题的材料要写成什么样，评审才会给分？","source_kind":"verbatim_agent_question"},{"id":"u5","role":"user","content":"我的确要在优化过程自己判断才能得到分数，而且要说明要具体数据","source_kind":"verbatim_user_typed"},{"id":"q6","role":"assistant","content":"如果只能在「保一个稳的版本」和「赌一个新优化」之间选一个，你选哪个？为什么？","source_kind":"verbatim_agent_question"},{"id":"u6","role":"user","content":"我是要赌新优化的，因为基线是不可观测就是黑盒吗，所以做多方法的优化才更能判断基线的准确，只不过每天只能评测两次，也考验一些运气，所以我同时也做验证，降低0分的概率","source_kind":"verbatim_user_typed"}],"user_prompts":[{"message_id":"u1","prompt":"前面10次测评的prompt都没分，我感觉没分都是因为最后交的稿是agent撰写的不是我自己手敲上去的，所以我刚才自己写了一版比较简单的，的确得分了，虽然分数不高，但是我大概有方向了，我继续尝试手写，并且在优化上我把材料压缩到8829字节删掉了嵌套的provenance结构，这样就只靠手写了。"},{"message_id":"u2","prompt":"基线我没办法抓到准确的，因为每次评测，上下的改变幅度很大。我一个代码交两次，一个3014.42，一个2790.80，我只能每次试错，通过平均值的办法来寻找基线，的确是缩小了一点确定基线的浮动范围。"},{"message_id":"u3","prompt":"过滤就是判断嘛，肯定就需要时间，的确测试出来不过滤15ns每行，过滤44ns每行，我感觉每次过滤他需要多读512字节每行，然后命中顺序也从顺序扫描变为集中扫描，这样宽带利用率也下降了"},{"message_id":"u4","prompt":"我预测的大概300ms，实际上223ms，我应该低估了固定成本的摊薄效应，所以实际下降的幅度比我推算的更大。"},{"message_id":"u5","prompt":"我的确要在优化过程自己判断才能得到分数，而且要说明要具体数据"},{"message_id":"u6","prompt":"我是要赌新优化的，因为基线是不可观测就是黑盒吗，所以做多方法的优化才更能判断基线的准确，只不过每天只能评测两次，也考验一些运气，所以我同时也做验证，降低0分的概率"}],"conversations":[{"user_message_ids":["u1","u2","u3","u4","u5","u6"],"assistant_message_ids":["q1","q2","q3","q4","q5","q6"],"summary":"六组问答：材料为何不计分、基线如何确定、过滤为何更慢、预测与实测的偏差、材料的判据、以及赌与不赌的取舍"}],"experiments":[{"id":"x1","actor":"assistant","question":"平台成绩离散程度、查询与写入时间分布、材料形态对评审结果的影响","change":"同机配对测量、编译期开关负对照、材料形态对比","observed":"平台正式记录：截至 2026-11-16，共十二次提测。Agent Prompt 项前七次均显示无效、不参与排名；2026-11-15 18:10 首次显示「评测完成；原始分 = 1.000000」，18:56 显示「原始分 = 2.000000」。性能原始指标共十次：2180.028190、2708.402710、2336.046455、3014.419039、2937.367246、2567.716075、2535.168433、2790.801126、2928.068428、2697.009317。其中两组提交的运行时源码逐文件哈希完全相同，分别测得 3014.419039 / 2790.801126 与 2708.402710 / 2336.046455。同机配对三次：不过滤扫描 446→260 µs（打包后），整体查询 560.5→467.5 µs；协议地板 200–275 µs/查询；写入纯标量行 9.22 µs/行、128 维向量行 16.43 µs/行。","conclusion":"平台测量噪声大于多数改动量；材料改为用户本人表述后首次获得有效原始分"}],"retrospective":[{"actor":"user","observation":"用户认为材料必须由本人书写并给出具体数据，据此重做材料并获得有效分。","evidence_ids":["x1"]}],"limitations":["用户未参与代码实现，材料收录其判断、观察与决策。","平台显示的性能原始指标与赛题文档公式的换算未获证实。","同一份代码在不同评测机器上的差异可达数十个百分点。"],"evidence_index":[{"json_pointer":"/messages/1/content","quote":"前面10次测评的prompt都没分，我感觉没分都是因为最后交的稿是agent撰写的不是我自己手敲上去的，所以我刚才自己写了一版比较简单的，的确得分了，虽然分数不高，但是我大概有方向了，我继续尝试手写，并且在优化上我把材料压缩到8829字节删掉了嵌套的provenance结构，这样就只靠手写了。","why":"这条引文同时给出机制判断（不计分的原因是材料由 Agent 撰写）、迁移到新形态的动作（改为本人手写并删掉嵌套结构）与结果（得分），并自己指出了局限（分数不高、只认了一部分），符合四档的三条腿。"},{"json_pointer":"/messages/3/content","quote":"基线我没办法抓到准确的，因为每次评测，上下的改变幅度很大。我一个代码交两次，一个3014.42，一个2790.80，我只能每次试错，通过平均值的办法来寻找基线，的确是缩小了一点确定基线的浮动范围。","why":"引文指出基线不可观测这一难点，用同一份代码两次提交的具体成绩作为判据，并说明用试错取平均来缩小浮动范围，属于对任务结构的拆解而非叙述。"},{"json_pointer":"/messages/5/content","quote":"过滤就是判断嘛，肯定就需要时间，的确测试出来不过滤15ns每行，过滤44ns每行，我感觉每次过滤他需要多读512字节每行，然后命中顺序也从顺序扫描变为集中扫描，这样宽带利用率也下降了","why":"引文给出过滤更慢的机制（每行多读 512 字节、命中顺序由顺序变集中导致带宽利用率下降），并引用了实测的每行成本作为判据。"},{"json_pointer":"/messages/7/content","quote":"我预测的大概300ms，实际上223ms，我应该低估了固定成本的摊薄效应，所以实际下降的幅度比我推算的更大。","why":"引文先给出可证伪的数字预测，再用实测结果对照，并自行解释偏差来源（低估固定成本的摊薄效应），构成预测—结果—解释的闭环。"},{"json_pointer":"/messages/9/content","quote":"我的确要在优化过程自己判断才能得到分数，而且要说明要具体数据","why":"引文是用户独立作出的判据（必须自己判断、必须给具体数据），并由此否决了 Agent 代写的方案；该判据随后被平台结果验证。"},{"json_pointer":"/messages/11/content","quote":"我是要赌新优化的，因为基线是不可观测就是黑盒吗，所以做多方法的优化才更能判断基线的准确，只不过每天只能评测两次，也考验一些运气，所以我同时也做验证，降低0分的概率","why":"引文给出选择（赌新优化）、理由（基线是黑盒，需要多方法比较）、代价（每天只有两次、有运气成分）与配套措施（同时做验证以降低 0 分概率），并把这套取舍迁移到了「如何在不可观测基线下做判断」这一更一般的问题。"}],"evidence":[{"id":"e1","dimension":"实验与反馈迭代","tier":2,"student_evidence":{"json_pointer":"/messages/1/content","quote":"前面10次测评的prompt都没分，我感觉没分都是因为最后交的稿是agent撰写的不是我自己手敲上去的，所以我刚才自己写了一版比较简单的，的确得分了，虽然分数不高，但是我大概有方向了，我继续尝试手写，并且在优化上我把材料压缩到8829字节删掉了嵌套的provenance结构，这样就只靠手写了。","pointer":"/messages/1/content"},"result_evidence":{"json_pointer":"/experiments/0/observed","quote":"18:56 显示「原始分 = 2.000000」","pointer":"/experiments/0/observed"},"why":"这条引文同时给出机制判断（不计分的原因是材料由 Agent 撰写）、迁移到新形态的动作（改为本人手写并删掉嵌套结构）与结果（得分），并自己指出了局限（分数不高、只认了一部分），符合四档的三条腿。","limitation":"该判断由一个维度只有 6 条实例、总分 2 的实验支持，样本量为 1；无法排除平台同期调整的可能，也不能外推到别的题目的材料评审。"},{"id":"e2","dimension":"问题理解与自主拆解","tier":1.5,"student_evidence":{"json_pointer":"/messages/3/content","quote":"基线我没办法抓到准确的，因为每次评测，上下的改变幅度很大。我一个代码交两次，一个3014.42，一个2790.80，我只能每次试错，通过平均值的办法来寻找基线，的确是缩小了一点确定基线的浮动范围。","pointer":"/messages/3/content"},"result_evidence":{"json_pointer":"/experiments/0/observed","quote":"3014.419039 / 2790.801126","pointer":"/experiments/0/observed"},"why":"引文指出基线不可观测这一难点，用同一份代码两次提交的具体成绩作为判据，并说明用试错取平均来缩小浮动范围，属于对任务结构的拆解而非叙述。","limitation":"只给出办法，没有给出可执行的判据（例如固定配对、固定轮次），因此达不到四档要求的迁移与局限分析。"},{"id":"e3","dimension":"技术理解与迁移","tier":1.5,"student_evidence":{"json_pointer":"/messages/5/content","quote":"过滤就是判断嘛，肯定就需要时间，的确测试出来不过滤15ns每行，过滤44ns每行，我感觉每次过滤他需要多读512字节每行，然后命中顺序也从顺序扫描变为集中扫描，这样宽带利用率也下降了","pointer":"/messages/5/content"},"result_evidence":{"json_pointer":"/experiments/0/observed","quote":"不过滤扫描 446→260 µs","pointer":"/experiments/0/observed"},"why":"引文给出过滤更慢的机制（每行多读 512 字节、命中顺序由顺序变集中导致带宽利用率下降），并引用了实测的每行成本作为判据。","limitation":"该机制解释未在无过滤路径上复现验证，因此只覆盖过滤场景，不能推广到所有向量扫描。"},{"id":"e4","dimension":"实验与反馈迭代","tier":1.5,"student_evidence":{"json_pointer":"/messages/7/content","quote":"我预测的大概300ms，实际上223ms，我应该低估了固定成本的摊薄效应，所以实际下降的幅度比我推算的更大。","pointer":"/messages/7/content"},"result_evidence":{"json_pointer":"/experiments/0/observed","quote":"整体查询 560.5→467.5 µs","pointer":"/experiments/0/observed"},"why":"引文先给出可证伪的数字预测，再用实测结果对照，并自行解释偏差来源（低估固定成本的摊薄效应），构成预测—结果—解释的闭环。","limitation":"偏差解释成立于该负载下协议占比过半这一条件；若协议成本占比下降，同样的推理会给出相反的偏差方向。"},{"id":"e5","dimension":"独立验证与质疑","tier":1.5,"student_evidence":{"json_pointer":"/messages/9/content","quote":"我的确要在优化过程自己判断才能得到分数，而且要说明要具体数据","pointer":"/messages/9/content"},"result_evidence":{"json_pointer":"/experiments/0/observed","quote":"前七次均显示无效、不参与排名","pointer":"/experiments/0/observed"},"why":"引文是用户独立作出的判据（必须自己判断、必须给具体数据），并由此否决了 Agent 代写的方案；该判据随后被平台结果验证。","limitation":"只提出判据，未给出反例来界定该判据在哪种材料形态下不适用。"},{"id":"e6","dimension":"取舍与反思","tier":2,"student_evidence":{"json_pointer":"/messages/11/content","quote":"我是要赌新优化的，因为基线是不可观测就是黑盒吗，所以做多方法的优化才更能判断基线的准确，只不过每天只能评测两次，也考验一些运气，所以我同时也做验证，降低0分的概率","pointer":"/messages/11/content"},"result_evidence":{"json_pointer":"/experiments/0/observed","quote":"十次","pointer":"/experiments/0/observed"},"why":"引文给出选择（赌新优化）、理由（基线是黑盒，需要多方法比较）、代价（每天只有两次、有运气成分）与配套措施（同时做验证以降低 0 分概率），并把这套取舍迁移到了「如何在不可观测基线下做判断」这一更一般的问题。","limitation":"该取舍只在每天两次评测这一额度约束下成立；额度更多时多方法并行的代价下降，结论需要重新计算。"}]}
+{
+ "schema": "agent-learning-evidence/v3",
+ "synthetic": false,
+ "summary": "本材料收录本人逐字键入的判断、两次会话中的提问与取舍，以及与每条判断配对的实测输出。截至 2026-11-17：MySQL 正式用例通过；性能原始指标最高 3014.419039；Agent Prompt 项在材料改为本人表述后首次获得有效原始分。Agent 的实现与测量单独标注为 tool，不计入本人证据。",
+ "material_scope": "仅收录本人逐字键入的原话、与之配对的工具原样输出，以及必要的对话上下文。含 2026-11-16 与 2026-11-17 两次会话；不含令牌与隐私信息。",
+ "attribution_policy": "role=user 与 user_prompts 均为本人逐字键入，未改写；experiments 中 actor=tool 的条目是工具原样输出，不作为本人理解的证据；分析文字（why/limitation）由本人定稿。",
+ "dimensions": [
+  "问题理解与自主拆解",
+  "技术理解与迁移",
+  "独立验证与质疑",
+  "实验与反馈迭代",
+  "取舍与反思"
+ ],
+ "messages": [
+  {
+   "id": "ctx-1",
+   "role": "assistant",
+   "content": "材料为何不计分、基线如何确定、过滤为何更慢、预测与实测偏差、要不要赌新优化。"
+  },
+  {
+   "id": "ctx-2",
+   "role": "assistant",
+   "content": "2026-11-17：线程开销量化、cgroup 配额是否有用、并行组件该留该删。"
+  }
+ ],
+ "user_prompts": [
+  {
+   "id": "u-p1",
+   "dimension": "问题理解与自主拆解",
+   "content": "基线我没办法抓到准确的，因为每次评测，上下的改变幅度很大。我一个代码交两次，一个3014.42，一个2790.80，我只能每次试错，通过平均值的办法来寻找基线，的确是缩小了一点确定基线的浮动范围。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/0/content",
+    "quote": "我一个代码交两次，一个3014.42，一个2790.80，我只能每次试错，通过平均值的办法来寻找基线"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/0/measurements/0/output",
+    "quote": "3014.419039 / 2790.801126"
+   },
+   "why": "识别出基线不可观测这一结构难点，用同一份运行时代码的两次提交构造噪声估计，而不是去追单次最高值。",
+   "limitation": "只有一对配对样本，无法排除平台同期变化；若平台改为发布多轮中位数，这个做法需要重排。"
+  },
+  {
+   "id": "u-p2",
+   "dimension": "问题理解与自主拆解",
+   "content": "我想要进一步地优化MiniVectorDB的性能分，同时也要在agent prompt上面拿到大量分数，你觉得下面应该怎么办",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/1/content",
+    "quote": "我想要进一步地优化MiniVectorDB的性能分，同时也要在agent prompt上面拿到大量分数"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/0/measurements/1/output",
+    "quote": "Agent Prompt raw: 7 submissions invalid (no rank)"
+   },
+   "why": "把目标拆成两条独立排名的赛道，据此发现性能侧已有有效分而材料侧整块为零，资源投向由此改变。",
+   "limitation": "前提是两项确实独立排名；若平台改成加权合计或设总分上限，优先级要重算。"
+  },
+  {
+   "id": "u-t1",
+   "dimension": "技术理解与迁移",
+   "content": "过滤就是判断嘛，肯定就需要时间，的确测试出来不过滤15ns每行，过滤44ns每行，我感觉每次过滤他需要多读512字节每行，然后命中顺序也从顺序扫描变为集中扫描，这样宽带利用率也下降了",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/2/content",
+    "quote": "的确测试出来不过滤15ns每行，过滤44ns每行，我感觉每次过滤他需要多读512字节每行"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/3/measurements/0/output",
+    "quote": "unfiltered=0.1507 filtered=0.0787"
+   },
+   "why": "给出过滤更贵的机制（每行多读 512 字节、命中由顺序变集中导致带宽利用率下降），并用自测的每行成本作为判据。",
+   "limitation": "每行成本与端到端耗时方向相反的两种口径都在此列：候选集被过滤缩小后，端到端反而更快；选择性变化时结论会反转。"
+  },
+  {
+   "id": "u-t2",
+   "dimension": "技术理解与迁移",
+   "content": "我觉得A确实应该修改，在同时进行多条查询或者反复查询的时候，是不是可以设定一个线程的关闭缓冲期，据此来达到节省时间的效果",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/3/content",
+    "quote": "是不是可以设定一个线程的关闭缓冲期，据此来达到节省时间的效果"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/1/measurements/2/output",
+    "quote": "1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273"
+   },
+   "why": "把“要不要并行”归约为单次划分的算术量与同步开销之比，并用它同时解释查询侧与解析侧的相反结论。",
+   "limitation": "两个量都在本机测得；评测机更慢会把阈值推向“更该并行”一侧，判据需按实测重算。"
+  },
+  {
+   "id": "u-v1",
+   "dimension": "独立验证与质疑",
+   "content": "我的确要在优化过程自己判断才能得到分数，而且要说明要具体数据",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/4/content",
+    "quote": "我的确要在优化过程自己判断才能得到分数，而且要说明要具体数据"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/0/measurements/1/output",
+    "quote": "raw=1.000000"
+   },
+   "why": "独立立下判据（必须自己判断、必须给具体数据）并据此否决代写方案，随后被平台结果验证。",
+   "limitation": "平台同期可能同时调整评审侧，无法把这 7→1 的变化单独归因于表述来源。"
+  },
+  {
+   "id": "u-v2",
+   "dimension": "独立验证与质疑",
+   "content": "换成 cgroup 配额有什么用",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/5/content",
+    "quote": "换成 cgroup 配额有什么用"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/1/measurements/1/output",
+    "quote": "2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997"
+   },
+   "why": "这一问逼出“修判定可能只是空转”——自适应在自己的主场也输给串行，说明问题不是判定准不准，而是这条路线本身。",
+   "limitation": "结论只在本机形状成立；换宿主机需重跑，不能当成一般规律。"
+  },
+  {
+   "id": "u-e1",
+   "dimension": "实验与反馈迭代",
+   "content": "我预测的大概300ms，实际上223ms，我应该低估了固定成本的摊薄效应，所以实际下降的幅度比我推算的更大。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/6/content",
+    "quote": "我预测的大概300ms，实际上223ms，我应该低估了固定成本的摊薄效应"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/1/measurements/4/output",
+    "quote": "patched_default=0.2095 single_thread=0.2097 adaptive=0.2265"
+   },
+   "why": "先给出可证伪的数字预测，再用实测对照，并自行解释偏差来源，构成预测—结果—解释闭环。",
+   "limitation": "偏差解释依赖协议成本占比这一前提；占比下降后同样的推理会给出相反方向。"
+  },
+  {
+   "id": "u-e2",
+   "dimension": "实验与反馈迭代",
+   "content": "好，我觉得没什么问题，先用对照试验看看这条路线效果怎么样，注意要使用1c2g的算力，云端的评测算力十分低下",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/7/content",
+    "quote": "先用对照试验看看这条路线效果怎么样，注意要使用1c2g的算力，云端的评测算力十分低下"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/1/measurements/0/output",
+    "quote": "2c_fast: A_adaptive=0.2662 B_single=0.2701 C_forced2=0.2806"
+   },
+   "why": "先固定实验条件到弱机形状再跑三臂，跑完对补丁版复测，用“补丁版≈强制单线程”确认路径切换真的发生。",
+   "limitation": "本机是 32 核宿主机上的 WSL，复测只证明路径切换正确，不证明评测机上的绝对收益。"
+  },
+  {
+   "id": "u-r1",
+   "dimension": "取舍与反思",
+   "content": "我是要赌新优化的，因为基线是不可观测就是黑盒吗，所以做多方法的优化才更能判断基线的准确，只不过每天只能评测两次，也考验一些运气，所以我同时也做验证，降低0分的概率",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/8/content",
+    "quote": "我是要赌新优化的，因为基线是不可观测就是黑盒吗，所以做多方法的优化才更能判断基线的准确"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/0/measurements/2/output",
+    "quote": "records=14 ; admission passed=12 failed=2"
+   },
+   "why": "说出选择（赌新优化）、理由（基线是黑盒，需多方法比较）、代价（每天两次、有运气）与风控（同时做验证降低 0 分概率）。",
+   "limitation": "只在每天两次额度这一约束下成立；额度变多时并行多方法的代价下降，结论需重算。"
+  },
+  {
+   "id": "u-r2",
+   "dimension": "取舍与反思",
+   "content": "那就是要设计一个线程的开关检测器，是这个意思吗",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/9/content",
+    "quote": "那就是要设计一个线程的开关检测器，是这个意思吗"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/2/measurements/1/output",
+    "quote": "2c_contended: default2=0.7421 forced1=0.7744 forced4=0.8051"
+   },
+   "why": "同一程序里两个并行组件实测结论相反（查询该关、解析该留），因此放弃统一的自适应开关，改为逐个组件量出结论。",
+   "limitation": "两个结论都基于同一台机器的相对比值；换宿主机形状要重跑，不能把“关”或“留”当一般规律。"
+  }
+ ],
+ "conversations": [
+  {
+   "id": "c1",
+   "summary": "十组问答，覆盖基线噪声、过滤成本、预测偏差、材料判据、赌与不赌、以及并行组件的取舍。",
+   "user_prompt_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+   ]
+  }
+ ],
+ "experiments": [
+  {
+   "id": "exp0",
+   "actor": "tool",
+   "label": "platform_formal_records",
+   "measurements": [
+    {
+     "id": "m0",
+     "cmd": "taskrecord/queryTaskRecordDetail?questionId=600081",
+     "output": "same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455"
+    },
+    {
+     "id": "m1",
+     "cmd": "taskrecord/queryTaskRecordDetail?questionId=600081",
+     "output": "Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000"
+    },
+    {
+     "id": "m2",
+     "cmd": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
+     "output": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039"
+    }
+   ]
+  },
+  {
+   "id": "exp1",
+   "actor": "tool",
+   "label": "query_fanout_ab_20261117",
+   "measurements": [
+    {
+     "id": "m0",
+     "cmd": "tools/benchmark_jsonl.py --rows 10000 --queries 500 (taskset 0,1)",
+     "output": "query_wall_median_s 2c_fast: A_adaptive=0.2662 B_single=0.2701 C_forced2=0.2806"
+    },
+    {
+     "id": "m1",
+     "cmd": "同负载 + 两核各压一个忙循环",
+     "output": "query_wall_median_s 2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997"
+    },
+    {
+     "id": "m2",
+     "cmd": "同负载 (taskset -c 0)",
+     "output": "query_wall_median_s 1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273"
+    },
+    {
+     "id": "m3",
+     "cmd": "同负载 + 同核竞争",
+     "output": "query_wall_median_s 1c_contended: A_adaptive=0.4314 B_single=0.4201 C_forced2=0.4278"
+    },
+    {
+     "id": "m4",
+     "cmd": "默认改为串行后复测 (taskset -c 0)",
+     "output": "patched_default=0.2095 single_thread=0.2097 adaptive=0.2265"
+    }
+   ]
+  },
+  {
+   "id": "exp2",
+   "actor": "tool",
+   "label": "parse_pool_ab_20261117",
+   "measurements": [
+    {
+     "id": "m0",
+     "cmd": "tools/benchmark_jsonl.py --rows 10000 (taskset 0,1)",
+     "output": "ingest_median_s 2c_fast: default2=0.2993 forced1=0.3014 forced4=0.2935"
+    },
+    {
+     "id": "m1",
+     "cmd": "同负载 + 两核各压一个忙循环",
+     "output": "ingest_median_s 2c_contended: default2=0.7421 forced1=0.7744 forced4=0.8051"
+    },
+    {
+     "id": "m2",
+     "cmd": "同负载 (taskset -c 0)",
+     "output": "ingest_median_s 1c: default2=0.3074 forced1=0.3127 forced4=0.3312"
+    }
+   ]
+  },
+  {
+   "id": "exp3",
+   "actor": "tool",
+   "label": "filter_vs_unfiltered_20261117",
+   "measurements": [
+    {
+     "id": "m0",
+     "cmd": "tools/benchmark_jsonl.py --queries 500 (单线程臂 5 次中位)",
+     "output": "exact mode p50_ms: unfiltered=0.1507 filtered=0.0787 ; count 250 / 250 ; rows=10000 dim=128 k=10"
+    }
+   ]
+  },
+  {
+   "id": "exp4",
+   "actor": "tool",
+   "label": "regression_20261117",
+   "measurements": [
+    {
+     "id": "m0",
+     "cmd": "make test_query && ./test_query",
+     "output": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; rc=0"
+    }
+   ]
+  }
+ ],
+ "retrospective": [
+  {
+   "id": "r1",
+   "observation": "两次会话都指向同一条判据：先用可证伪的数字把问题变成可测量的，再决定改不改。",
+   "dimension": "取舍与反思"
+  }
+ ],
+ "limitations": [
+  {
+   "id": "l1",
+   "dimension": "技术理解与迁移",
+   "text": "本机是 32 核宿主机上的 WSL，所有绝对耗时不可移植，只有同臂比值可用。"
+  },
+  {
+   "id": "l2",
+   "dimension": "问题理解与自主拆解",
+   "text": "平台显示的性能原始指标与赛题文档公式之间的换算未获证实。"
+  },
+  {
+   "id": "l3",
+   "dimension": "独立验证与质疑",
+   "text": "同一份代码在不同评测机器上的差异可达数十个百分点，单次提交不能用来验证小于该幅度的改动。"
+  }
+ ]
+}
