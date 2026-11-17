@@ -30,10 +30,6 @@ class FlatIndex {
   struct ResidentView {
     // count borrowed payload pointers, each dimension floats, owned by the table.
     const float* const* rows=nullptr;
-    // Contiguous copy of every payload in the same ordinal order as keys/slots.
-    // Present when the resident path could afford it; callers fall back to rows[i].
-    const float* vectors=nullptr;
-    size_t stride=0;
     const int64_t* keys=nullptr;
     const uint64_t* slots=nullptr;
     size_t dimension=0,count=0;
@@ -81,10 +77,6 @@ class FlatIndex {
   bool ready_=false;
   // Borrowed row payload pointers (resident path); never owns the floats.
   std::vector<const float*> rows_;
-  // Contiguous payload copy filled during add(). A scan over thousands of
-  // separately heap-allocated rows defeats the hardware prefetcher; sequential
-  // access to one packed array does not, and the ordinal order is identical.
-  std::vector<float> packed_;
   std::vector<int64_t> keys_;
   std::vector<uint64_t> slots_;
   std::unique_ptr<int8_t[]> quantized_;

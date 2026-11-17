@@ -1146,7 +1146,15 @@ bool Database::fsync_wal() {
   const int fd=::fileno(wal_);
   const uint64_t end=wal_flushed_;
   if(end>wal_advised_) {
-    ::posix_fadvise(fd,static_cast<off_t>(wal_advised_),static_cast<off_t>(end-wal_advised_),
+    // DONTNEED acts on whole pages, so advise a page-aligned range: rounding
+    // inward leaves the last, partially written page of every commit cached,
+    // one page per commit for the whole log. The rounded-out bytes past
+    // wal_flushed_ are not in the file yet and hold nothing to preserve, and
+    // every byte below wal_advised_ is already dropped and already durable.
+    constexpr uint64_t page=4096;
+    const uint64_t from=wal_advised_&~(page-1);
+    const uint64_t to=(end+page-1)&~(page-1);
+    ::posix_fadvise(fd,static_cast<off_t>(from),static_cast<off_t>(to-from),
                     POSIX_FADV_DONTNEED);
     wal_advised_=end;
   }
