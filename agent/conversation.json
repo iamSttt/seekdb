@@ -183,7 +183,7 @@
     "quote": "如果距离数学等价但浮点累加路径不一致，累计舍入偏差最多可达 1 ULP，会打破等距条件下主键升序的稳定排序约定，因此必须接入精确判定分支兜底"
    },
    "result_evidence": {
-    "json_pointer": "/experiments/4/measurements/0/output",
+    "json_pointer": "/experiments/5/measurements/0/output",
     "quote": "PASS exact float32 distance ties/rounding, TopK ties"
    },
    "why": "指出数学等距与浮点累加路径的冲突，给出可检验的后果（主键顺序翻转）并据此选择精确判定兜底，属于机制解释而非复述。",
@@ -212,12 +212,87 @@
    "result_evidence": null,
    "why": "把\"缓存赚不赚\"表述成随读写比例变化的函数，而不是绝对结论，并据此选择默认关闭。",
    "limitation": "本期没有与该判断配对的机器可核对结果，因此按最低档记录；历史上读写比对照的原始数据不在本次提交范围内。"
+  },
+  {
+   "id": "u-p3",
+   "dimension": "问题理解与自主拆解",
+   "content": "这是二元准入前置、排名分后置的计分模型，准入不通过就没有后续性能分的计算基数，所以优先投入资源锁死正确性，性能调优与素材打磨放在准入线踩稳之后再迭代，避免前期优化收益全部作废。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/13/content",
+    "quote": "准入不通过就没有后续性能分的计算基数，所以优先投入资源锁死正确性，性能调优与素材打磨放在准入线踩稳之后再迭代"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/0/measurements/2/output",
+    "quote": "admission passed=12 failed=2"
+   },
+   "why": "把计分模型拆成\"准入是前置条件、排名是后置收益\"，据此决定先买保险再谈收益，而不是按直觉先刷性能。",
+   "limitation": "前提是准入确实是全有或全无；若平台改为按用例比例给分，这个排序会变。"
+  },
+  {
+   "id": "u-p4",
+   "dimension": "问题理解与自主拆解",
+   "content": "我没有把落差归为随机噪声，而是判定为本地与正式环境后台隐藏负载、CPU调频策略不一致带来的预估偏差；区分标准是多次复现后倍率偏差稳定而非随机抖动，因此后续新增固定隔离核、禁用动态调频、预热清空后台干扰的统一测量纪律，消除环境基线差异。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/14/content",
+    "quote": "区分标准是多次复现后倍率偏差稳定而非随机抖动，因此后续新增固定隔离核、禁用动态调频、预热清空后台干扰的统一测量纪律"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/0/measurements/0/output",
+    "quote": "2708.402710 / 2336.046455"
+   },
+   "why": "把本地与正式的落差归因为环境差异而不是随机噪声，并给出可操作的分辨判据（倍率稳定 vs 抖动）与对应的测量纪律。",
+   "limitation": "判据依赖多次复现；只有一两次样本时无法区分\"环境差异\"与\"真退步\"。"
+  },
+  {
+   "id": "u-v3",
+   "dimension": "独立验证与质疑",
+   "content": "批量写方案是我拍板否决的：虽然它观测到系统调用开销下降，但首查指标无法通过准入门槛，收益建立在破坏核心校验条件之上，所以不让它合并进主分支。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/15/content",
+    "quote": "虽然它观测到系统调用开销下降，但首查指标无法通过准入门槛，收益建立在破坏核心校验条件之上，所以不让它合并进主分支"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/4/measurements/0/output",
+    "quote": "index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed)"
+   },
+   "why": "不接受\"系统调用减少\"这类漂亮的局部指标，用预设的首查门槛否掉整条方案，并把原因归结为破坏核心校验条件。",
+   "limitation": "门槛是在看结果之前定的；若门槛本身设错，这次否决就会变成误杀。"
+  },
+  {
+   "id": "u-e4",
+   "dimension": "实验与反馈迭代",
+   "content": "复合过滤在样本量不足时指标会呈现虚假波动，因此定下规则：样本规模低于120对时，不采信性能趋势结论，仅做单点观测，只有样本充足后才判定收益是否稳定。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/16/content",
+    "quote": "样本规模低于120对时，不采信性能趋势结论，仅做单点观测，只有样本充足后才判定收益是否稳定"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/4/measurements/1/output",
+    "quote": "rule below 120 pairs no trend claim"
+   },
+   "why": "从\"3 对看着退步、15 对变 2.93 倍、120 对才稳\"这一串经历里抽出一条可复用的样本量下限，而不是记住一次结论。",
+   "limitation": "120 这个数字绑定本项目的抖动幅度；换负载或换机器需要重估，不能当通用常数。"
+  },
+  {
+   "id": "u-r4",
+   "dimension": "取舍与反思",
+   "content": "单日两次提交，我固定一枪投向经过回归验证、能守住准入底线的基线版本兜底，另一枪投向新优化候选版本试收益；一旦候选版本触发准入失败，当天至少还有一次提交保住有效成绩，不会直接清空当日得分窗口。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/17/content",
+    "quote": "固定一枪投向经过回归验证、能守住准入底线的基线版本兜底，另一枪投向新优化候选版本试收益"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/0/measurements/2/output",
+    "quote": "E range 2180.028190 .. 3014.419039"
+   },
+   "why": "在提交次数有限的前提下把风险拆成\"保底一枪 + 试探一枪\"，并说清触发条件（候选触发准入失败时当天仍有有效成绩）。",
+   "limitation": "只在每天两次额度这一约束下成立；额度更多时保底与试探可以合并成一轮。"
   }
  ],
  "conversations": [
   {
    "id": "c1",
-   "summary": "十组问答，覆盖基线噪声、过滤成本、预测偏差、材料判据、赌与不赌、以及并行组件的取舍。",
+   "summary": "十八组问答，覆盖基线噪声、过滤成本、预测偏差、材料判据、赌与不赌、以及并行组件的取舍。",
    "user_prompt_ids": [
     0,
     1,
@@ -231,7 +306,12 @@
     9,
     10,
     11,
-    12
+    12,
+    13,
+    14,
+    15,
+    16,
+    17
    ]
   }
  ],
@@ -321,6 +401,23 @@
      "id": "m0",
      "cmd": "tools/benchmark_jsonl.py --queries 500 (单线程臂 5 次中位)",
      "output": "exact mode p50_ms: unfiltered=0.1507 filtered=0.0787 ; count 250 / 250 ; rows=10000 dim=128 k=10"
+    }
+   ]
+  },
+  {
+   "id": "exp5",
+   "actor": "tool",
+   "label": "archive_record_20261116",
+   "measurements": [
+    {
+     "id": "m0",
+     "cmd": "docs/REJECTED_CANDIDATES.md :: index batch A / d0e3f9a7",
+     "output": "syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected"
+    },
+    {
+     "id": "m1",
+     "cmd": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
+     "output": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim"
     }
    ]
   },
