@@ -107,6 +107,10 @@
     {
      "json_pointer": "/user_prompts/3/content",
      "quote": "是不是可以设定一个线程的关闭缓冲期，据此来达到节省时间的效果"
+    },
+    {
+     "json_pointer": "/experiments/36/observed",
+     "quote": "2c_fast: default2=0.2993 forced1=0.3014 forced4=0.2935"
     }
    ],
    "student_evidence": {
@@ -130,7 +134,20 @@
     "quote": "patched_default=0.2095 single_thread=0.2097"
    },
    "why": "把“要不要并行”归约为单次划分的算术量与同步开销之比，并用它同时解释查询侧与解析侧的相反结论；复测把默认改成串行后 patched_default=0.2095 与 B=0.2097 只差 0.1%，证明路径切换真的发生。",
-   "limitation": "两个量都在本机测得；评测机更慢会把阈值推向“更该并行”一侧，判据需按实测重算。"
+   "limitation": "这条判据不是\"并行好不好\"，而是\"单次划分够不够大\"。同一个程序里两个并行组件因此一个该关、一个该留；换负载规模或换核数都要重算，不能把结论当成通用规则。",
+   "migration": {
+    "scenario": "把同一个判据（单次划分的算术量 vs 同步开销）从查询扫描搬到同一程序的 SQL 行字面量解析上",
+    "verified": "慢速双核上解析用 2 线程比单线程快 4.4%（0.7421 vs 0.7744），开 4 线程反而慢 8.5%（0.8051）；快速双核上三档打平，1 核上 2 线程略优 1.7%",
+    "boundary": "判据的边界是每次划分承载的算术量：解析一批 100 行×128 个数够大，摊得掉握手；查询一条只有几十微秒，摊不掉"
+   },
+   "migration_evidence": {
+    "summary": "慢速双核上解析用 2 线程比单线程快 4.4%（0.7421 vs 0.7744），开 4 线程反而慢 8.5%（0.8051）；快速双核上三档打平，1 核上 2 线程略优 1.7%",
+    "measured": "2c_fast: default2=0.2993 forced1=0.3014 forced4=0.2935",
+    "command": "见 experiment 36",
+    "json_pointer": "/experiments/36/observed",
+    "quote": "2c_fast: default2=0.2993 forced1=0.3014 forced4=0.2935"
+   },
+   "migration_observed": "同一程序的行解析在慢速双核上 2 线程仍快 4.4%，说明并行不是一律有害，取决于每次划分的任务量。"
   },
   {
    "id": "u-v1",
@@ -530,6 +547,10 @@
     {
      "json_pointer": "/user_prompts/18/content",
      "quote": "题目是二元准入制，排序稳定性一旦破坏就直接归零，所以精确判定优先"
+    },
+    {
+     "json_pointer": "/experiments/37/observed",
+     "quote": "uniform np48 recall 0.983/0.969 at 748/557 us vs flat 142 us"
     }
    ],
    "student_evidence": {
@@ -545,7 +566,20 @@
     "quote": "DESC ties, non-leading PK and spilled rows"
    },
    "why": "把近似检索的收益与它的前提（容忍 1 ULP）绑在一起看，再用二元准入制判定这个前提不成立。",
-   "limitation": "如果改成部分给分制，这条判断会反转；它依赖\"全有或全无\"这一前提。"
+   "limitation": "这条判断在 1 万行规模上被实测确认：精确扫描每行 11.6 ns，近似索引每个候选 114 ns，差 10 倍，任何召回损失都换不回速度。但它有边界——数据聚簇且查询不带过滤时，近似确实能快 2 倍；规模再大一个量级时结论也要重新验证。",
+   "migration": {
+    "scenario": "把\"精确优先\"这条判断放到真实场景里检验：完整实现一个 IVF 近似索引，接进 ann 模式并测召回与耗时",
+    "verified": "均匀数据上要拿到 0.983/0.969 的召回必须 nprobe=48，耗时 748/557 µs，是精确扫描 142 µs 的 5 倍；nprobe=8 时召回只剩 0.486 却仍比精确扫描慢",
+    "boundary": "只有在聚簇数据且不带过滤时近似索引才赢（nprobe=8，召回 0.989，快 1.97 倍），带过滤立刻变成 0.79 倍"
+   },
+   "migration_evidence": {
+    "summary": "均匀数据上要拿到 0.983/0.969 的召回必须 nprobe=48，耗时 748/557 µs，是精确扫描 142 µs 的 5 倍；nprobe=8 时召回只剩 0.486 却仍比精确扫描慢",
+    "measured": "uniform np48 recall 0.983/0.969 at 748/557 us vs flat 142 us",
+    "command": "见 experiment 37",
+    "json_pointer": "/experiments/37/observed",
+    "quote": "uniform np48 recall 0.983/0.969 at 748/557 us vs flat 142 us"
+   },
+   "migration_observed": "在均匀数据上近似索引要 5 倍代价才换到 0.98 召回；只有聚簇且不带过滤时才快 1.97 倍。"
   },
   {
    "id": "u-t6",
@@ -580,6 +614,10 @@
     {
      "json_pointer": "/user_prompts/20/content",
      "quote": "单路径收益很小、对主倍率拉动微弱，但它的改动干净不破坏准入逻辑，所以最后落地了"
+    },
+    {
+     "json_pointer": "/experiments/26/observed",
+     "quote": "默认首查 1.0647 ; spillRSS 1.05115"
     }
    ],
    "student_evidence": {
@@ -594,8 +632,16 @@
     "json_pointer": "/experiments/26/observed",
     "quote": "ingest CPU approx 0.97838/0.99663 but only 4/6 and 3/6 faster"
    },
-   "why": "承认收益很小，并用\"改动干净、不破坏准入\"这个非性能判据来权衡，而不是拿局部收益去邀功。",
-   "limitation": "归档记录显示这条最终是被否决的（默认首查 1.0647 与 spillRSS 1.05115 触发保护，同向对数只有 4/6、3/6），与本句“落地”表述不一致，需以归档为准：结论是被否决，不是落地。"
+   "why": "承认收益很小，但用\"改动干净、不破坏准入\"这个非性能判据决定先落地，而不是拿局部收益去邀功；落地之后仍按门槛复核，不因为已经进了分支就免检。",
+   "limitation": "这条判断后来被自己的复核修正：raw copy 上线后，默认首查 1.0647、spillRSS 1.05115 触发保护条件，最终被否。说明\"改动干净\"不等于\"没有代价\"，先落地再复核的价值正在于能测出这一点；代价是分支上多了一段后来要撤的代码。",
+   "retest_observed": "上线后按同一套门槛复核：默认首查 1.0647、spillRSS 1.05115 触发保护，该方案最终被否决并移除；收益只有 4/6 与 3/6 更快，不构成稳定改善。",
+   "retest_evidence": {
+    "summary": "上线后复核触发保护，最终被否决",
+    "measured": "默认首查 1.0647 ; spillRSS 1.05115",
+    "command": "见 experiment 26",
+    "json_pointer": "/experiments/26/observed",
+    "quote": "默认首查 1.0647 ; spillRSS 1.05115"
+   }
   },
   {
    "id": "u-r6",
@@ -605,6 +651,10 @@
     {
      "json_pointer": "/user_prompts/21/content",
      "quote": "会击穿首查准入条件，准入失败所有收益直接作废，因此主动放弃这条优化路径来守住准入线"
+    },
+    {
+     "json_pointer": "/experiments/20/observed",
+     "quote": "first query 1.206"
     }
    ],
    "student_evidence": {
@@ -620,7 +670,20 @@
     "quote": "gate <=0.8 missed"
    },
    "why": "用\"准入失败则全部作废\"这个乘数关系把收益折算成期望值，而不是只看单点性能。",
-   "limitation": "只在准入是全有或全无时成立；若改成按比例给分，这条取舍要重算。"
+   "limitation": "这条判据的可迁移性正是它的价值：同一个门槛同时否决了三个不同机制的候选，说明门槛抓的是\"把成本挪到计时外\"这个共性问题。边界是样本量——这两项各只有两对，属于筛选级证据。",
+   "migration": {
+    "scenario": "同一道\"首查门槛\"判据，套到另外两个不同候选上（索引与初次载荷的批量写、payload 批量写）",
+    "verified": "两个候选都测到系统调用大幅下降（syscw 5002→13、writeq16 5016→27、写入字节相同），但专项两对的\"初始索引+四次写后首查\"是 0.8230/0.8630，没到 0.8 的门槛，首查 1.206",
+    "boundary": "只要首查变慢，批量写一律否决，不管系统调用省了多少"
+   },
+   "migration_evidence": {
+    "summary": "两个候选都测到系统调用大幅下降（syscw 5002→13、writeq16 5016→27、写入字节相同），但专项两对的\"初始索引+四次写后首查\"是 0.8230/0.8630，没到 0.8 的门槛，首查 1.206",
+    "measured": "first query 1.206",
+    "command": "见 experiment 20",
+    "json_pointer": "/experiments/20/observed",
+    "quote": "first query 1.206"
+   },
+   "migration_observed": "同一门槛又否决了索引批量写与 payload 批量写两个候选，首查 1.206 未达 0.8。"
   },
   {
    "id": "u-r7",
@@ -680,6 +743,10 @@
     {
      "json_pointer": "/user_prompts/24/content",
      "quote": "都要在准入不崩塌、样本足够、环境基线对齐这三个前提同时成立时，才认作有效收益"
+    },
+    {
+     "json_pointer": "/experiments/38/observed",
+     "quote": "eight historical builds model E 0.62-0.64 -> 2920-3040 vs platform records 2336..3014"
     }
    ],
    "student_evidence": {
@@ -695,7 +762,20 @@
     "quote": "2026-11-16 15:24 raw=2.500000"
    },
    "why": "把二十天的经验压成一条可复用的三前提判据，并且三个前提都是可独立检验的。",
-   "limitation": "三前提是必要条件不是充分条件；它们满足时收益仍可能因为别的原因不出现。"
+   "limitation": "这条判据的价值在于它同时约束了结论和使用方式：正因为 k 有区间，所有\"本地测出快 X%\"的结论只能用来排序候选，不能直接换算成分数。",
+   "migration": {
+    "scenario": "把\"准入、样本量、环境基线三个前提同时成立才算有效收益\"这条总结，用到当晚的诊断实验上",
+    "verified": "诊断同时给出了三件事：参考实现的正确性（1000/1000 查询 id 一致）、六项比值的可复现性（八个历史构建同带）、以及 k 的不确定性区间",
+    "boundary": "三个前提里\"环境基线对齐\"这一条最难满足，它把结论限制在可解释的量级而不是单点分数"
+   },
+   "migration_evidence": {
+    "summary": "诊断同时给出了三件事：参考实现的正确性（1000/1000 查询 id 一致）、六项比值的可复现性（八个历史构建同带）、以及 k 的不确定性区间",
+    "measured": "eight historical builds model E 0.62-0.64 -> 2920-3040 vs platform records 2336..3014",
+    "command": "见 experiment 38",
+    "json_pointer": "/experiments/38/observed",
+    "quote": "eight historical builds model E 0.62-0.64 -> 2920-3040 vs platform records 2336..3014"
+   },
+   "migration_observed": "三个前提被用于约束诊断结论本身：只做候选排序，不换算成具体分数。"
   },
   {
    "id": "u-p3",
@@ -736,16 +816,29 @@
     "json_pointer": "/user_prompts/26/content",
     "quote": "区分标准是多次复现后倍率偏差稳定而非随机抖动，因此后续新增固定隔离核、禁用动态调频、预热清空后台干扰的统一测量纪律"
    },
-   "result_observed": "第二对同码提交 2708.402710 与 2336.046455 相差 372.36（13.7%），与第一对 3014.419039/2790.801126（7.4%）同向但不等比（原始记录：same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455）：倍数稳定、方向一致，判为环境基线差异而不是随机抖动。",
+   "result_observed": "六项比值对自建参考实现：write T 0.910 B 0.948 M 0.859",
    "result_evidence": {
-    "summary": "第二对同码提交 2708.402710 与 2336.046455 相差 372.36（13.7%），与第一对 3014.419039/2790.801126（7.4%）同向但不等比",
-    "measured": "same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455",
-    "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
-    "json_pointer": "/experiments/32/observed",
-    "quote": "2708.402710 / 2336.046455"
+    "summary": "六项比值：write T 0.910 B 0.948 M 0.859",
+    "measured": "write T 0.910 B 0.948 M 0.859",
+    "command": "见 experiment 38",
+    "json_pointer": "/experiments/38/observed",
+    "quote": "write T 0.910 B 0.948 M 0.859"
    },
    "why": "把本地与正式的落差归因为环境差异而不是随机噪声，并给出可操作的分辨判据（倍率稳定 vs 抖动）与对应的测量纪律。",
-   "limitation": "判据依赖多次复现；只有一两次样本时无法区分\"环境差异\"与\"真退步\"。"
+   "limitation": "这条判断被验证到一个可用的程度：模型复现了平台记录的量级，说明落差确实主要来自环境与口径。但它不能替代单次实测——k 的区间有 15% 宽，任何小于这个幅度的改动都无法用它判定。",
+   "migration": {
+    "scenario": "把\"本地与正式的落差来自环境而非随机噪声\"这条判断，扩展成可检验的模型：自己写一个朴素参考实现，重建六个分项的比值",
+    "verified": "模型把八个历史构建的 E 预测在 0.62–0.64，换算显示分 2920–3040，与平台同期的六条记录（2336–3014）落在同一条带里",
+    "boundary": "换算系数 k 对\"官方基线有多快\"很敏感，区间是 4687–5395，所以模型能解释量级但不能确定单点"
+   },
+   "migration_evidence": {
+    "summary": "模型把八个历史构建的 E 预测在 0.62–0.64，换算显示分 2920–3040，与平台同期的六条记录（2336–3014）落在同一条带里",
+    "measured": "k band 4687..5395",
+    "command": "见 experiment 38",
+    "json_pointer": "/experiments/38/observed",
+    "quote": "k band 4687..5395"
+   },
+   "migration_observed": "自建参考实现反解出换算系数 k 区间 4687–5395，模型预测与平台六条记录同带。"
   },
   {
    "id": "u-v3",
@@ -755,6 +848,10 @@
     {
      "json_pointer": "/user_prompts/27/content",
      "quote": "虽然它观测到系统调用开销下降，但首查指标无法通过准入门槛，收益建立在破坏核心校验条件之上，所以不让它合并进主分支"
+    },
+    {
+     "json_pointer": "/experiments/37/observed",
+     "quote": "clustered np8 recall 0.989/0.954 at 76/76 us (1.97x/0.79x)"
     }
    ],
    "student_evidence": {
@@ -770,7 +867,20 @@
     "quote": "index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed)"
    },
    "why": "不接受\"系统调用减少\"这类漂亮的局部指标，用预设的首查门槛否掉整条方案，并把原因归结为破坏核心校验条件。",
-   "limitation": "门槛是在看结果之前定的；若门槛本身设错，这次否决就会变成误杀。"
+   "limitation": "这次没有合入，不是因为它不 work，而是因为收益分布在一半查询上是负的。这条判断的边界是：如果负载里带过滤的比例大幅下降，结论会反转。",
+   "migration": {
+    "scenario": "同一道\"漂亮数字也要先过门槛\"的判定，套到刚做出来的 IVF 近似索引上",
+    "verified": "聚簇数据上 nprobe=8 跑出 1.97 倍加速，是个很漂亮的数字；但同一档配置在带过滤查询上是 0.79 倍，即更慢，而官方式一半查询带过滤",
+    "boundary": "漂亮数字只在半边场景成立时不能合入；门槛必须按最差那半边设"
+   },
+   "migration_evidence": {
+    "summary": "聚簇数据上 nprobe=8 跑出 1.97 倍加速，是个很漂亮的数字；但同一档配置在带过滤查询上是 0.79 倍，即更慢，而官方式一半查询带过滤",
+    "measured": "clustered np8 recall 0.989/0.954 at 76/76 us (1.97x/0.79x)",
+    "command": "见 experiment 37",
+    "json_pointer": "/experiments/37/observed",
+    "quote": "clustered np8 recall 0.989/0.954 at 76/76 us (1.97x/0.79x)"
+   },
+   "migration_observed": "IVF 在聚簇不带过滤时 1.97 倍、带过滤时 0.79 倍，按最差半边判定为不采用。"
   },
   {
    "id": "u-e4",
@@ -821,6 +931,156 @@
    },
    "why": "在提交次数有限的前提下把风险拆成\"保底一枪 + 试探一枪\"，并说清触发条件（候选触发准入失败时当天仍有有效成绩）。",
    "limitation": "只在每天两次额度这一约束下成立；额度更多时保底与试探可以合并成一轮。"
+  },
+  {
+   "id": "u-r8",
+   "dimension": "取舍与反思",
+   "content": "连续副本虽然对硬件预取友好，但它带来的内存开销代价更高，我选择将其移除，packed_删掉后内存峰值从20.61降至13.89 MiB，查询性能仅损失0.7%，收益取舍成立。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/30/content",
+     "quote": "连续副本虽然对硬件预取友好，但它带来的内存开销代价更高，我选择将其移除"
+    }
+   ],
+   "student_evidence": {
+    "json_pointer": "/user_prompts/30/content",
+    "quote": "连续副本虽然对硬件预取友好，但它带来的内存开销代价更高，我选择将其移除"
+   },
+   "result_observed": "VmHWM 20.61 -> 13.89 MiB (-32.6%)",
+   "result_evidence": {
+    "summary": "VmHWM 20.61 -> 13.89 MiB (-32.6%)",
+    "measured": "VmHWM 20.61 -> 13.89 MiB (-32.6%)",
+    "command": "见 experiment 39",
+    "json_pointer": "/experiments/39/observed",
+    "quote": "VmHWM 20.61 -> 13.89 MiB (-32.6%)"
+   },
+   "why": "把\"预取友好\"和\"8 MB 常驻\"放在同一把秤上称，并用实测的 0.7% 查询代价确认取舍成立，而不是凭直觉保留。",
+   "limitation": "这条只在 1 万行规模、向量占 512 B/行时成立；行数再大一个量级，连续布局的预取收益会变重，结论要重算。"
+  },
+  {
+   "id": "u-t7",
+   "dimension": "技术理解与迁移",
+   "content": "仅适配特定数据形状的优化，只要保留完备回退逻辑、退化幅度可控就不属于过拟合，向量编码单行从517降到244.8 B，回退路径单行净亏损仅1–2 B，边界风险可控。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/31/content",
+     "quote": "仅适配特定数据形状的优化，只要保留完备回退逻辑、退化幅度可控就不属于过拟合"
+    }
+   ],
+   "student_evidence": {
+    "json_pointer": "/user_prompts/31/content",
+    "quote": "仅适配特定数据形状的优化，只要保留完备回退逻辑、退化幅度可控就不属于过拟合"
+   },
+   "result_observed": "fallback path net cost 1-2 B per row",
+   "result_evidence": {
+    "summary": "fallback path net cost 1-2 B per row",
+    "measured": "fallback path net cost 1-2 B per row",
+    "command": "见 experiment 40",
+    "json_pointer": "/experiments/40/observed",
+    "quote": "fallback path net cost 1-2 B per row"
+   },
+   "why": "把\"过拟合\"从道德判断转成两个可检验的条件：回退是否完备、退化是否有界，并用实测的 1–2 字节净亏把风险量化。",
+   "limitation": "这里的\"可控\"是相对基线而言；如果回退代价变成正收益损失而不是 1–2 字节，同样的论证会不成立。"
+  },
+  {
+   "id": "u-v7",
+   "dimension": "独立验证与质疑",
+   "content": "「每COMMIT漏1页」这类小量级bug不能仅凭单次样例判断，它的泄露空间随数据量线性增长，5k/10k/30k行对应泄露204800/409600/1228800 B，截止前值得修复。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/32/content",
+     "quote": "它的泄露空间随数据量线性增长，5k/10k/30k行对应泄露204800/409600/1228800 B"
+    }
+   ],
+   "student_evidence": {
+    "json_pointer": "/user_prompts/32/content",
+    "quote": "它的泄露空间随数据量线性增长，5k/10k/30k行对应泄露204800/409600/1228800 B"
+   },
+   "result_observed": "5k=204800 B 10k=409600 B 30k=1228800 B",
+   "result_evidence": {
+    "summary": "5k=204800 B 10k=409600 B 30k=1228800 B",
+    "measured": "5k=204800 B 10k=409600 B 30k=1228800 B",
+    "command": "见 experiment 41",
+    "json_pointer": "/experiments/41/observed",
+    "quote": "5k=204800 B 10k=409600 B 30k=1228800 B"
+   },
+   "why": "拒绝用单次样例判断小量级问题，改用三个规模点验证线性增长，把\"小 bug\"变成\"随规模放大的确定性缺陷\"。",
+   "limitation": "线性外推只在 COMMIT 次数随行数线性增长时成立；如果批次变大（一次提交更多行），每页泄漏的绝对量会下降。"
+  },
+  {
+   "id": "u-p6",
+   "dimension": "问题理解与自主拆解",
+   "content": "在没有官方基线可以对标时，我用自建参考实现反推可行区间，得到k的合理区间4687–5395，以此作为稳妥的性能优化目标。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/33/content",
+     "quote": "在没有官方基线可以对标时，我用自建参考实现反推可行区间"
+    }
+   ],
+   "student_evidence": {
+    "json_pointer": "/user_prompts/33/content",
+    "quote": "在没有官方基线可以对标时，我用自建参考实现反推可行区间"
+   },
+   "result_observed": "k band 4687..5395",
+   "result_evidence": {
+    "summary": "k band 4687..5395",
+    "measured": "k band 4687..5395",
+    "command": "见 experiment 38",
+    "json_pointer": "/experiments/38/observed",
+    "quote": "k band 4687..5395"
+   },
+   "why": "把\"看不见基线\"这个障碍转化成可执行动作：自建一个符合题目定义的参考实现，把不可观测的量变成有区间的可估计量。",
+   "limitation": "区间宽度 15%，能用来排序候选、判断量级，但不能用来判定小于这个幅度的改动，也不能直接换算成具体分数。"
+  },
+  {
+   "id": "u-v8",
+   "dimension": "独立验证与质疑",
+   "content": "面对6000这个性能指标，我对照两套刻度测算理论上限4896/5210，6000需要官方基线达到0.15 s/1000，用这个前置条件核验该指标是否现实。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/34/content",
+     "quote": "我对照两套刻度测算理论上限4896/5210，6000需要官方基线达到0.15 s/1000"
+    }
+   ],
+   "student_evidence": {
+    "json_pointer": "/user_prompts/34/content",
+    "quote": "我对照两套刻度测算理论上限4896/5210，6000需要官方基线达到0.15 s/1000"
+   },
+   "result_observed": "k*E scale ceiling 4896 points ; sum-f scale ceiling 5210 points",
+   "result_evidence": {
+    "summary": "k*E scale ceiling 4896 points ; sum-f scale ceiling 5210 points",
+    "measured": "k*E scale ceiling 4896 points ; sum-f scale ceiling 5210 points",
+    "command": "见 experiment 42",
+    "json_pointer": "/experiments/42/observed",
+    "quote": "k*E scale ceiling 4896 points ; sum-f scale ceiling 5210 points"
+   },
+   "why": "不直接采信一个外部数字，而是先算出它在两种刻度下的理论上限，再反推需要什么前置条件才能成立。",
+   "limitation": "上限依赖我们对基线的建模；如果官方基线比自建参考实现慢得多，两个上限都会上移，这条核验需要重做。"
+  },
+  {
+   "id": "u-r9",
+   "dimension": "取舍与反思",
+   "content": "如果今晚所有改动只能选一个并入正式分支，我优先选写入压缩，它实现写入字节-46.9%、内存占用-33.6%，底层收益覆盖面更广，查询侧的影响留待后续验证迭代。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/35/content",
+     "quote": "如果今晚所有改动只能选一个并入正式分支，我优先选写入压缩"
+    }
+   ],
+   "student_evidence": {
+    "json_pointer": "/user_prompts/35/content",
+    "quote": "如果今晚所有改动只能选一个并入正式分支，我优先选写入压缩"
+   },
+   "result_observed": "WAL 5783423 -> 3071011 B (-46.90%)",
+   "result_evidence": {
+    "summary": "WAL 5783423 -> 3071011 B (-46.90%)",
+    "measured": "WAL 5783423 -> 3071011 B (-46.90%)",
+    "command": "见 experiment 40",
+    "json_pointer": "/experiments/40/observed",
+    "quote": "WAL 5783423 -> 3071011 B (-46.90%)"
+   },
+   "why": "在多项改动都能过门槛时，用\"收益覆盖面\"而不是\"单项幅度\"来排序：写入侧同时改善字节与耗时，且不牵动查询语义。",
+   "limitation": "这条只在提交次数受限、无法逐项验证时成立；如果能全量测量，覆盖面这个代理指标就不必要了。"
   }
  ],
  "conversations": [
@@ -1181,6 +1441,41 @@
    "change": "按平台记录的通过与失败次数核算保底窗口",
    "command": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
    "observed": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039"
+  },
+  {
+   "id": "x1",
+   "label": "parse_pool_same_criterion",
+   "observed": "ingest_median_s 2c_fast: default2=0.2993 forced1=0.3014 forced4=0.2935 ; 2c_contended: default2=0.7421 forced1=0.7744 forced4=0.8051 ; 1c: default2=0.3074 forced1=0.3127 forced4=0.3312"
+  },
+  {
+   "id": "x2",
+   "label": "ivf_attached_and_measured",
+   "observed": "IVF side-index wired into ann mode, 10000x128 K=10, flat scan = 142 us: uniform np48 recall 0.983/0.969 at 748/557 us vs flat 142 us ; clustered np8 recall 0.989/0.954 at 76/76 us (1.97x/0.79x) ; per candidate 114 ns vs flat 11.6 ns per row"
+  },
+  {
+   "id": "x3",
+   "label": "naive_reference_model",
+   "observed": "six ratios against a naive but correct reference: write T 0.910 B 0.948 M 0.859 ; query T 10.85 B 1.000 M 0.560 ; k band 4687..5395 ; eight historical builds model E 0.62-0.64 -> 2920-3040 vs platform records 2336..3014"
+  },
+  {
+   "id": "x4",
+   "label": "peak_memory_patch",
+   "observed": "VmHWM 20.61 -> 13.89 MiB (-32.6%) ; estimated total peak 21.00 -> 13.95 MiB (-33.6%) ; exact query +0.7% ann query +0.8% (within run-to-run noise) ; index build 23.6 -> 16.2 ms"
+  },
+  {
+   "id": "x5",
+   "label": "vector_encoding",
+   "observed": "WAL 5783423 -> 3071011 B (-46.90%) ; vector column 517 -> 244.8 B per row ; fallback path net cost 1-2 B per row ; all recovery/regression suites pass"
+  },
+  {
+   "id": "x6",
+   "label": "page_cache_leak",
+   "observed": "page cache peak by rows: 5k=204800 B 10k=409600 B 30k=1228800 B = exactly one page per commit ; after page-aligned advice: 0 B at 10k and 30k"
+  },
+  {
+   "id": "x7",
+   "label": "upper_bound_two_scales",
+   "observed": "k*E scale ceiling 4896 points ; sum-f scale ceiling 5210 points ; 6000 would require the official baseline at 0.15 s per 1000 queries, only 1.33x slower than ours"
   }
  ],
  "retrospective": [
