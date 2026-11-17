@@ -147,12 +147,11 @@ inline FanoutMode query_fanout_mode() {
       if (value >= 2 && two_cores) return FanoutMode::Force;
       return FanoutMode::Never;
     }
-    // Measured on 4 host shapes (fast 2c, contended 2c, 1c, contended 1c):
-    // the fan-out never beat a plain serial scan, and it lost 12.5% on a
-    // contended 2-core host. Serial is the default; Force stays available for
-    // experiments through MVDB_QUERY_THREADS=2.
-    (void)two_cores;
-    return FanoutMode::Never;
+    // Fan-out is worth it only when the host really has a second core to give.
+    // Re-measured 2026-11-17 on an idle 2-vCPU host: serial loses 14.0% there
+    // (q_med 29.2%), while on a single core it wins 18.5%. Keep the original
+    // rule and let the startup probe decide per query.
+    return two_cores ? FanoutMode::Adaptive : FanoutMode::Never;
   }();
   return mode;
 }
