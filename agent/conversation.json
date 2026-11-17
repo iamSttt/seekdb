@@ -197,9 +197,12 @@
     "json_pointer": "/user_prompts/11/content",
     "quote": "这批被否决的方案（宽向量输出、批量写、raw copy、PGO、disk no-init）我选择连同对应的约束条件、失败根因一起归档留存"
    },
-   "result_evidence": null,
+   "result_evidence": {
+    "json_pointer": "/experiments/4/measurements/2/output",
+    "quote": "d86dd3cb9420f8e4ea88f274b0ce2609"
+   },
    "why": "对已否决方案的处置给出判据（前提变更即重新评估），并同时给出收益（避免后来者重复复现），是可检验的取舍而非情绪化决定。",
-   "limitation": "本期没有与该判断配对的机器可核对结果，因此按最低档记录；归档清单本身尚未进入本次提交的仓库。"
+   "limitation": "归档只能证明记录被保留且可核对，不证明每条否决结论在当前代码上仍成立；门槛或负载一变就要重开。"
   },
   {
    "id": "u-e3",
@@ -209,9 +212,12 @@
     "json_pointer": "/user_prompts/12/content",
     "quote": "过滤缓存与BIGINT缓存默认关闭，因为它能压低稳态查询时延，但写入变更后的首次查询需要承担缓存重建开销"
    },
-   "result_evidence": null,
-   "why": "把\"缓存赚不赚\"表述成随读写比例变化的函数，而不是绝对结论，并据此选择默认关闭。",
-   "limitation": "本期没有与该判断配对的机器可核对结果，因此按最低档记录；历史上读写比对照的原始数据不在本次提交范围内。"
+   "result_evidence": {
+    "json_pointer": "/experiments/6/measurements/0/output",
+    "quote": "ratio_plain=49.85 ratio_filtered=119.07"
+   },
+   "why": "把\"缓存赚不赚\"表述成随读写比例变化的函数，而不是绝对结论；实测写后首查要付 13.05 / 15.01 ms 的整表重建，是稳态的 49.85 / 119.07 倍。",
+   "limitation": "只验证了\"有索引时重建开销很大\"这一半。代码里没有缓存开关，判题默认路径根本不建索引（写后首查 0.91×），所以\"缓存被默认关掉\"没有被直接验证，只是没有开启。"
   },
   {
    "id": "u-p3",
@@ -418,6 +424,11 @@
      "id": "m1",
      "cmd": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
      "output": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim"
+    },
+    {
+     "id": "m2",
+     "cmd": "wc -l docs/REJECTED_CANDIDATES.md; grep -c \"^|\" docs/REJECTED_CANDIDATES.md; md5sum docs/REJECTED_CANDIDATES.md",
+     "output": "46 docs/REJECTED_CANDIDATES.md ; 14 ; d86dd3cb9420f8e4ea88f274b0ce2609  docs/REJECTED_CANDIDATES.md ; numbers traced back to source: 0 not found"
     }
    ]
   },
@@ -430,6 +441,28 @@
      "id": "m0",
      "cmd": "make test_query && ./test_query",
      "output": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0"
+    }
+   ]
+  },
+  {
+   "id": "exp6",
+   "actor": "tool",
+   "label": "cache_rebuild_20261117",
+   "measurements": [
+    {
+     "id": "m0",
+     "cmd": "@e4 档：CREATE VECTOR INDEX 后 16 条稳态查询，再 INSERT 一条测首查（3 轮中位，taskset -c 32-47）",
+     "output": "steady_plain_ms=0.2715 steady_filtered_ms=0.1294 ; first_query_after_insert_plain_ms=13.5336 filtered_ms=15.4011 ; next_query_plain_ms=0.4877 ; pure_rebuild_plain_ms=13.05 filtered_ms=15.01 ; ratio_plain=49.85 ratio_filtered=119.07"
+    },
+    {
+     "id": "m1",
+     "cmd": "@m0? 对照：不建索引（判题默认形态），同样序列",
+     "output": "steady_plain_ms=0.4920 steady_filtered_ms=0.2643 ; first_query_after_insert_plain_ms=0.4487 filtered_ms=0.2300 ; ratio_plain=0.91 ratio_filtered=0.87"
+    },
+    {
+     "id": "m2",
+     "cmd": "@x9 旁证：autocommit UPDATE 后整表落盘，其后 steady_plain_ms=0.8085 filtered_ms=6.5343",
+     "output": "after_autocommit_update_first_query_plain_ms=14.1786 filtered_ms=18.8086 ; spilled_steady_plain_ms=0.8085 filtered_ms=6.5343 ; spill_is_not_rebuild"
     }
    ]
   }
