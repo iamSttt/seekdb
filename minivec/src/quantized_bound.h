@@ -172,6 +172,17 @@ class QuantizedQueryBound {
     if(!usable_cap_)return false;
     return static_cast<double>(kernel_(row,query_.data(),n_))>cap_;
   }
+  // The same certificate as definitely_greater, exposed so a caller that
+  // evaluates the codes with its own vector kernel -- one kernel per block of
+  // rows instead of one indirect call per row -- takes the identical decision:
+  // reject exactly when the exact integer code sum exceeds *cap.
+  bool certified_cap(double threshold,double* cap) const {
+    if(!enabled_ || !cap || !std::isfinite(threshold) || threshold<0)return false;
+    if(!cached_ || threshold!=cached_threshold_)update_cap(threshold);
+    if(!usable_cap_)return false;
+    *cap=cap_;
+    return true;
+  }
  private:
   void update_cap(double threshold) const {
     cached_=true;cached_threshold_=threshold;usable_cap_=false;

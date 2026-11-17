@@ -35,6 +35,10 @@ class FlatIndex {
     size_t dimension=0,count=0;
     const int8_t* quantized=nullptr;
     double quantization_step=0;
+    // Squared integer norm of each row's quantized code vector, in the same
+    // ordinal order. It makes the exact integer screen a single dot product
+    // through the identity sum((x-y)^2) = ||x||^2 + ||y||^2 - 2 x.y.
+    const int32_t* code_norms=nullptr;
   };
   FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t memory_budget);
   ~FlatIndex();
@@ -81,6 +85,8 @@ class FlatIndex {
   std::vector<uint64_t> slots_;
   std::unique_ptr<int8_t[]> quantized_;
   size_t quantized_budget_=0;
+  std::vector<int32_t> code_norms_;
+  size_t norms_budget_=0;
   double quantization_step_=0;
   size_t posting_budget_=0,posting_column_=0;
   bool postings_ready_=false;

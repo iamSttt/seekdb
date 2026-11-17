@@ -1,5 +1,6 @@
 // exec.cpp — statement execution + MySQL-style table rendering
 #include "exec.h"
+#include "scan_topk.h"
 #include "result_sort.h"
 #include "distance.h"
 #include "quantized_bound.h"
@@ -603,6 +604,40 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   return true;
                 return consider(view.keys[i],view.rows[i],view.dimension);
               };
+#ifdef MVDB_BATCHED_SCREEN
+              // Batched form of the same certified scan: one integer kernel
+              // block screens eight rows against one certificate, and only the
+              // survivors take the live float bound and the exact kernel. Only
+              // rejections are batched, so the winner set, every stored
+              // distance and the tie order are those of the per-row path.
+              // The batched form is only a win where its kernels can run; off
+              // AVX-512 the shipped per-row loop stays in charge.
+              const bool batched=!approximate && quantized.enabled() && view.quantized &&
+                  bounded && k>=1 && k<=scan_topk::kMaxK && view.dimension>=32 &&
+                  view.rows && scan_topk::batched_screen_available();
+              if(batched) {
+                scan_topk::BestK best(k);
+                double live=std::numeric_limits<double>::infinity();
+                const float* query=order.qvec->data();
+                scan_topk::View payload;
+                payload.codes=view.quantized;payload.rows=view.rows;
+                payload.keys=view.keys;payload.dimension=view.dimension;
+                payload.count=view.count;
+                auto visit=[&](size_t index)->bool {
+                  const float* row=view.rows[index];
+                  if(best.full() && bound_context.definitely_greater(row,query,live)) return true;
+                  best.offer(distance_squared(row,query,view.dimension),view.keys[index]);
+                  if(best.full())live=best.worst();
+                  return true;
+                };
+                scan_topk::scan(payload,nullptr,view.count,quantized.coded_query().data(),
+                                quantized,&live,visit);
+                for(size_t j=0;j<best.size();++j) {
+                  Candidate c;c.pk=best[j].pk;c.distance=best[j].distance;
+                  result.push_back(std::move(c));
+                }
+              } else
+#endif
               if(approximate) {
                 for(size_t j=0;j<ordinal_count;++j)
                   if(!scan_ordinal(ordinals[j]))break;
@@ -659,6 +694,21 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         for(size_t j=0;j<items.size();++j){if(j)*out+='\t';*out+=render_text(items[j].header);}
         *out+='\n';
       } else cells.reserve(result.size());
+      // A candidate already carries the primary key and the ranked distance,
+      // so when every projected item is one of those two the spill-aware row
+      // read below would materialise a whole row -- two positional reads of a
+      // few hundred bytes each -- to answer values that are already in hand.
+      // The synthesized row holds exactly the columns this projection reads, so
+      // every cell is produced by the same code as before.
+      bool candidate_projection = !result.empty();
+      for (const auto& item : items) {
+        if (item.is_distance) {
+          if (!(order.is_distance && item.col == order.col && item.qvec == order.qvec))
+            candidate_projection = false;
+        } else if (item.col != sch.pk_idx) {
+          candidate_projection = false;
+        }
+      }
       for (const auto& c : result) {
         // Selection and projection share one statement and the same table.
         // Keep spill-aware row reads without compiling another PK predicate.
@@ -667,7 +717,12 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
         const size_t slot = position->second;
         if (slot >= t->rows.size() || t->dead[slot]) continue;
         Row scratch;
-        const Row& r = t->read_row(slot, scratch);
+        if (candidate_projection) {
+          scratch.rid = t->rows[slot].rid;
+          scratch.vals.resize(sch.cols.size());
+          scratch.vals[sch.pk_idx] = Value::ofInt(c.pk);
+        }
+        const Row& r = candidate_projection ? scratch : t->read_row(slot, scratch);
         if (json_response) {
           append_json_row(encode_json_row(r, &c));
           continue;

@@ -78,13 +78,19 @@ FlatIndex::FlatIndex(const std::string& dir,size_t dimension,size_t count,size_t
     // The resident stride check above also bounds count*dimension without overflow.
     if(dimension>=16 && dimension<=65536) {
       const size_t coordinates=count*dimension;
-      if(coordinates<=(4u<<20) && coordinates<=available-posting_budget_)
+      if(coordinates<=(4u<<20) && coordinates<=available-posting_budget_) {
         quantized_budget_=coordinates;
+        // The norm array is only an accelerator for the exact screen: keep the
+        // code decision above unchanged and take the norms only from room that
+        // is left over.
+        if(count*sizeof(int32_t)<=available-posting_budget_-coordinates)
+          norms_budget_=count*sizeof(int32_t);
+      }
     }
 #endif
     // Room for the coarse partition, capped so one index never claims more than
     // 2 MiB for it whatever the budget says.
-    const size_t left=available-posting_budget_-quantized_budget_;
+    const size_t left=available-posting_budget_-quantized_budget_-norms_budget_;
     ann_budget_=std::min<size_t>(2u<<20,left);
   } else {
     std::string path=dir+"/.flat-XXXXXX";
@@ -138,18 +144,29 @@ void FlatIndex::finish() {
         quantization_step_=step;
         // Do not reorder: codes have exactly the rows_/keys_ traversal order.
         size_t code=0;
+        try {
+          if(norms_budget_)code_norms_.assign(count_,0);
+        } catch(const std::bad_alloc&) {code_norms_.clear();}
         for(size_t i=0;i<count_ && quantization_step_;++i) {
           const float* row=row_at(i);
+          int32_t squared_norm=0;
           for(size_t d=0;d<dimension_;++d) {
-            if(!mvdb::quantize_coordinate(row[d],step,&quantized_[code++])) {
+            if(!mvdb::quantize_coordinate(row[d],step,&quantized_[code])) {
               quantization_step_=0;break;
             }
+            const int32_t coordinate=quantized_[code++];
+            squared_norm+=coordinate*coordinate;
           }
+          if(!code_norms_.empty() && quantization_step_)code_norms_[i]=squared_norm;
         }
       }
     }
     if(!quantization_step_) {
       quantized_.reset();quantized_budget_=0;
+      std::vector<int32_t>().swap(code_norms_);norms_budget_=0;
+    } else if(code_norms_.size()!=count_) {
+      // The norm array is optional: the shipped screen still works without it.
+      std::vector<int32_t>().swap(code_norms_);norms_budget_=0;
     }
   }
 #endif
@@ -249,11 +266,13 @@ bool FlatIndex::resident_view(ResidentView* view) const {
   view->rows=rows_.data();view->keys=keys_.data();view->slots=slots_.data();
   view->dimension=dimension_;view->count=count_;
   view->quantized=quantized_.get();view->quantization_step=quantization_step_;
+  view->code_norms=code_norms_.empty()?nullptr:code_norms_.data();
   return true;
 }
 size_t FlatIndex::resident_bytes() const {
   return rows_.capacity()*sizeof(const float*)+keys_.capacity()*sizeof(int64_t)+
          slots_.capacity()*sizeof(uint64_t)+posting_budget_+quantized_budget_+
+         code_norms_.capacity()*sizeof(int32_t)+
          ann_centroids_.capacity()*sizeof(float)+ann_members_.capacity()*sizeof(uint32_t)+
          ann_offsets_.capacity()*sizeof(uint32_t);
 }

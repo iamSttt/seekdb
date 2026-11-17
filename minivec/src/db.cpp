@@ -27,6 +27,7 @@
 // ---------------------------------------------------------------------------
 #include "db.h"
 #include "flat_index.h"
+#include "scan_topk.h"
 #include "quantized_bound.h"
 
 #include <algorithm>
@@ -1882,11 +1883,31 @@ void Database::scan_vectors(const std::string& t,const std::vector<Cond>& conds,
           const int8_t* codes=view.quantized;
           const size_t dimension=view.dimension;
           const bool reject=codes && threshold && quantized && quantized->enabled();
+          // Validate every candidate slot first: a stale index entry must be
+          // reported exactly as before, whether or not a later candidate can
+          // contribute. The scan below then only rejects rows the certificate
+          // proves outside the running top-k.
           for(size_t j=0;j<count;++j) {
-            const size_t i=ordinals[j];
-            const uint64_t slot=view.slots[i];
+            const uint64_t slot=view.slots[ordinals[j]];
             if(slot>=table.rows.size() || (slot<table.dead.size() && table.dead[slot]))
               throw std::runtime_error("stale flat vector index slot");
+          }
+#ifdef MVDB_BATCHED_SCREEN
+          if(reject && dimension>=32 && count>0 && scan_topk::batched_screen_available()) {
+            scan_topk::View payload;
+            payload.codes=codes;payload.rows=view.rows;payload.keys=view.keys;
+            payload.dimension=dimension;payload.count=view.count;
+            auto visit=[&](size_t index)->bool {
+              const size_t i=ordinals[index];
+              return cb(view.keys[i],view.rows[i],dimension);
+            };
+            scan_topk::scan(payload,ordinals,count,quantized->coded_query().data(),
+                            *quantized,threshold,visit);
+            return;
+          }
+#endif
+          for(size_t j=0;j<count;++j) {
+            const size_t i=ordinals[j];
             if(reject && quantized->definitely_greater(codes+i*dimension,*threshold))continue;
             if(!cb(view.keys[i],view.rows[i],dimension))return;
           }
