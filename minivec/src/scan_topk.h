@@ -48,6 +48,10 @@ struct View {
 // Both the contiguous and the gathered screen run through scan(), so this one
 // gate covers both. MVDB_SCREEN_FORCE_SCALAR=1 pins the per-row fallback, which
 // keeps that path measurable on an AVX-512 host.
+#if defined(MVDB_SIMD_BOUND_X86) && !defined(MVDB_DISABLE_AVX512_QUANTIZED) && !defined(MVDB_DISABLE_BATCHED_SCREEN) && !defined(__FAST_MATH__)
+#define MVDB_BATCHED_SCREEN 1
+#endif
+
 inline bool batched_screen_available() {
 #if defined(MVDB_BATCHED_SCREEN)
   static const bool ok=[]{
@@ -105,7 +109,6 @@ class BestK {
     !defined(MVDB_DISABLE_BATCHED_SCREEN) && !defined(__FAST_MATH__)
 // Guard for the call sites: everything below is compiled once with the AVX-512
 // target so the kernels inline, and is never reached on another CPU.
-#define MVDB_BATCHED_SCREEN 1
 namespace detail {
 #define MVDB_SCAN_TARGET __attribute__((target("avx512f,avx512bw,avx2,no-fma")))
 // The VNNI kernels are only ever called after vnni_available(), so the extra

@@ -1,9 +1,9 @@
 // exec.cpp — statement execution + MySQL-style table rendering
 #include "exec.h"
-#include "scan_topk.h"
 #include "result_sort.h"
 #include "distance.h"
 #include "quantized_bound.h"
+#include "scan_topk.h"
 #include "query_pool.h"
 #include "../third_party/json.hpp"
 #include <limits>
@@ -266,7 +266,9 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
           return false;
         }
         if (pos.size() == sch.cols.size() && st.columns.empty()) {
-          if (!db.insert(st.table, row, err, code)) {
+          // The row is not read again once it is inserted, so hand over
+          // the values instead of copying a whole vector per row.
+          if (!db.insert(st.table, std::move(row), err, code)) {
             return false;
           }
         } else {
@@ -283,7 +285,7 @@ static bool execute_impl(Database& db, const Statement& st, std::string* out, st
                   return false;
             }
           }
-          if (!db.insert(st.table, full, err, code)) {
+          if (!db.insert(st.table, std::move(full), err, code)) {
             return false;
           }
         }
