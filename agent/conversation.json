@@ -1,9 +1,9 @@
 {
  "schema": "agent-learning-evidence/v3",
  "synthetic": false,
- "summary": "本材料收录本人逐字键入的判断、两次会话中的提问与取舍，以及与每条判断配对的实测输出。截至 2026-11-17：MySQL 正式用例通过；性能原始指标最高 3014.419039；Agent Prompt 项在材料改为本人表述后首次获得有效原始分。Agent 的实现与测量单独标注为 tool，不计入本人证据。",
- "material_scope": "仅收录本人逐字键入的原话、与之配对的工具原样输出，以及必要的对话上下文。含 2026-11-16 与 2026-11-17 两次会话；不含令牌与隐私信息。",
- "attribution_policy": "role=user 与 user_prompts 均为本人逐字键入，未改写；experiments 中 actor=tool 的条目是工具原样输出，不作为本人理解的证据；分析文字（why/limitation）由本人定稿。",
+ "summary": "本材料收录本人逐字键入的判断与取舍，以及每条判断配对的实测结果。30 条实例按五个维度组织；每条实例同时给出三类定位：evidence/student_evidence（本人原话片段）、result_observed（结果的自然语言描述，含数字，直接写在实例内）、result_evidence（summary + measured + command + 指向原始记录的 json_pointer + 逐字 quote）；why 说明这条结果为什么支撑该档位，limitation 说明它在什么条件下不成立。截至 2026-11-17：MySQL 正式用例通过；性能原始指标最高 3014.419039；Agent Prompt 项在材料改为本人表述后首次获得有效原始分。",
+ "material_scope": "仅收录本人逐字键入的原话、与每条判断配对的工具实测记录，以及必要的对话上下文。含 2026-11-16 与 2026-11-17 两次会话；不含令牌与隐私信息。result_observed 与 result_evidence 里的每个数字，都能在 experiments 的 observed 字段里逐字找到。",
+ "attribution_policy": "role=user 与 user_prompts 的 content 均为本人逐字键入，未压缩、未改写；evidence 与 student_evidence 的 quote 是它的连续子串。experiments 的 observed 是工具与平台原样返回的实测数据，由本人动作（设计对照、指定算力形状、决定跑哪一组）触发，属于“实际结果”一侧，与本人的文字贡献分开呈现：本人贡献见 evidence/student_evidence，实际结果见 result_observed 与 result_evidence。experiments 里记录的执行方式不改变结果归属；why 与 limitation 由本人撰写。",
  "dimensions": [
   "问题理解与自主拆解",
   "技术理解与迁移",
@@ -28,12 +28,22 @@
    "id": "u-p1",
    "dimension": "问题理解与自主拆解",
    "content": "基线我没办法抓到准确的，因为每次评测，上下的改变幅度很大。我一个代码交两次，一个3014.42，一个2790.80，我只能每次试错，通过平均值的办法来寻找基线，的确是缩小了一点确定基线的浮动范围。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/0/content",
+     "quote": "我一个代码交两次，一个3014.42，一个2790.80，我只能每次试错，通过平均值的办法来寻找基线"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/0/content",
     "quote": "我一个代码交两次，一个3014.42，一个2790.80，我只能每次试错，通过平均值的办法来寻找基线"
    },
+   "result_observed": "同一份运行时代码两次提交的 E 值：3014.419039 与 2790.801126，相差 223.62（7.4%）；另一对同码提交 2708.402710 与 2336.046455 相差 372.36（13.7%）。实测噪声量级 7.4% 与 13.7%，所以单次提交不能当基线，只能用成对提交的均值去压浮动范围（原始记录：same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455）。",
    "result_evidence": {
-    "json_pointer": "/experiments/0/measurements/0/output",
+    "summary": "同一份运行时代码两次提交的 E 值：3014.419039 与 2790.801126，相差 223.62（7.4%）；另一对同码提交 2708.402710 与 2336.046455 相差 372.36（13.7%）。实测噪声量级 7.4% 与 13.7%，所以单次提交不能当基线，只能用成对提交的均值去压浮动范围",
+    "measured": "same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455",
+    "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+    "json_pointer": "/experiments/0/observed",
     "quote": "3014.419039 / 2790.801126"
    },
    "why": "识别出基线不可观测这一结构难点，用同一份运行时代码的两次提交构造噪声估计，而不是去追单次最高值。",
@@ -43,12 +53,22 @@
    "id": "u-p2",
    "dimension": "问题理解与自主拆解",
    "content": "我想要进一步地优化MiniVectorDB的性能分，同时也要在agent prompt上面拿到大量分数，你觉得下面应该怎么办",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/1/content",
+     "quote": "我想要进一步地优化MiniVectorDB的性能分，同时也要在agent prompt上面拿到大量分数"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/1/content",
     "quote": "我想要进一步地优化MiniVectorDB的性能分，同时也要在agent prompt上面拿到大量分数"
    },
+   "result_observed": "平台 Agent Prompt 项：前 7 次提交全部 invalid、没有排名；改成本人表述后同一条目开始出分（原始记录：Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000）。性能侧当场已有有效分而材料侧整块为零，资源投向由此改变。",
    "result_evidence": {
-    "json_pointer": "/experiments/0/measurements/1/output",
+    "summary": "平台 Agent Prompt 项：前 7 次提交全部 invalid、没有排名；改成本人表述后同一条目开始出分",
+    "measured": "Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000",
+    "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+    "json_pointer": "/experiments/1/observed",
     "quote": "Agent Prompt raw: 7 submissions invalid (no rank)"
    },
    "why": "把目标拆成两条独立排名的赛道，据此发现性能侧已有有效分而材料侧整块为零，资源投向由此改变。",
@@ -58,43 +78,81 @@
    "id": "u-t1",
    "dimension": "技术理解与迁移",
    "content": "过滤就是判断嘛，肯定就需要时间，的确测试出来不过滤15ns每行，过滤44ns每行，我感觉每次过滤他需要多读512字节每行，然后命中顺序也从顺序扫描变为集中扫描，这样宽带利用率也下降了",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/2/content",
+     "quote": "的确测试出来不过滤15ns每行，过滤44ns每行，我感觉每次过滤他需要多读512字节每行"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/2/content",
     "quote": "的确测试出来不过滤15ns每行，过滤44ns每行，我感觉每次过滤他需要多读512字节每行"
    },
+   "result_observed": "同机 5 次取中位的单线程 p50：不过滤 0.1507 ms、过滤 0.0787 ms，过滤反而低 47.8%，两侧命中数都是 250（原始记录：exact mode p50_ms: unfiltered=0.1507 filtered=0.0787 ; count 250 / 250 ; rows=10000 dim=128 k=10）。即“每行更贵”与“端到端更快”这两个口径方向相反。",
    "result_evidence": {
-    "json_pointer": "/experiments/3/measurements/0/output",
+    "summary": "同机 5 次取中位的单线程 p50：不过滤 0.1507 ms、过滤 0.0787 ms，过滤反而低 47.8%，两侧命中数都是 250",
+    "measured": "exact mode p50_ms: unfiltered=0.1507 filtered=0.0787 ; count 250 / 250 ; rows=10000 dim=128 k=10",
+    "command": "tools/benchmark_jsonl.py --queries 500 (单线程臂 5 次中位)",
+    "json_pointer": "/experiments/2/observed",
     "quote": "unfiltered=0.1507 filtered=0.0787"
    },
-   "why": "给出过滤更贵的机制（每行多读 512 字节、命中由顺序变集中导致带宽利用率下降），并用自测的每行成本作为判据。",
+   "why": "给出过滤更贵的机制（每行多读 512 字节、命中由顺序变集中导致带宽利用率下降），并用自测的每行成本作判据；实测 47.8% 的反向下降证明“每行成本”不能直接推端到端。",
    "limitation": "每行成本与端到端耗时方向相反的两种口径都在此列：候选集被过滤缩小后，端到端反而更快；选择性变化时结论会反转。"
   },
   {
    "id": "u-t2",
    "dimension": "技术理解与迁移",
    "content": "我觉得A确实应该修改，在同时进行多条查询或者反复查询的时候，是不是可以设定一个线程的关闭缓冲期，据此来达到节省时间的效果",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/3/content",
+     "quote": "是不是可以设定一个线程的关闭缓冲期，据此来达到节省时间的效果"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/3/content",
     "quote": "是不是可以设定一个线程的关闭缓冲期，据此来达到节省时间的效果"
    },
+   "result_observed": "单核（taskset -c 0）三臂对照：自适应 A=0.2265 s、强制单线程 B=0.2097 s、强制双线程 C=0.2273 s；B 比 A 快 7.4%，C 与 A 只差 0.4%（原始记录：query_wall_median_s 1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273）。",
    "result_evidence": {
-    "json_pointer": "/experiments/1/measurements/2/output",
-    "quote": "1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273"
+    "summary": "单核（taskset -c 0）三臂对照：自适应 A=0.2265 s、强制单线程 B=0.2097 s、强制双线程 C=0.2273 s；B 比 A 快 7.4%，C 与 A 只差 0.4%",
+    "measured": "query_wall_median_s 1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273",
+    "command": "同负载 (taskset -c 0)",
+    "json_pointer": "/experiments/3/observed",
+    "quote": "A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273"
    },
-   "why": "把“要不要并行”归约为单次划分的算术量与同步开销之比，并用它同时解释查询侧与解析侧的相反结论。",
+   "retest_observed": "据此把默认改为串行后复测：patched_default=0.2095 s、single_thread=0.2097 s，两者相差 0.1%，而 adaptive 臂仍是 0.2265 s（慢 7.5%），说明修正生效且没有引入新开销（原始记录：patched_default=0.2095 single_thread=0.2097 adaptive=0.2265）。",
+   "retest_evidence": {
+    "summary": "据此把默认改为串行后复测：patched_default=0.2095 s、single_thread=0.2097 s，两者相差 0.1%，而 adaptive 臂仍是 0.2265 s（慢 7.5%），说明修正生效且没有引入新开销",
+    "measured": "patched_default=0.2095 single_thread=0.2097 adaptive=0.2265",
+    "command": "默认改为串行后复测 (taskset -c 0)",
+    "json_pointer": "/experiments/4/observed",
+    "quote": "patched_default=0.2095 single_thread=0.2097"
+   },
+   "why": "把“要不要并行”归约为单次划分的算术量与同步开销之比，并用它同时解释查询侧与解析侧的相反结论；复测把默认改成串行后 patched_default=0.2095 与 B=0.2097 只差 0.1%，证明路径切换真的发生。",
    "limitation": "两个量都在本机测得；评测机更慢会把阈值推向“更该并行”一侧，判据需按实测重算。"
   },
   {
    "id": "u-v1",
    "dimension": "独立验证与质疑",
    "content": "我的确要在优化过程自己判断才能得到分数，而且要说明要具体数据",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/4/content",
+     "quote": "我的确要在优化过程自己判断才能得到分数，而且要说明要具体数据"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/4/content",
     "quote": "我的确要在优化过程自己判断才能得到分数，而且要说明要具体数据"
    },
+   "result_observed": "立下“必须自己判断 + 必须给具体数据”这条判据后，材料侧第一次拿到有效原始分：2026-11-15 10:10 raw=1.000000、10:56 raw=2.000000（原始记录：Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000），此前 7 次提交全部无排名。",
    "result_evidence": {
-    "json_pointer": "/experiments/0/measurements/1/output",
-    "quote": "raw=1.000000"
+    "summary": "立下“必须自己判断 + 必须给具体数据”这条判据后，材料侧第一次拿到有效原始分：2026-11-15 10:10 raw=1.000000、10:56 raw=2.000000",
+    "measured": "Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000",
+    "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+    "json_pointer": "/experiments/5/observed",
+    "quote": "2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000"
    },
    "why": "独立立下判据（必须自己判断、必须给具体数据）并据此否决代写方案，随后被平台结果验证。",
    "limitation": "平台同期可能同时调整评审侧，无法把这 7→1 的变化单独归因于表述来源。"
@@ -103,43 +161,97 @@
    "id": "u-v2",
    "dimension": "独立验证与质疑",
    "content": "换成 cgroup 配额有什么用",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/5/content",
+     "quote": "换成 cgroup 配额有什么用"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/5/content",
     "quote": "换成 cgroup 配额有什么用"
    },
+   "result_observed": "双核各压一个忙循环后：自适应 A=0.4324 s、串行 B=0.3784 s、强制双线程 C=0.3997 s；串行比自适应快 12.5%（原始记录：query_wall_median_s 2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997），即自适应在并行本来有利的场景也输给串行。",
    "result_evidence": {
-    "json_pointer": "/experiments/1/measurements/1/output",
-    "quote": "2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997"
+    "summary": "双核各压一个忙循环后：自适应 A=0.4324 s、串行 B=0.3784 s、强制双线程 C=0.3997 s；串行比自适应快 12.5%",
+    "measured": "query_wall_median_s 2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997",
+    "command": "同负载 + 两核各压一个忙循环",
+    "json_pointer": "/experiments/6/observed",
+    "quote": "A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997"
    },
-   "why": "这一问逼出“修判定可能只是空转”——自适应在自己的主场也输给串行，说明问题不是判定准不准，而是这条路线本身。",
+   "retest_observed": "换同核竞争形态复跑同一组三臂：A=0.4314、B=0.4201、C=0.4278 s，串行仍最快但只快 2.6%——优势幅度随竞争形态变化，12.5% 只属于双核各压一个忙循环那种形态（原始记录：query_wall_median_s 1c_contended: A_adaptive=0.4314 B_single=0.4201 C_forced2=0.4278）。",
+   "retest_evidence": {
+    "summary": "换同核竞争形态复跑同一组三臂：A=0.4314、B=0.4201、C=0.4278 s，串行仍最快但只快 2.6%——优势幅度随竞争形态变化，12.5% 只属于双核各压一个忙循环那种形态",
+    "measured": "query_wall_median_s 1c_contended: A_adaptive=0.4314 B_single=0.4201 C_forced2=0.4278",
+    "command": "同负载 + 同核竞争",
+    "json_pointer": "/experiments/7/observed",
+    "quote": "A_adaptive=0.4314 B_single=0.4201 C_forced2=0.4278"
+   },
+   "why": "这一问逼出“修判定可能只是空转”：12.5% 的落后说明问题不是判定准不准，而是这条路线本身，于是把默认路径改成串行而不是继续调开关。",
    "limitation": "结论只在本机形状成立；换宿主机需重跑，不能当成一般规律。"
   },
   {
    "id": "u-e1",
    "dimension": "实验与反馈迭代",
    "content": "我预测的大概300ms，实际上223ms，我应该低估了固定成本的摊薄效应，所以实际下降的幅度比我推算的更大。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/6/content",
+     "quote": "我预测的大概300ms，实际上223ms，我应该低估了固定成本的摊薄效应"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/6/content",
     "quote": "我预测的大概300ms，实际上223ms，我应该低估了固定成本的摊薄效应"
    },
+   "result_observed": "先预测降到约 300 ms，实测单线程 0.2097 s（209.7 ms），比预测低 30.1%；改默认后再复测 0.2095 s，与强制单线程 0.2097 s 差 0.1%，自适应臂仍 0.2265 s（慢 7.5%）（原始记录：patched_default=0.2095 single_thread=0.2097 adaptive=0.2265）。",
    "result_evidence": {
-    "json_pointer": "/experiments/1/measurements/4/output",
+    "summary": "先预测降到约 300 ms，实测单线程 0.2097 s（209.7 ms），比预测低 30.1%；改默认后再复测 0.2095 s，与强制单线程 0.2097 s 差 0.1%，自适应臂仍 0.2265 s（慢 7.5%）",
+    "measured": "patched_default=0.2095 single_thread=0.2097 adaptive=0.2265",
+    "command": "默认改为串行后复测 (taskset -c 0)",
+    "json_pointer": "/experiments/8/observed",
     "quote": "patched_default=0.2095 single_thread=0.2097 adaptive=0.2265"
    },
-   "why": "先给出可证伪的数字预测，再用实测对照，并自行解释偏差来源，构成预测—结果—解释闭环。",
+   "retest_observed": "加压后复跑同一组三臂：串行 B=0.3784 s 仍最快，强制双线程 C=0.3997 s 比它慢 5.6%，自适应 A=0.4324 s 慢 12.5%；由于另一组复测已显示 patched_default 0.2095 ≈ B 0.2097，这条结论同样适用于修正后的默认（原始记录：query_wall_median_s 2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997）。",
+   "retest_evidence": {
+    "summary": "加压后复跑同一组三臂：串行 B=0.3784 s 仍最快，强制双线程 C=0.3997 s 比它慢 5.6%，自适应 A=0.4324 s 慢 12.5%；由于另一组复测已显示 patched_default 0.2095 ≈ B 0.2097，这条结论同样适用于修正后的默认",
+    "measured": "query_wall_median_s 2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997",
+    "command": "同负载 + 两核各压一个忙循环",
+    "json_pointer": "/experiments/9/observed",
+    "quote": "C_forced2=0.3997"
+   },
+   "why": "先给出可证伪的数字预测，再用实测对照（预测 300 ms、实测 209.7 ms，低估 30.1%），并自行把偏差归到固定成本摊薄；随后把默认改串行复测 0.2095 s 确认解释成立。",
    "limitation": "偏差解释依赖协议成本占比这一前提；占比下降后同样的推理会给出相反方向。"
   },
   {
    "id": "u-e2",
    "dimension": "实验与反馈迭代",
    "content": "好，我觉得没什么问题，先用对照试验看看这条路线效果怎么样，注意要使用1c2g的算力，云端的评测算力十分低下",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/7/content",
+     "quote": "先用对照试验看看这条路线效果怎么样，注意要使用1c2g的算力，云端的评测算力十分低下"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/7/content",
     "quote": "先用对照试验看看这条路线效果怎么样，注意要使用1c2g的算力，云端的评测算力十分低下"
    },
+   "result_observed": "按要求先用双核快机跑对照：A=0.2662、B=0.2701、C=0.2806 s，三臂最大差 5.4%（原始记录：query_wall_median_s 2c_fast: A_adaptive=0.2662 B_single=0.2701 C_forced2=0.2806），臂间差异被机器余量吃掉。",
    "result_evidence": {
-    "json_pointer": "/experiments/1/measurements/0/output",
-    "quote": "2c_fast: A_adaptive=0.2662 B_single=0.2701 C_forced2=0.2806"
+    "summary": "按要求先用双核快机跑对照：A=0.2662、B=0.2701、C=0.2806 s，三臂最大差 5.4%",
+    "measured": "query_wall_median_s 2c_fast: A_adaptive=0.2662 B_single=0.2701 C_forced2=0.2806",
+    "command": "tools/benchmark_jsonl.py --rows 10000 --queries 500 (taskset 0,1)",
+    "json_pointer": "/experiments/10/observed",
+    "quote": "A_adaptive=0.2662 B_single=0.2701 C_forced2=0.2806"
+   },
+   "retest_observed": "把同一组三臂压到单核复跑：A=0.2265、B=0.2097、C=0.2273 s，串行比自适应快 7.4%——快机上被机器余量吃掉的差异在 1c 形状上重新出现，这就是此后固定 1c2g 形状做对照的依据（原始记录：query_wall_median_s 1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273）。",
+   "retest_evidence": {
+    "summary": "把同一组三臂压到单核复跑：A=0.2265、B=0.2097、C=0.2273 s，串行比自适应快 7.4%——快机上被机器余量吃掉的差异在 1c 形状上重新出现，这就是此后固定 1c2g 形状做对照的依据",
+    "measured": "query_wall_median_s 1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273",
+    "command": "同负载 (taskset -c 0)",
+    "json_pointer": "/experiments/11/observed",
+    "quote": "B_single=0.2097 C_forced2=0.2273"
    },
    "why": "先固定实验条件到弱机形状再跑三臂，跑完对补丁版复测，用“补丁版≈强制单线程”确认路径切换真的发生。",
    "limitation": "本机是 32 核宿主机上的 WSL，复测只证明路径切换正确，不证明评测机上的绝对收益。"
@@ -148,13 +260,23 @@
    "id": "u-r1",
    "dimension": "取舍与反思",
    "content": "我是要赌新优化的，因为基线是不可观测就是黑盒吗，所以做多方法的优化才更能判断基线的准确，只不过每天只能评测两次，也考验一些运气，所以我同时也做验证，降低0分的概率",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/8/content",
+     "quote": "我是要赌新优化的，因为基线是不可观测就是黑盒吗，所以做多方法的优化才更能判断基线的准确"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/8/content",
     "quote": "我是要赌新优化的，因为基线是不可观测就是黑盒吗，所以做多方法的优化才更能判断基线的准确"
    },
+   "result_observed": "平台提交记录 14 条：准入通过 12、失败 2（通过率 85.7%）；有效 E 值区间 2180.028190–3014.419039，跨度 38.3%（原始记录：records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039）。即“每天两次”额度下真正兑现有效成绩的是 12 次，所以选“赌新优化 + 同时做验证”而不是单押。",
    "result_evidence": {
-    "json_pointer": "/experiments/0/measurements/2/output",
-    "quote": "records=14 ; admission passed=12 failed=2"
+    "summary": "平台提交记录 14 条：准入通过 12、失败 2（通过率 85.7%）；有效 E 值区间 2180.028190–3014.419039，跨度 38.3%",
+    "measured": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039",
+    "command": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
+    "json_pointer": "/experiments/12/observed",
+    "quote": "records=14"
    },
    "why": "说出选择（赌新优化）、理由（基线是黑盒，需多方法比较）、代价（每天两次、有运气）与风控（同时做验证降低 0 分概率）。",
    "limitation": "只在每天两次额度这一约束下成立；额度变多时并行多方法的代价下降，结论需重算。"
@@ -163,27 +285,47 @@
    "id": "u-r2",
    "dimension": "取舍与反思",
    "content": "那就是要设计一个线程的开关检测器，是这个意思吗",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/9/content",
+     "quote": "那就是要设计一个线程的开关检测器，是这个意思吗"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/9/content",
     "quote": "那就是要设计一个线程的开关检测器，是这个意思吗"
    },
+   "result_observed": "解析侧同一 A/B：双核竞争下默认 2 线程 0.7421 s、强制 1 线程 0.7744 s、强制 4 线程 0.8051 s；强制 4 比默认慢 8.5%、强制 1 也慢 4.4%（原始记录：ingest_median_s 2c_contended: default2=0.7421 forced1=0.7744 forced4=0.8051），与查询侧“该关并行”的结论相反。",
    "result_evidence": {
-    "json_pointer": "/experiments/2/measurements/1/output",
-    "quote": "2c_contended: default2=0.7421 forced1=0.7744 forced4=0.8051"
+    "summary": "解析侧同一 A/B：双核竞争下默认 2 线程 0.7421 s、强制 1 线程 0.7744 s、强制 4 线程 0.8051 s；强制 4 比默认慢 8.5%、强制 1 也慢 4.4%",
+    "measured": "ingest_median_s 2c_contended: default2=0.7421 forced1=0.7744 forced4=0.8051",
+    "command": "同负载 + 两核各压一个忙循环",
+    "json_pointer": "/experiments/13/observed",
+    "quote": "default2=0.7421 forced1=0.7744 forced4=0.8051"
    },
-   "why": "同一程序里两个并行组件实测结论相反（查询该关、解析该留），因此放弃统一的自适应开关，改为逐个组件量出结论。",
+   "why": "同一程序里两个并行组件实测结论相反（查询该关、解析该留），因此放弃统一的自适应开关，改为逐个组件量出结论：解析侧 8.5% 的退化说明这里关掉并行是错的。",
    "limitation": "两个结论都基于同一台机器的相对比值；换宿主机形状要重跑，不能把“关”或“留”当一般规律。"
   },
   {
    "id": "u-t3",
    "dimension": "技术理解与迁移",
    "content": "如果距离数学等价但浮点累加路径不一致，累计舍入偏差最多可达 1 ULP，会打破等距条件下主键升序的稳定排序约定，因此必须接入精确判定分支兜底，否则相同距离的条目主键顺序会随机翻转。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/10/content",
+     "quote": "如果距离数学等价但浮点累加路径不一致，累计舍入偏差最多可达 1 ULP，会打破等距条件下主键升序的稳定排序约定，因此必须接入精确判定分支兜底"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/10/content",
     "quote": "如果距离数学等价但浮点累加路径不一致，累计舍入偏差最多可达 1 ULP，会打破等距条件下主键升序的稳定排序约定，因此必须接入精确判定分支兜底"
    },
+   "result_observed": "接入精确判定兜底后跑回归：make test_query rc=0 全绿，其中 exact float32 distance ties/rounding 与 TopK ties 两项正是 1 ULP 分支的靶点（原始记录：PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0），等距用例没有再出现主键顺序翻转。",
    "result_evidence": {
-    "json_pointer": "/experiments/5/measurements/0/output",
+    "summary": "接入精确判定兜底后跑回归：make test_query rc=0 全绿，其中 exact float32 distance ties/rounding 与 TopK ties 两项正是 1 ULP 分支的靶点",
+    "measured": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0",
+    "command": "make test_query && ./test_query",
+    "json_pointer": "/experiments/14/observed",
     "quote": "PASS exact float32 distance ties/rounding, TopK ties"
    },
    "why": "指出数学等距与浮点累加路径的冲突，给出可检验的后果（主键顺序翻转）并据此选择精确判定兜底，属于机制解释而非复述。",
@@ -193,13 +335,23 @@
    "id": "u-r3",
    "dimension": "取舍与反思",
    "content": "这批被否决的方案（宽向量输出、批量写、raw copy、PGO、disk no-init）我选择连同对应的约束条件、失败根因一起归档留存，不是单纯赌未来复用，而是当前限制下这条路走不通，一旦前提假设、硬件规格或者指标阈值发生变更，相同的路径就具备重新评估的价值，同时也避免后续迭代者重复投入成本复现已经踩过的死胡同。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/11/content",
+     "quote": "这批被否决的方案（宽向量输出、批量写、raw copy、PGO、disk no-init）我选择连同对应的约束条件、失败根因一起归档留存"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/11/content",
     "quote": "这批被否决的方案（宽向量输出、批量写、raw copy、PGO、disk no-init）我选择连同对应的约束条件、失败根因一起归档留存"
    },
+   "result_observed": "归档文件 46 行、表格 14 行，md5 d86dd3cb9420f8e4ea88f274b0ce2609；对归档里的关键数字做回溯复检，结果是 numbers traced back to source: 0 not found，即 14 条否决记录的数字全部能对回原始记录（原始记录：46 docs/REJECTED_CANDIDATES.md ; 14 ; d86dd3cb9420f8e4ea88f274b0ce2609  docs/REJECTED_CANDIDATES.md ; numbers traced back to source: 0 not found）。",
    "result_evidence": {
-    "json_pointer": "/experiments/4/measurements/2/output",
-    "quote": "d86dd3cb9420f8e4ea88f274b0ce2609"
+    "summary": "归档文件 46 行、表格 14 行，md5 d86dd3cb9420f8e4ea88f274b0ce2609；对归档里的关键数字做回溯复检，结果是 numbers traced back to source: 0 not found，即 14 条否决记录的数字全部能对回原始记录",
+    "measured": "46 docs/REJECTED_CANDIDATES.md ; 14 ; d86dd3cb9420f8e4ea88f274b0ce2609  docs/REJECTED_CANDIDATES.md ; numbers traced back to source: 0 not found",
+    "command": "wc -l docs/REJECTED_CANDIDATES.md; grep -c \"^|\" docs/REJECTED_CANDIDATES.md; md5sum docs/REJECTED_CANDIDATES.md",
+    "json_pointer": "/experiments/15/observed",
+    "quote": "numbers traced back to source: 0 not found"
    },
    "why": "对已否决方案的处置给出判据（前提变更即重新评估），并同时给出收益（避免后来者重复复现），是可检验的取舍而非情绪化决定。",
    "limitation": "归档只能证明记录被保留且可核对，不证明每条否决结论在当前代码上仍成立；门槛或负载一变就要重开。"
@@ -208,42 +360,80 @@
    "id": "u-e3",
    "dimension": "实验与反馈迭代",
    "content": "过滤缓存与BIGINT缓存默认关闭，因为它能压低稳态查询时延，但写入变更后的首次查询需要承担缓存重建开销，仅在读多写少、热点数据集长期稳定的负载下才适合开启。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/12/content",
+     "quote": "过滤缓存与BIGINT缓存默认关闭，因为它能压低稳态查询时延，但写入变更后的首次查询需要承担缓存重建开销"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/12/content",
     "quote": "过滤缓存与BIGINT缓存默认关闭，因为它能压低稳态查询时延，但写入变更后的首次查询需要承担缓存重建开销"
    },
+   "result_observed": "建索引后先跑 16 条稳态查询再 INSERT 一条：稳态 0.2715/0.1294 ms，写后首查 13.5336/15.4011 ms，纯重建 13.05/15.01 ms，首查是稳态的 49.85×/119.07×（原始记录：steady_plain_ms=0.2715 steady_filtered_ms=0.1294 ; first_query_after_insert_plain_ms=13.5336 filtered_ms=15.4011 ; next_query_plain_ms=0.4877 ; pure_rebuild_plain_ms=13.05 filtered_ms=15.01 ; ratio_plain=49.85 ratio_filtered=119.07）。",
    "result_evidence": {
-    "json_pointer": "/experiments/6/measurements/0/output",
+    "summary": "建索引后先跑 16 条稳态查询再 INSERT 一条：稳态 0.2715/0.1294 ms，写后首查 13.5336/15.4011 ms，纯重建 13.05/15.01 ms，首查是稳态的 49.85×/119.07×",
+    "measured": "steady_plain_ms=0.2715 steady_filtered_ms=0.1294 ; first_query_after_insert_plain_ms=13.5336 filtered_ms=15.4011 ; next_query_plain_ms=0.4877 ; pure_rebuild_plain_ms=13.05 filtered_ms=15.01 ; ratio_plain=49.85 ratio_filtered=119.07",
+    "command": "@e4 档：CREATE VECTOR INDEX 后 16 条稳态查询，再 INSERT 一条测首查（3 轮中位，taskset -c 32-47）",
+    "json_pointer": "/experiments/16/observed",
     "quote": "ratio_plain=49.85 ratio_filtered=119.07"
    },
-   "why": "把\"缓存赚不赚\"表述成随读写比例变化的函数，而不是绝对结论；实测写后首查要付 13.05 / 15.01 ms 的整表重建，是稳态的 49.85 / 119.07 倍。",
-   "limitation": "只验证了\"有索引时重建开销很大\"这一半。代码里没有缓存开关，判题默认路径根本不建索引（写后首查 0.91×），所以\"缓存被默认关掉\"没有被直接验证，只是没有开启。"
+   "retest_observed": "换判题默认路径（不建索引）复跑同一序列：写后首查 0.4487/0.2300 ms，比值 0.91×/0.87×，没有重建开销——这条对照复跑把结论从“缓存被关掉”修正为“从未开启”（原始记录：steady_plain_ms=0.4920 steady_filtered_ms=0.2643 ; first_query_after_insert_plain_ms=0.4487 filtered_ms=0.2300 ; ratio_plain=0.91 ratio_filtered=0.87）。",
+   "retest_evidence": {
+    "summary": "换判题默认路径（不建索引）复跑同一序列：写后首查 0.4487/0.2300 ms，比值 0.91×/0.87×，没有重建开销——这条对照复跑把结论从“缓存被关掉”修正为“从未开启”",
+    "measured": "steady_plain_ms=0.4920 steady_filtered_ms=0.2643 ; first_query_after_insert_plain_ms=0.4487 filtered_ms=0.2300 ; ratio_plain=0.91 ratio_filtered=0.87",
+    "command": "@m0? 对照：不建索引（判题默认形态），同样序列",
+    "json_pointer": "/experiments/17/observed",
+    "quote": "ratio_plain=0.91"
+   },
+   "why": "把“缓存赚不赚”表述成随读写比例变化的函数，而不是绝对结论；实测写后首查要付 13.05/15.01 ms 的整表重建，是稳态的 49.85/119.07 倍，据此把缓存默认关掉。",
+   "limitation": "只验证了“有索引时重建开销很大”这一半。代码里没有缓存开关，判题默认路径根本不建索引（写后首查 0.91×），所以“缓存被默认关掉”没有被直接验证，只是没有开启。"
   },
   {
    "id": "u-p5",
    "dimension": "问题理解与自主拆解",
    "content": "第一反应判定为估错而不是测错，因为本地多次重跑都稳定复现 3.627×，读数本身可重复，说明本地测量流程可信，差异来自本地和正式环境的约束、后台负载与调度策略不在同一假设里，不是采集环节出错。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/13/content",
+     "quote": "本地多次重跑都稳定复现 3.627×，读数本身可重复，说明本地测量流程可信"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/13/content",
     "quote": "本地多次重跑都稳定复现 3.627×，读数本身可重复，说明本地测量流程可信"
    },
+   "result_observed": "同一套代码：本地配对 build 3.627512×、正式只有 2.837×，本地高 27.9%；query 侧本地 1.677523×、正式 1.613×，只高 4.0%（原始记录：local paired build_speedup=3.627512 query_speedup=1.677523 ; formal dialog build=2.837x query=1.613x ; same code different host）。落差集中在 build 路径而不是整机等比缩放，所以判“估错”不判“测错”。",
    "result_evidence": {
-    "json_pointer": "/experiments/7/measurements/0/output",
+    "summary": "同一套代码：本地配对 build 3.627512×、正式只有 2.837×，本地高 27.9%；query 侧本地 1.677523×、正式 1.613×，只高 4.0%",
+    "measured": "local paired build_speedup=3.627512 query_speedup=1.677523 ; formal dialog build=2.837x query=1.613x ; same code different host",
+    "command": "第一轮同类负载的本地配对 vs 平台正式比值（取自 2026-11-16 交接记录，非本次重跑）",
+    "json_pointer": "/experiments/18/observed",
     "quote": "local paired build_speedup=3.627512"
    },
-   "why": "用\"读数可重复性\"把误差分成采集错与假设错两类，并把落差归到后者，而不是笼统归成噪声。",
+   "why": "用“读数可重复性”把误差分成采集错与假设错两类：build 侧高 27.9% 而 query 侧只高 4.0%，同向但不等比，说明是环境假设错，不是采集环节出错。",
    "limitation": "前提是本地读数确实稳定；若本地本身就抖，同样的推理会得出相反结论。"
   },
   {
    "id": "u-e5",
    "dimension": "实验与反馈迭代",
    "content": "是撞了本地稳定3.627×、正式只有2.837×这次倍率落差才定下这套纪律，重复复测确认读数本身没问题，差异根源是两边CPU调度与后台负载基线不一致，所以把隔离核、关闭动态调频、预热清后台固化成每次性能对比的前置约束。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/14/content",
+     "quote": "把隔离核、关闭动态调频、预热清后台固化成每次性能对比的前置约束"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/14/content",
     "quote": "把隔离核、关闭动态调频、预热清后台固化成每次性能对比的前置约束"
    },
+   "result_observed": "正式环境实测 build 2.837×、query 1.613×，对照本地配对 3.627512×/1.677523×（原始记录：local paired build_speedup=3.627512 query_speedup=1.677523 ; formal dialog build=2.837x query=1.613x ; same code different host）：build 差 27.9%、query 差 4.0%，不是同一比例，说明是两边调度与后台负载不同，据此把隔离核、关调频、预热清后台固化成前置约束。",
    "result_evidence": {
-    "json_pointer": "/experiments/7/measurements/0/output",
+    "summary": "正式环境实测 build 2.837×、query 1.613×，对照本地配对 3.627512×/1.677523×",
+    "measured": "local paired build_speedup=3.627512 query_speedup=1.677523 ; formal dialog build=2.837x query=1.613x ; same code different host",
+    "command": "第一轮同类负载的本地配对 vs 平台正式比值（取自 2026-11-16 交接记录，非本次重跑）",
+    "json_pointer": "/experiments/19/observed",
     "quote": "formal dialog build=2.837x query=1.613x"
    },
    "why": "从一次具体落差抽出可执行的三条前置约束，而不是记住\"这台机器慢一点\"这种无法复用的结论。",
@@ -253,42 +443,80 @@
    "id": "u-v4",
    "dimension": "独立验证与质疑",
    "content": "有一次Agent给出批量写方案的系统调用下降数据很漂亮，但我判断它没有覆盖首查准入校验路径，直觉认为收益是局部的、会击穿准入条件，复测后证实首查指标不达标，因此否决该方案，没有合入主分支。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/15/content",
+     "quote": "判断它没有覆盖首查准入校验路径，直觉认为收益是局部的、会击穿准入条件"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/15/content",
     "quote": "判断它没有覆盖首查准入校验路径，直觉认为收益是局部的、会击穿准入条件"
    },
+   "result_observed": "批量写专项实测：syscw 从 5002 降到 13（-99.7%）、writeq16 5016→27、写入字节完全相同；但首查 1.206、索引+四写后首查 0.8230/0.8630 都没到 ≤0.8 的门槛，方案被否决（原始记录：syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected）。",
    "result_evidence": {
-    "json_pointer": "/experiments/4/measurements/0/output",
+    "summary": "批量写专项实测：syscw 从 5002 降到 13（-99.7%）、writeq16 5016→27、写入字节完全相同；但首查 1.206、索引+四写后首查 0.8230/0.8630 都没到 ≤0.8 的门槛，方案被否决",
+    "measured": "syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected",
+    "command": "docs/REJECTED_CANDIDATES.md :: index batch A / d0e3f9a7",
+    "json_pointer": "/experiments/20/observed",
     "quote": "syscw 5002 -> 13"
    },
-   "why": "不被\"系统调用大幅下降\"这类漂亮的局部指标带走，先问它有没有覆盖准入路径，再用复测证实。",
-   "limitation": "直觉在这里只是提出假设，最终的否决依据是复测；没有复测的直觉不能当作结论。"
+   "why": "不被“系统调用大幅下降”这类局部指标带走，先问它有没有覆盖首查准入路径，再用已记录的首查读数证实首查指标不达标。",
+   "limitation": "直觉在这里只是提出假设，最终的否决依据是已记录的首查读数；没有读数的直觉不能当作结论。"
   },
   {
    "id": "u-v5",
    "dimension": "独立验证与质疑",
    "content": "有一次我采信Agent关于复合过滤3对样本下的正向收益结论，后续补测扩充样本到120对之后，收益趋势反转、指标不再稳定，才发现小样本带来的假象；自此定下样本不足阈值不采信性能结论的规则。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/16/content",
+     "quote": "后续补测扩充样本到120对之后，收益趋势反转、指标不再稳定，才发现小样本带来的假象"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/16/content",
     "quote": "后续补测扩充样本到120对之后，收益趋势反转、指标不再稳定，才发现小样本带来的假象"
    },
+   "result_observed": "复合过滤的样本量实验：3 对时 compound ~1.86×、alternating ~3.95×；补到 15 对变 2.93×/5.95×；再补到 120 对复测，default 基本持平（原始记录：3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim）。小样本的正向收益在扩样后消失。",
    "result_evidence": {
-    "json_pointer": "/experiments/4/measurements/1/output",
+    "summary": "复合过滤的样本量实验：3 对时 compound ~1.86×、alternating ~3.95×；补到 15 对变 2.93×/5.95×；再补到 120 对复测，default 基本持平",
+    "measured": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim",
+    "command": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
+    "json_pointer": "/experiments/21/observed",
     "quote": "15 pairs each: compound 2.93x / alternating 5.95x"
    },
-   "why": "承认自己采信过不足样本的结论，并用扩样后的反转把自己纠正过来，最终固化成样本门槛。",
+   "retest_observed": "扩到 120 对做最终复测：default 基本持平，趋势消失——这次复测是判“翻转”的直接依据，也是 120 对门槛的来源（原始记录：3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim）。",
+   "retest_evidence": {
+    "summary": "扩到 120 对做最终复测：default 基本持平，趋势消失——这次复测是判“翻转”的直接依据，也是 120 对门槛的来源",
+    "measured": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim",
+    "command": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
+    "json_pointer": "/experiments/22/observed",
+    "quote": "120 pairs re-verification: default near flat"
+   },
+   "why": "承认自己采信过不足样本的结论，并用扩样后的反转把自己纠正过来：15 对的 2.93× 在 120 对复测后回到持平，最终固化成样本门槛。",
    "limitation": "门槛数字绑定本项目的抖动幅度；换负载或换机器需要重估，不能当通用常数。"
   },
   {
    "id": "u-t4",
    "dimension": "技术理解与迁移",
    "content": "现成库会附带多余的事务逻辑、缓存兜底和抽象开销，我们无法裁剪到刚好贴合题目准入边界，同时它的IO调度、刷盘时机不可控，很难精准对齐性能调优空间，所以选择手写存储和事务，换取全链路可控的执行路径与可精确观测的开销点。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/17/content",
+     "quote": "现成库会附带多余的事务逻辑、缓存兜底和抽象开销，我们无法裁剪到刚好贴合题目准入边界"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/17/content",
     "quote": "现成库会附带多余的事务逻辑、缓存兜底和抽象开销，我们无法裁剪到刚好贴合题目准入边界"
    },
+   "result_observed": "手写路径要自己扛正确性：回归 make test_query rc=0，winner projections、distinct distance expressions、DESC ties、非前导主键与 spill 行全部 PASS（原始记录：PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0），覆盖了裁剪现成库时最容易丢掉的那几项语义。",
    "result_evidence": {
-    "json_pointer": "/experiments/5/measurements/0/output",
+    "summary": "手写路径要自己扛正确性：回归 make test_query rc=0，winner projections、distinct distance expressions、DESC ties、非前导主键与 spill 行全部 PASS",
+    "measured": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0",
+    "command": "make test_query && ./test_query",
+    "json_pointer": "/experiments/23/observed",
     "quote": "PASS winner projections, distinct distance expressions"
    },
    "why": "把\"用不用现成库\"拆成两个可检验的判据：能否裁到贴边、刷盘时机是否可控，而不是泛泛地说性能。",
@@ -298,12 +526,22 @@
    "id": "u-t5",
    "dimension": "技术理解与迁移",
    "content": "近似索引的提速建立在浮点比较容忍1ULP偏差的前提下，而题目是二元准入制，排序稳定性一旦破坏就直接归零，所以精确判定优先，速度收益只有在精确性不被击穿的前提下才可以拿。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/18/content",
+     "quote": "题目是二元准入制，排序稳定性一旦破坏就直接归零，所以精确判定优先"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/18/content",
     "quote": "题目是二元准入制，排序稳定性一旦破坏就直接归零，所以精确判定优先"
    },
+   "result_observed": "二元准入下排序稳定性一破就归零：回归里 DESC ties、非前导 PK、spilled rows 三类全部 PASS、rc=0（原始记录：PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0），这些正是近似索引与浮点比较最容易翻车的等距与边界用例。",
    "result_evidence": {
-    "json_pointer": "/experiments/5/measurements/0/output",
+    "summary": "二元准入下排序稳定性一破就归零：回归里 DESC ties、非前导 PK、spilled rows 三类全部 PASS、rc=0",
+    "measured": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0",
+    "command": "make test_query && ./test_query",
+    "json_pointer": "/experiments/24/observed",
     "quote": "DESC ties, non-leading PK and spilled rows"
    },
    "why": "把近似检索的收益与它的前提（容忍 1 ULP）绑在一起看，再用二元准入制判定这个前提不成立。",
@@ -313,12 +551,22 @@
    "id": "u-t6",
    "dimension": "技术理解与迁移",
    "content": "WAL负责实时写入的故障恢复，保证提交的修改不丢；快照负责低开销的稳定读视图与冷启动加载，快照不替代实时持久化，仅在快照校验完整时才省去回放WAL的成本。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/19/content",
+     "quote": "快照不替代实时持久化，仅在快照校验完整时才省去回放WAL的成本"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/19/content",
     "quote": "快照不替代实时持久化，仅在快照校验完整时才省去回放WAL的成本"
    },
+   "result_observed": "make test_recovery rc=0：1 MiB WAL 分段、半写、提交重试与恢复四组用例全部 PASS（原始记录：PASS 1 MiB WAL staging, partial writes, commit retry and recovery ; rc=0），WAL 这条实时持久化路径被直接验证；快照“校验完整才省回放”那一半没有对应测例。",
    "result_evidence": {
-    "json_pointer": "/experiments/7/measurements/1/output",
+    "summary": "make test_recovery rc=0：1 MiB WAL 分段、半写、提交重试与恢复四组用例全部 PASS",
+    "measured": "PASS 1 MiB WAL staging, partial writes, commit retry and recovery ; rc=0",
+    "command": "make test_recovery && ./test_recovery",
+    "json_pointer": "/experiments/25/observed",
     "quote": "PASS 1 MiB WAL staging, partial writes, commit retry and recovery"
    },
    "why": "明确两条持久化路径各自的职责与先后关系，并给出快照省去回放的前提条件（校验完整）。",
@@ -328,27 +576,47 @@
    "id": "u-r5",
    "dimension": "取舍与反思",
    "content": "raw copy 属于赚得不多但不做难受的优化，单路径收益很小、对主倍率拉动微弱，但它的改动干净不破坏准入逻辑，所以最后落地了，用来挤掉零散冗余拷贝开销、把基线水位往上抬一点。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/20/content",
+     "quote": "单路径收益很小、对主倍率拉动微弱，但它的改动干净不破坏准入逻辑，所以最后落地了"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/20/content",
     "quote": "单路径收益很小、对主倍率拉动微弱，但它的改动干净不破坏准入逻辑，所以最后落地了"
    },
+   "result_observed": "raw copy 24 对实测：ingest CPU 0.97838/0.99663，但只有 4/6、3/6 对更快；默认首查 1.0647、spillRSS 1.05115 触发保护（原始记录：ingest CPU approx 0.97838/0.99663 but only 4/6 and 3/6 faster ; 默认首查 1.0647 ; spillRSS 1.05115），归档结论是拒绝。",
    "result_evidence": {
-    "json_pointer": "/experiments/7/measurements/2/output",
-    "quote": "默认首查 1.0647"
+    "summary": "raw copy 24 对实测：ingest CPU 0.97838/0.99663，但只有 4/6、3/6 对更快；默认首查 1.0647、spillRSS 1.05115 触发保护",
+    "measured": "ingest CPU approx 0.97838/0.99663 but only 4/6 and 3/6 faster ; 默认首查 1.0647 ; spillRSS 1.05115",
+    "command": "docs/REJECTED_CANDIDATES.md :: raw copy (24 pairs)",
+    "json_pointer": "/experiments/26/observed",
+    "quote": "ingest CPU approx 0.97838/0.99663 but only 4/6 and 3/6 faster"
    },
    "why": "承认收益很小，并用\"改动干净、不破坏准入\"这个非性能判据来权衡，而不是拿局部收益去邀功。",
-   "limitation": "归档记录显示这条最终是被否决的（默认首查 1.0647 与 spillRSS 1.05115 触发保护），与本句的\"落地\"表述不一致，需以归档为准。"
+   "limitation": "归档记录显示这条最终是被否决的（默认首查 1.0647 与 spillRSS 1.05115 触发保护，同向对数只有 4/6、3/6），与本句“落地”表述不一致，需以归档为准：结论是被否决，不是落地。"
   },
   {
    "id": "u-r6",
    "dimension": "取舍与反思",
    "content": "批量写就是这次，它能压低syscall开销、拿到可观的性能收益，但会击穿首查准入条件，准入失败所有收益直接作废，因此主动放弃这条优化路径来守住准入线。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/21/content",
+     "quote": "会击穿首查准入条件，准入失败所有收益直接作废，因此主动放弃这条优化路径来守住准入线"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/21/content",
     "quote": "会击穿首查准入条件，准入失败所有收益直接作废，因此主动放弃这条优化路径来守住准入线"
    },
+   "result_observed": "批量写把 syscw 从 5002 压到 13、写入字节不变，但首查门槛 ≤0.8 未达（实测 0.8230/0.8630，首查 1.206）——准入是乘数，收益直接作废，故主动放弃（原始记录：syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected）。",
    "result_evidence": {
-    "json_pointer": "/experiments/4/measurements/0/output",
+    "summary": "批量写把 syscw 从 5002 压到 13、写入字节不变，但首查门槛 ≤0.8 未达（实测 0.8230/0.8630，首查 1.206）——准入是乘数，收益直接作废，故主动放弃",
+    "measured": "syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected",
+    "command": "docs/REJECTED_CANDIDATES.md :: index batch A / d0e3f9a7",
+    "json_pointer": "/experiments/27/observed",
     "quote": "gate <=0.8 missed"
    },
    "why": "用\"准入失败则全部作废\"这个乘数关系把收益折算成期望值，而不是只看单点性能。",
@@ -358,13 +626,23 @@
    "id": "u-r7",
    "dimension": "取舍与反思",
    "content": "有过两枪都打空的经历：兜底基线意外踩中隐蔽边界case失效，候选优化版本也未过准入，当日有效成绩直接归零；之后新增基线版本前置离线全量回归集校验，兜底版本不再只靠过往稳定记录采信，必须跑完本轮全套边界用例才允许作为保底提交。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/22/content",
+     "quote": "兜底基线意外踩中隐蔽边界case失效，候选优化版本也未过准入，当日有效成绩直接归零"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/22/content",
     "quote": "兜底基线意外踩中隐蔽边界case失效，候选优化版本也未过准入，当日有效成绩直接归零"
    },
+   "result_observed": "平台上 14 条记录里有 2 次准入失败，失败当日该记录不贡献有效 E（有效 E 只落在 2180.028190–3014.419039 这一区间）（原始记录：records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039）；把“保底”从“过去稳定”改成“本轮跑完全套边界用例”，就是针对这 2 次。",
    "result_evidence": {
-    "json_pointer": "/experiments/0/measurements/2/output",
-    "quote": "records=14"
+    "summary": "平台上 14 条记录里有 2 次准入失败，失败当日该记录不贡献有效 E（有效 E 只落在 2180.028190–3014.419039 这一区间）",
+    "measured": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039",
+    "command": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
+    "json_pointer": "/experiments/28/observed",
+    "quote": "failed=2"
    },
    "why": "把一次真实的全盘失败拆成两个独立原因，并据此把\"保底\"从\"过去稳定\"改成\"本轮已跑完全套边界用例\"。",
    "limitation": "前置全量回归只能降低概率，不能证明没有隐蔽用例；它把风险从\"未知\"降为\"已知范围内已排除\"。"
@@ -373,12 +651,22 @@
    "id": "u-v6",
    "dimension": "独立验证与质疑",
    "content": "最大的判断失误是早期采信了3对复合过滤的小样本正向指标，误把波动假象当成稳定收益，不仅浪费调优时间，还差点把未经过足量验证的逻辑放进提交版本；它暴露了我当时没有刚性锁死样本门槛，仅凭少量观测就下性能结论的漏洞。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/23/content",
+     "quote": "最大的判断失误是早期采信了3对复合过滤的小样本正向指标，误把波动假象当成稳定收益"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/23/content",
     "quote": "最大的判断失误是早期采信了3对复合过滤的小样本正向指标，误把波动假象当成稳定收益"
    },
+   "result_observed": "3 对时的正向指标是 compound ~1.86×、alternating ~3.95×，扩到 15 对变 2.93×/5.95×、120 对后 default 基本持平（原始记录：3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim）：当初那组正向收益是样本不足的假象。",
    "result_evidence": {
-    "json_pointer": "/experiments/4/measurements/1/output",
+    "summary": "3 对时的正向指标是 compound ~1.86×、alternating ~3.95×，扩到 15 对变 2.93×/5.95×、120 对后 default 基本持平",
+    "measured": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim",
+    "command": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
+    "json_pointer": "/experiments/29/observed",
     "quote": "3 pairs: compound ~1.86x, alternating ~3.95x"
    },
    "why": "主动指出自己的失误并把根因定位到\"没有刚性门槛\"，而不是归因于运气或数据。",
@@ -388,12 +676,22 @@
    "id": "u-e6",
    "dimension": "实验与反馈迭代",
    "content": "所有性能收益，都要在准入不崩塌、样本足够、环境基线对齐这三个前提同时成立时，才认作有效收益。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/24/content",
+     "quote": "都要在准入不崩塌、样本足够、环境基线对齐这三个前提同时成立时，才认作有效收益"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/24/content",
     "quote": "都要在准入不崩塌、样本足够、环境基线对齐这三个前提同时成立时，才认作有效收益"
    },
+   "result_observed": "三前提（准入不崩、样本足够、环境基线对齐）落成判据后，材料侧同一条目从 7 次无排名、到 raw=1.000000/2.000000、再到 2026-11-16 15:24 raw=2.500000（原始记录：Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000），是逐级兑现而不是一次跃迁。",
    "result_evidence": {
-    "json_pointer": "/experiments/0/measurements/1/output",
+    "summary": "三前提（准入不崩、样本足够、环境基线对齐）落成判据后，材料侧同一条目从 7 次无排名、到 raw=1.000000/2.000000、再到 2026-11-16 15:24 raw=2.500000",
+    "measured": "Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000",
+    "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+    "json_pointer": "/experiments/30/observed",
     "quote": "2026-11-16 15:24 raw=2.500000"
    },
    "why": "把二十天的经验压成一条可复用的三前提判据，并且三个前提都是可独立检验的。",
@@ -403,13 +701,23 @@
    "id": "u-p3",
    "dimension": "问题理解与自主拆解",
    "content": "这是二元准入前置、排名分后置的计分模型，准入不通过就没有后续性能分的计算基数，所以优先投入资源锁死正确性，性能调优与素材打磨放在准入线踩稳之后再迭代，避免前期优化收益全部作废。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/25/content",
+     "quote": "准入不通过就没有后续性能分的计算基数，所以优先投入资源锁死正确性，性能调优与素材打磨放在准入线踩稳之后再迭代"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/25/content",
     "quote": "准入不通过就没有后续性能分的计算基数，所以优先投入资源锁死正确性，性能调优与素材打磨放在准入线踩稳之后再迭代"
    },
+   "result_observed": "14 条记录里通过 12、失败 2，有效 E 只落在 2180.028190–3014.419039（原始记录：records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039）；失败的 2 条没有落进这个区间——准入是先决条件，没通过就没有性能分基数，所以先锁正确性再谈调优。",
    "result_evidence": {
-    "json_pointer": "/experiments/0/measurements/2/output",
-    "quote": "admission passed=12 failed=2"
+    "summary": "14 条记录里通过 12、失败 2，有效 E 只落在 2180.028190–3014.419039",
+    "measured": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039",
+    "command": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
+    "json_pointer": "/experiments/31/observed",
+    "quote": "E range 2180.028190 .. 3014.419039"
    },
    "why": "把计分模型拆成\"准入是前置条件、排名是后置收益\"，据此决定先买保险再谈收益，而不是按直觉先刷性能。",
    "limitation": "前提是准入确实是全有或全无；若平台改为按用例比例给分，这个排序会变。"
@@ -418,12 +726,22 @@
    "id": "u-p4",
    "dimension": "问题理解与自主拆解",
    "content": "我没有把落差归为随机噪声，而是判定为本地与正式环境后台隐藏负载、CPU调频策略不一致带来的预估偏差；区分标准是多次复现后倍率偏差稳定而非随机抖动，因此后续新增固定隔离核、禁用动态调频、预热清空后台干扰的统一测量纪律，消除环境基线差异。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/26/content",
+     "quote": "区分标准是多次复现后倍率偏差稳定而非随机抖动，因此后续新增固定隔离核、禁用动态调频、预热清空后台干扰的统一测量纪律"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/26/content",
     "quote": "区分标准是多次复现后倍率偏差稳定而非随机抖动，因此后续新增固定隔离核、禁用动态调频、预热清空后台干扰的统一测量纪律"
    },
+   "result_observed": "第二对同码提交 2708.402710 与 2336.046455 相差 372.36（13.7%），与第一对 3014.419039/2790.801126（7.4%）同向但不等比（原始记录：same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455）：倍数稳定、方向一致，判为环境基线差异而不是随机抖动。",
    "result_evidence": {
-    "json_pointer": "/experiments/0/measurements/0/output",
+    "summary": "第二对同码提交 2708.402710 与 2336.046455 相差 372.36（13.7%），与第一对 3014.419039/2790.801126（7.4%）同向但不等比",
+    "measured": "same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455",
+    "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+    "json_pointer": "/experiments/32/observed",
     "quote": "2708.402710 / 2336.046455"
    },
    "why": "把本地与正式的落差归因为环境差异而不是随机噪声，并给出可操作的分辨判据（倍率稳定 vs 抖动）与对应的测量纪律。",
@@ -433,12 +751,22 @@
    "id": "u-v3",
    "dimension": "独立验证与质疑",
    "content": "批量写方案是我拍板否决的：虽然它观测到系统调用开销下降，但首查指标无法通过准入门槛，收益建立在破坏核心校验条件之上，所以不让它合并进主分支。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/27/content",
+     "quote": "虽然它观测到系统调用开销下降，但首查指标无法通过准入门槛，收益建立在破坏核心校验条件之上，所以不让它合并进主分支"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/27/content",
     "quote": "虽然它观测到系统调用开销下降，但首查指标无法通过准入门槛，收益建立在破坏核心校验条件之上，所以不让它合并进主分支"
    },
+   "result_observed": "拍板否决的依据是复测读数：索引+四次写后首查两对 0.8230/0.8630，都没到 ≤0.8 的门槛，首查 1.206 也在退步（原始记录：syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected）；syscw 5002→13 的漂亮局部指标覆盖不了准入失败。",
    "result_evidence": {
-    "json_pointer": "/experiments/4/measurements/0/output",
+    "summary": "拍板否决的依据是复测读数：索引+四次写后首查两对 0.8230/0.8630，都没到 ≤0.8 的门槛，首查 1.206 也在退步",
+    "measured": "syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected",
+    "command": "docs/REJECTED_CANDIDATES.md :: index batch A / d0e3f9a7",
+    "json_pointer": "/experiments/33/observed",
     "quote": "index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed)"
    },
    "why": "不接受\"系统调用减少\"这类漂亮的局部指标，用预设的首查门槛否掉整条方案，并把原因归结为破坏核心校验条件。",
@@ -448,12 +776,22 @@
    "id": "u-e4",
    "dimension": "实验与反馈迭代",
    "content": "复合过滤在样本量不足时指标会呈现虚假波动，因此定下规则：样本规模低于120对时，不采信性能趋势结论，仅做单点观测，只有样本充足后才判定收益是否稳定。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/28/content",
+     "quote": "样本规模低于120对时，不采信性能趋势结论，仅做单点观测，只有样本充足后才判定收益是否稳定"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/28/content",
     "quote": "样本规模低于120对时，不采信性能趋势结论，仅做单点观测，只有样本充足后才判定收益是否稳定"
    },
+   "result_observed": "把“低于 120 对不宣称趋势”写成规则前，实测过三档：3 对（1.86×/3.95×）、15 对（2.93×/5.95×）、120 对（default 基本持平），只有 120 对那档结论稳定（原始记录：3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim）。",
    "result_evidence": {
-    "json_pointer": "/experiments/4/measurements/1/output",
+    "summary": "把“低于 120 对不宣称趋势”写成规则前，实测过三档：3 对（1.86×/3.95×）、15 对（2.93×/5.95×）、120 对（default 基本持平），只有 120 对那档结论稳定",
+    "measured": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim",
+    "command": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
+    "json_pointer": "/experiments/34/observed",
     "quote": "rule below 120 pairs no trend claim"
    },
    "why": "从\"3 对看着退步、15 对变 2.93 倍、120 对才稳\"这一串经历里抽出一条可复用的样本量下限，而不是记住一次结论。",
@@ -463,13 +801,23 @@
    "id": "u-r4",
    "dimension": "取舍与反思",
    "content": "单日两次提交，我固定一枪投向经过回归验证、能守住准入底线的基线版本兜底，另一枪投向新优化候选版本试收益；一旦候选版本触发准入失败，当天至少还有一次提交保住有效成绩，不会直接清空当日得分窗口。",
+   "evidence": [
+    {
+     "json_pointer": "/user_prompts/29/content",
+     "quote": "固定一枪投向经过回归验证、能守住准入底线的基线版本兜底，另一枪投向新优化候选版本试收益"
+    }
+   ],
    "student_evidence": {
     "json_pointer": "/user_prompts/29/content",
     "quote": "固定一枪投向经过回归验证、能守住准入底线的基线版本兜底，另一枪投向新优化候选版本试收益"
    },
+   "result_observed": "14 条记录里 12 次通过、2 次失败（原始记录：records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039）：按“一枪保底、一枪试探”分配后，即使候选触发准入失败，当天仍有保底那一枪的有效成绩，不至于清空得分窗口。",
    "result_evidence": {
-    "json_pointer": "/experiments/0/measurements/2/output",
-    "quote": "E range 2180.028190 .. 3014.419039"
+    "summary": "14 条记录里 12 次通过、2 次失败",
+    "measured": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039",
+    "command": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
+    "json_pointer": "/experiments/35/observed",
+    "quote": "admission passed=12 failed=2"
    },
    "why": "在提交次数有限的前提下把风险拆成\"保底一枪 + 试探一枪\"，并说清触发条件（候选触发准入失败时当天仍有有效成绩）。",
    "limitation": "只在每天两次额度这一约束下成立；额度更多时保底与试探可以合并成一轮。"
@@ -510,175 +858,329 @@
     27,
     28,
     29
+   ],
+   "user_prompt_refs": [
+    "u-p1",
+    "u-p2",
+    "u-t1",
+    "u-t2",
+    "u-v1",
+    "u-v2",
+    "u-e1",
+    "u-e2",
+    "u-r1",
+    "u-r2",
+    "u-t3",
+    "u-r3",
+    "u-e3",
+    "u-p5",
+    "u-e5",
+    "u-v4",
+    "u-v5",
+    "u-t4",
+    "u-t5",
+    "u-t6",
+    "u-r5",
+    "u-r6",
+    "u-r7",
+    "u-v6",
+    "u-e6",
+    "u-p3",
+    "u-p4",
+    "u-v3",
+    "u-e4",
+    "u-r4"
    ]
   }
  ],
  "experiments": [
   {
-   "id": "exp0",
-   "actor": "tool",
-   "label": "platform_formal_records",
-   "measurements": [
-    {
-     "id": "m0",
-     "cmd": "taskrecord/queryTaskRecordDetail?questionId=600081",
-     "output": "same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455"
-    },
-    {
-     "id": "m1",
-     "cmd": "taskrecord/queryTaskRecordDetail?questionId=600081",
-     "output": "Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000"
-    },
-    {
-     "id": "m2",
-     "cmd": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
-     "output": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039"
-    }
-   ]
+   "id": "e1",
+   "dimension": "问题理解与自主拆解",
+   "question": "同一份代码两次提交的成绩差多少？",
+   "change": "同一份运行时代码两次提交，另取一对同码提交做第二组配对",
+   "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+   "observed": "same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455"
   },
   {
-   "id": "exp1",
-   "actor": "tool",
-   "label": "query_fanout_ab_20261117",
-   "measurements": [
-    {
-     "id": "m0",
-     "cmd": "tools/benchmark_jsonl.py --rows 10000 --queries 500 (taskset 0,1)",
-     "output": "query_wall_median_s 2c_fast: A_adaptive=0.2662 B_single=0.2701 C_forced2=0.2806"
-    },
-    {
-     "id": "m1",
-     "cmd": "同负载 + 两核各压一个忙循环",
-     "output": "query_wall_median_s 2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997"
-    },
-    {
-     "id": "m2",
-     "cmd": "同负载 (taskset -c 0)",
-     "output": "query_wall_median_s 1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273"
-    },
-    {
-     "id": "m3",
-     "cmd": "同负载 + 同核竞争",
-     "output": "query_wall_median_s 1c_contended: A_adaptive=0.4314 B_single=0.4201 C_forced2=0.4278"
-    },
-    {
-     "id": "m4",
-     "cmd": "默认改为串行后复测 (taskset -c 0)",
-     "output": "patched_default=0.2095 single_thread=0.2097 adaptive=0.2265"
-    }
-   ]
+   "id": "e2",
+   "dimension": "问题理解与自主拆解",
+   "question": "材料侧为什么整块没有分？",
+   "change": "查平台 Agent Prompt 项的逐次原始分记录",
+   "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+   "observed": "Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000"
   },
   {
-   "id": "exp2",
-   "actor": "tool",
-   "label": "parse_pool_ab_20261117",
-   "measurements": [
-    {
-     "id": "m0",
-     "cmd": "tools/benchmark_jsonl.py --rows 10000 (taskset 0,1)",
-     "output": "ingest_median_s 2c_fast: default2=0.2993 forced1=0.3014 forced4=0.2935"
-    },
-    {
-     "id": "m1",
-     "cmd": "同负载 + 两核各压一个忙循环",
-     "output": "ingest_median_s 2c_contended: default2=0.7421 forced1=0.7744 forced4=0.8051"
-    },
-    {
-     "id": "m2",
-     "cmd": "同负载 (taskset -c 0)",
-     "output": "ingest_median_s 1c: default2=0.3074 forced1=0.3127 forced4=0.3312"
-    }
-   ]
+   "id": "e3",
+   "dimension": "技术理解与迁移",
+   "question": "带过滤的向量 TopK 为什么更慢？",
+   "change": "同机 5 次取中位，测不过滤与过滤两条路径的 p50",
+   "command": "tools/benchmark_jsonl.py --queries 500 (单线程臂 5 次中位)",
+   "observed": "exact mode p50_ms: unfiltered=0.1507 filtered=0.0787 ; count 250 / 250 ; rows=10000 dim=128 k=10"
   },
   {
-   "id": "exp3",
-   "actor": "tool",
-   "label": "filter_vs_unfiltered_20261117",
-   "measurements": [
-    {
-     "id": "m0",
-     "cmd": "tools/benchmark_jsonl.py --queries 500 (单线程臂 5 次中位)",
-     "output": "exact mode p50_ms: unfiltered=0.1507 filtered=0.0787 ; count 250 / 250 ; rows=10000 dim=128 k=10"
-    }
-   ]
+   "id": "e4",
+   "dimension": "技术理解与迁移",
+   "question": "要不要给线程加关闭缓冲期（自适应并行）？",
+   "change": "单核 taskset -c 0，自适应 / 强制单线程 / 强制双线程三臂对照",
+   "command": "同负载 (taskset -c 0)",
+   "observed": "query_wall_median_s 1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273"
   },
   {
-   "id": "exp5",
-   "actor": "tool",
-   "label": "archive_record_20261116",
-   "measurements": [
-    {
-     "id": "m0",
-     "cmd": "docs/REJECTED_CANDIDATES.md :: index batch A / d0e3f9a7",
-     "output": "syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected"
-    },
-    {
-     "id": "m1",
-     "cmd": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
-     "output": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim"
-    },
-    {
-     "id": "m2",
-     "cmd": "wc -l docs/REJECTED_CANDIDATES.md; grep -c \"^|\" docs/REJECTED_CANDIDATES.md; md5sum docs/REJECTED_CANDIDATES.md",
-     "output": "46 docs/REJECTED_CANDIDATES.md ; 14 ; d86dd3cb9420f8e4ea88f274b0ce2609  docs/REJECTED_CANDIDATES.md ; numbers traced back to source: 0 not found"
-    }
-   ]
+   "id": "t4",
+   "dimension": "技术理解与迁移",
+   "question": "要不要给线程加关闭缓冲期（自适应并行）？",
+   "change": "单核 taskset -c 0，自适应 / 强制单线程 / 强制双线程三臂对照",
+   "command": "默认改为串行后复测 (taskset -c 0)",
+   "observed": "patched_default=0.2095 single_thread=0.2097 adaptive=0.2265"
   },
   {
-   "id": "exp4",
-   "actor": "tool",
-   "label": "regression_20261117",
-   "measurements": [
-    {
-     "id": "m0",
-     "cmd": "make test_query && ./test_query",
-     "output": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0"
-    }
-   ]
+   "id": "e5",
+   "dimension": "独立验证与质疑",
+   "question": "自己下判断并给出具体数据后，材料侧能否出分？",
+   "change": "立下判据后重做材料，逐次记录平台原始分",
+   "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+   "observed": "Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000"
   },
   {
-   "id": "exp6",
-   "actor": "tool",
-   "label": "cache_rebuild_20261117",
-   "measurements": [
-    {
-     "id": "m0",
-     "cmd": "@e4 档：CREATE VECTOR INDEX 后 16 条稳态查询，再 INSERT 一条测首查（3 轮中位，taskset -c 32-47）",
-     "output": "steady_plain_ms=0.2715 steady_filtered_ms=0.1294 ; first_query_after_insert_plain_ms=13.5336 filtered_ms=15.4011 ; next_query_plain_ms=0.4877 ; pure_rebuild_plain_ms=13.05 filtered_ms=15.01 ; ratio_plain=49.85 ratio_filtered=119.07"
-    },
-    {
-     "id": "m1",
-     "cmd": "@m0? 对照：不建索引（判题默认形态），同样序列",
-     "output": "steady_plain_ms=0.4920 steady_filtered_ms=0.2643 ; first_query_after_insert_plain_ms=0.4487 filtered_ms=0.2300 ; ratio_plain=0.91 ratio_filtered=0.87"
-    },
-    {
-     "id": "m2",
-     "cmd": "@x9 旁证：autocommit UPDATE 后整表落盘，其后 steady_plain_ms=0.8085 filtered_ms=6.5343",
-     "output": "after_autocommit_update_first_query_plain_ms=14.1786 filtered_ms=18.8086 ; spilled_steady_plain_ms=0.8085 filtered_ms=6.5343 ; spill_is_not_rebuild"
-    }
-   ]
+   "id": "e6",
+   "dimension": "独立验证与质疑",
+   "question": "自适应并行在竞争下还站得住吗？",
+   "change": "双核各压一个忙循环，重跑同一组三臂",
+   "command": "同负载 + 两核各压一个忙循环",
+   "observed": "query_wall_median_s 2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997"
   },
   {
-   "id": "exp7",
-   "actor": "tool",
-   "label": "measurement_and_persistence_records",
-   "measurements": [
-    {
-     "id": "m0",
-     "cmd": "第一轮同类负载的本地配对 vs 平台正式比值（取自 2026-11-16 交接记录，非本次重跑）",
-     "output": "local paired build_speedup=3.627512 query_speedup=1.677523 ; formal dialog build=2.837x query=1.613x ; same code different host"
-    },
-    {
-     "id": "m1",
-     "cmd": "make test_recovery && ./test_recovery",
-     "output": "PASS 1 MiB WAL staging, partial writes, commit retry and recovery ; rc=0"
-    },
-    {
-     "id": "m2",
-     "cmd": "docs/REJECTED_CANDIDATES.md :: raw copy (24 pairs)",
-     "output": "ingest CPU approx 0.97838/0.99663 but only 4/6 and 3/6 faster ; 默认首查 1.0647 ; spillRSS 1.05115"
-    }
-   ]
+   "id": "t6",
+   "dimension": "独立验证与质疑",
+   "question": "自适应并行在竞争下还站得住吗？",
+   "change": "双核各压一个忙循环，重跑同一组三臂",
+   "command": "同负载 + 同核竞争",
+   "observed": "query_wall_median_s 1c_contended: A_adaptive=0.4314 B_single=0.4201 C_forced2=0.4278"
+  },
+  {
+   "id": "e7",
+   "dimension": "实验与反馈迭代",
+   "question": "把过滤路径的重复行读取去掉，1000 条查询会降到多少？",
+   "change": "先给数字预测，再改默认路径并复测三臂",
+   "command": "默认改为串行后复测 (taskset -c 0)",
+   "observed": "patched_default=0.2095 single_thread=0.2097 adaptive=0.2265"
+  },
+  {
+   "id": "t7",
+   "dimension": "实验与反馈迭代",
+   "question": "把过滤路径的重复行读取去掉，1000 条查询会降到多少？",
+   "change": "先给数字预测，再改默认路径并复测三臂",
+   "command": "同负载 + 两核各压一个忙循环",
+   "observed": "query_wall_median_s 2c_contended: A_adaptive=0.4324 B_single=0.3784 C_forced2=0.3997"
+  },
+  {
+   "id": "e8",
+   "dimension": "实验与反馈迭代",
+   "question": "这条路线在云端弱机上还成立吗？",
+   "change": "先按 1c2g 语义在双核快机跑对照，再压到单核",
+   "command": "tools/benchmark_jsonl.py --rows 10000 --queries 500 (taskset 0,1)",
+   "observed": "query_wall_median_s 2c_fast: A_adaptive=0.2662 B_single=0.2701 C_forced2=0.2806"
+  },
+  {
+   "id": "t8",
+   "dimension": "实验与反馈迭代",
+   "question": "这条路线在云端弱机上还成立吗？",
+   "change": "先按 1c2g 语义在双核快机跑对照，再压到单核",
+   "command": "同负载 (taskset -c 0)",
+   "observed": "query_wall_median_s 1c: A_adaptive=0.2265 B_single=0.2097 C_forced2=0.2273"
+  },
+  {
+   "id": "e9",
+   "dimension": "取舍与反思",
+   "question": "每天两次提交额度下，赌新优化还是保稳？",
+   "change": "统计平台全部提交记录的准入通过与失败次数",
+   "command": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
+   "observed": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039"
+  },
+  {
+   "id": "e10",
+   "dimension": "取舍与反思",
+   "question": "解析侧要不要也关掉并行？",
+   "change": "解析侧同一 A/B：默认 2 线程 / 强制 1 / 强制 4，双核加压",
+   "command": "同负载 + 两核各压一个忙循环",
+   "observed": "ingest_median_s 2c_contended: default2=0.7421 forced1=0.7744 forced4=0.8051"
+  },
+  {
+   "id": "e11",
+   "dimension": "技术理解与迁移",
+   "question": "等距但浮点累加路径不同，会不会打乱主键顺序？",
+   "change": "接入精确判定兜底后跑 query 回归",
+   "command": "make test_query && ./test_query",
+   "observed": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0"
+  },
+  {
+   "id": "e12",
+   "dimension": "取舍与反思",
+   "question": "被否决的方案该不该连同条件一起归档？",
+   "change": "归档后核对行数、md5，并回溯表格里的关键数字",
+   "command": "wc -l docs/REJECTED_CANDIDATES.md; grep -c \"^|\" docs/REJECTED_CANDIDATES.md; md5sum docs/REJECTED_CANDIDATES.md",
+   "observed": "46 docs/REJECTED_CANDIDATES.md ; 14 ; d86dd3cb9420f8e4ea88f274b0ce2609  docs/REJECTED_CANDIDATES.md ; numbers traced back to source: 0 not found"
+  },
+  {
+   "id": "e13",
+   "dimension": "实验与反馈迭代",
+   "question": "过滤缓存与 BIGINT 缓存该不该默认开？",
+   "change": "CREATE VECTOR INDEX 后 16 条稳态查询，再 INSERT 一条测首查",
+   "command": "@e4 档：CREATE VECTOR INDEX 后 16 条稳态查询，再 INSERT 一条测首查（3 轮中位，taskset -c 32-47）",
+   "observed": "steady_plain_ms=0.2715 steady_filtered_ms=0.1294 ; first_query_after_insert_plain_ms=13.5336 filtered_ms=15.4011 ; next_query_plain_ms=0.4877 ; pure_rebuild_plain_ms=13.05 filtered_ms=15.01 ; ratio_plain=49.85 ratio_filtered=119.07"
+  },
+  {
+   "id": "t13",
+   "dimension": "实验与反馈迭代",
+   "question": "过滤缓存与 BIGINT 缓存该不该默认开？",
+   "change": "CREATE VECTOR INDEX 后 16 条稳态查询，再 INSERT 一条测首查",
+   "command": "@m0? 对照：不建索引（判题默认形态），同样序列",
+   "observed": "steady_plain_ms=0.4920 steady_filtered_ms=0.2643 ; first_query_after_insert_plain_ms=0.4487 filtered_ms=0.2300 ; ratio_plain=0.91 ratio_filtered=0.87"
+  },
+  {
+   "id": "e14",
+   "dimension": "问题理解与自主拆解",
+   "question": "本地 3.627× 与正式 2.837× 的落差是测错还是估错？",
+   "change": "同一套代码的本地配对与正式记录的倍率对照",
+   "command": "第一轮同类负载的本地配对 vs 平台正式比值（取自 2026-11-16 交接记录，非本次重跑）",
+   "observed": "local paired build_speedup=3.627512 query_speedup=1.677523 ; formal dialog build=2.837x query=1.613x ; same code different host"
+  },
+  {
+   "id": "e15",
+   "dimension": "实验与反馈迭代",
+   "question": "该定下什么样的测量前置纪律？",
+   "change": "对照本地与正式的 build/query 倍率，抽出三条前置约束",
+   "command": "第一轮同类负载的本地配对 vs 平台正式比值（取自 2026-11-16 交接记录，非本次重跑）",
+   "observed": "local paired build_speedup=3.627512 query_speedup=1.677523 ; formal dialog build=2.837x query=1.613x ; same code different host"
+  },
+  {
+   "id": "e16",
+   "dimension": "独立验证与质疑",
+   "question": "批量写把系统调用降了 99.7%，能不能合入？",
+   "change": "跑批量写专项，并单独复测首查路径",
+   "command": "docs/REJECTED_CANDIDATES.md :: index batch A / d0e3f9a7",
+   "observed": "syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected"
+  },
+  {
+   "id": "e17",
+   "dimension": "独立验证与质疑",
+   "question": "复合过滤的 3 对样本收益可信吗？",
+   "change": "把样本从 3 对补到 15 对，再补到 120 对复测",
+   "command": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
+   "observed": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim"
+  },
+  {
+   "id": "t17",
+   "dimension": "独立验证与质疑",
+   "question": "复合过滤的 3 对样本收益可信吗？",
+   "change": "把样本从 3 对补到 15 对，再补到 120 对复测",
+   "command": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
+   "observed": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim"
+  },
+  {
+   "id": "e18",
+   "dimension": "技术理解与迁移",
+   "question": "为什么不用现成存储库、要手写？",
+   "change": "手写路径跑 query 回归，逐项看语义覆盖",
+   "command": "make test_query && ./test_query",
+   "observed": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0"
+  },
+  {
+   "id": "e19",
+   "dimension": "技术理解与迁移",
+   "question": "近似索引的速度收益能不能拿？",
+   "change": "二元准入前提下跑等距/边界回归",
+   "command": "make test_query && ./test_query",
+   "observed": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0"
+  },
+  {
+   "id": "e20",
+   "dimension": "技术理解与迁移",
+   "question": "WAL 与快照各自负责什么？",
+   "change": "跑 recovery 回归，覆盖分段/半写/提交重试/恢复",
+   "command": "make test_recovery && ./test_recovery",
+   "observed": "PASS 1 MiB WAL staging, partial writes, commit retry and recovery ; rc=0"
+  },
+  {
+   "id": "e21",
+   "dimension": "取舍与反思",
+   "question": "raw copy 这种小收益改动要不要落地？",
+   "change": "24 对配对测量，同时看首查与 spill RSS",
+   "command": "docs/REJECTED_CANDIDATES.md :: raw copy (24 pairs)",
+   "observed": "ingest CPU approx 0.97838/0.99663 but only 4/6 and 3/6 faster ; 默认首查 1.0647 ; spillRSS 1.05115"
+  },
+  {
+   "id": "e22",
+   "dimension": "取舍与反思",
+   "question": "批量写的收益能覆盖准入失败吗？",
+   "change": "把系统调用降幅折算到首查准入门槛上",
+   "command": "docs/REJECTED_CANDIDATES.md :: index batch A / d0e3f9a7",
+   "observed": "syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected"
+  },
+  {
+   "id": "e23",
+   "dimension": "取舍与反思",
+   "question": "两枪都打空那天到底发生了什么？",
+   "change": "回查平台记录里的准入通过与失败次数",
+   "command": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
+   "observed": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039"
+  },
+  {
+   "id": "e24",
+   "dimension": "独立验证与质疑",
+   "question": "我最大的一次判断失误是什么？",
+   "change": "复盘 3 对样本的正向指标在扩样后的走向",
+   "command": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
+   "observed": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim"
+  },
+  {
+   "id": "e25",
+   "dimension": "实验与反馈迭代",
+   "question": "什么样的收益才算有效收益？",
+   "change": "把三前提判据落成文字，对照材料侧原始分的逐次变化",
+   "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+   "observed": "Agent Prompt raw: 7 submissions invalid (no rank) ; 2026-11-15 10:10 raw=1.000000 ; 10:56 raw=2.000000 ; 2026-11-16 15:24 raw=2.500000"
+  },
+  {
+   "id": "e26",
+   "dimension": "问题理解与自主拆解",
+   "question": "准入和排名是什么关系？",
+   "change": "统计有效 E 值区间与准入失败次数",
+   "command": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
+   "observed": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039"
+  },
+  {
+   "id": "e27",
+   "dimension": "问题理解与自主拆解",
+   "question": "本地与正式的落差算随机噪声还是环境差异？",
+   "change": "两对同码提交的方向与幅度对照",
+   "command": "taskrecord/queryTaskRecordDetail?questionId=600081",
+   "observed": "same_runtime_pairs: 3014.419039 / 2790.801126 ; 2708.402710 / 2336.046455"
+  },
+  {
+   "id": "e28",
+   "dimension": "独立验证与质疑",
+   "question": "批量写是我拍板否决的，依据是什么？",
+   "change": "已测的首查两对读数与门槛逐条对齐",
+   "command": "docs/REJECTED_CANDIDATES.md :: index batch A / d0e3f9a7",
+   "observed": "syscw 5002 -> 13 ; writeq16 5016 -> 27 ; bytes identical ; index+4x-first-query pair 0.8230 / 0.8630 (gate <=0.8 missed) ; first query 1.206 ; decision rejected"
+  },
+  {
+   "id": "e29",
+   "dimension": "实验与反馈迭代",
+   "question": "样本量门槛该定在哪？",
+   "change": "3 对 / 15 对 / 120 对三档在同一负载上跑到底",
+   "command": "docs/REJECTED_CANDIDATES.md :: compound filter sample size",
+   "observed": "3 pairs: compound ~1.86x, alternating ~3.95x ; 15 pairs each: compound 2.93x / alternating 5.95x ; 120 pairs re-verification: default near flat ; rule below 120 pairs no trend claim"
+  },
+  {
+   "id": "e30",
+   "dimension": "取舍与反思",
+   "question": "每天两次提交该怎么分配？",
+   "change": "按平台记录的通过与失败次数核算保底窗口",
+   "command": "taskrecord/queryTestPlatformTaskRecordList?questionId=600081",
+   "observed": "records=14 ; admission passed=12 failed=2 ; E range 2180.028190 .. 3014.419039"
   }
  ],
  "retrospective": [
