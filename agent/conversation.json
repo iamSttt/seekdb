@@ -173,6 +173,45 @@
    },
    "why": "同一程序里两个并行组件实测结论相反（查询该关、解析该留），因此放弃统一的自适应开关，改为逐个组件量出结论。",
    "limitation": "两个结论都基于同一台机器的相对比值；换宿主机形状要重跑，不能把“关”或“留”当一般规律。"
+  },
+  {
+   "id": "u-t3",
+   "dimension": "技术理解与迁移",
+   "content": "如果距离数学等价但浮点累加路径不一致，累计舍入偏差最多可达 1 ULP，会打破等距条件下主键升序的稳定排序约定，因此必须接入精确判定分支兜底，否则相同距离的条目主键顺序会随机翻转。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/10/content",
+    "quote": "如果距离数学等价但浮点累加路径不一致，累计舍入偏差最多可达 1 ULP，会打破等距条件下主键升序的稳定排序约定，因此必须接入精确判定分支兜底"
+   },
+   "result_evidence": {
+    "json_pointer": "/experiments/4/measurements/0/output",
+    "quote": "PASS exact float32 distance ties/rounding, TopK ties"
+   },
+   "why": "指出数学等距与浮点累加路径的冲突，给出可检验的后果（主键顺序翻转）并据此选择精确判定兜底，属于机制解释而非复述。",
+   "limitation": "只在 IEEE-754 双精度累加路径上验证过；换成定点或更低精度核时需要重新证明同一结论。"
+  },
+  {
+   "id": "u-r3",
+   "dimension": "取舍与反思",
+   "content": "这批被否决的方案（宽向量输出、批量写、raw copy、PGO、disk no-init）我选择连同对应的约束条件、失败根因一起归档留存，不是单纯赌未来复用，而是当前限制下这条路走不通，一旦前提假设、硬件规格或者指标阈值发生变更，相同的路径就具备重新评估的价值，同时也避免后续迭代者重复投入成本复现已经踩过的死胡同。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/11/content",
+    "quote": "这批被否决的方案（宽向量输出、批量写、raw copy、PGO、disk no-init）我选择连同对应的约束条件、失败根因一起归档留存"
+   },
+   "result_evidence": null,
+   "why": "对已否决方案的处置给出判据（前提变更即重新评估），并同时给出收益（避免后来者重复复现），是可检验的取舍而非情绪化决定。",
+   "limitation": "本期没有与该判断配对的机器可核对结果，因此按最低档记录；归档清单本身尚未进入本次提交的仓库。"
+  },
+  {
+   "id": "u-e3",
+   "dimension": "实验与反馈迭代",
+   "content": "过滤缓存与BIGINT缓存默认关闭，因为它能压低稳态查询时延，但写入变更后的首次查询需要承担缓存重建开销，仅在读多写少、热点数据集长期稳定的负载下才适合开启。",
+   "student_evidence": {
+    "json_pointer": "/user_prompts/12/content",
+    "quote": "过滤缓存与BIGINT缓存默认关闭，因为它能压低稳态查询时延，但写入变更后的首次查询需要承担缓存重建开销"
+   },
+   "result_evidence": null,
+   "why": "把\"缓存赚不赚\"表述成随读写比例变化的函数，而不是绝对结论，并据此选择默认关闭。",
+   "limitation": "本期没有与该判断配对的机器可核对结果，因此按最低档记录；历史上读写比对照的原始数据不在本次提交范围内。"
   }
  ],
  "conversations": [
@@ -189,7 +228,10 @@
     6,
     7,
     8,
-    9
+    9,
+    10,
+    11,
+    12
    ]
   }
  ],
@@ -290,7 +332,7 @@
     {
      "id": "m0",
      "cmd": "make test_query && ./test_query",
-     "output": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; rc=0"
+     "output": "PASS winner projections, distinct distance expressions, DESC ties, non-leading PK and spilled rows ; PASS exact float32 distance ties/rounding, TopK ties, BIGINT precision, nonprojected keys, spill-safe copies, streaming/external sorting, float32 extrema ; rc=0"
     }
    ]
   }
