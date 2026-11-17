@@ -1,0 +1,56 @@
+name: bw mi v3
+on:
+  push:
+    branches: [perf/bwmi3]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  m:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - run: docker build --platform linux/amd64 -t mv:m .
+      - name: Sample cgroup while running
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/in.jsonl
+          import json
+          D=128
+          v="["+",".join(["0.013"]*D)+"]"
+          n=0
+          print(json.dumps({"id":n,"op":"execute","sql":"CREATE TABLE t(id BIGINT PRIMARY KEY, grp BIGINT, v VECTOR(%d));"%D,"search_mode":"exact"}))
+          for b in range(100):
+              rows=",".join("(%d,%d,'%s')"%(100+b*100+k,(b*100+k)%10,v) for k in range(100))
+              for s in ("BEGIN;","INSERT INTO t VALUES "+rows+";","COMMIT;"):
+                  n+=1; print(json.dumps({"id":n,"op":"execute","sql":s,"search_mode":"exact"}))
+          n+=1; print(json.dumps({"id":n,"op":"execute","sql":"CREATE VECTOR INDEX t_v ON t(v);","search_mode":"exact"}))
+          for q in range(1000):
+              w="" if q%2 else " WHERE grp=%d"%((q//2)%10)
+              n+=1; print(json.dumps({"id":n,"op":"execute","sql":"SELECT id,L2_DISTANCE(v,'%s') AS d FROM t%s ORDER BY d LIMIT 10;"%(v,w),"search_mode":"exact"}))
+          n+=1; print(json.dumps({"id":n,"op":"shutdown"}))
+          PY
+          docker rm -f mvt >/dev/null 2>&1 || true
+          rm -rf /tmp/d && mkdir -p /tmp/d
+          START=$(date +%s%N)
+          docker run --name mvt -i --cpus=2 --memory=2g -v /tmp/d:/data mv:m < /tmp/in.jsonl > /tmp/out.jsonl &
+          PID=$!
+          sleep 1
+          CID=$(docker inspect -f '{{.Id}}' mvt 2>/dev/null || true)
+          SCOPE=$(ls -d /sys/fs/cgroup/system.slice/docker-$CID*.scope 2>/dev/null | head -1 || true)
+          echo "scope=$SCOPE"
+          peak=0
+          while kill -0 $PID 2>/dev/null; do
+            m=$(cat "$SCOPE/memory.peak" 2>/dev/null | head -1)
+            if [ -z "$m" ]; then m=0; fi
+            if [ "$m" -gt "$peak" ]; then peak=$m; fi
+            sleep 0.1
+          done
+          wait $PID || true
+          END=$(date +%s%N)
+          echo "memory_peak_bytes=$peak"
+          echo "wall_ms=$(( (END - START) / 1000000 ))"
+          echo "responses=$(wc -l < /tmp/out.jsonl)"
+          echo "data_bytes=$(du -sb /tmp/d | cut -f1)"
+          docker rm -f mvt >/dev/null 2>&1 || true
