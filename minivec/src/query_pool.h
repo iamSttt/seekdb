@@ -147,7 +147,11 @@ inline FanoutMode query_fanout_mode() {
       if (value >= 2 && two_cores) return FanoutMode::Force;
       return FanoutMode::Never;
     }
+    #if defined(MVDB_QUERY_SERIAL)
+    return FanoutMode::Never;
+#else
     return two_cores ? FanoutMode::Adaptive : FanoutMode::Never;
+#endif
   }();
   return mode;
 }
